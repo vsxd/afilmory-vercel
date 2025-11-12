@@ -1,217 +1,361 @@
-# AGENTS
+# AGENTS - Afilmory 静态站点版本
 
-## Commands
+## 项目概述
 
-### Development Commands
+Afilmory 是一个现代化的照片展示站点生成器，类似于 Hexo/Hugo，但专门为照片集设计。它将照片处理和前端构建整合为一个完整的静态站点生成流程。
+
+## 核心理念
+
+- **📸 照片优先**: 专注于照片展示的用户体验
+- **⚡ 静态优先**: 无需数据库和后端服务器
+- **🚀 易于部署**: 一键部署到 Vercel、Netlify 等平台
+- **🎨 现代设计**: Glassmorphic 设计系统，流畅的交互体验
+
+## 快速开始
+
+### 开发命令
 
 ```bash
-# Start development server (runs both web and SSR)
+# 安装依赖
+pnpm install
+
+# 本地开发（不处理照片）
 pnpm dev
 
-# Start only web development server
-pnpm --filter web dev
-
-# Start only SSR development server
-pnpm --filter @afilmory/ssr dev
-
-# Build production version
+# 构建完整静态站点（处理照片 + 构建前端）
 pnpm build
 
-# Build manifest from storage (generates photo metadata)
-pnpm run build:manifest
+# 只处理照片生成 manifest
+pnpm build:manifest
 
-# Force rebuild all photos and metadata
-pnpm run build:manifest -- --force
+# 只构建前端
+pnpm build:web
 
-# Force regenerate thumbnails only
-pnpm run build:manifest -- --force-thumbnails
-
-# Force regenerate manifest only
-pnpm run build:manifest -- --force-manifest
+# 预览构建结果
+pnpm preview
 ```
 
-### Database Commands (SSR app)
+### 构建流程详解
 
 ```bash
-# Generate database migrations
-pnpm --filter @afilmory/ssr db:generate
+# 1. 将照片放入 photos/ 目录
+mkdir photos
+cp ~/Pictures/*.jpg photos/
 
-# Run database migrations
-pnpm --filter @afilmory/ssr db:migrate
+# 2. 配置站点信息（可选）
+cp config.example.json config.json
+# 编辑 config.json
+
+# 3. 构建静态站点
+pnpm build
+
+# 输出目录: apps/web/dist
 ```
 
-### Code Quality Commands
+### Manifest 构建选项
 
 ```bash
-# Lint and fix code
-pnpm lint
+# 强制重新处理所有照片
+pnpm build:manifest -- --force
 
-# Format code
-pnpm format
+# 只重新生成缩略图
+pnpm build:manifest -- --force-thumbnails
 
-# Type check (web app)
-pnpm --filter web type-check
+# 只重新生成 manifest 文件
+pnpm build:manifest -- --force-manifest
 ```
 
-## Architecture
+## 项目架构
 
-The project employs a sophisticated, modular architecture that separates concerns across different applications and packages, enabling independent development, deployment, and scaling.
+### 目录结构
 
-### Core Components
+```
+afilmory/
+├── photos/                    # 📸 照片源文件目录
+│   ├── 2024/
+│   └── 2023/
+├── apps/
+│   └── web/                   # 🎨 前端 SPA 应用
+│       ├── src/
+│       ├── public/
+│       └── dist/              # 构建产物
+├── packages/
+│   ├── builder/               # 🔨 照片处理工具
+│   ├── webgl-viewer/          # 🖼️ WebGL 图片查看器
+│   ├── data/                  # 📊 数据层
+│   ├── ui/                    # 🎨 UI 组件
+│   ├── hooks/                 # ⚓ React Hooks
+│   └── utils/                 # 🔧 工具函数
+├── scripts/
+│   └── build-static.sh        # 构建脚本
+├── config.json                # 站点配置
+├── builder.config.static.ts   # 构建配置
+└── vercel.json                # Vercel 部署配置
+```
 
-The project is divided into four main applications:
+### 核心组件
 
-1.  **`apps/web` - Standalone Frontend SPA**
-    *   **Description**: A pure client-side application built with React, Vite, and TypeScript. It can be deployed independently as a static website and is fully functional on its own.
-    *   **UI/Design**: Features a modern, interactive, and user-centric UI. It utilizes a "Glassmorphic Depth Design System" for components like modals, toasts, and floating panels, creating a sense of visual hierarchy through layered transparency and subtle color accents. The design is geared towards a rich end-user experience for photo browsing and visualization.
-    *   **Server Integration**: It can operate in two modes:
-        *   **Standalone**: Functions without a server, using a pre-built `photos-manifest.json` file.
-        *   **Server-Connected**: When a global variable like `window.__MANIFEST__` is detected, it unlocks enhanced features. This injection is handled by either `apps/ssr` (from a static file) or `be/apps/core` (from the database).
+#### 1. **照片处理工具** (`packages/builder`)
 
-2.  **`apps/ssr` - Next.js Wrapper for SEO & Prerendering**
-    *   **Description**: A Next.js application that acts as a transparent proxy for the `apps/web` SPA. Its primary role is to enhance the frontend with server-side capabilities for performance and discoverability, rather than serving as a full-fledged backend. It injects the manifest from a static JSON file.
-    *   **Key Features**:
-        *   **OG (Open Graph) Rendering**: Dynamically generates social media preview cards for shared links.
-        *   **SEO Metadata Injection**: Injects dynamic SEO tags into the HTML for better search engine visibility.
-        *   **SSR for Shared Pages**: Server-renders specific pages to provide fast initial load times.
+负责从存储源（本地文件系统或 S3）读取照片并进行处理：
 
-- **`be/apps/core`**: The complete backend server (Hono) for real-time data. For a detailed breakdown of its architecture, see `be/apps/core/AGENTS.md`.
-- **`be/apps/dashboard`**: The administration panel for the backend. See `be/apps/dashboard/AGENTS.md` for UI guidelines.
+- **格式转换**: HEIC → JPEG, TIFF → JPEG
+- **缩略图生成**: 生成多种尺寸的缩略图
+- **EXIF 提取**: 提取相机型号、拍摄参数、GPS 等信息
+- **Live Photo 检测**: 识别 iPhone 动态照片
+- **Blurhash 生成**: 生成模糊占位图
+- **Manifest 生成**: 输出 `photos-manifest.json`
 
-### Monorepo Structure
+#### 2. **前端应用** (`apps/web`)
 
-This is a pnpm workspace with multiple applications and packages:
+使用 Vite + React 19 构建的 SPA 应用：
 
-- `apps/web/` - Main frontend React application (Vite + React 19 SPA).
-- `apps/ssr/` - Next.js 15 application serving as an SPA host and dynamic SEO/OG generator.
-- `be/apps/core/` - The complete backend server (Hono) for real-time data.
-- `be/apps/dashboard/` - The administration panel for the backend.
-- `packages/builder/` - Photo processing and manifest generation tool.
-- `packages/webgl-viewer/` - High-performance WebGL-based photo viewer component.
-- `packages/data/` - Shared data access layer and PhotoLoader singleton.
-- `packages/components/` - Reusable UI components shared across apps.
-- `packages/ui/` - Core UI elements and design system components.
-- `packages/hooks/` - Shared React hooks.
-- `packages/utils/` - Utility functions.
+- **技术栈**:
+  - React 19 + TypeScript
+  - Vite 7 构建工具
+  - Tailwind CSS 4
+  - Jotai 状态管理
+  - TanStack Query 数据获取
+  - React Router 7 路由
+  - i18next 国际化
 
-### Next.js as SPA Host & SEO Provider
+- **核心功能**:
+  - 📷 Masonry 瀑布流布局
+  - 🖼️ WebGL 高性能图片查看器
+  - 🗺️ MapLibre 地图展示（GPS 信息）
+  - 🎨 Glassmorphic 设计系统
+  - 📱 PWA 支持
+  - 🌐 多语言支持
+  - 🔍 照片搜索和过滤
 
-**Dual Server Architecture (for `apps/ssr`)**:
+#### 3. **WebGL 查看器** (`packages/webgl-viewer`)
 
-- **Development Mode**: `apps/ssr/src/app/[...all]/route.ts` catches all SPA routes and serves `index.html` with injected manifest data from the static JSON file.
-- **Production Mode**: Next.js serves pre-built Vite SPA assets while providing dynamic OG image generation.
+自定义 WebGL 组件，提供流畅的图片缩放和平移操作。
 
-**Dynamic SEO Implementation**:
+#### 4. **数据层** (`packages/data`)
 
-- `apps/ssr/src/index.html.ts` - Pre-compiled HTML template with manifest data injected as `window.__MANIFEST__`.
-- Dynamic OG images generated per photo via Next.js API routes (`/og/[photoId]/route.ts`).
-- HTML meta tags dynamically replaced for social media sharing.
+- `PhotoLoader`: 照片数据加载单例
+- 从 `photos-manifest.json` 读取照片元数据
+- 支持分页、过滤、搜索
 
-### Configuration Architecture
+## 配置文件
 
-**Two-Layer Configuration System**:
+### 站点配置 (`config.json`)
 
-1. **Builder Config** (`builder.config.ts`) - **Infrastructure/Processing Layer**:
-
-   - Controls photo processing, storage connections, and build performance.
-   - Handles remote git repository sync for manifest/thumbnails.
-   - Configures multi-process/cluster processing for large photo sets.
-
-2. **Site Config** (`site.config.ts` + `config.json`) - **Presentation/Content Layer**:
-   ```typescript
-   {
-     name: "Gallery Name",
-     description: "...",
-     author: { name: "...", url: "...", avatar: "..." },
-     social: { twitter: "...", github: "..." },
-     map: ["maplibre"] // Map provider configuration
-   }
-   ```
-   - Controls site branding, author info, social links.
-   - Merged with user `config.json`.
-   - Consumed by both SPA and SSR/Backend for consistent branding.
-
-### Manifest Generation & Data Flow
-
-**Builder Pipeline** (`packages/builder/src/cli.ts`):
-
-1. **Storage Sync**: Downloads photos from S3/GitHub with incremental change detection.
-2. **Format Processing**: HEIC→JPEG, TIFF→web formats, Live Photo detection.
-3. **Multi-threaded Processing**: Configurable worker pools or cluster mode for performance.
-4. **EXIF & Metadata Extraction**: Camera settings, GPS, Fujifilm recipes, tone analysis.
-5. **Thumbnail Generation**: Multiple sizes with blurhash placeholders.
-6. **Manifest Serialization**: Generates `photos-manifest.json` with full metadata.
-7. **Remote Sync**: Pushes updates to a git repository if configured.
-
-**SPA Data Consumption** (`packages/data/src/index.ts`):
-
-```typescript
-class PhotoLoader {
-  constructor() {
-    this.photos = window.__MANIFEST__.data // Injected via global
-    this.cameras = window.__MANIFEST__.cameras
-    this.lenses = window.__MANIFEST__.lenses
-    // Creates lookup maps and provides data access layer
-  }
+```json
+{
+  "name": "我的照片集",
+  "title": "My Afilmory",
+  "description": "记录生活中的美好瞬间",
+  "url": "https://your-site.vercel.app",
+  "accentColor": "#007bff",
+  "author": {
+    "name": "Your Name",
+    "url": "https://your-website.com",
+    "avatar": "https://your-avatar.jpg"
+  },
+  "social": {
+    "github": "username",
+    "twitter": "handle",
+    "rss": true
+  },
+  "map": ["maplibre"],
+  "mapStyle": "https://your-map-style.json",
+  "mapProjection": "globe"
 }
 ```
 
-**Data Flow Scenarios**:
+### 构建配置 (`builder.config.static.ts`)
 
-1.  **Static/SSR Flow**:
-    *   Builder generates `photos-manifest.json`.
-    *   `apps/ssr` reads the JSON and injects it into the HTML as `window.__MANIFEST__`.
-    *   SPA's `PhotoLoader` consumes the global data.
-2.  **Full Backend Flow**:
-    *   `be/apps/core` fetches data from the database.
-    *   It generates the manifest object in memory.
-    *   It injects the manifest into the HTML as `window.__MANIFEST__` before serving the page.
-    *   SPA's `PhotoLoader` consumes the global data, unaware of the source.
+```typescript
+export default defineBuilderConfig(() => ({
+  // 存储配置
+  storage: {
+    provider: 'local',      // 使用本地文件系统
+    basePath: './photos',   // 照片源目录
+    baseUrl: '/photos',     // 网站访问路径
+  },
 
-### Key Technologies
+  // 处理选项
+  system: {
+    processing: {
+      defaultConcurrency: 10,           // 并发数
+      enableLivePhotoDetection: true,   // Live Photo
+      digestSuffixLength: 0,
+    },
+    observability: {
+      showProgress: true,
+      showDetailedStats: true,
+    },
+  },
+}))
+```
 
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Jotai (state), TanStack Query
-- **SSR Layer**: Next.js 15
-- **Backend**: Hono, Drizzle ORM, PostgreSQL, tsyringe (for DI)
-- **Image Processing**: Sharp, exiftool-vendored, HEIC conversion, blurhash generation
-- **Storage**: S3-compatible (AWS/MinIO), GitHub repository storage
-- **Build System**: pnpm workspaces, concurrent dev servers, cluster-based processing
+### 使用 S3 存储
 
-### Development Workflow
+如果照片存储在 S3 上，修改 `storage` 配置：
 
-- **Concurrent Development**: `pnpm dev` runs both SPA (Vite) and SSR (Next.js) servers. Use `pnpm --filter @afilmory/core dev` to run the full backend.
-- **Hot Reloading**: SPA changes reflect immediately.
-- **Manifest Building**: `pnpm run build:manifest` processes photos and updates the static `photos-manifest.json`.
-- **Type Safety**: Shared types between builder, SPA, and servers ensure consistency.
-- **Page Structure**: Keep files under `pages/` as thin routing shells; move reusable UI/logic into `modules/<domain>/**`.
+```typescript
+storage: {
+  provider: 's3',
+  bucket: 'my-bucket',
+  region: 'us-east-1',
+  endpoint: 'https://s3.amazonaws.com',
+  accessKeyId: env.S3_ACCESS_KEY_ID,
+  secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+  prefix: 'photos/',
+  customDomain: 'https://cdn.example.com',
+}
+```
 
-### Code Quality Rules
+## 构建流程详解
 
-1. Avoid code duplication - extract common types and components.
-2. Keep components focused - use hooks and component composition.
-3. Follow React best practices - proper Context usage, state management.
-4. Use TypeScript strictly - leverage type safety throughout.
+### 完整构建 (`pnpm build`)
 
-### i18n Guidelines
+执行 `scripts/build-static.sh`:
 
-- Use flat keys with `.` separation (e.g., `exif.camera.model`).
-- Support pluralization with `_one` and `_other` suffixes.
-- Modify English first, then other languages (ESLint auto-removes unused keys).
-- **CRITICAL: Avoid nested key conflicts in flat structure.**
-  - ❌ WRONG: `"action.tag.mode.and": "AND"` + `"action.tag.mode.and.tooltip": "..."`
-  - ✅ CORRECT: `"action.tag.mode.and": "AND"` + `"action.tag.tooltip.and": "..."`
-  - Rule: A key cannot be both a string value AND a parent object.
+```mermaid
+graph LR
+    A[photos/ 目录] --> B[Builder: 图片处理]
+    B --> C[生成缩略图]
+    B --> D[提取 EXIF]
+    C --> E[photos-manifest.json]
+    D --> E
+    E --> F[Vite: 构建前端]
+    F --> G[apps/web/dist]
+```
 
-### Testing Strategy
+1. **检查 photos 目录**: 确保有照片文件
+2. **运行 Builder**: 处理照片并生成 manifest
+   - 转换 HEIC/TIFF 格式
+   - 生成多尺寸缩略图
+   - 提取 EXIF 信息
+   - 生成 Blurhash
+   - 输出 `apps/web/src/data/photos-manifest.json`
+3. **构建前端**: Vite 打包 React 应用
+   - 代码分割和优化
+   - 生成 PWA manifest
+   - 生成 OG 图片
+   - 生成 sitemap.xml
+   - 输出到 `apps/web/dist`
 
-- Check `README.md` and `package.json` scripts for test commands.
-- Verify builds work with `pnpm build`.
-- Test photo processing with `pnpm run build:manifest`.
-- Validate types with `pnpm --filter web type-check`.
+### 增量构建
 
-## Design System
+Builder 会智能检测变更：
 
-This project contains multiple web applications with distinct design systems. For specific UI and design guidelines, please refer to the `AGENTS.md` file within each application's directory:
+- **新增照片**: 只处理新文件
+- **修改照片**: 重新处理修改的文件
+- **删除照片**: 从 manifest 中移除
 
-- **`apps/web`**: Contains the "Glassmorphic Depth Design System" for the main user-facing photo gallery. See `apps/web/AGENTS.md` for details.
-- **`be/apps/dashboard`**: Contains guidelines for the functional, data-driven UI of the administration panel. See `be/apps/dashboard/AGENTS.md` for details.
+使用文件 hash 和修改时间来判断变更。
+
+## 部署
+
+### Vercel
+
+```bash
+# 方式 1: CLI 部署
+vercel --prod
+
+# 方式 2: Git 自动部署
+git push origin main
+```
+
+`vercel.json` 已配置：
+
+```json
+{
+  "buildCommand": "sh scripts/build-static.sh",
+  "outputDirectory": "apps/web/dist"
+}
+```
+
+### 其他平台
+
+| 平台 | Build Command | Output Directory |
+|------|--------------|-----------------|
+| Netlify | `sh scripts/build-static.sh` | `apps/web/dist` |
+| Cloudflare Pages | `sh scripts/build-static.sh` | `apps/web/dist` |
+| GitHub Pages | `sh scripts/build-static.sh` | `apps/web/dist` |
+
+## 性能优化
+
+### 图片加载策略
+
+- **缩略图优先**: 瀑布流使用小尺寸缩略图
+- **懒加载**: 使用 Intersection Observer
+- **渐进式加载**: Blurhash → 缩略图 → 原图
+- **WebP 格式**: 自动生成 WebP 缩略图
+
+### 代码分割
+
+- 按路由分割
+- 重依赖单独打包 (heic-to, maplibre-gl)
+- Tree-shaking 移除未使用代码
+
+### 缓存策略
+
+```
+/assets/*    - Cache-Control: immutable, max-age=31536000
+/photos/*    - Cache-Control: immutable, max-age=31536000
+/index.html  - Cache-Control: no-cache
+```
+
+## 国际化
+
+支持多语言，配置在 `locales/` 目录：
+
+- `en/`: English
+- `zh-CN/`: 简体中文
+- `ja/`: 日本語
+
+添加新语言：
+
+1. 在 `locales/` 创建语言目录
+2. 复制 `common.json` 并翻译
+3. 更新 `apps/web/src/i18n.ts`
+
+## 常见问题
+
+### 1. 构建很慢
+
+- **原因**: 照片数量多，首次构建需要处理所有照片
+- **解决**:
+  - 调整 `defaultConcurrency` 参数
+  - 后续构建是增量的，只处理变更
+  - 考虑使用 CI/CD 缓存
+
+### 2. 图片不显示
+
+- **检查**: `apps/web/dist/photos/` 是否有文件
+- **检查**: `photos-manifest.json` 是否生成
+- **检查**: 浏览器控制台是否有 404 错误
+
+### 3. EXIF 信息缺失
+
+- **原因**: 照片可能被编辑软件移除了 EXIF
+- **解决**: 使用原始照片文件
+
+### 4. Vercel 构建超时
+
+- **原因**: 免费版构建时间限制 45 分钟
+- **解决**: 本地构建后使用 `vercel --prebuilt` 部署
+
+## 代码质量
+
+```bash
+# 类型检查
+pnpm --filter web type-check
+
+# 代码检查和自动修复
+pnpm lint
+
+# 代码格式化
+pnpm format
+```
+
+## 更多信息
+
+- [部署指南](./DEPLOY_STATIC.md)
+- [完整 README](./README.md)
+- [GitHub Issues](https://github.com/Afilmory/Afilmory/issues)

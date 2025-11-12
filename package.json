@@ -10,23 +10,15 @@
     "url": "https://github.com/Afilmory/Afilmory"
   },
   "scripts": {
-    "build": "pnpm --filter @afilmory/ssr build",
-    "build:demo": "sh scripts/prepare-demo-data.sh && pnpm --filter web build",
-    "build:manifest": "pnpm --filter @afilmory/builder cli",
-    "build:update-remote-repo": "sh scripts/build-update-remote-repo.sh",
-    "create:doc": "tsx scripts/create-doc.ts",
-    "dev": "pnpm --filter @afilmory/ssr dev",
-    "dev:be": "pnpm --filter @afilmory/be dev",
-    "docs:build": "pnpm --filter @afilmory/docs build",
-    "docs:dev": "pnpm --filter @afilmory/docs dev",
-    "docs:preview": "pnpm --filter @afilmory/docs preview",
-    "extract:font": "tsx scripts/extract-font-glyphs.ts",
-    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\" \"be/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "build": "sh scripts/build-static.sh",
+    "build:static": "sh scripts/build-static.sh",
+    "build:manifest": "BUILDER_CONFIG_PATH=builder.config.static.ts pnpm --filter @afilmory/builder cli",
+    "build:web": "pnpm --filter @afilmory/web build",
+    "dev": "pnpm --filter @afilmory/web dev",
+    "preview": "pnpm --filter @afilmory/web serve",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
-    "migrate:manifest": "tsx scripts/migrate-manifest.ts",
-    "preinstall": "sh scripts/preinstall.sh",
-    "prepare": "simple-git-hooks",
-    "update:lastmodified": "tsx scripts/update-lastmodified.ts"
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "@afilmory/builder": "workspace:*",
@@ -73,9 +65,6 @@
     ],
     "*.{js,ts,cjs,mjs,jsx,tsx,json}": [
       "eslint --fix"
-    ],
-    "*.{md,mdx}": [
-      "pnpm update:lastmodified"
     ]
   }
 }

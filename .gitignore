@@ -4,22 +4,25 @@ dist
 dist-ssr
 *.local
 
-public/og-image-*.png
-test-svg-font-rendering.png
-test-traditional-font-rendering.png
-thomas-x2d-xcd-25v-1.jpg
-thomas-x2d-xcd-25v-1.webp
-
+# 配置文件
 config.json
 .env
 builder.config.ts
 
-apps/web/assets-git
+# 构建产物
 apps/web/src/data/photos-manifest.json
-.vercel
-*/*/.next
-.claude
-
 apps/web/public/thumbnails
 apps/web/public/photos
 apps/web/public/originals
+
+# 部署相关
+.vercel
+
+# IDE
+.claude
+
+# 照片源文件目录
+# 保留目录结构但忽略照片文件
+photos/*
+!photos/.gitkeep
+!photos/README.md
