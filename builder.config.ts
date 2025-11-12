@@ -2,13 +2,16 @@ import os from 'node:os'
 
 import { defineBuilderConfig } from '@afilmory/builder'
 
+import { env } from './env.js'
+
 /**
- * 静态部署配置
+ * 静态部署配置 - 仅支持 S3 存储
  *
  * 这个配置用于静态站点部署（如 Vercel、Netlify、GitHub Pages 等）
+ * 照片必须存储在 S3 兼容的对象存储中
  *
  * 使用方式：
- * 1. 将照片放在 photos/ 目录下
+ * 1. 配置 .env 文件中的 S3 相关环境变量
  * 2. 运行 pnpm build:static 生成静态站点
  * 3. 部署 apps/web/dist 目录到托管平台
  */
@@ -20,11 +23,28 @@ export default defineBuilderConfig(() => ({
     token: '',
   },
 
-  // 使用本地文件系统存储
+  // 使用 S3 存储
   storage: {
-    provider: 'local',
-    basePath: './photos', // 照片源目录
-    baseUrl: '/photos',   // 照片在网站上的访问路径
+    provider: 's3',
+    bucket: env.S3_BUCKET_NAME,
+    region: env.S3_REGION,
+    endpoint: env.S3_ENDPOINT,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    prefix: env.S3_PREFIX,
+    customDomain: env.S3_CUSTOM_DOMAIN,
+    excludeRegex: env.S3_EXCLUDE_REGEX,
+    maxFileLimit: 1000,
+    keepAlive: true,
+    maxSockets: 64,
+    connectionTimeoutMs: 5_000,
+    socketTimeoutMs: 30_000,
+    requestTimeoutMs: 20_000,
+    idleTimeoutMs: 10_000,
+    totalTimeoutMs: 60_000,
+    retryMode: 'standard',
+    maxAttempts: 3,
+    downloadConcurrency: 8,
   },
 
   system: {
@@ -43,7 +63,7 @@ export default defineBuilderConfig(() => ({
       },
       performance: {
         worker: {
-          workerCount: os.cpus().length,
+          workerCount: os.cpus().length * 2,
           timeout: 30_000,
           useClusterMode: true,
           workerConcurrency: 2,

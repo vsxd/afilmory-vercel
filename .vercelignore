@@ -1,0 +1,13 @@
+# 忽略本地照片目录（仅使用 S3 存储）
+photos/
+
+# 忽略 node_modules
+node_modules/
+
+# 忽略配置文件
+.env
+.env.local
+
+# 忽略构建缓存
+.turbo
+.cache

@@ -5,9 +5,7 @@ dist-ssr
 *.local
 
 # 配置文件
-config.json
 .env
-builder.config.ts
 
 # 构建产物
 apps/web/src/data/photos-manifest.json

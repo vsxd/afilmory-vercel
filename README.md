@@ -63,15 +63,33 @@ pnpm install
 
 ### 配置
 
-1. **创建 photos 目录并添加照片**
+1. **准备 S3 存储并上传照片**
+
+将你的照片上传到 S3 兼容的对象存储中，支持以下格式：
+- JPG / JPEG
+- PNG
+- HEIC (Apple 设备)
+- TIFF
+
+2. **配置环境变量**
 
 ```bash
-mkdir photos
-# 将你的照片复制到 photos 目录
-cp ~/Pictures/*.jpg photos/
+cp .env.template .env
 ```
 
-2. **配置站点信息** (可选)
+编辑 `.env` 文件，填写你的 S3 配置：
+
+```bash
+S3_BUCKET_NAME=your-bucket-name
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=your-access-key-id
+S3_SECRET_ACCESS_KEY=your-secret-access-key
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+S3_PREFIX=photos/
+S3_CUSTOM_DOMAIN=https://your-cdn-domain.com  # 可选
+```
+
+3. **配置站点信息** (可选)
 
 ```bash
 cp config.example.json config.json
@@ -108,22 +126,31 @@ pnpm preview
 
 ### 部署到 Vercel（推荐）
 
-#### 方式一：CLI 部署
+#### 方式一：GitHub 自动部署（推荐）
+
+1. 将项目推送到 GitHub
+2. 在 [vercel.com](https://vercel.com) 导入项目
+3. 在 Vercel 项目设置中配置环境变量：
+   - `S3_BUCKET_NAME`
+   - `S3_REGION`
+   - `S3_ACCESS_KEY_ID`
+   - `S3_SECRET_ACCESS_KEY`
+   - `S3_ENDPOINT`（可选）
+   - `S3_PREFIX`（可选）
+   - `S3_CUSTOM_DOMAIN`（可选）
+4. 点击 "Deploy"
+5. 每次推送到 `main` 分支自动重新部署
+
+#### 方式二：CLI 部署
 
 ```bash
 # 安装 Vercel CLI
 npm i -g vercel
 
+# 确保本地 .env 文件已配置
 # 部署
 vercel --prod
 ```
-
-#### 方式二：GitHub 自动部署
-
-1. 将项目推送到 GitHub
-2. 在 [vercel.com](https://vercel.com) 导入项目
-3. Vercel 会自动检测配置并部署
-4. 每次推送到 `main` 分支自动重新部署
 
 ### 其他平台
 
@@ -159,17 +186,19 @@ vercel --prod
 
 ### 存储架构
 
-采用适配器模式，支持多种存储后端：
+**本项目仅支持 S3 兼容存储**，不会将照片打包到部署产物中，确保项目体积小，适合部署到 Vercel 等有体积限制的平台。
 
-- **本地文件系统** - 默认，照片放在 `photos/` 目录
-- **S3 兼容存储** - AWS S3, MinIO, 阿里云 OSS 等
-- **GitHub 存储** - 使用 GitHub 仓库作为图片存储
+支持的 S3 兼容服务：
+- **AWS S3** - Amazon S3 对象存储
+- **MinIO** - 开源对象存储服务
+- **阿里云 OSS** - 阿里云对象存储
+- **腾讯云 COS** - 腾讯云对象存储
+- 其他 S3 兼容服务
 
 ## 📁 项目结构
 
 ```
 afilmory/
-├── photos/                    # 📸 照片源文件
 ├── apps/
 │   └── web/                   # 🎨 前端 SPA 应用
 ├── packages/
@@ -212,14 +241,37 @@ afilmory/
 }
 ```
 
+### 环境变量配置 (`.env`)
+
+项目**仅支持 S3 存储**，必须配置以下环境变量：
+
+```bash
+# 必填
+S3_BUCKET_NAME=your-bucket-name
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=your-access-key-id
+S3_SECRET_ACCESS_KEY=your-secret-access-key
+
+# 可选
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com  # 默认 AWS S3
+S3_PREFIX=photos/                               # 照片路径前缀
+S3_CUSTOM_DOMAIN=https://cdn.example.com        # 自定义 CDN 域名
+S3_EXCLUDE_REGEX=.*\.txt$                       # 排除某些文件
+```
+
 ### 构建配置 (`builder.config.static.ts`)
+
+配置文件已预设为 S3 模式，通常无需修改：
 
 ```typescript
 export default defineBuilderConfig(() => ({
   storage: {
-    provider: 'local',      // 存储提供商
-    basePath: './photos',   // 照片目录
-    baseUrl: '/photos',     // 访问路径
+    provider: 's3',
+    bucket: env.S3_BUCKET_NAME,
+    region: env.S3_REGION,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    // ... 其他 S3 配置
   },
   system: {
     processing: {
@@ -228,31 +280,6 @@ export default defineBuilderConfig(() => ({
     },
   },
 }))
-```
-
-### 使用 S3 存储
-
-编辑 `builder.config.static.ts`，修改 storage 配置：
-
-```typescript
-storage: {
-  provider: 's3',
-  bucket: 'my-bucket',
-  region: 'us-east-1',
-  accessKeyId: env.S3_ACCESS_KEY_ID,
-  secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-  prefix: 'photos/',
-  customDomain: 'https://cdn.example.com',
-}
-```
-
-创建 `.env` 文件：
-
-```bash
-S3_BUCKET_NAME=your-bucket
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=your-key
-S3_SECRET_ACCESS_KEY=your-secret
 ```
 
 ## 📋 CLI 命令
@@ -293,11 +320,11 @@ pnpm build:manifest -- --force-manifest
 
 ### 添加新照片
 
-1. 将新照片放入 `photos/` 目录
-2. 运行 `pnpm build`
-3. 部署更新
+1. 将新照片上传到 S3 存储桶
+2. 推送代码到 GitHub（如果使用自动部署）或运行 `vercel --prod`
+3. Vercel 会自动重新构建和部署
 
-增量构建会自动检测新增/修改的照片，只处理变更部分。
+增量构建会自动检测 S3 中新增/修改的照片，只处理变更部分。
 
 ### 支持的格式
 

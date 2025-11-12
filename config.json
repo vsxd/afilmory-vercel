@@ -1,0 +1,30 @@
+{
+  "name": "Xudong's Lens",
+  "title": "Xudong's Lens",
+  "description": "瞬间即永恒 📷",
+  "url": "https://lens.misfork.com/",
+  "accentColor": "#007bff",
+  "author": {
+    "name": "Xudong Sun",
+    "url": "https://misfork.com",
+    "avatar": "https://img.misfork.com/avatar/28803103.jpeg"
+  },
+  "social": {
+    "github": "",
+    "twitter": "",
+    "rss": false
+  },
+  "feed": {
+    "folo": {
+      "challenge": {
+        "feedId": "",
+        "userId": ""
+      }
+    }
+  },
+  "map": [
+    "maplibre"
+  ],
+  "mapStyle": "builtin",
+  "mapProjection": "mercator"
+}
