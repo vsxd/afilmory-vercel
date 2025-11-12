@@ -307,7 +307,7 @@ import type { EagleConfig } from '@afilmory/builder'
 const eagleConfig: EagleConfig = {
   provider: 'eagle',
   libraryPath: '/Users/alice/Pictures/Eagle.library',
-  distPath: '/Users/alice/workspaces/afilmory/apps/web/public/originals',
+  distPath: '/Users/alice/workspaces/afilmory-vercel/apps/web/public/originals',
   baseUrl: '/originals/',
   include: [
     { type: 'folder', name: '精选', includeSubfolder: true },

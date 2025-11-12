@@ -1,7 +1,7 @@
 # Afilmory - 现代化照片集静态站点生成器
 
 <p align="center">
-  <img src="https://github.com/Afilmory/assets/blob/main/afilmory-readme.webp?raw=true" alt="Afilmory" width="100%" />
+  <img src="https://github.com/vsxd/assets/blob/main/afilmory-readme.webp?raw=true" alt="Afilmory" width="100%" />
 </p>
 
 Afilmory (/əˈfɪlməri/, "uh-FIL-muh-ree") 是一个专为摄影爱好者设计的静态站点生成器，类似于 Hexo/Hugo，但专注于照片展示。它结合了自动照片处理、现代化前端技术和简单的部署流程，让你轻松创建属于自己的照片集网站。
@@ -54,8 +54,8 @@ Afilmory (/əˈfɪlməri/, "uh-FIL-muh-ree") 是一个专为摄影爱好者设�
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Afilmory/Afilmory.git
-cd Afilmory
+git clone https://github.com/vsxd/afilmory-vercel.git
+cd afilmory-vercel
 
 # 安装依赖
 pnpm install
@@ -71,13 +71,11 @@ pnpm install
 - HEIC (Apple 设备)
 - TIFF
 
+**重要提示：本项目仅支持 S3 兼容存储，照片不会被打包到部署产物中。**
+
 2. **配置环境变量**
 
-```bash
-cp .env.template .env
-```
-
-编辑 `.env` 文件，填写你的 S3 配置：
+创建 `.env` 文件，填写你的 S3 配置：
 
 ```bash
 S3_BUCKET_NAME=your-bucket-name
@@ -152,13 +150,16 @@ npm i -g vercel
 vercel --prod
 ```
 
-### 其他平台
+### 静态部署
 
-| 平台 | Build Command | Output Directory |
-|------|--------------|-----------------|
-| **Netlify** | `sh scripts/build-static.sh` | `apps/web/dist` |
-| **Cloudflare Pages** | `sh scripts/build-static.sh` | `apps/web/dist` |
-| **GitHub Pages** | `sh scripts/build-static.sh` | `apps/web/dist` |
+项目支持静态站点部署，构建产物位于 `apps/web/dist` 目录。你可以将构建后的静态文件部署到任何静态托管平台。
+
+**构建命令：**
+```bash
+pnpm build
+```
+
+**输出目录：** `apps/web/dist`
 
 详见 [部署指南](./DEPLOY_STATIC.md)
 
@@ -186,7 +187,7 @@ vercel --prod
 
 ### 存储架构
 
-**本项目仅支持 S3 兼容存储**，不会将照片打包到部署产物中，确保项目体积小，适合部署到 Vercel 等有体积限制的平台。
+**本项目仅支持 S3 兼容存储**，不会将照片打包到部署产物中，确保项目体积小，适合静态部署和 Vercel 等平台。
 
 支持的 S3 兼容服务：
 - **AWS S3** - Amazon S3 对象存储
@@ -198,7 +199,7 @@ vercel --prod
 ## 📁 项目结构
 
 ```
-afilmory/
+afilmory-vercel/
 ├── apps/
 │   └── web/                   # 🎨 前端 SPA 应用
 ├── packages/
@@ -208,10 +209,7 @@ afilmory/
 │   ├── ui/                    # 🎨 UI 组件
 │   ├── hooks/                 # ⚓ React Hooks
 │   └── utils/                 # 🔧 工具函数
-├── scripts/
-│   └── build-static.sh        # 构建脚本
 ├── config.json                # 站点配置
-├── builder.config.static.ts   # 构建配置
 └── vercel.json                # 部署配置
 ```
 
@@ -259,7 +257,7 @@ S3_CUSTOM_DOMAIN=https://cdn.example.com        # 自定义 CDN 域名
 S3_EXCLUDE_REGEX=.*\.txt$                       # 排除某些文件
 ```
 
-### 构建配置 (`builder.config.static.ts`)
+### 构建配置 (`builder.config.ts`)
 
 配置文件已预设为 S3 模式，通常无需修改：
 
@@ -321,7 +319,7 @@ pnpm build:manifest -- --force-manifest
 ### 添加新照片
 
 1. 将新照片上传到 S3 存储桶
-2. 推送代码到 GitHub（如果使用自动部署）或运行 `vercel --prod`
+2. 推送代码到 GitHub（如果使用 Vercel 自动部署）或运行 `vercel --prod`
 3. Vercel 会自动重新构建和部署
 
 增量构建会自动检测 S3 中新增/修改的照片，只处理变更部分。
@@ -375,24 +373,6 @@ pnpm build:manifest -- --force-manifest
 
 ## 🔧 高级用法
 
-### 自定义存储提供商
-
-实现 `StorageProvider` 接口：
-
-```typescript
-import { StorageProvider } from '@afilmory/builder'
-
-class MyStorageProvider implements StorageProvider {
-  async getFile(key: string): Promise<Buffer | null> {
-    // 实现文件获取逻辑
-  }
-
-  async listImages(): Promise<StorageObject[]> {
-    // 实现图片列表获取逻辑
-  }
-}
-```
-
 ### 自定义图片处理
 
 在 `packages/builder` 中添加自定义处理器。
@@ -420,7 +400,7 @@ Attribution Network License (ANL) v1.0 © 2025 Afilmory Team.
 - [在线演示](https://afilmory.innei.in)
 - [部署指南](./DEPLOY_STATIC.md)
 - [架构文档](./AGENTS.md)
-- [GitHub Issues](https://github.com/Afilmory/Afilmory/issues)
+- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
 - [作者博客](https://innei.in)
 
 ## 💝 致谢

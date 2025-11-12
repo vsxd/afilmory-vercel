@@ -38,9 +38,8 @@ pnpm preview
 ### 构建流程详解
 
 ```bash
-# 1. 将照片放入 photos/ 目录
-mkdir photos
-cp ~/Pictures/*.jpg photos/
+# 1. 配置 S3 存储（照片必须存储在 S3 中）
+# 编辑 .env 文件，配置 S3 相关环境变量
 
 # 2. 配置站点信息（可选）
 cp config.example.json config.json
@@ -51,6 +50,8 @@ pnpm build
 
 # 输出目录: apps/web/dist
 ```
+
+**重要提示：** 项目仅支持 S3 兼容存储，照片不会被打包到部署产物中。
 
 ### Manifest 构建选项
 
@@ -70,7 +71,7 @@ pnpm build:manifest -- --force-manifest
 ### 目录结构
 
 ```
-afilmory/
+afilmory-vercel/
 ├── photos/                    # 📸 照片源文件目录
 │   ├── 2024/
 │   └── 2023/
@@ -86,10 +87,8 @@ afilmory/
 │   ├── ui/                    # 🎨 UI 组件
 │   ├── hooks/                 # ⚓ React Hooks
 │   └── utils/                 # 🔧 工具函数
-├── scripts/
-│   └── build-static.sh        # 构建脚本
 ├── config.json                # 站点配置
-├── builder.config.static.ts   # 构建配置
+├── builder.config.ts   # 构建配置
 └── vercel.json                # Vercel 部署配置
 ```
 
@@ -165,15 +164,22 @@ afilmory/
 }
 ```
 
-### 构建配置 (`builder.config.static.ts`)
+### 构建配置 (`builder.config.ts`)
+
+项目仅支持 S3 存储，配置示例：
 
 ```typescript
 export default defineBuilderConfig(() => ({
-  // 存储配置
+  // 存储配置（仅支持 S3）
   storage: {
-    provider: 'local',      // 使用本地文件系统
-    basePath: './photos',   // 照片源目录
-    baseUrl: '/photos',     // 网站访问路径
+    provider: 's3',
+    bucket: env.S3_BUCKET_NAME,
+    region: env.S3_REGION,
+    endpoint: env.S3_ENDPOINT,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    prefix: env.S3_PREFIX,
+    customDomain: env.S3_CUSTOM_DOMAIN,
   },
 
   // 处理选项
@@ -191,23 +197,6 @@ export default defineBuilderConfig(() => ({
 }))
 ```
 
-### 使用 S3 存储
-
-如果照片存储在 S3 上，修改 `storage` 配置：
-
-```typescript
-storage: {
-  provider: 's3',
-  bucket: 'my-bucket',
-  region: 'us-east-1',
-  endpoint: 'https://s3.amazonaws.com',
-  accessKeyId: env.S3_ACCESS_KEY_ID,
-  secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-  prefix: 'photos/',
-  customDomain: 'https://cdn.example.com',
-}
-```
-
 ## 构建流程详解
 
 ### 完整构建 (`pnpm build`)
@@ -216,7 +205,7 @@ storage: {
 
 ```mermaid
 graph LR
-    A[photos/ 目录] --> B[Builder: 图片处理]
+    A[S3 存储] --> B[Builder: 图片处理]
     B --> C[生成缩略图]
     B --> D[提取 EXIF]
     C --> E[photos-manifest.json]
@@ -225,7 +214,7 @@ graph LR
     F --> G[apps/web/dist]
 ```
 
-1. **检查 photos 目录**: 确保有照片文件
+1. **从 S3 读取照片**: Builder 从 S3 存储桶读取照片文件
 2. **运行 Builder**: 处理照片并生成 manifest
    - 转换 HEIC/TIFF 格式
    - 生成多尺寸缩略图
@@ -239,6 +228,8 @@ graph LR
    - 生成 sitemap.xml
    - 输出到 `apps/web/dist`
 
+**注意**: 照片文件不会被打包到 `dist` 目录，照片通过 S3（或配置的 CDN）直接访问。
+
 ### 增量构建
 
 Builder 会智能检测变更：
@@ -251,14 +242,18 @@ Builder 会智能检测变更：
 
 ## 部署
 
-### Vercel
+项目支持两种部署方式：
 
+### 1. Vercel 部署（推荐）
+
+**方式一：GitHub 自动部署**
 ```bash
-# 方式 1: CLI 部署
-vercel --prod
-
-# 方式 2: Git 自动部署
 git push origin main
+```
+
+**方式二：CLI 部署**
+```bash
+vercel --prod
 ```
 
 `vercel.json` 已配置：
@@ -270,13 +265,18 @@ git push origin main
 }
 ```
 
-### 其他平台
+### 2. 静态部署
 
-| 平台 | Build Command | Output Directory |
-|------|--------------|-----------------|
-| Netlify | `sh scripts/build-static.sh` | `apps/web/dist` |
-| Cloudflare Pages | `sh scripts/build-static.sh` | `apps/web/dist` |
-| GitHub Pages | `sh scripts/build-static.sh` | `apps/web/dist` |
+构建后会生成静态文件在 `apps/web/dist` 目录，可以部署到任何静态托管平台：
+
+```bash
+# 构建静态站点
+pnpm build
+
+# 输出目录: apps/web/dist
+```
+
+详见 [部署指南](./DEPLOY_STATIC.md)
 
 ## 性能优化
 
@@ -327,9 +327,10 @@ git push origin main
 
 ### 2. 图片不显示
 
-- **检查**: `apps/web/dist/photos/` 是否有文件
+- **检查**: S3 存储桶配置是否正确
 - **检查**: `photos-manifest.json` 是否生成
-- **检查**: 浏览器控制台是否有 404 错误
+- **检查**: 浏览器控制台是否有 CORS 或 404 错误
+- **检查**: S3 存储桶的公开访问策略和 CORS 配置
 
 ### 3. EXIF 信息缺失
 
@@ -358,4 +359,4 @@ pnpm format
 
 - [部署指南](./DEPLOY_STATIC.md)
 - [完整 README](./README.md)
-- [GitHub Issues](https://github.com/Afilmory/Afilmory/issues)
+- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)

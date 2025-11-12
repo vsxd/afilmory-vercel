@@ -154,11 +154,10 @@ pnpm install
 
 ```bash
 # 构建静态站点
-pnpm build:static
+pnpm build
 
 # 预览构建结果
-cd apps/web
-pnpm serve
+pnpm preview
 ```
 
 构建完成后，打开 http://localhost:4173 预览你的照片站点。
@@ -245,49 +244,28 @@ vercel --prod
 }
 ```
 
-## 📦 部署到其他平台
+## 📦 静态部署
 
-### Netlify
+项目构建后会生成静态文件，位于 `apps/web/dist` 目录。你可以将这些文件部署到任何静态托管平台。
 
-1. **通过拖拽部署**
-
-```bash
-# 本地构建
-pnpm build:static
-
-# 将 apps/web/dist 目录拖拽到 Netlify
-```
-
-2. **通过 Git 自动部署**
-
-在 Netlify 项目设置中配置：
-
-- **Build command:** `sh scripts/build-static.sh`
-- **Publish directory:** `apps/web/dist`
-- **Install command:** `pnpm install`
-
-### GitHub Pages
+### 构建静态站点
 
 ```bash
-# 安装 gh-pages
-pnpm add -D gh-pages
-
-# 构建
-pnpm build:static
-
-# 部署到 gh-pages 分支
-npx gh-pages -d apps/web/dist
+# 完整构建（处理照片 + 构建前端）
+pnpm build
 ```
 
-在 GitHub 仓库设置中启用 GitHub Pages，选择 `gh-pages` 分支。
+构建完成后，`apps/web/dist` 目录包含所有静态文件，可以直接部署。
 
-### Cloudflare Pages
+### 部署方式
 
-1. 在 Cloudflare Pages 中连接你的 Git 仓库
-2. 配置构建设置：
-   - **Build command:** `sh scripts/build-static.sh`
-   - **Build output directory:** `apps/web/dist`
-   - **Root directory:** `/` (默认)
+你可以使用以下方式部署静态文件：
+
+1. **手动上传**：将 `apps/web/dist` 目录的内容上传到静态托管服务
+2. **Git 推送**：将构建产物推送到 Git 仓库，由托管平台自动部署
+3. **CI/CD**：配置 CI/CD 流程自动构建和部署
+
+**注意**：照片文件不会被打包到 `dist` 目录中，照片通过 S3（或配置的 CDN）直接访问。
 
 ## 🔄 更新照片
 
@@ -300,7 +278,7 @@ npx gh-pages -d apps/web/dist
 # 如果使用 Vercel CLI
 vercel --prod
 
-# 或者推送到 Git（触发自动部署）
+# 或者推送到 Git（触发 Vercel 自动部署）
 git commit --allow-empty -m "Trigger rebuild"
 git push
 ```
@@ -309,15 +287,7 @@ git push
 
 ### 增量更新（推荐）
 
-如果只想重新生成 manifest 而不重新处理所有图片：
-
-```bash
-# 只生成 manifest（会自动检测 S3 中新增/修改的照片）
-pnpm build:manifest:static
-
-# 构建前端
-pnpm --filter @afilmory/web build
-```
+增量构建会自动检测 S3 中新增/修改的照片，只处理变更部分。无需手动操作。
 
 ## ⚙️ 高级配置
 
@@ -371,7 +341,7 @@ pnpm --filter @afilmory/web build
 
 ### 自定义构建配置
 
-编辑 `builder.config.static.ts` 来调整图片处理参数：
+编辑 `builder.config.ts` 来调整图片处理参数：
 
 ```typescript
 export default defineBuilderConfig(() => ({
@@ -423,7 +393,7 @@ export default defineBuilderConfig(() => ({
 
 **解决方案：**
 - 首次处理会比较慢，这是正常的
-- 可以调整 `builder.config.static.ts` 中的 `downloadConcurrency` 和 `defaultConcurrency` 参数
+- 可以调整 `builder.config.ts` 中的 `downloadConcurrency` 和 `defaultConcurrency` 参数
 - 后续更新只会处理新增/修改的照片，速度会快很多
 - 考虑使用更接近的 S3 区域
 
@@ -480,7 +450,7 @@ dist/
 
 **后续使用流程：**
 1. 将新照片上传到 S3 存储桶
-2. 推送代码到 GitHub 或运行 `vercel --prod`
+2. 推送代码到 GitHub（触发 Vercel 自动部署）或运行 `vercel --prod`
 3. Vercel 会自动重新构建和部署
 4. 增量构建会自动检测 S3 中的新照片
 
@@ -495,4 +465,4 @@ dist/
 - [完整项目文档](./README.md)
 - [配置选项说明](./README.md#⚙️-configuration-options)
 - [Vercel 文档](https://vercel.com/docs)
-- [GitHub Issues](https://github.com/Afilmory/Afilmory/issues)
+- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)

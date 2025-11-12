@@ -7,18 +7,18 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Afilmory/Afilmory"
+    "url": "https://github.com/vsxd/afilmory"
   },
   "scripts": {
-    "build": "sh scripts/build-static.sh",
-    "build:static": "sh scripts/build-static.sh",
-    "build:manifest": "BUILDER_CONFIG_PATH=builder.config.static.ts pnpm --filter @afilmory/builder cli",
+    "build": "pnpm build:manifest && pnpm build:web",
+    "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
+    "build:static": "pnpm build:manifest && pnpm build:web",
     "build:web": "pnpm --filter @afilmory/web build",
     "dev": "pnpm --filter @afilmory/web dev",
-    "preview": "pnpm --filter @afilmory/web serve",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "preview": "pnpm --filter @afilmory/web serve"
   },
   "dependencies": {
     "@afilmory/builder": "workspace:*",

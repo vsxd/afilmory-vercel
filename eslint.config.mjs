@@ -11,7 +11,6 @@ const rootIgnores = globalIgnores([
   'apps/ssr/src/index.html.ts',
   'apps/ssr/public/**',
   'apps/web/public/**',
-  'packages/docs/public/**',
 ])
 
 const hyobanConfig = await defineConfig(
@@ -113,7 +112,7 @@ const hyobanConfig = await defineConfig(
   },
 
   // Redundant but harmless: keep a local ignore in case this block is used standalone somewhere
-  globalIgnores(['apps/ssr/src/index.html.ts', 'apps/ssr/public/**', 'apps/web/public/**', 'packages/docs/public/**']),
+  globalIgnores(['apps/ssr/src/index.html.ts', 'apps/ssr/public/**', 'apps/web/public/**']),
 )
 
 export default [

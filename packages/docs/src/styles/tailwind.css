@@ -1,9 +1,0 @@
-@import 'tailwindcss';
-@plugin '@tailwindcss/typography';
-@plugin 'tailwind-scrollbar';
-@plugin 'tailwindcss-animate';
-@import 'tailwindcss-safe-area';
-@import 'tailwind-scrollbar-hide/v4';
-@import '@pastel-palette/tailwindcss/dist/theme-oklch.css';
-
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
