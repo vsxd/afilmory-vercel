@@ -13,13 +13,49 @@ class PhotoLoader {
     this.getPhotos = this.getPhotos.bind(this)
     this.getPhoto = this.getPhoto.bind(this)
 
-    this.photos = __MANIFEST__.data as unknown as PhotoManifestItem[]
-    this.cameras = __MANIFEST__.cameras as unknown as CameraInfo[]
-    this.lenses = __MANIFEST__.lenses as unknown as LensInfo[]
+    try {
+      // 安全地访问 manifest 数据
+      // 首先尝试从 window 对象获取（浏览器环境）
+      let manifest: any = null
+      if (typeof window !== 'undefined' && (window as any).__MANIFEST__) {
+        manifest = (window as any).__MANIFEST__
+      } else {
+        // 回退到全局 __MANIFEST__（构建时注入的）
+        try {
+          manifest = __MANIFEST__
+        } catch {
+          // __MANIFEST__ 可能未定义，这是正常的错误处理
+        }
+      }
 
-    this.photos.forEach((photo) => {
-      this.photoMap[photo.id] = photo
-    })
+      if (!manifest) {
+        console.error(
+          '[PhotoLoader] __MANIFEST__ is not defined. Make sure manifest-inject plugin is working correctly.',
+        )
+        this.photos = []
+        this.cameras = []
+        this.lenses = []
+        return
+      }
+
+      this.photos = (manifest?.data || []) as PhotoManifestItem[]
+      this.cameras = (manifest?.cameras || []) as CameraInfo[]
+      this.lenses = (manifest?.lenses || []) as LensInfo[]
+
+      // 构建照片映射
+      this.photos.forEach((photo) => {
+        if (photo?.id) {
+          this.photoMap[photo.id] = photo
+        }
+      })
+
+      console.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
+    } catch (error) {
+      console.error('[PhotoLoader] Failed to initialize:', error)
+      this.photos = []
+      this.cameras = []
+      this.lenses = []
+    }
   }
 
   getPhotos() {

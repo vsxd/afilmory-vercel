@@ -11,16 +11,17 @@ import { env } from './env.js'
  * 照片必须存储在 S3 兼容的对象存储中
  *
  * 使用方式：
- * 1. 配置 .env 文件中的 S3 相关环境变量
- * 2. 运行 pnpm build:static 生成静态站点
- * 3. 部署 apps/web/dist 目录到托管平台
+ * 1. 配置 .env 文件中的 S3 相关环境变量（必填）
+ * 2. 可选：配置 REPO_URL 和 REPO_TOKEN 启用远程仓库缓存
+ * 3. 运行 pnpm build:static 生成静态站点
+ * 4. 部署 apps/web/dist 目录到托管平台
  */
 export default defineBuilderConfig(() => ({
-  // 不使用远程仓库缓存
+  // 远程仓库缓存 - 根据环境变量自动启用
   repo: {
-    enable: false,
-    url: '',
-    token: '',
+    enable: !!(env.REPO_URL && env.REPO_TOKEN),
+    url: env.REPO_URL || '',
+    token: env.REPO_TOKEN || '',
   },
 
   // 使用 S3 存储

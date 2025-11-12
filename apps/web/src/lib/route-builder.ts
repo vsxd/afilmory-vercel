@@ -28,6 +28,7 @@ function nestPaths(paths: string[]): NestedStructure {
 
 export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): RouteObject[] {
   const keys = Object.keys(glob)
+  console.info('import.meta.glob keys:', keys)
   const paths = nestPaths(keys)
   const pathGetterSet = new Set<string>()
 
@@ -172,6 +173,7 @@ export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): Route
   }
 
   dtsRoutes('./pages/', routeObject, paths)
+  console.info('routeObject:', JSON.stringify(routeObject, null, 2))
   return routeObject
 }
 

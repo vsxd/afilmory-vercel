@@ -10,7 +10,6 @@ import { PhotosContext } from '~/providers/photos-provider'
 const openAtom = atom(false)
 const currentIndexAtom = atom(0)
 const triggerElementAtom = atom<HTMLElement | null>(null)
-const data = photoLoader.getPhotos()
 
 // 抽取照片筛选和排序逻辑为独立函数
 const filterAndSortPhotos = (
@@ -21,6 +20,11 @@ const filterAndSortPhotos = (
   sortOrder: 'asc' | 'desc',
   tagFilterMode: 'union' | 'intersection' = 'union',
 ) => {
+  // 每次都动态获取最新的照片数据，而不是使用模块级别的缓存
+  // 这样可以确保在静态部署时，即使模块加载时 manifest 还未完全初始化，
+  // 后续调用时也能获取到正确的数据
+  const data = photoLoader.getPhotos()
+
   // 根据 tags、cameras、lenses 和 ratings 筛选
   let filteredPhotos = data
 

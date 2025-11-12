@@ -1,4 +1,3 @@
-import { photoLoader } from '@afilmory/data'
 import { ScrollArea, ScrollElementContext } from '@afilmory/ui'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
@@ -67,13 +66,7 @@ const useStateRestoreFromUrl = () => {
     triggerOnceRef.current = true
     isRestored = true
 
-    if (photoId) {
-      const photo = photoLoader.getPhotos().find((photo) => photo.id === photoId)
-      if (photo) {
-        openViewer(photoLoader.getPhotos().indexOf(photo))
-      }
-    }
-
+    // 恢复筛选设置
     const tagsFromSearchParams = searchParams.get('tags')?.split(',')
     const camerasFromSearchParams = searchParams.get('cameras')?.split(',')
     const lensesFromSearchParams = searchParams.get('lenses')?.split(',')
@@ -95,6 +88,12 @@ const useStateRestoreFromUrl = () => {
         selectedRatings: ratingsFromSearchParams ?? prev.selectedRatings,
         tagFilterMode: tagModeFromSearchParams || prev.tagFilterMode,
       }))
+    }
+
+    // 如果 URL 中有 photoId，打开查看器
+    // 注意：不需要在这里查找索引，[photoId]/index.tsx 会自己处理
+    if (photoId) {
+      openViewer(0) // 传入任意索引，[photoId]/index.tsx 会根据 photoId 自动纠正
     }
   }, [openViewer, photoId, searchParams, setGallerySetting])
 }
