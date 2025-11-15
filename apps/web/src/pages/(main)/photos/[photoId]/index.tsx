@@ -2,7 +2,7 @@ import { RootPortal, RootPortalProvider } from '@afilmory/ui'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RemoveScroll } from 'react-remove-scroll'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 
 import { NotFound } from '~/components/common/NotFound'
 import { PhotoViewer } from '~/components/ui/photo-viewer'
@@ -12,7 +12,6 @@ import { deriveAccentFromSources } from '~/lib/color'
 
 export const Component = () => {
   const { photoId } = useParams()
-  const navigate = useNavigate()
   const photoViewer = usePhotoViewer()
   const photos = useContextPhotos()
 
@@ -51,18 +50,15 @@ export const Component = () => {
     return photo
   }, [photos, photoIndex, photoId])
 
-  // 处理照片索引变化：通过更新 URL 来切换照片
+  // 处理照片索引变化：更新 photoViewer 的 currentIndex，URL 由 layout.tsx 的 useSyncStateToUrl 自动同步
   const handleIndexChange = useCallback(
     (newIndex: number) => {
       if (newIndex >= 0 && newIndex < photos.length) {
-        const newPhotoId = photos[newIndex]?.id
-        if (newPhotoId && newPhotoId !== photoId) {
-          // 使用 replace 而不是 push，避免在浏览器历史中堆积过多记录
-          navigate(`/photos/${newPhotoId}${window.location.search}`, { replace: true })
-        }
+        // 更新 photoViewer 的 currentIndex，layout.tsx 的 useSyncStateToUrl 会自动同步 URL
+        photoViewer.goToIndex(newIndex)
       }
     },
-    [photos, photoId, navigate],
+    [photos, photoViewer],
   )
 
   const [ref, setRef] = useState<HTMLElement | null>(null)

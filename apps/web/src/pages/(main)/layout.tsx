@@ -122,7 +122,8 @@ const useSyncStateToUrl = () => {
       const photos = getFilteredPhotos()
       const targetPathname = `/photos/${photos[currentIndex].id}`
       if (location.pathname !== targetPathname) {
-        navigate(targetPathname)
+        // 使用 replace 避免在浏览器历史中堆积过多记录
+        navigate(targetPathname, { replace: true })
       }
     }
   }, [currentIndex, isOpen, location.pathname, navigate])
