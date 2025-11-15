@@ -127,10 +127,13 @@ const useSyncStateToUrl = () => {
       }
     } else {
       const photos = getFilteredPhotos()
-      const targetPathname = `/photos/${photos[currentIndex].id}`
-      if (location.pathname !== targetPathname) {
-        // 使用 replace 避免在浏览器历史中堆积过多记录
-        navigate(targetPathname, { replace: true })
+      // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
+      if (currentIndex >= 0 && currentIndex < photos.length) {
+        const targetPathname = `/photos/${photos[currentIndex].id}`
+        if (location.pathname !== targetPathname) {
+          // 使用 replace 避免在浏览器历史中堆积过多记录
+          navigate(targetPathname, { replace: true })
+        }
       }
     }
   }, [currentIndex, isOpen, location.pathname, navigate])
