@@ -91,9 +91,16 @@ const useStateRestoreFromUrl = () => {
     }
 
     // 如果 URL 中有 photoId，打开查看器
-    // 注意：不需要在这里查找索引，[photoId]/index.tsx 会自己处理
+    // 找到对应的照片索引，确保 currentIndex 和 URL 保持一致
     if (photoId) {
-      openViewer(0) // 传入任意索引，[photoId]/index.tsx 会根据 photoId 自动纠正
+      const photos = getFilteredPhotos()
+      const index = photos.findIndex((photo) => photo.id === photoId)
+      if (index !== -1) {
+        openViewer(index)
+      } else {
+        // 如果找不到照片，打开第一张作为后备
+        openViewer(0)
+      }
     }
   }, [openViewer, photoId, searchParams, setGallerySetting])
 }
