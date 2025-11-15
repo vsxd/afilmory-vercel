@@ -71,8 +71,8 @@ pnpm build:manifest -- --force-manifest
 ### 目录结构
 
 ```
-afilmory-vercel/
-├── photos/                    # 📸 照片源文件目录
+afilmory/
+├── photos/                    # 📸 照片源文件目录（仅供参考，实际使用S3存储）
 │   ├── 2024/
 │   └── 2023/
 ├── apps/
@@ -359,4 +359,4 @@ pnpm format
 
 - [部署指南](./DEPLOY_STATIC.md)
 - [完整 README](./README.md)
-- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
+- [GitHub Issues](https://github.com/vsxd/afilmory/issues)
