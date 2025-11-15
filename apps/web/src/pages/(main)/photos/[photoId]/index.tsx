@@ -1,8 +1,8 @@
 import { RootPortal, RootPortalProvider } from '@afilmory/ui'
 import clsx from 'clsx'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RemoveScroll } from 'react-remove-scroll'
-import { useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 
 import { NotFound } from '~/components/common/NotFound'
 import { PhotoViewer } from '~/components/ui/photo-viewer'
@@ -12,6 +12,7 @@ import { deriveAccentFromSources } from '~/lib/color'
 
 export const Component = () => {
   const { photoId } = useParams()
+  const navigate = useNavigate()
   const photoViewer = usePhotoViewer()
   const photos = useContextPhotos()
 
@@ -49,6 +50,20 @@ export const Component = () => {
     })
     return photo
   }, [photos, photoIndex, photoId])
+
+  // 处理照片索引变化：通过更新 URL 来切换照片
+  const handleIndexChange = useCallback(
+    (newIndex: number) => {
+      if (newIndex >= 0 && newIndex < photos.length) {
+        const newPhotoId = photos[newIndex]?.id
+        if (newPhotoId && newPhotoId !== photoId) {
+          // 使用 replace 而不是 push，避免在浏览器历史中堆积过多记录
+          navigate(`/photos/${newPhotoId}${window.location.search}`, { replace: true })
+        }
+      }
+    },
+    [photos, photoId, navigate],
+  )
 
   const [ref, setRef] = useState<HTMLElement | null>(null)
   const rootPortalValue = useMemo(
@@ -99,16 +114,6 @@ export const Component = () => {
     }
   }, [currentPhoto])
 
-  // 同步 photoViewer 的 currentIndex 和实际的 photoIndex
-  // 当 URL 中的 photoId 对应的索引和 photoViewer.currentIndex 不一致时，更新它
-  useEffect(() => {
-    if (photoIndex !== -1 && photoViewer.currentIndex !== photoIndex) {
-      console.info('[PhotoDetail] 同步索引:', { currentIndex: photoViewer.currentIndex, photoIndex })
-      photoViewer.goToIndex(photoIndex)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photoIndex, photoViewer.currentIndex, photoViewer.goToIndex])
-
   // 如果照片不存在，显示 NotFound
   if (!currentPhoto || photoIndex === -1) {
     // 添加详细的调试信息
@@ -142,7 +147,7 @@ export const Component = () => {
             isOpen={photoViewer.isOpen}
             triggerElement={photoViewer.triggerElement}
             onClose={photoViewer.closeViewer}
-            onIndexChange={photoViewer.goToIndex}
+            onIndexChange={handleIndexChange}
           />
         </RemoveScroll>
       </RootPortalProvider>
