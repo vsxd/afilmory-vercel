@@ -21,7 +21,6 @@
   "dependencies": {
     "@afilmory/data": "workspace:*",
     "@afilmory/hooks": "workspace:*",
-    "@afilmory/sdk": "workspace:*",
     "@afilmory/ui": "workspace:*",
     "@afilmory/utils": "workspace:*",
     "@afilmory/webgl-viewer": "workspace:*",

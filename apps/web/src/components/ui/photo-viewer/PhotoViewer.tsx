@@ -12,7 +12,6 @@ import type { Swiper as SwiperType } from 'swiper'
 import { Keyboard, Navigation, Virtual } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
-import { injectConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
 import type { PhotoManifest } from '~/types/photo'
 
@@ -23,7 +22,6 @@ import { GalleryThumbnail } from './GalleryThumbnail'
 import type { LoadingIndicatorRef } from './LoadingIndicator'
 import { LoadingIndicator } from './LoadingIndicator'
 import { ProgressiveImage } from './ProgressiveImage'
-import { ReactionButton } from './Reaction'
 import { SharePanel } from './SharePanel'
 
 interface PhotoViewerProps {
@@ -261,18 +259,6 @@ export const PhotoViewer = ({
                       </button>
                     </div>
                   </m.div>
-
-                  {!isMobile && (injectConfig.useApi || injectConfig.useCloud) && (
-                    <ReactionButton
-                      photoId={currentPhoto.id}
-                      className="absolute right-4 bottom-4"
-                      style={{
-                        opacity: isViewerContentVisible ? 1 : 0,
-                        transition: 'opacity 180ms ease',
-                        pointerEvents: !isViewerContentVisible || isEntryAnimating ? 'none' : 'auto',
-                      }}
-                    />
-                  )}
 
                   {/* 加载指示器 */}
                   <LoadingIndicator ref={loadingIndicatorRef} />

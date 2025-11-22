@@ -6,8 +6,7 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
-import { cyan, dim, green } from 'kolorist'
-import type { PluginOption, ViteDevServer } from 'vite'
+import type { PluginOption } from 'vite'
 import { defineConfig } from 'vite'
 import { analyzer } from 'vite-bundle-analyzer'
 import { checker } from 'vite-plugin-checker'
@@ -25,15 +24,6 @@ import { manifestInjectPlugin } from './plugins/vite/manifest-inject'
 import { ogImagePlugin } from './plugins/vite/og-image-plugin'
 import { photosStaticPlugin } from './plugins/vite/photos-static'
 import { siteConfigInjectPlugin } from './plugins/vite/site-config-inject'
-
-const devPrint = (): PluginOption => ({
-  name: 'dev-print',
-  configureServer(server: ViteDevServer) {
-    server.printUrls = () => {
-      console.info(`  ${green('➜')}  ${dim('Next.js SSR')}: ${cyan('http://localhost:1924')}`)
-    }
-  },
-})
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -193,7 +183,7 @@ export default defineConfig(() => {
       ...(BUILD_FOR_SERVER_SERVE ? [] : staticWebBuildPlugins),
       process.env.analyzer && analyzer(),
 
-      devPrint(),
+      process.env.analyzer && analyzer(),
     ],
     server: {
       port: !DEV_NEXT_JS ? 1924 : 13333, // 1924 年首款 35mm 相机问世

@@ -4,7 +4,6 @@ import { use, useCallback, useMemo } from 'react'
 
 import { gallerySettingAtom } from '~/atoms/app'
 import { jotaiStore } from '~/lib/jotai'
-import { trackView } from '~/lib/tracker'
 import { PhotosContext } from '~/providers/photos-provider'
 
 const openAtom = atom(false)
@@ -131,9 +130,6 @@ export const usePhotoViewer = () => {
   const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom)
   const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom)
 
-  const id = useMemo(() => {
-    return photos[currentIndex]?.id
-  }, [photos, currentIndex])
   const openViewer = useCallback(
     (index: number, element?: HTMLElement) => {
       setCurrentIndex(index)
@@ -141,10 +137,8 @@ export const usePhotoViewer = () => {
       setIsOpen(true)
       // 防止背景滚动
       document.body.style.overflow = 'hidden'
-
-      trackView(id)
     },
-    [id, setCurrentIndex, setIsOpen, setTriggerElement],
+    [setCurrentIndex, setIsOpen, setTriggerElement],
   )
 
   const closeViewer = useCallback(() => {
@@ -158,7 +152,6 @@ export const usePhotoViewer = () => {
     (index: number) => {
       if (index >= 0 && index < photos.length) {
         setCurrentIndex(index)
-        trackView(photos[index].id)
       }
     },
     [photos, setCurrentIndex],

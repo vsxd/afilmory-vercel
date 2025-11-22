@@ -12,7 +12,16 @@ async function main() {
   await precheck()
   // Get command line arguments excluding node and script name
   const args = process.argv.slice(2)
-  await $({ cwd: workdir, stdio: 'inherit' })`vite --host ${args}`
+  try {
+    await $({ cwd: workdir, stdio: 'inherit' })`vite --host ${args}`
+  } catch (error: any) {
+    // 130 is SIGINT (Ctrl+C), which is a normal exit for dev server
+    if (error.exitCode === 130) {
+      // eslint-disable-next-line unicorn/no-process-exit
+      process.exit(0)
+    }
+    throw error
+  }
 }
 
 main()

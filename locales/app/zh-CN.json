@@ -355,7 +355,6 @@
   "slider.columns": "{{count}} 列",
   "video.codec.keyword": "编码器",
   "video.conversion.cached.result": "使用缓存结果",
-  "video.motion-photo.extracting": "正在提取嵌入的视频...",
   "video.conversion.codec.fallback": "找不到此分辨率支持的 MP4 编解码器。回退到 WebM。",
   "video.conversion.complete": "转换完成",
   "video.conversion.converting": "转换中... {{current}}/{{total}} 帧",
@@ -375,5 +374,6 @@
   "video.conversion.webcodecs.high.quality": "使用高质量 WebCodecs 转换器...",
   "video.conversion.webcodecs.not.supported": "此浏览器不支持 WebCodecs",
   "video.format.mov.not.supported": "浏览器不支持 MOV 格式，需要转换",
-  "video.format.mov.supported": "浏览器原生支持 MOV 格式，跳过转换"
+  "video.format.mov.supported": "浏览器原生支持 MOV 格式，跳过转换",
+  "video.motion-photo.extracting": "正在提取嵌入的视频..."
 }

@@ -12,6 +12,7 @@ apps/web/src/data/photos-manifest.json
 apps/web/public/thumbnails
 apps/web/public/photos
 apps/web/public/originals
+apps/web/assets-git
 
 # 部署相关
 .vercel

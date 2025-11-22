@@ -351,7 +351,6 @@
   "slider.columns": "{{count}} 列",
   "video.codec.keyword": "エンコーダー",
   "video.conversion.cached.result": "キャッシュされた結果を使用",
-  "video.motion-photo.extracting": "埋め込み動画を抽出しています...",
   "video.conversion.codec.fallback": "この解像度でサポートされている MP4 コーデックが見つかりません。WebM にフォールバックします。",
   "video.conversion.complete": "変換完了",
   "video.conversion.converting": "変換中... {{current}}/{{total}}フレーム",
@@ -371,5 +370,6 @@
   "video.conversion.webcodecs.high.quality": "高品質の WebCodecs コンバーターを使用しています...",
   "video.conversion.webcodecs.not.supported": "このブラウザは WebCodecs をサポートしていません",
   "video.format.mov.not.supported": "ブラウザが MOV 形式をサポートしていないため、変換が必要です",
-  "video.format.mov.supported": "ブラウザが MOV 形式をネイティブでサポートしているため、変換をスキップします"
+  "video.format.mov.supported": "ブラウザが MOV 形式をネイティブでサポートしているため、変換をスキップします",
+  "video.motion-photo.extracting": "埋め込み動画を抽出しています..."
 }
