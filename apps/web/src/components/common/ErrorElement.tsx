@@ -3,8 +3,6 @@ import { repository } from '@pkg'
 import { useEffect, useRef } from 'react'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
 
-import { attachOpenInEditor } from '~/lib/dev'
-
 export function ErrorElement() {
   const error = useRouteError()
   const message = isRouteErrorResponse(error)
@@ -62,9 +60,7 @@ export function ErrorElement() {
           {import.meta.env.DEV && stack && (
             <div className="mb-6">
               <div className="bg-material-medium border-fill-tertiary overflow-auto rounded-lg border p-4">
-                <pre className="text-red font-mono text-xs break-words whitespace-pre-wrap">
-                  {attachOpenInEditor(stack)}
-                </pre>
+                <pre className="text-red font-mono text-xs break-words whitespace-pre-wrap">{stack}</pre>
               </div>
             </div>
           )}

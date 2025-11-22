@@ -3,12 +3,17 @@ import path from 'node:path'
 
 import { isNil, noop } from 'es-toolkit'
 import type { ExifDateTime, Tags } from 'exiftool-vendored'
-import { exiftool } from 'exiftool-vendored'
+import { ExifTool } from 'exiftool-vendored'
 import type { Metadata } from 'sharp'
 import sharp from 'sharp'
 
 import { getGlobalLoggers } from '../photo/logger-adapter.js'
 import type { PickedExif } from '../types/photo.js'
+
+// 配置 exiftool
+const exiftool = new ExifTool({
+  taskTimeoutMillis: 30000,
+})
 
 // 提取 EXIF 数据
 export async function extractExifData(imageBuffer: Buffer, originalBuffer?: Buffer): Promise<PickedExif | null> {

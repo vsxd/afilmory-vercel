@@ -88,7 +88,7 @@
 
 ## 🚀 快速开始
 
-### 方式一：一键部署到 Vercel（推荐）
+### 一键部署到 Vercel
 
 点击下方按钮，按照提示配置 S3 环境变量即可完成部署：
 
@@ -102,7 +102,7 @@
 5. 点击 Deploy 开始部署
 6. 等待构建完成（首次构建约 5-10 分钟）
 
-### 方式二：本地开发
+### 本地开发
 
 #### 前置要求
 
@@ -431,67 +431,6 @@ afilmory/
 1. 创建语言目录（如 `fr/`）
 2. 复制并翻译 `common.json`
 3. 在 `apps/web/src/lib/i18n.ts` 添加语言代码
-
----
-
-## 📊 性能
-
-- ⚡ **Lighthouse 评分**: 95+
-- 🎯 **首屏加载**: < 1s
-- 📦 **Bundle 大小**: ~250KB (gzipped)
-- 🖼️ **图片优化**: WebP + 多尺寸缩略图
-- 💾 **缓存策略**: 静态资源永久缓存
-
----
-
-## ❓ 常见问题
-
-<details>
-<summary><strong>Q: 为什么只支持 S3 存储？</strong></summary>
-
-本项目专为 Vercel 部署优化。Vercel 免费版对部署包大小有限制，使用 S3 存储可以：
-- 避免将大量照片打包到部署产物中
-- 利用 CDN 加速照片访问
-- 降低构建时间和成本
-
-如需本地存储或 GitHub 存储，请使用 [原版 Afilmory](https://github.com/Innei/Afilmory)。
-</details>
-
-<details>
-<summary><strong>Q: 支持哪些 S3 兼容服务？</strong></summary>
-
-支持所有兼容 AWS S3 API 的对象存储服务，包括：
-- AWS S3
-- MinIO
-- 阿里云 OSS
-- 腾讯云 COS
-- Backblaze B2
-- Wasabi
-- 等等...
-</details>
-
-<details>
-<summary><strong>Q: 如何配置 CDN 加速？</strong></summary>
-
-在环境变量中设置 `S3_CUSTOM_DOMAIN`：
-
-```bash
-S3_CUSTOM_DOMAIN=https://cdn.example.com
-```
-
-然后在你的 CDN 服务商（如 Cloudflare）配置回源到 S3。
-</details>
-
-<details>
-<summary><strong>Q: 部署后看不到照片？</strong></summary>
-
-检查以下几点：
-1. S3 配置是否正确（bucket name、region、credentials）
-2. S3 bucket 是否有照片文件
-3. 照片格式是否支持（JPG/PNG/HEIC/TIFF）
-4. Vercel 环境变量是否正确配置
-5. 查看 Vercel 构建日志是否有错误
-</details>
 
 ---
 

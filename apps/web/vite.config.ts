@@ -33,7 +33,6 @@ if (process.env.CI) {
     force: true,
   })
 }
-const DEV_NEXT_JS = process.env.DEV_NEXT_JS === 'true'
 
 const ReactCompilerConfig = {
   /* ... */
@@ -137,7 +136,9 @@ const staticWebBuildPlugins: PluginOption[] = [
       removeScriptTypeAttributes: true,
       removeStyleLinkTypeAttributes: true,
       useShortDoctype: true,
-      minifyCSS: true,
+      minifyCSS: {
+        targets: { safari: (16 << 16) | (4 << 8) },
+      },
       minifyJS: true,
     },
     inject: {
@@ -149,11 +150,10 @@ const staticWebBuildPlugins: PluginOption[] = [
   }),
 ]
 
-const BUILD_FOR_SERVER_SERVE = process.env.BUILD_FOR_SERVER_SERVE === '1'
 // https://vitejs.dev/config/
 export default defineConfig(() => {
   return {
-    base: BUILD_FOR_SERVER_SERVE ? '/static/web/' : '/',
+    base: '/',
     plugins: [
       codeInspectorPlugin({
         bundler: 'vite',
@@ -180,13 +180,19 @@ export default defineConfig(() => {
       ]),
       localesJsonPlugin(),
       tailwindcss(),
-      ...(BUILD_FOR_SERVER_SERVE ? [] : staticWebBuildPlugins),
+      ...staticWebBuildPlugins,
       process.env.analyzer && analyzer(),
 
       process.env.analyzer && analyzer(),
     ],
     server: {
-      port: !DEV_NEXT_JS ? 1924 : 13333, // 1924 年首款 35mm 相机问世
+      port: 1924, // 1924 年首款 35mm 相机问世
+    },
+    css: {
+      lightningcss: {
+        targets: { safari: (16 << 16) | (4 << 8) },
+        errorRecovery: true,
+      },
     },
     define: {
       APP_DEV_CWD: JSON.stringify(process.cwd()),
