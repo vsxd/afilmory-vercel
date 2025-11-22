@@ -1,13 +1,13 @@
 {
-  "name": "Xudong's Lens",
-  "title": "Xudong's Lens",
-  "description": "瞬间即永恒 📷",
-  "url": "https://lens.misfork.com/",
+  "name": "Afilmory Vercel",
+  "title": "Afilmory Vercel",
+  "description": "A personal photography website",
+  "url": "https://afilmory.your.domain/",
   "accentColor": "#007bff",
   "author": {
-    "name": "Xudong Sun",
-    "url": "https://misfork.com",
-    "avatar": "https://img.misfork.com/avatar/28803103.jpeg"
+    "name": "Author",
+    "url": "https://your.domain",
+    "avatar": "https://github.com/vsxd/afilmory-vercel/blob/main/logo.jpg"
   },
   "social": {
     "github": "",

@@ -98,19 +98,172 @@
 1. 点击上方 "Deploy with Vercel" 按钮
 2. 登录你的 Vercel 账户
 3. Fork 项目到你的 GitHub
-4. 配置必需的环境变量（见下方 [环境变量配置](#环境变量配置)）
+4. 配置必需的环境变量（见下方 [环境变量配置](#-环境变量配置)）
 5. 点击 Deploy 开始部署
 6. 等待构建完成（首次构建约 5-10 分钟）
 
-### 本地开发
+---
 
-#### 前置要求
+## ⚙️ 环境变量配置
+
+> **💡 推荐做法**：为了方便部署和个性化配置，**强烈建议通过环境变量配置所有个性化信息**，而不是修改 `config.json` 文件。
+
+### 配置优先级
+
+环境变量 > `config.json` > 默认值
+
+这意味着：
+- ✅ 如果设置了环境变量，将优先使用环境变量的值
+- ✅ 如果没有设置环境变量，则使用 `config.json` 中的配置
+- ✅ 如果两者都没有，则使用默认值
+
+### 必需配置 (S3 存储)
+
+项目**仅支持 S3 存储**，以下环境变量为必填：
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `S3_BUCKET_NAME` | S3 存储桶名称 | `my-photos` |
+| `S3_REGION` | S3 区域 | `us-east-1` |
+| `S3_ACCESS_KEY_ID` | S3 访问密钥 ID | `AKIAIOSFODNN7EXAMPLE` |
+| `S3_SECRET_ACCESS_KEY` | S3 访问密钥 Secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+
+### 可选配置 (S3 高级选项)
+
+| 环境变量 | 说明 | 默认值 | 示例 |
+|---------|------|--------|------|
+| `S3_ENDPOINT` | S3 服务端点 | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
+| `S3_PREFIX` | 照片路径前缀 | 空 | `photos/` |
+| `S3_CUSTOM_DOMAIN` | 自定义 CDN 域名 | 空 | `https://cdn.example.com` |
+| `S3_EXCLUDE_REGEX` | 排除文件的正则表达式 | 空 | `.*\.txt$` |
+
+### 推荐配置 (站点信息)
+
+**强烈建议通过环境变量配置**，这样在 Vercel 等平台上可以直接在 Dashboard 修改，无需重新部署代码：
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `SITE_NAME` | 站点名称 | `My Photo Gallery` |
+| `SITE_TITLE` | 站点标题 | `My Photo Gallery` |
+| `SITE_DESCRIPTION` | 站点描述 | `Capturing beautiful moments in life` |
+| `SITE_URL` | 站点 URL | `https://your-site.vercel.app` |
+| `SITE_ACCENT_COLOR` | 主题色 | `#007bff` |
+
+### 推荐配置 (作者信息)
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `AUTHOR_NAME` | 作者名称 | `Your Name` |
+| `AUTHOR_URL` | 作者网站 | `https://your-website.com` |
+| `AUTHOR_AVATAR` | 作者头像 URL | `https://avatar-url.com/avatar.png` |
+
+### 可选配置 (社交媒体)
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `SOCIAL_GITHUB` | GitHub 用户名 | `your-github-username` |
+| `SOCIAL_TWITTER` | Twitter 用户名 | `your-twitter-username` |
+| `SOCIAL_RSS` | 是否启用 RSS | `true` 或 `false` |
+
+### 可选配置 (Feed)
+
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `FEED_FOLO_FEED_ID` | Folo Feed ID | `your-feed-id` |
+| `FEED_FOLO_USER_ID` | Folo User ID | `your-user-id` |
+
+### 可选配置 (地图)
+
+| 环境变量 | 说明 | 默认值 | 可选值 |
+|---------|------|--------|--------|
+| `MAP_STYLE` | 地图样式 | `builtin` | `builtin` 或自定义 URL |
+| `MAP_PROJECTION` | 地图投影 | `mercator` | `globe` 或 `mercator` |
+
+### 配置示例
+
+#### 在 Vercel 中配置
+
+1. 进入你的项目 Dashboard
+2. 点击 "Settings" → "Environment Variables"
+3. 添加以上环境变量
+4. 保存后会自动触发重新部署
+
+#### 本地开发配置
+
+创建 `.env` 文件：
+
+```bash
+cp .env.template .env
+```
+
+编辑 `.env` 文件，填写你的配置：
+
+```bash
+# S3 存储(必填)
+S3_BUCKET_NAME=my-photos
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=your-access-key-id
+S3_SECRET_ACCESS_KEY=your-secret-access-key
+
+# 站点信息(推荐配置)
+SITE_NAME=My Photo Gallery
+SITE_TITLE=My Photo Gallery
+SITE_DESCRIPTION=Capturing beautiful moments in life
+SITE_URL=https://your-site.vercel.app
+
+# 作者信息(推荐配置)
+AUTHOR_NAME=Your Name
+AUTHOR_URL=https://your-website.com
+AUTHOR_AVATAR=https://avatar-url.com/avatar.png
+
+# 社交媒体(可选)
+SOCIAL_GITHUB=your-github-username
+SOCIAL_RSS=true
+```
+
+### 使用 config.json (备选方案)
+
+如果你不想使用环境变量，也可以通过 `config.json` 文件配置站点信息：
+
+```bash
+cp config.example.json config.json
+```
+
+编辑 `config.json`：
+
+```json
+{
+  "name": "我的照片集",
+  "title": "My Afilmory",
+  "description": "记录生活中的美好瞬间",
+  "url": "https://your-site.vercel.app",
+  "accentColor": "#007bff",
+  "author": {
+    "name": "Your Name",
+    "url": "https://your-website.com",
+    "avatar": "https://avatar-url.com/avatar.png"
+  },
+  "social": {
+    "github": "your-github-username",
+    "twitter": "your-twitter-username",
+    "rss": true
+  }
+}
+```
+
+> **注意**：如果同时设置了环境变量和 `config.json`，环境变量的优先级更高。
+
+---
+
+## 💻 本地开发
+
+### 前置要求
 
 - Node.js 18+
 - pnpm 10+
 - S3 兼容对象存储（必需）
 
-#### 安装
+### 安装
 
 ```bash
 # 克隆仓库
@@ -121,9 +274,7 @@ cd afilmory
 pnpm install
 ```
 
-#### 配置
-
-##### 1. 准备 S3 存储并上传照片
+### 准备 S3 存储并上传照片
 
 将你的照片上传到 S3 兼容的对象存储中，支持以下格式：
 - JPG / JPEG
@@ -134,51 +285,7 @@ pnpm install
 
 **重要提示：本项目仅支持 S3 兼容存储，照片不会被打包到部署产物中。**
 
-##### 2. 配置环境变量
-
-创建 `.env` 文件：
-
-```bash
-cp .env.template .env
-```
-
-填写你的 S3 配置：
-
-```bash
-# 必填
-S3_BUCKET_NAME=your-bucket-name
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=your-access-key-id
-S3_SECRET_ACCESS_KEY=your-secret-access-key
-
-# 可选
-S3_ENDPOINT=https://s3.us-east-1.amazonaws.com  # 默认 AWS S3
-S3_PREFIX=photos/                               # 照片路径前缀
-S3_CUSTOM_DOMAIN=https://cdn.example.com        # 自定义 CDN 域名
-```
-
-##### 3. 配置站点信息（可选）
-
-```bash
-cp config.example.json config.json
-```
-
-编辑 `config.json`:
-
-```json
-{
-  "name": "我的照片集",
-  "title": "My Afilmory",
-  "description": "记录生活中的美好瞬间",
-  "url": "https://your-site.vercel.app",
-  "author": {
-    "name": "Your Name",
-    "url": "https://your-website.com"
-  }
-}
-```
-
-#### 构建和预览
+### 构建和预览
 
 ```bash
 # 完整构建（处理照片 + 构建前端）
@@ -232,70 +339,6 @@ vercel --prod
 **输出目录：** `apps/web/dist`
 
 详见 [静态部署指南](./DEPLOY_STATIC.md)
-
----
-
-## ⚙️ 配置
-
-### 环境变量配置
-
-项目**仅支持 S3 存储**，以下环境变量为必填：
-
-| 环境变量 | 说明 | 必填 | 示例 |
-|---------|------|------|------|
-| `S3_BUCKET_NAME` | S3 存储桶名称 | ✅ | `my-photos` |
-| `S3_REGION` | S3 区域 | ✅ | `us-east-1` |
-| `S3_ACCESS_KEY_ID` | S3 访问密钥 ID | ✅ | `AKIAIOSFODNN7EXAMPLE` |
-| `S3_SECRET_ACCESS_KEY` | S3 访问密钥 Secret | ✅ | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `S3_ENDPOINT` | S3 服务端点 | ❌ | `https://s3.us-east-1.amazonaws.com` |
-| `S3_PREFIX` | 照片路径前缀 | ❌ | `photos/` |
-| `S3_CUSTOM_DOMAIN` | 自定义 CDN 域名 | ❌ | `https://cdn.example.com` |
-| `S3_EXCLUDE_REGEX` | 排除文件的正则表达式 | ❌ | `.*\.txt$` |
-
-### 站点配置 (`config.json`)
-
-```json
-{
-  "name": "站点名称",
-  "title": "站点标题",
-  "description": "站点描述",
-  "url": "https://your-site.com",
-  "accentColor": "#007bff",
-  "author": {
-    "name": "作者名",
-    "url": "https://author-site.com",
-    "avatar": "https://avatar-url.jpg"
-  },
-  "social": {
-    "github": "username",
-    "twitter": "handle",
-    "rss": true
-  },
-  "map": ["maplibre"],
-  "mapStyle": "https://map-style-url.json"
-}
-```
-
-### 构建配置 (`builder.config.ts`)
-
-配置文件已预设为 S3 模式，通常无需修改。如需调整并发数、缩略图尺寸等，可以编辑此文件：
-
-```typescript
-export default defineBuilderConfig(() => ({
-  storage: {
-    provider: 's3',
-    bucket: env.S3_BUCKET_NAME,
-    region: env.S3_REGION,
-    // ... 其他 S3 配置
-  },
-  system: {
-    processing: {
-      defaultConcurrency: 10,         // 并发数
-      enableLivePhotoDetection: true, // Live Photo
-    },
-  },
-}))
-```
 
 ---
 
