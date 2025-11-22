@@ -42,8 +42,8 @@ pnpm preview
 # 编辑 .env 文件，配置 S3 相关环境变量
 
 # 2. 配置站点信息（可选）
-cp config.example.json config.json
-# 编辑 config.json
+# 推荐使用环境变量配置，也可以使用 config.json
+# cp config.example.json config.json
 
 # 3. 构建静态站点
 pnpm build
@@ -139,7 +139,18 @@ afilmory/
 
 ## 配置文件
 
-### 站点配置 (`config.json`)
+## 配置文件
+
+### 站点配置
+
+推荐使用环境变量配置站点信息（见 `README.md`），这样可以在 Vercel 等平台直接修改而无需重新部署。
+
+**重要配置说明**：
+1. **无需 `VITE_` 前缀**：本项目使用构建时注入机制，环境变量**不需要**添加 `VITE_` 前缀。
+2. **注入机制**：构建过程中，`vite.config.ts` 会读取环境变量并通过 `site-config-inject` 插件注入到前端代码中 (`window.__SITE_CONFIG__`)。
+3. **优先级**：环境变量 > `config.json` > 默认值。
+
+也可以使用 `config.json` 作为备选方案：
 
 ```json
 {

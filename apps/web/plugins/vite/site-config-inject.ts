@@ -1,7 +1,7 @@
 import { DOMParser } from 'linkedom'
 import type { Plugin } from 'vite'
 
-import { siteConfig } from '../../../../site.config.node'
+import { siteConfig } from '../../../../site.config.build'
 
 const CONFIG_SCRIPT_ID = 'config'
 const INJECTED_SCRIPT_ID = 'config-runtime'

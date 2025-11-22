@@ -1,7 +1,7 @@
 import { merge } from 'es-toolkit/compat'
 
 import { env } from './env'
-import type {SiteConfig} from './site.config';
+import type { SiteConfig } from './site.config'
 import { siteConfig as baseSiteConfig } from './site.config'
 
 const envConfig: Partial<SiteConfig> = {

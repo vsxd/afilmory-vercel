@@ -15,7 +15,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 import PKG from '../../package.json'
-import { siteConfig } from '../../site.config.node'
+import { siteConfig } from '../../site.config.build'
 import { astPlugin } from './plugins/vite/ast'
 import { createDependencyChunksPlugin } from './plugins/vite/deps'
 import { createFeedSitemapPlugin } from './plugins/vite/feed-sitemap'
