@@ -19,9 +19,7 @@ apps/web/assets-git
 
 # IDE
 .claude
+.cursor
+.specstory
+.vscode
 
-# 照片源文件目录
-# 保留目录结构但忽略照片文件
-photos/*
-!photos/.gitkeep
-!photos/README.md
