@@ -7,7 +7,7 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vsxd/afilmory"
+    "url": "https://github.com/vsxd/afilmory-vercel"
   },
   "scripts": {
     "build": "pnpm build:manifest && pnpm build:web",

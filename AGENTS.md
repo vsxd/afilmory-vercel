@@ -370,4 +370,4 @@ pnpm format
 
 - [部署指南](./DEPLOY_STATIC.md)
 - [完整 README](./README.md)
-- [GitHub Issues](https://github.com/vsxd/afilmory/issues)
+- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)

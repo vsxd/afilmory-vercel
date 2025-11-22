@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY&envDescription=S3%20存储配置信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory%23配置&project-name=my-afilmory&repository-name=my-afilmory">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23配置&project-name=my-afilmory&repository-name=my-afilmory">
     <img src="https://vercel.com/button" alt="Deploy with Vercel"/>
   </a>
 </p>
@@ -21,7 +21,7 @@
 
 ## 📖 关于本项目
 
-本项目是基于 [Afilmory](https://github.com/Innei/Afilmory) 的修改版本，**专为 S3 兼容存储和 Vercel 静态部署优化**。
+本项目是基于 [Afilmory](https://github.com/Afilmory/afilmory) 的修改版本，**专为 S3 兼容存储和 Vercel 静态部署优化**。
 
 ### 与原版的区别
 
@@ -34,7 +34,7 @@
 
 感谢 [Innei](https://innei.in) 和 Afilmory 团队创建了这个优秀的照片集生成器项目！
 
-> 💡 如果你需要完整功能（本地存储、GitHub 存储等），请使用[原版 Afilmory](https://github.com/Innei/Afilmory)
+> 💡 如果你需要完整功能（本地存储、GitHub 存储等），请使用[原版 Afilmory](https://github.com/Afilmory/afilmory)
 
 ---
 
@@ -80,6 +80,7 @@
 ## 🎯 在线演示
 
 - [Official Demo](https://afilmory.innei.in) - Afilmory 官方演示
+- [Xudong's Lens](https://lens.misfork.com)
 - [Gallery by mxte](https://gallery.mxte.cc)
 - [Photography by pseudoyu](https://photography.pseudoyu.com)
 - [Afilmory by magren](https://afilmory.magren.cc)
@@ -92,7 +93,7 @@
 
 点击下方按钮，按照提示配置 S3 环境变量即可完成部署：
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY&envDescription=S3%20存储配置信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory%23配置&project-name=my-afilmory&repository-name=my-afilmory)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23配置&project-name=my-afilmory&repository-name=my-afilmory)
 
 **部署步骤：**
 1. 点击上方 "Deploy with Vercel" 按钮
@@ -267,8 +268,8 @@ cp config.example.json config.json
 
 ```bash
 # 克隆仓库
-git clone https://github.com/vsxd/afilmory.git
-cd afilmory
+git clone https://github.com/vsxd/afilmory-vercel.git
+cd afilmory-vercel
 
 # 安装依赖
 pnpm install
@@ -337,8 +338,6 @@ vercel --prod
 
 **构建命令：** `pnpm build`
 **输出目录：** `apps/web/dist`
-
-详见 [静态部署指南](./DEPLOY_STATIC.md)
 
 ---
 
@@ -491,7 +490,7 @@ afilmory/
 
 ## 📄 许可证
 
-本项目基于 [Afilmory](https://github.com/Innei/Afilmory) 修改，遵循原项目的许可证：
+本项目基于 [Afilmory](https://github.com/Afilmory/Afilmory) 修改，遵循原项目的许可证：
 
 **Attribution Network License (ANL) v1.0**
 
@@ -504,11 +503,11 @@ afilmory/
 
 ## 🔗 相关链接
 
-- **原版 Afilmory**: [github.com/Innei/Afilmory](https://github.com/Innei/Afilmory)
+- **原版 Afilmory**: [github.com/Afilmory/Afilmory](https://github.com/Afilmory/Afilmory)
 - **在线演示**: [afilmory.innei.in](https://afilmory.innei.in)
 - **静态部署指南**: [DEPLOY_STATIC.md](./DEPLOY_STATIC.md)
-- **问题反馈**: [GitHub Issues](https://github.com/vsxd/afilmory/issues)
-- **作者博客**: [innei.in](https://innei.in)
+- **问题反馈**: [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
+- **原项目作者博客**: [innei.in](https://innei.in)
 
 ---
 
