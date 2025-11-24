@@ -200,13 +200,13 @@ export async function executePhotoProcessingPipeline(
       throw new Error(errorMsg)
     }
 
-    // 7. 处理影调分析
+    // 8. 处理影调分析
     const toneAnalysis = await processToneAnalysis(sharpInstance, photoKey, existingItem, options)
 
-    // 8. 提取照片信息
+    // 9. 提取照片信息
     const photoInfo = extractPhotoInfo(photoKey, exifData)
 
-    // 9. 构建照片清单项
+    // 10. 构建照片清单项
     const aspectRatio = metadata.width / metadata.height
     const photoItem: PhotoManifestItem = {
       id: photoId,
@@ -225,6 +225,7 @@ export async function executePhotoProcessingPipeline(
       size: obj.Size || 0,
       exif: exifData,
       toneAnalysis,
+      location: existingItem?.location ?? null,
       // Video source (Motion Photo or Live Photo)
       video:
         motionPhotoMetadata?.isMotionPhoto && motionPhotoMetadata.motionPhotoOffset !== undefined

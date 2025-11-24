@@ -12,6 +12,7 @@
 - **`live-photo-handler.ts`** - Live Photo 检测和处理
 - **`logger-adapter.ts`** - Logger 适配器，实现适配器模式
 - **`info-extractor.ts`** - 照片信息提取
+- **`geocoding.ts`** - 反向地理编码提供者定义（通过 geocoding 插件调用）
 
 ### 设计模式
 
@@ -42,9 +43,9 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 2. 创建 Sharp 实例
 3. 处理缩略图和 blurhash
 4. 处理 EXIF 数据
-5. 处理影调分析
-6. 提取照片信息
-7. 处理 Live Photo
+5. HDR / Motion Photo / Live Photo 检测
+6. 处理影调分析
+7. 提取照片信息
 8. 构建照片清单项
 
 ### 主要改进
@@ -53,7 +54,8 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 2. **Logger 适配器**: 使用异步执行上下文管理 logger，避免全局状态污染
 3. **缓存管理**: 统一管理各种数据的缓存和复用逻辑
 4. **Live Photo 处理**: 专门的模块处理 Live Photo 检测和匹配
-5. **类型安全**: 完善的 TypeScript 类型定义
+5. **反向地理编码插件**: 通过 geocoding 插件在构建生命周期中写入位置信息，支持多个地理编码提供商
+6. **类型安全**: 完善的 TypeScript 类型定义
 
 ### 使用方法
 
@@ -90,6 +92,26 @@ const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, 
 
 // EXIF 处理
 const exifData = await processExifData(imageBuffer, rawImageBuffer, photoKey, existingItem, options)
+```
+
+#### 启用反向地理编码
+
+在 `builder.config.ts` 中通过插件开启：
+
+```typescript
+import { defineBuilderConfig, geocodingPlugin } from '@afilmory/builder'
+
+export default defineBuilderConfig(() => ({
+  plugins: [
+    geocodingPlugin({
+      enable: true,
+      provider: 'auto',
+      mapboxToken: process.env.MAPBOX_TOKEN,
+      // language: 'en,zh', // 可选，按需设置语言
+      // nominatimBaseUrl: 'https://your-nominatim-instance.com',
+    }),
+  ],
+}))
 ```
 
 ### 扩展性

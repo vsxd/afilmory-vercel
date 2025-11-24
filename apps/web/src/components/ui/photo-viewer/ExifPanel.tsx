@@ -390,6 +390,27 @@ export const ExifPanel: FC<{
                       <Row label={t('exif.gps.altitude')} value={`${formattedExifData.gps.altitude}m`} />
                     )}
 
+                    {/* 反向地理编码位置信息 */}
+                    {currentPhoto.location && (
+                      <div className="mt-3 space-y-1">
+                        {(currentPhoto.location.city || currentPhoto.location.country) && (
+                          <Row
+                            label={t('exif.gps.city')}
+                            value={[currentPhoto.location.city, currentPhoto.location.country]
+                              .filter(Boolean)
+                              .join(', ')}
+                          />
+                        )}
+                        {currentPhoto.location.locationName && (
+                          <Row
+                            label={t('exif.gps.address')}
+                            value={currentPhoto.location.locationName}
+                            ellipsis={true}
+                          />
+                        )}
+                      </div>
+                    )}
+
                     {/* Maplibre MiniMap */}
                     {decimalLatitude !== null && decimalLongitude !== null && (
                       <div className="mt-3">

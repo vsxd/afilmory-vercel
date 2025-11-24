@@ -13,6 +13,8 @@ export {
   processPhotoWithPipeline,
 } from './photo/image-pipeline.js'
 export type { PhotoProcessorOptions } from './photo/processor.js'
+export type { GeocodingPluginOptions } from './plugins/geocoding.js'
+export { default as geocodingPlugin } from './plugins/geocoding.js'
 export type { GitHubRepoSyncPluginOptions } from './plugins/github-repo-sync.js'
 export { createGitHubRepoSyncPlugin, default as githubRepoSyncPlugin } from './plugins/github-repo-sync.js'
 export type { EagleStoragePluginOptions } from './plugins/storage/eagle.js'

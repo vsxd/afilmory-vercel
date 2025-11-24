@@ -20,7 +20,8 @@ src/core/
 │   └── exif.ts     # EXIF 数据提取
 ├── photo/          # 照片处理
 │   ├── info-extractor.ts # 照片信息提取
-│   └── processor.ts # 照片处理主逻辑
+│   ├── processor.ts # 照片处理主逻辑
+│   └── geocoding.ts # 反向地理编码
 ├── manifest/       # Manifest 管理
 │   └── manager.ts  # Manifest 读写和管理
 ├── worker/         # 并发处理
@@ -62,6 +63,7 @@ src/core/
 
 - **info-extractor.ts**: 从文件名和 EXIF 提取照片信息
 - **processor.ts**: 照片处理主流程，整合所有处理步骤
+- **geocoding.ts**: 反向地理编码，支持 Mapbox 和 Nominatim 提供者
 
 ### 6. Manifest 管理 (`manifest/`)
 
@@ -135,6 +137,13 @@ const exif = await extractExifData(buffer)
 - 支持多种运行模式
 - 可配置的并发数
 - 环境变量配置
+
+### 6. 地理编码支持
+
+- 从 GPS 坐标提取位置信息
+- 支持 Mapbox 和 Nominatim 两种提供者
+- 智能缓存和速率限制
+- 自动重试和并发安全
 
 ## 扩展指南
 

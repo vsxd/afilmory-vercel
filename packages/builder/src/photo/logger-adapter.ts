@@ -101,6 +101,7 @@ export interface PhotoProcessingLoggers {
   blurhash: CompatibleLoggerAdapter
   exif: CompatibleLoggerAdapter
   tone: CompatibleLoggerAdapter
+  location: CompatibleLoggerAdapter
 }
 
 /**
@@ -115,6 +116,7 @@ export function createPhotoProcessingLoggers(workerId: number, baseLogger: Logge
     blurhash: new CompatibleLoggerAdapter(workerLogger.withTag('BLURHASH')),
     exif: new CompatibleLoggerAdapter(workerLogger.withTag('EXIF')),
     tone: new CompatibleLoggerAdapter(workerLogger.withTag('TONE')),
+    location: new CompatibleLoggerAdapter(workerLogger.withTag('LOCATION')),
   }
 }
 
