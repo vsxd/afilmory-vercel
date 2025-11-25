@@ -1,6 +1,9 @@
 import type { PhotoManifestItem } from '@afilmory/builder'
 
 const GENERATOR_NAME = 'Afilmory Feed Generator'
+const EXIF_NAMESPACE = 'https://afilmory.com/rss/exif'
+const PROTOCOL_VERSION = '1.1'
+const PROTOCOL_ID = 'afilmory-rss-exif'
 
 export interface FeedSiteAuthor {
   name: string
@@ -29,7 +32,7 @@ export function generateRSSFeed(photos: readonly PhotoManifestItem[], config: Fe
   const managingEditor = author && config.author?.url ? `${author} (${config.author.url})` : author
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:exif="${EXIF_NAMESPACE}">
   <channel>
     <title>${escapeXml(config.title)}</title>
     <link>${baseUrl}</link>
@@ -38,6 +41,8 @@ export function generateRSSFeed(photos: readonly PhotoManifestItem[], config: Fe
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <generator>${GENERATOR_NAME}</generator>
     ${managingEditor ? `<managingEditor>${managingEditor}</managingEditor>` : ''}
+    <exif:version>${PROTOCOL_VERSION}</exif:version>
+    <exif:protocol>${PROTOCOL_ID}</exif:protocol>
 ${itemsXml}
   </channel>
 </rss>`
@@ -53,6 +58,20 @@ function createItemXml(photo: PhotoManifestItem, baseUrl: string): string {
       ? photo.tags.map((tag) => `      <category>${escapeXml(tag)}</category>`).join('\n')
       : ''
 
+  // Add enclosure for thumbnail if available
+  // Assuming thumbnail is an image, default to image/jpeg if extension is unknown, but usually it's webp or jpg
+  let enclosure = ''
+  if (photo.thumbnailUrl) {
+    const thumbUrl = photo.thumbnailUrl.startsWith('http')
+      ? photo.thumbnailUrl
+      : `${baseUrl}${photo.thumbnailUrl.startsWith('/') ? '' : '/'}${photo.thumbnailUrl}`
+    // Simple mime type guess
+    const mimeType = thumbUrl.endsWith('.webp') ? 'image/webp' : thumbUrl.endsWith('.png') ? 'image/png' : 'image/jpeg'
+    enclosure = `      <enclosure url="${escapeXml(thumbUrl)}" type="${mimeType}" length="0" />`
+  }
+
+  const exifTags = buildExifTags(photo)
+
   return `    <item>
       <title>${title}</title>
       <link>${link}</link>
@@ -60,7 +79,129 @@ function createItemXml(photo: PhotoManifestItem, baseUrl: string): string {
       <pubDate>${pubDate}</pubDate>
       <description><![CDATA[${summary}]]></description>
 ${categories}
+${enclosure}
+${exifTags}
     </item>`
+}
+
+function buildExifTags(photo: PhotoManifestItem): string {
+  if (!photo.exif) return ''
+
+  const tags: string[] = []
+  const { exif } = photo
+
+  // --- Basic Camera Settings ---
+  if (exif.FNumber) {
+    tags.push(`<exif:aperture>f/${exif.FNumber}</exif:aperture>`)
+  }
+  if (exif.ExposureTime) {
+    // Format shutter speed: if < 1, use fraction, else use seconds
+    let ss = String(exif.ExposureTime)
+    if (typeof exif.ExposureTime === 'number') {
+      if (exif.ExposureTime < 1 && exif.ExposureTime > 0) {
+        ss = `1/${Math.round(1 / exif.ExposureTime)}s`
+      } else {
+        ss = `${exif.ExposureTime}s`
+      }
+    } else if (!ss.endsWith('s') && // If it's a string and doesn't end with s, append it?
+      // Actually exiftool usually gives nice strings or numbers.
+      // Let's just trust the value but ensure 's' suffix if it looks like a number
+      !Number.isNaN(Number(ss))) {
+        ss = `${ss}s`
+      }
+    tags.push(`<exif:shutterSpeed>${ss}</exif:shutterSpeed>`)
+  }
+  if (exif.ISO) {
+    tags.push(`<exif:iso>${exif.ISO}</exif:iso>`)
+  }
+  if (exif.ExposureCompensation !== undefined && exif.ExposureCompensation !== null) {
+    const val = Number(exif.ExposureCompensation)
+    const sign = val > 0 ? '+' : ''
+    tags.push(`<exif:exposureCompensation>${sign}${val} EV</exif:exposureCompensation>`)
+  }
+
+  // --- Lens Parameters ---
+  if (exif.FocalLength) {
+    // Ensure 'mm' suffix
+    const fl = String(exif.FocalLength).replace('mm', '').trim()
+    tags.push(`<exif:focalLength>${fl}mm</exif:focalLength>`)
+  }
+  if (exif.FocalLengthIn35mmFormat) {
+    const fl35 = String(exif.FocalLengthIn35mmFormat).replace('mm', '').trim()
+    tags.push(`<exif:focalLength35mm>${fl35}mm</exif:focalLength35mm>`)
+  }
+  if (exif.LensModel) {
+    tags.push(`<exif:lens><![CDATA[${exif.LensModel}]]></exif:lens>`)
+  }
+  if (exif.MaxApertureValue) {
+    tags.push(`<exif:maxAperture>f/${exif.MaxApertureValue}</exif:maxAperture>`)
+  }
+
+  // --- Device Info ---
+  const camera = [exif.Make, exif.Model].filter(Boolean).join(' ')
+  if (camera) {
+    tags.push(`<exif:camera><![CDATA[${camera}]]></exif:camera>`)
+  }
+
+  // --- Image Attributes ---
+  if (photo.width) {
+    tags.push(`<exif:imageWidth>${photo.width}</exif:imageWidth>`)
+  }
+  if (photo.height) {
+    tags.push(`<exif:imageHeight>${photo.height}</exif:imageHeight>`)
+  }
+  if (photo.dateTaken) {
+    tags.push(`<exif:dateTaken>${photo.dateTaken}</exif:dateTaken>`)
+  }
+  if (exif.Orientation) {
+    tags.push(`<exif:orientation>${exif.Orientation}</exif:orientation>`)
+  }
+
+  // --- Location Info ---
+  // Location info removed as per user request
+
+  // Location name is not directly in standard exif usually, but if we had it in photo info...
+  // Currently PhotoManifestItem doesn't seem to have a dedicated location name field other than maybe tags or description.
+  // We'll skip <exif:location> for now unless we find a source.
+
+  // --- Technical Parameters ---
+  if (exif.WhiteBalance) {
+    tags.push(`<exif:whiteBalance>${exif.WhiteBalance}</exif:whiteBalance>`)
+  }
+  if (exif.MeteringMode) {
+    tags.push(`<exif:meteringMode>${exif.MeteringMode}</exif:meteringMode>`)
+  }
+  // Flash is often a complex object or string in exiftool, simplify if possible or just dump string
+  if (exif.Flash) {
+    // Try to map to simple enum if possible, or just use what we have if it's readable
+    tags.push(`<exif:flashMode>${String(exif.Flash)}</exif:flashMode>`)
+  }
+  if (exif.ColorSpace) {
+    tags.push(`<exif:colorSpace>${exif.ColorSpace}</exif:colorSpace>`)
+  }
+
+  // --- Advanced Parameters ---
+  if (exif.ExposureProgram) {
+    tags.push(`<exif:exposureProgram>${exif.ExposureProgram}</exif:exposureProgram>`)
+  }
+  if (exif.SceneCaptureType) {
+    tags.push(`<exif:sceneMode><![CDATA[${exif.SceneCaptureType}]]></exif:sceneMode>`)
+  }
+
+  // Try to extract from FujiRecipe if available
+  if (exif.FujiRecipe) {
+    if (exif.FujiRecipe.Sharpness) {
+      tags.push(`<exif:sharpness>${exif.FujiRecipe.Sharpness}</exif:sharpness>`)
+    }
+    if (exif.FujiRecipe.Saturation) {
+      tags.push(`<exif:saturation>${exif.FujiRecipe.Saturation}</exif:saturation>`)
+    }
+    // Contrast is often "HighlightTone" and "ShadowTone" combined in Fuji,
+    // or maybe just map one of them? The spec asks for Contrast.
+    // Let's skip Contrast for FujiRecipe to avoid confusion unless we have a direct mapping.
+  }
+
+  return tags.map((t) => `      ${  t}`).join('\n')
 }
 
 function buildDescription(photo: PhotoManifestItem): string {
