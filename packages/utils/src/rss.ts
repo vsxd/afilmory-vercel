@@ -49,7 +49,7 @@ ${itemsXml}
 }
 
 function createItemXml(photo: PhotoManifestItem, baseUrl: string): string {
-  const link = `${baseUrl}/${encodeURIComponent(photo.id)}`
+  const link = `${baseUrl}/photos/${encodeURIComponent(photo.id)}`
   const pubDate = new Date(resolveDate(photo)).toUTCString()
   const title = escapeXml(photo.title ?? photo.id)
   const summary = buildDescription(photo)
@@ -103,12 +103,14 @@ function buildExifTags(photo: PhotoManifestItem): string {
       } else {
         ss = `${exif.ExposureTime}s`
       }
-    } else if (!ss.endsWith('s') && // If it's a string and doesn't end with s, append it?
+    } else if (
+      !ss.endsWith('s') && // If it's a string and doesn't end with s, append it?
       // Actually exiftool usually gives nice strings or numbers.
       // Let's just trust the value but ensure 's' suffix if it looks like a number
-      !Number.isNaN(Number(ss))) {
-        ss = `${ss}s`
-      }
+      !Number.isNaN(Number(ss))
+    ) {
+      ss = `${ss}s`
+    }
     tags.push(`<exif:shutterSpeed>${ss}</exif:shutterSpeed>`)
   }
   if (exif.ISO) {
@@ -201,7 +203,7 @@ function buildExifTags(photo: PhotoManifestItem): string {
     // Let's skip Contrast for FujiRecipe to avoid confusion unless we have a direct mapping.
   }
 
-  return tags.map((t) => `      ${  t}`).join('\n')
+  return tags.map((t) => `      ${t}`).join('\n')
 }
 
 function buildDescription(photo: PhotoManifestItem): string {
