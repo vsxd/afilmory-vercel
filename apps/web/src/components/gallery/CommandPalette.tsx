@@ -34,6 +34,28 @@ const allTags = photoLoader.getAllTags()
 const allCameras = photoLoader.getAllCameras()
 const allLenses = photoLoader.getAllLenses()
 
+const getLocationTokens = (
+  location?: { locationName?: string | null; city?: string | null; country?: string | null } | null,
+) => {
+  if (!location) return []
+
+  const tokens = [location.locationName, location.city, location.country]
+    .map((token) => token?.trim())
+    .filter((token): token is string => typeof token === 'string' && token.length > 0)
+
+  const uniqueTokens: string[] = []
+  const seen = new Set<string>()
+  tokens.forEach((token) => {
+    const normalized = token.toLowerCase()
+    if (!seen.has(normalized)) {
+      seen.add(normalized)
+      uniqueTokens.push(token)
+    }
+  })
+
+  return uniqueTokens
+}
+
 // Fuzzy search utility
 const fuzzyMatch = (text: string, query: string): boolean => {
   const lowerText = text.toLowerCase()
@@ -62,8 +84,10 @@ const searchPhotos = (photos: ReturnType<typeof photoLoader.getPhotos>, query: s
     const matchesCamera =
       photo.exif?.Make?.toLowerCase().includes(lowerQuery) || photo.exif?.Model?.toLowerCase().includes(lowerQuery)
     const matchesLens = photo.exif?.LensModel?.toLowerCase().includes(lowerQuery)
+    const locationTokens = getLocationTokens(photo.location)
+    const matchesLocation = locationTokens.some((token) => token.toLowerCase().includes(lowerQuery))
 
-    return matchesTitle || matchesDescription || matchesTags || matchesCamera || matchesLens
+    return matchesTitle || matchesDescription || matchesTags || matchesCamera || matchesLens || matchesLocation
   })
 }
 
@@ -263,11 +287,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     if (query.trim()) {
       const photos = searchPhotos(photoLoader.getPhotos(), query)
       photos.slice(0, 10).forEach((photo) => {
+        const locationTokens = getLocationTokens(photo.location)
+        const locationSubtitle = locationTokens.join(', ')
         cmds.push({
           id: `photo-${photo.id}`,
           type: 'photo',
           title: photo.title || photo.id,
-          subtitle: photo.description || `${photo.exif?.Model || 'Photo'}`,
+          subtitle: photo.description || locationSubtitle || `${photo.exif?.Model || 'Photo'}`,
           icon: <img src={photo.thumbnailUrl} alt={photo.title || 'Photo'} className="h-6 w-6 rounded object-cover" />,
           action: () => {
             const allPhotos = photoLoader.getPhotos()
@@ -278,7 +304,9 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               onClose()
             }
           },
-          keywords: [photo.title, photo.description, ...(photo.tags || [])].filter(Boolean) as string[],
+          keywords: [photo.title, photo.description, ...locationTokens, ...(photo.tags || [])].filter(
+            Boolean,
+          ) as string[],
         })
       })
     }
