@@ -91,6 +91,20 @@ export const GalleryThumbnail: FC<{
     }
   }, [])
 
+  // Virtual scrolling optimization: only render thumbnails near the visible area
+  // Calculate the range of thumbnails to render
+  const renderRange = 30 // Render 30 items before and after current index, ~60 total
+  const startIndex = Math.max(0, currentIndex - renderRange)
+  const endIndex = Math.min(photos.length - 1, currentIndex + renderRange)
+
+  // Calculate placeholder widths
+  const thumbnailWidth = isMobile ? thumbnailSize.mobile : thumbnailSize.desktop
+  const gapSize = isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop
+  const itemWidth = thumbnailWidth + gapSize
+
+  const leftPlaceholderWidth = startIndex > 0 ? startIndex * itemWidth : 0
+  const rightPlaceholderWidth = endIndex < photos.length - 1 ? (photos.length - 1 - endIndex) * itemWidth : 0
+
   return (
     <m.div
       className="pb-safe border-accent/20 bg-material-medium z-10 shrink-0 border-t backdrop-blur-2xl"
@@ -122,33 +136,57 @@ export const GalleryThumbnail: FC<{
           padding: isMobile ? thumbnailPaddingSize.mobile : thumbnailPaddingSize.desktop,
         }}
       >
-        {photos.map((photo, index) => (
-          <button
-            type="button"
-            key={photo.id}
-            className={clsxm(
-              'contain-intrinsic-size relative shrink-0 overflow-hidden rounded-lg border-2 transition-all',
-              index === currentIndex
-                ? 'scale-110 border-accent shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_20%,transparent)]'
-                : 'grayscale-50 border-accent/20 hover:border-accent hover:grayscale-0',
-            )}
-            style={
-              isMobile
-                ? {
-                    width: thumbnailSize.mobile,
-                    height: thumbnailSize.mobile,
-                  }
-                : {
-                    width: thumbnailSize.desktop,
-                    height: thumbnailSize.desktop,
-                  }
-            }
-            onClick={() => onIndexChange(index)}
-          >
-            {photo.thumbHash && <Thumbhash thumbHash={photo.thumbHash} className="size-fill absolute inset-0" />}
-            <img src={photo.thumbnailUrl} alt={photo.title} className="absolute inset-0 h-full w-full object-cover" />
-          </button>
-        ))}
+        {/* Left placeholder */}
+        {leftPlaceholderWidth > 0 && (
+          <div
+            style={{
+              width: leftPlaceholderWidth,
+              flexShrink: 0,
+            }}
+          />
+        )}
+
+        {/* Only render thumbnails within visible range */}
+        {photos.slice(startIndex, endIndex + 1).map((photo, sliceIndex) => {
+          const index = startIndex + sliceIndex
+          return (
+            <button
+              type="button"
+              key={photo.id}
+              className={clsxm(
+                'contain-intrinsic-size relative shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+                index === currentIndex
+                  ? 'scale-110 border-accent shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_20%,transparent)]'
+                  : 'grayscale-50 border-accent/20 hover:border-accent hover:grayscale-0',
+              )}
+              style={
+                isMobile
+                  ? {
+                      width: thumbnailSize.mobile,
+                      height: thumbnailSize.mobile,
+                    }
+                  : {
+                      width: thumbnailSize.desktop,
+                      height: thumbnailSize.desktop,
+                    }
+              }
+              onClick={() => onIndexChange(index)}
+            >
+              {photo.thumbHash && <Thumbhash thumbHash={photo.thumbHash} className="size-fill absolute inset-0" />}
+              <img src={photo.thumbnailUrl} alt={photo.title} className="absolute inset-0 h-full w-full object-cover" />
+            </button>
+          )
+        })}
+
+        {/* Right placeholder */}
+        {rightPlaceholderWidth > 0 && (
+          <div
+            style={{
+              width: rightPlaceholderWidth,
+              flexShrink: 0,
+            }}
+          />
+        )}
       </div>
     </m.div>
   )
