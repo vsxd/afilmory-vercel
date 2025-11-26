@@ -1,6 +1,6 @@
 {
-  "lastSyncedCommit": "b5b4c9b",
-  "lastSyncDate": "2025-11-25",
+  "lastSyncedCommit": "e0a78b9",
+  "lastSyncDate": "2025-11-26",
   "syncHistory": [
     {
       "date": "2025-11-25",
@@ -50,6 +50,20 @@
       "action": "cherry-picked",
       "reason": "技术改进",
       "notes": "EXIF 数据提取增强 - 简化提取流程,移除 sharp metadata 检查,直接使用 exiftool,改进进程清理逻辑(已排除 Dockerfile 变更)"
+    },
+    {
+      "date": "2025-11-26",
+      "upstreamCommit": "5bf7c06",
+      "action": "skipped",
+      "reason": "SaaS化/不适用",
+      "notes": "Open Graph 图片生成增强 - 涉及大量后端代码(be/apps/core)和 apps/landing/docs 目录,属于 SaaS 化功能,与静态部署架构不兼容"
+    },
+    {
+      "date": "2025-11-26",
+      "upstreamCommit": "e0a78b9",
+      "action": "skipped",
+      "reason": "不适用",
+      "notes": "简化 gallery URL 处理和主题样式更新 - 仅修改 apps/landing 目录,本项目无此目录"
     }
   ],
   "note": "该文件用于追踪 upstream 仓库的同步状态。lastSyncedCommit 表示已同步到的上游 commit,syncHistory 记录了每次同步的详细信息。"
