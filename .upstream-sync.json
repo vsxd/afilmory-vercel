@@ -43,6 +43,13 @@
       "action": "cherry-picked",
       "reason": "功能新增",
       "notes": "基于地理位置的搜索功能 - 命令面板支持按地理位置搜索,纯前端实现,完全兼容静态部署"
+    },
+    {
+      "date": "2025-11-25",
+      "upstreamCommit": "ef19962",
+      "action": "cherry-picked",
+      "reason": "技术改进",
+      "notes": "EXIF 数据提取增强 - 简化提取流程,移除 sharp metadata 检查,直接使用 exiftool,改进进程清理逻辑(已排除 Dockerfile 变更)"
     }
   ],
   "note": "该文件用于追踪 upstream 仓库的同步状态。lastSyncedCommit 表示已同步到的上游 commit,syncHistory 记录了每次同步的详细信息。"
