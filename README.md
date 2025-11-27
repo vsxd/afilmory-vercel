@@ -1,85 +1,103 @@
 # Afilmory Vercel
 
+English | [简体中文](./README.zh-CN.md)
+
 <p align="center">
-  <strong>专为 S3 存储和 Vercel 部署优化的 Afilmory Fork版本</strong>
+  <img src="https://github.com/Afilmory/assets/blob/main/afilmory-readme.webp?raw=true" alt="Afilmory" width="100%" />
 </p>
 
 <p align="center">
-  <a href="#-快速开始">快速开始</a> •
-  <a href="#-特性">特性</a> •
-  <a href="#-部署">部署</a> •
-  <a href="#-在线演示">在线演示</a>
+  <strong>A fork of Afilmory optimized for S3-compatible storage and static deployment on Vercel</strong>
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-deployment">Deployment</a> •
+  <a href="#-live-demo">Live Demo</a>
+</p>
+
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20storage%20and%20site%20configurations&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-environment-variables&project-name=my-afilmory&repository-name=my-afilmory">
     <img src="https://vercel.com/button" alt="Deploy with Vercel"/>
   </a>
 </p>
 
 ---
 
-## 📖 关于本项目
+## 📖 About This Project
 
-本项目是基于 [Afilmory](https://github.com/Afilmory/afilmory) 的修改版本，**专为 S3 兼容存储和 Vercel 静态部署优化**。
+This repository is a customized fork of [Afilmory](https://github.com/Afilmory/afilmory), **focused on S3-compatible storage and static deployment on Vercel**.
 
-### 与原版的区别
+### Differences from the upstream project
 
-- ✅ **仅支持 S3 存储** - 移除本地文件和 GitHub 存储支持，确保部署包体积最小
-- ✅ **Vercel 优化** - 专门优化构建流程，完美适配 Vercel 免费版限制
-- ✅ **简化配置** - 精简构建脚本和配置，降低使用门槛
-- ✅ **一键部署** - 支持通过 Vercel 按钮一键部署
+- ✅ **S3-only storage** – Local filesystem and GitHub storage backends are removed to keep the deployment bundle as small as possible
+- ✅ **Vercel-optimized** – Build process is tuned specifically for Vercel (including the free tier limits)
+- ✅ **Simplified configuration** – Leaner build scripts and configuration, easier to get started
+- ✅ **One-click deployment** – Ready-to-use Vercel deploy button
 
-### 致谢
+### Acknowledgements
 
-感谢 [Innei](https://innei.in) 和 Afilmory 团队创建了这个优秀的照片集生成器项目！
+Huge thanks to [Innei](https://innei.in) and the Afilmory team for creating this excellent photo gallery generator!
 
-> 💡 如果你需要完整功能（本地存储、GitHub 存储等），请使用[原版 Afilmory](https://github.com/Afilmory/afilmory)
-
----
-
-## 🌟 特性
-
-### 核心功能
-
-- 🖼️ **高性能 WebGL 图片渲染器** - 自定义 WebGL 组件，流畅的缩放和平移
-- 📱 **响应式瀑布流布局** - 基于 Masonic，适配不同屏幕尺寸
-- 🎨 **现代 UI 设计** - Glassmorphic 设计系统，Tailwind CSS 4
-- ⚡ **增量构建** - 智能变更检测，只处理新增或修改的照片
-- 🌐 **国际化** - 内置多语言支持
-- 🔗 **OpenGraph** - 社交媒体分享预览
-
-### 图片处理
-
-- 🔄 **HEIC/HEIF 支持** - 自动转换 Apple 设备照片格式
-- 📷 **TIFF 支持** - 自动转换专业摄影格式
-- 🖼️ **智能缩略图生成** - 多尺寸缩略图，优化加载速度
-- 📊 **EXIF 信息展示** - 完整的拍摄参数：相机、焦距、光圈等
-- 🌈 **Blurhash 占位图** - 优雅的图片加载体验
-- 📱 **Live Photo 支持** - 检测和展示 iPhone 动态照片
-- ☀️ **HDR 图片支持** - 展示 HDR 图片
-
-### 高级功能
-
-- 🎛️ **富士胶片模拟** - 读取并展示富士相机胶片模拟设置
-- 🔍 **全屏查看器** - 支持手势的图片查看器
-- 🏷️ **文件系统标签** - 基于文件系统自动生成标签
-- ⚡ **并发处理** - 多进程/多线程并发处理支持
-- 📷 **图片分享** - 分享到社交媒体或嵌入网站
-- 🗺️ **交互式地图** - 使用 MapLibre 展示带 GPS 坐标的照片
-
-### S3 存储特性
-
-- ☁️ **S3 兼容存储** - 支持 AWS S3、MinIO、阿里云 OSS、腾讯云 COS 等
-- 🌍 **CDN 加速** - 支持自定义 CDN 域名
-- 📦 **零打包** - 照片不会被打包到部署产物中
-- 🚀 **快速部署** - 构建产物体积小，适合静态托管平台
+> 💡 If you need all features and the latest updates, please use the [original Afilmory](https://github.com/Afilmory/afilmory).
 
 ---
 
-## 🎯 在线演示
+## 🌟 Features
 
-- [Official Demo](https://afilmory.innei.in) - Afilmory 官方演示
+### Core
+
+- 🖼️ **High-performance WebGL renderer** – Custom WebGL viewer with smooth zooming and panning
+- 📱 **Responsive masonry layout** – Built on Masonic, adapts to all screen sizes
+- 🎨 **Modern UI design** – Glassmorphic design system with Tailwind CSS 4
+- ⚡ **Incremental builds** – Smart change detection, only processes new or modified photos
+- 🌐 **Internationalization** – Built-in multi-language support
+- 🔗 **OpenGraph support** – Beautiful social share previews
+
+### Image processing
+
+- 🔄 **HEIC/HEIF support** – Automatically convert Apple device photos
+- 📷 **TIFF support** – Automatically convert professional photo formats
+- 🖼️ **Smart thumbnail generation** – Multiple thumbnail sizes for optimized loading
+- 📊 **EXIF display** – Full capture metadata: camera, focal length, aperture and more
+- 🌈 **Blurhash placeholders** – Pleasant progressive image loading
+- 📱 **Live Photo support** – Detect and display iPhone Live Photos
+- ☀️ **HDR support** – Display HDR images
+
+### Advanced features
+
+- 🎛️ **Fujifilm film simulation** – Read and display Fuji film simulation metadata
+- 🔍 **Fullscreen viewer** – Gesture-friendly image viewer
+- 🏷️ **Filesystem-based tags** – Auto-generate tags from folder structure
+- ⚡ **Concurrent processing** – Multi-process / multi-threaded build pipeline
+- 📷 **Photo sharing** – Share to social media or embed elsewhere
+- 🗺️ **Interactive map** – MapLibre-based map for photos with GPS coordinates
+
+### S3 storage features
+
+- ☁️ **S3-compatible storage only** – Works with AWS S3, MinIO, Aliyun OSS, Tencent COS and other S3-compatible services
+- 🌍 **CDN-friendly** – Supports custom CDN domains
+- 📦 **Zero photo bundling** – Photos are never bundled into the static build
+- 🚀 **Fast deployment** – Small build output, ideal for static hosting
+
+---
+
+## 🖥️ Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshot_0.webp" alt="screenshot_0" width="100%" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshot_1.webp" alt="screenshot_1" width="100%" />
+</p>
+
+---
+
+## 🎯 Live Demo
+
+- [Official Demo](https://afilmory.innei.in) – Official Afilmory demo
 - [Xudong's Lens](https://lens.misfork.com)
 - [Gallery by mxte](https://gallery.mxte.cc)
 - [Photography by pseudoyu](https://photography.pseudoyu.com)
@@ -87,339 +105,336 @@
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 一键部署到 Vercel
+### One-click deploy to Vercel
 
-点击下方按钮，按照提示配置 S3 环境变量即可完成部署：
+Click the button below and follow the prompts to configure S3-related environment variables:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20storage%20and%20site%20configurations&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-environment-variables&project-name=my-afilmory&repository-name=my-afilmory)
 
-**部署步骤：**
-1. 点击上方 "Deploy with Vercel" 按钮
-2. 登录你的 Vercel 账户
-3. Fork 项目到你的 GitHub
-4. 配置必需的环境变量（见下方 [环境变量配置](#-环境变量配置)）
-5. 点击 Deploy 开始部署
-6. 等待构建完成（首次构建约 5-10 分钟）
+**Deployment steps:**
+1. Click the "Deploy with Vercel" button above
+2. Sign in to your Vercel account
+3. Fork this repo to your GitHub account
+4. Configure required environment variables (see [Environment Variables](#-environment-variables))
+5. Click **Deploy**
+6. Wait for the build to finish (first build usually takes 5–10 minutes)
 
 ---
 
-## ⚙️ 环境变量配置
+## ⚙️ Environment Variables
 
-> **💡 推荐做法**：为了方便部署和个性化配置，**强烈建议通过环境变量配置所有个性化信息**。
+> **💡 Recommended:** For easier customization and deployment, it is **strongly recommended** to configure all site-specific settings via environment variables.
 
-### 配置优先级
+### Priority
 
-环境变量 > `site.config.ts` 默认值
+Environment variables > `site.config.ts` defaults
 
-这意味着：
-- ✅ 如果设置了环境变量，将优先使用环境变量的值
-- ✅ 如果没有设置环境变量，则使用 `site.config.ts` 中的默认配置
+This means:
+- ✅ If an environment variable is set, it takes precedence
+- ✅ If not set, the fallback is the default in `site.config.ts`
 
-### 必需配置 (S3 存储)
+### Required (S3 storage)
 
-项目**仅支持 S3 存储**，以下环境变量为必填：
+This project **only supports S3-compatible storage**. The following variables are required:
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `S3_BUCKET_NAME` | S3 存储桶名称 | `my-photos` |
-| `S3_REGION` | S3 区域 | `us-east-1` |
-| `S3_ACCESS_KEY_ID` | S3 访问密钥 ID | `AKIAIOSFODNN7EXAMPLE` |
-| `S3_SECRET_ACCESS_KEY` | S3 访问密钥 Secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| Variable | Description | Example |
+|---------|-------------|---------|
+| `S3_BUCKET_NAME` | S3 bucket name | `my-photos` |
+| `S3_REGION` | S3 region | `us-east-1` |
+| `S3_ACCESS_KEY_ID` | S3 access key ID | `AKIAIOSFODNN7EXAMPLE` |
+| `S3_SECRET_ACCESS_KEY` | S3 access key secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 
-### 可选配置 (S3 高级选项)
+### Optional (S3 advanced options)
 
-| 环境变量 | 说明 | 默认值 | 示例 |
-|---------|------|--------|------|
-| `S3_ENDPOINT` | S3 服务端点 | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
-| `S3_PREFIX` | 照片路径前缀 | 空 | `photos/` |
-| `S3_CUSTOM_DOMAIN` | 自定义 CDN 域名 | 空 | `https://cdn.example.com` |
-| `S3_EXCLUDE_REGEX` | 排除文件的正则表达式 | 空 | `.*\.txt$` |
+| Variable | Description | Default | Example |
+|---------|-------------|---------|---------|
+| `S3_ENDPOINT` | S3 endpoint | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
+| `S3_PREFIX` | Path prefix for photos | empty | `photos/` |
+| `S3_CUSTOM_DOMAIN` | Custom CDN domain | empty | `https://cdn.example.com` |
+| `S3_EXCLUDE_REGEX` | Regex for excluding files | empty | `.*\.txt$` |
 
-### 推荐配置 (站点信息)
+### Recommended (site info)
 
-**强烈建议通过环境变量配置**，这样在 Vercel 等平台上可以直接在 Dashboard 修改，无需重新部署代码：
+**Strongly recommended** to configure these via environment variables so you can update them from the Vercel dashboard without redeploying code:
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `SITE_NAME` | 站点名称 | `My Photo Gallery` |
-| `SITE_TITLE` | 站点标题 | `My Photo Gallery` |
-| `SITE_DESCRIPTION` | 站点描述 | `Capturing beautiful moments in life` |
-| `SITE_URL` | 站点 URL | `https://your-site.vercel.app` |
-| `SITE_ACCENT_COLOR` | 主题色 | `#007bff` |
+| Variable | Description | Example |
+|---------|-------------|---------|
+| `SITE_NAME` | Site name | `My Photo Gallery` |
+| `SITE_TITLE` | Site title | `My Photo Gallery` |
+| `SITE_DESCRIPTION` | Site description | `Capturing beautiful moments in life` |
+| `SITE_URL` | Site URL | `https://your-site.vercel.app` |
+| `SITE_ACCENT_COLOR` | Accent color (hex) | `#007bff` |
 
-### 推荐配置 (作者信息)
+### Recommended (author info)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `AUTHOR_NAME` | 作者名称 | `Your Name` |
-| `AUTHOR_URL` | 作者网站 | `https://your-website.com` |
-| `AUTHOR_AVATAR` | 作者头像 URL | `https://avatar-url.com/avatar.png` |
+| Variable | Description | Example |
+|---------|-------------|---------|
+| `AUTHOR_NAME` | Author name | `Your Name` |
+| `AUTHOR_URL` | Author website | `https://your-website.com` |
+| `AUTHOR_AVATAR` | Author avatar URL | `https://avatar-url.com/avatar.png` |
 
-### 可选配置 (社交媒体)
+### Optional (social links)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `SOCIAL_GITHUB` | GitHub 用户名 | `your-github-username` |
-| `SOCIAL_TWITTER` | Twitter 用户名 | `your-twitter-username` |
-| `SOCIAL_RSS` | 是否启用 RSS | `true` 或 `false` |
+| Variable | Description | Example |
+|---------|-------------|---------|
+| `SOCIAL_GITHUB` | GitHub username | `your-github-username` |
+| `SOCIAL_TWITTER` | Twitter/X handle | `your-twitter-username` |
+| `SOCIAL_RSS` | Enable RSS | `true` or `false` |
 
-### 可选配置 (Feed)
+### Optional (Feed)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
+| Variable | Description | Example |
+|---------|-------------|---------|
 | `FEED_FOLO_FEED_ID` | Folo Feed ID | `your-feed-id` |
 | `FEED_FOLO_USER_ID` | Folo User ID | `your-user-id` |
 
-### 可选配置 (地图)
+### Optional (map)
 
-| 环境变量 | 说明 | 默认值 | 可选值 |
-|---------|------|--------|--------|
-| `MAP_STYLE` | 地图样式 | `builtin` | `builtin` 或自定义 URL |
-| `MAP_PROJECTION` | 地图投影 | `mercator` | `globe` 或 `mercator` |
+| Variable | Description | Default | Possible values |
+|---------|-------------|---------|-----------------|
+| `MAP_STYLE` | Map style | `builtin` | `builtin` or custom URL |
+| `MAP_PROJECTION` | Map projection | `mercator` | `globe` or `mercator` |
 
-### 配置示例
+### Examples
 
-#### 在 Vercel 中配置
+#### Configure in Vercel
 
-1. 进入你的项目 Dashboard
-2. 点击 "Settings" → "Environment Variables"
-3. 添加以上环境变量
-4. 保存后会自动触发重新部署
+1. Go to your project dashboard
+2. Open **Settings → Environment Variables**
+3. Add the variables listed above
+4. Saving will trigger a new deployment
 
-#### 本地开发配置
+#### Local development
 
-创建 `.env` 文件：
+Create a `.env` file:
 
 ```bash
 cp .env.template .env
 ```
 
-编辑 `.env` 文件，填写你的配置：
+Edit `.env` and fill in your values:
 
 ```bash
-# S3 存储(必填)
+# S3 storage (required)
 S3_BUCKET_NAME=my-photos
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=your-access-key-id
 S3_SECRET_ACCESS_KEY=your-secret-access-key
 
-# 站点信息(推荐配置)
+# Site info (recommended)
 SITE_NAME=My Photo Gallery
 SITE_TITLE=My Photo Gallery
 SITE_DESCRIPTION=Capturing beautiful moments in life
 SITE_URL=https://your-site.vercel.app
 
-# 作者信息(推荐配置)
+# Author info (recommended)
 AUTHOR_NAME=Your Name
 AUTHOR_URL=https://your-website.com
 AUTHOR_AVATAR=https://avatar-url.com/avatar.png
 
-# 社交媒体(可选)
+# Social (optional)
 SOCIAL_GITHUB=your-github-username
 SOCIAL_RSS=true
 ```
 
-
-
 ---
 
-## 💻 本地开发
+## 💻 Local Development
 
-### 前置要求
+### Prerequisites
 
 - Node.js 18+
 - pnpm 10+
-- S3 兼容对象存储（必需）
+- S3-compatible object storage (required)
 
-### 安装
+### Install dependencies
 
 ```bash
-# 克隆仓库
+# Clone the repo
 git clone https://github.com/vsxd/afilmory-vercel.git
 cd afilmory-vercel
 
-# 安装依赖
+# Install dependencies
 pnpm install
 ```
 
-### 准备 S3 存储并上传照片
+### Prepare S3 and upload your photos
 
-将你的照片上传到 S3 兼容的对象存储中，支持以下格式：
+Upload your photos to an S3-compatible object storage. Supported formats:
+
 - JPG / JPEG
 - PNG
-- HEIC (Apple 设备)
+- HEIC (Apple devices)
 - TIFF
 - Live Photos (iPhone)
 
-**重要提示：本项目仅支持 S3 兼容存储，照片不会被打包到部署产物中。**
+**Important:** This project only supports S3-compatible storage; photos are **not** bundled into the build output.
 
-### 构建和预览
+### Build and preview
 
 ```bash
-# 完整构建（处理照片 + 构建前端）
+# Full build (process photos + build frontend)
 pnpm build
 
-# 本地预览
+# Local preview
 pnpm preview
 ```
 
-打开 http://localhost:4173 预览你的照片站点！
+Open http://localhost:4173 to see your gallery.
 
 ---
 
-## 📦 部署
+## 📦 Deployment
 
-### 部署到 Vercel（推荐）
+### Deploy to Vercel (recommended)
 
-#### 选项 A：使用 Deploy 按钮
+#### Option A: Deploy button
 
-直接点击本文档开头的 "Deploy with Vercel" 按钮进行一键部署。
+Click the "Deploy with Vercel" button at the top of this README.
 
-#### 选项 B：从 GitHub 导入
+#### Option B: Import from GitHub
 
-1. 将项目推送到你的 GitHub 仓库
-2. 访问 [vercel.com](https://vercel.com) 并导入项目
-3. 配置环境变量（见 [环境变量配置](#环境变量配置)）
-4. 点击 "Deploy"
-5. 每次推送到 `main` 分支自动重新部署
+1. Push this project to your own GitHub repo
+2. Go to [vercel.com](https://vercel.com) and import the repo
+3. Configure environment variables (see [Environment Variables](#-environment-variables))
+4. Click **Deploy**
+5. Every push to `main` will trigger an automatic redeploy
 
-#### 选项 C：使用 Vercel CLI
+#### Option C: Vercel CLI
 
 ```bash
-# 安装 Vercel CLI
+# Install Vercel CLI
 npm i -g vercel
 
-# 确保本地 .env 文件已配置
-# 部署到生产环境
+# Make sure your local .env is configured
+# Deploy to production
 vercel --prod
 ```
 
-### 部署到其他静态托管平台
+### Other static hosts
 
-项目支持静态站点部署，构建产物位于 `apps/web/dist` 目录。你可以将构建后的静态文件部署到：
+The project builds to static assets under `apps/web/dist`. You can deploy that folder to:
 
 - **Cloudflare Pages**
 - **Netlify**
 - **GitHub Pages**
-- **任何支持静态托管的平台**
+- **Any static hosting provider**
 
-**构建命令：** `pnpm build`
-**输出目录：** `apps/web/dist`
+**Build command:** `pnpm build`  
+**Output directory:** `apps/web/dist`
 
 ---
 
-## 📋 CLI 命令
+## 📋 CLI Commands
 
-### 开发命令
+### Development & build
 
 ```bash
-# 开发模式（不处理照片，使用已有 manifest）
+# Development (does NOT process photos, uses existing manifest)
 pnpm dev
 
-# 完整构建（处理照片 + 构建前端）
+# Full build (process photos + build frontend)
 pnpm build
 
-# 只处理照片生成 manifest
+# Only process photos / generate manifest
 pnpm build:manifest
 
-# 只构建前端应用
+# Only build the frontend app
 pnpm build:web
 
-# 预览构建结果
+# Preview build output
 pnpm preview
 ```
 
-### Manifest 构建选项
+### Manifest build options
 
 ```bash
-# 强制重新处理所有照片
+# Force re-process all photos
 pnpm build:manifest -- --force
 
-# 只重新生成缩略图
+# Only regenerate thumbnails
 pnpm build:manifest -- --force-thumbnails
 
-# 只重新生成 manifest
+# Only regenerate manifest
 pnpm build:manifest -- --force-manifest
 ```
 
 ---
 
-## 🔄 更新照片
+## 🔄 Updating Photos
 
-### 添加新照片
+### Add new photos
 
-1. 将新照片上传到 S3 存储桶
-2. 推送代码到 GitHub（触发 Vercel 自动部署）或运行 `vercel --prod`
-3. Vercel 会自动重新构建并部署
+1. Upload new photos to your S3 bucket
+2. Push code to GitHub (to trigger Vercel) or run `vercel --prod`
+3. Vercel will automatically rebuild and redeploy
 
-增量构建会自动检测 S3 中新增/修改的照片，只处理变更部分。
-
----
-
-## 🏗️ 技术栈
-
-### 前端
-
-- **React 19** - 包含 React Compiler
-- **TypeScript** - 类型安全
-- **Vite 7** - 构建工具
-- **Tailwind CSS 4** - 样式框架
-- **Radix UI** - 无障碍组件
-- **Jotai** - 状态管理
-- **TanStack Query** - 数据获取
-- **React Router 7** - 路由
-- **i18next** - 国际化
-
-### 构建系统
-
-- **Node.js** - 运行时
-- **Sharp** - 图片处理
-- **AWS SDK** - S3 操作
-- **Worker Threads** - 并发处理
-- **EXIF-Reader** - EXIF 提取
-
-### 存储
-
-支持的 S3 兼容服务：
-- **AWS S3** - Amazon S3
-- **MinIO** - 开源对象存储
-- **阿里云 OSS** - 阿里云对象存储
-- **腾讯云 COS** - 腾讯云对象存储
-- 其他 S3 兼容服务
+Incremental builds will automatically detect new/changed photos and only process the changed ones.
 
 ---
 
-## 📁 项目结构
+## 🏗️ Tech Stack
 
-```
+### Frontend
+
+- **React 19** – with React Compiler
+- **TypeScript** – type-safe codebase
+- **Vite 7** – build tool
+- **Tailwind CSS 4** – styling
+- **Radix UI** – accessible UI primitives
+- **Jotai** – state management
+- **TanStack Query** – data fetching
+- **React Router 7** – routing
+- **i18next** – i18n
+
+### Build system
+
+- **Node.js** – runtime
+- **Sharp** – image processing
+- **AWS SDK** – S3 operations
+- **Worker Threads** – concurrency
+- **EXIF-Reader** – EXIF extraction
+
+### Storage
+
+Supported S3-compatible services:
+
+- **AWS S3** – Amazon S3
+- **MinIO** – open-source object storage
+- **Aliyun OSS** – Alibaba Cloud Object Storage
+- **Tencent COS** – Tencent Cloud Object Storage
+- Other S3-compatible providers
+
+---
+
+## 📁 Project Structure
+
+```text
 afilmory/
 ├── apps/
-│   └── web/                   # 🎨 前端 SPA 应用
+│   └── web/                   # 🎨 Frontend SPA
 ├── packages/
-│   ├── builder/               # 🔨 照片处理工具
-│   ├── webgl-viewer/          # 🖼️ WebGL 查看器
-│   ├── data/                  # 📊 数据层
-│   ├── ui/                    # 🎨 UI 组件
-│   ├── hooks/                 # ⚓ React Hooks
-│   └── utils/                 # 🔧 工具函数
-
-├── site.config.ts           # ⚙️ 站点默认配置
-├── site.config.build.ts     # ⚙️ 构建时配置注入
-├── builder.config.ts          # ⚙️ 构建配置
-└── vercel.json                # 📦 Vercel 部署配置
+│   ├── builder/               # 🔨 Photo processing tools
+│   ├── webgl-viewer/          # 🖼️ WebGL viewer
+│   ├── data/                  # 📊 Data layer
+│   ├── ui/                    # 🎨 UI components
+│   ├── hooks/                 # ⚓ React hooks
+│   └── utils/                 # 🔧 Utility functions
+├── site.config.ts             # ⚙️ Site defaults
+├── site.config.build.ts       # ⚙️ Build-time config injection
+├── builder.config.ts          # ⚙️ Builder configuration
+└── vercel.json                # 📦 Vercel deployment config
 ```
 
 ---
 
-## 🎨 自定义
+## 🎨 Customization
 
-### 修改主题色
+### Change accent color
 
-### 修改主题色
-
-编辑 `site.config.ts`:
+Edit `site.config.ts`:
 
 ```typescript
 export const siteConfig: SiteConfig = {
@@ -428,7 +443,7 @@ export const siteConfig: SiteConfig = {
 }
 ```
 
-### 添加地图样式
+### Custom map style
 
 ```json
 {
@@ -438,60 +453,63 @@ export const siteConfig: SiteConfig = {
 }
 ```
 
-### 国际化
+### Internationalization
 
-语言文件位于 `apps/web/public/locales/`。
+Language files are located under `apps/web/public/locales/`.
 
-添加新语言：
-1. 创建语言目录（如 `fr/`）
-2. 复制并翻译 `common.json`
-3. 在 `apps/web/src/lib/i18n.ts` 添加语言代码
+To add a new language:
 
----
-
-## 🤝 贡献
-
-欢迎贡献代码、报告问题或提出建议！
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 开启 Pull Request
+1. Create a new language directory (e.g. `fr/`)
+2. Copy and translate `common.json`
+3. Register the language code in `apps/web/src/lib/i18n.ts`
 
 ---
 
-## 📄 许可证
+## 🤝 Contributing
 
-本项目基于 [Afilmory](https://github.com/Afilmory/Afilmory) 修改，遵循原项目的许可证：
+Contributions, issues and feature requests are welcome!
+
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is based on [Afilmory](https://github.com/Afilmory/Afilmory) and follows the same licenses:
 
 **Attribution Network License (ANL) v1.0**
 
-- **Library Code**: MIT License
-- **Project Code**: AGPL-3.0-or-later with UI attribution requirement
+- **Library code**: MIT
+- **Project code**: AGPL-3.0-or-later with UI attribution requirement
 
-详见 [LICENSE](LICENSE)
-
----
-
-## 🔗 相关链接
-
-- **原版 Afilmory**: [github.com/Afilmory/Afilmory](https://github.com/Afilmory/Afilmory)
-- **在线演示**: [afilmory.innei.in](https://afilmory.innei.in)
-- **静态部署指南**: [DEPLOY_STATIC.md](./DEPLOY_STATIC.md)
-- **问题反馈**: [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
-- **原项目作者博客**: [innei.in](https://innei.in)
+See [LICENSE](LICENSE) for details.
 
 ---
 
-## 💝 致谢
+## 🔗 Related Links
 
-- 感谢 [Innei](https://innei.in) 和 Afilmory 团队创建了这个优秀的项目
-- 感谢所有使用本项目的摄影爱好者
-- 感谢所有开源贡献者
+- **Original Afilmory**: [github.com/Afilmory/Afilmory](https://github.com/Afilmory/Afilmory)
+- **Official demo**: [afilmory.innei.in](https://afilmory.innei.in)
+- **Static deployment guide**: [DEPLOY_STATIC.md](./DEPLOY_STATIC.md)
+- **Issue tracker**: [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
+- **Original author blog**: [innei.in](https://innei.in)
+
+---
+
+## 💝 Thanks
+
+- Thanks to [Innei](https://innei.in) and the Afilmory team for the original project
+- Thanks to all photographers using this project
+- Thanks to all open-source contributors
 
 ---
 
 <p align="center">
-  <sub>如果这个项目对你有帮助，请给个 ⭐️ Star 支持一下！</sub>
+  <sub>If this project helps you, please consider giving it a ⭐️ on GitHub!</sub>
 </p>
+
+
