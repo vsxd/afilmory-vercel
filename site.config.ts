@@ -1,6 +1,13 @@
-import { merge } from 'es-toolkit/compat'
-
-import userConfig from './config.json'
+/**
+ * ⚠️ CLIENT-SIDE CONFIGURATION - READ CAREFULLY ⚠️
+ *
+ * This file is imported by the client-side code (browser).
+ * It MUST NOT import 'env.ts' or use 'process.env' directly.
+ *
+ * - This file defines the static default configuration.
+ * - Environment variable overrides are handled in 'site.config.build.ts'.
+ * - Client-side code accesses the final config via 'window.__SITE_CONFIG__' injection.
+ */
 
 export interface SiteConfig {
   name: string
@@ -42,19 +49,33 @@ interface Social {
   rss?: boolean
 }
 
-const defaultConfig: SiteConfig = {
-  name: "Innei's Afilmory",
-  title: "Innei's Afilmory",
-  description:
-    'Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.',
-  url: 'https://afilmory.innei.in',
+export const siteConfig: SiteConfig = {
+  name: 'Afilmory Vercel',
+  title: 'Afilmory Vercel',
+  description: 'A personal photography website',
+  url: 'https://afilmory.your.domain/',
   accentColor: '#007bff',
   author: {
-    name: 'Innei',
-    url: 'https://innei.in/',
-    avatar: 'https://cdn.jsdelivr.net/gh/Innei/static@master/avatar.png',
+    name: 'Author',
+    url: 'https://your.domain',
+    avatar: 'https://github.com/vsxd/afilmory-vercel/blob/main/logo.png',
   },
+  social: {
+    github: '',
+    twitter: '',
+    rss: false,
+  },
+  feed: {
+    folo: {
+      challenge: {
+        feedId: '',
+        userId: '',
+      },
+    },
+  },
+  map: ['maplibre'],
+  mapStyle: 'builtin',
+  mapProjection: 'mercator',
 }
-export const siteConfig: SiteConfig = merge(defaultConfig, userConfig) as any
 
 export default siteConfig

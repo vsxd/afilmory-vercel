@@ -192,7 +192,7 @@ const results = await loader.searchPhotos('sunset')
 
 ### 主题色
 
-从 `config.json` 读取 `accentColor`，动态应用到：
+从 `site.config.ts` 或环境变量读取 `accentColor`，动态应用到：
 - 按钮和链接
 - 进度条
 - 选中状态
@@ -224,7 +224,7 @@ pnpm build
 
 1. **预检查** (`scripts/precheck.ts`)
    - 检查 `photos-manifest.json` 是否存在
-   - 检查 `config.json` 配置
+   - 检查 `site.config.ts` 配置
 
 2. **Vite 构建**
    - 代码分割和 Tree-shaking

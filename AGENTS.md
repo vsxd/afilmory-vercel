@@ -42,8 +42,9 @@ pnpm preview
 # 编辑 .env 文件，配置 S3 相关环境变量
 
 # 2. 配置站点信息（可选）
-# 推荐使用环境变量配置，也可以使用 config.json
-# cp config.example.json config.json
+# 2. 配置站点信息（可选）
+# 推荐使用环境变量配置，也可以直接修改 site.config.ts
+
 
 # 3. 构建静态站点
 pnpm build
@@ -87,7 +88,8 @@ afilmory/
 │   ├── ui/                    # 🎨 UI 组件
 │   ├── hooks/                 # ⚓ React Hooks
 │   └── utils/                 # 🔧 工具函数
-├── config.json                # 站点配置
+├── site.config.ts           # 站点默认配置
+├── site.config.build.ts     # 构建时配置注入
 ├── builder.config.ts   # 构建配置
 └── vercel.json                # Vercel 部署配置
 ```
@@ -148,30 +150,30 @@ afilmory/
 **重要配置说明**：
 1. **无需 `VITE_` 前缀**：本项目使用构建时注入机制，环境变量**不需要**添加 `VITE_` 前缀。
 2. **注入机制**：构建过程中，`vite.config.ts` 会读取环境变量并通过 `site-config-inject` 插件注入到前端代码中 (`window.__SITE_CONFIG__`)。
-3. **优先级**：环境变量 > `config.json` > 默认值。
+3. **优先级**：环境变量 > `site.config.ts` 默认值。
 
-也可以使用 `config.json` 作为备选方案：
+也可以直接修改 `site.config.ts` 文件来设置默认值：
 
-```json
-{
-  "name": "我的照片集",
-  "title": "My Afilmory",
-  "description": "记录生活中的美好瞬间",
-  "url": "https://your-site.vercel.app",
-  "accentColor": "#007bff",
-  "author": {
-    "name": "Your Name",
-    "url": "https://your-website.com",
-    "avatar": "https://your-avatar.jpg"
+```typescript
+export const siteConfig: SiteConfig = {
+  name: '我的照片集',
+  title: 'My Afilmory',
+  description: '记录生活中的美好瞬间',
+  url: 'https://your-site.vercel.app',
+  accentColor: '#007bff',
+  author: {
+    name: 'Your Name',
+    url: 'https://your-website.com',
+    avatar: 'https://your-avatar.jpg'
   },
-  "social": {
-    "github": "username",
-    "twitter": "handle",
-    "rss": true
+  social: {
+    github: 'username',
+    twitter: 'handle',
+    rss: true
   },
-  "map": ["maplibre"],
-  "mapStyle": "https://your-map-style.json",
-  "mapProjection": "globe"
+  map: ['maplibre'],
+  mapStyle: 'builtin',
+  mapProjection: 'mercator'
 }
 ```
 

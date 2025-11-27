@@ -19,7 +19,7 @@ export const env = createEnv({
     REPO_URL: z.string().optional(),
     REPO_TOKEN: z.string().optional(),
 
-    // 站点基本配置(可选,如果不设置则使用 config.json)
+    // 站点基本配置(可选,如果不设置则使用 site.config.ts 中的默认值)
     SITE_NAME: z.string().optional(),
     SITE_TITLE: z.string().optional(),
     SITE_DESCRIPTION: z.string().optional(),

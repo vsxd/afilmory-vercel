@@ -1,3 +1,14 @@
+/**
+ * 🛠 BUILD-TIME CONFIGURATION
+ *
+ * This file is used ONLY during the build process (Vite config, plugins).
+ * It is responsible for injecting environment variables into the site configuration.
+ *
+ * - Imports 'env.ts' to access process.env safely.
+ * - Merges defaults from 'site.config.ts' with environment overrides.
+ * - The result is injected into the client via 'window.__SITE_CONFIG__'.
+ */
+
 import { merge } from 'es-toolkit/compat'
 
 import { env } from './env'
