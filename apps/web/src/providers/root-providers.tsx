@@ -1,5 +1,6 @@
 import { Toaster } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Provider } from 'jotai'
 import { domMax, LazyMotion, MotionConfig } from 'motion/react'
 import type { FC, PropsWithChildren } from 'react'
@@ -23,5 +24,6 @@ export const RootProviders: FC<PropsWithChildren> = ({ children }) => (
       </Provider>
     </MotionConfig>
     <Toaster />
+    <SpeedInsights />
   </LazyMotion>
 )
