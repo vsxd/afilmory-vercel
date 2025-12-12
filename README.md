@@ -3,7 +3,7 @@
 English | [简体中文](./README.zh-CN.md)
 
 <p align="center">
-  <img src="https://github.com/Afilmory/assets/blob/main/afilmory-readme.webp?raw=true" alt="Afilmory" width="100%" />
+  <img src="docs/assets/afilmory-readme.webp" alt="Afilmory" width="100%" />
 </p>
 
 <p align="center">
