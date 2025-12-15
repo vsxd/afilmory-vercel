@@ -421,6 +421,9 @@ importers:
 
   packages/builder:
     dependencies:
+      '@afilmory/data':
+        specifier: workspace:*
+        version: link:../data
       '@aws-sdk/client-s3':
         specifier: 3.921.0
         version: 3.921.0
@@ -470,9 +473,9 @@ importers:
 
   packages/data:
     dependencies:
-      '@afilmory/builder':
-        specifier: workspace:*
-        version: link:../builder
+      exiftool-vendored:
+        specifier: 31.2.0
+        version: 31.2.0
 
   packages/hooks:
     dependencies:
@@ -583,9 +586,9 @@ importers:
 
   packages/utils:
     dependencies:
-      '@afilmory/builder':
+      '@afilmory/data':
         specifier: workspace:*
-        version: link:../builder
+        version: link:../data
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -613,7 +616,7 @@ importers:
         version: 0.15.12(typescript@5.9.3)
       unplugin-dts:
         specifier: 1.0.0-beta.6
-        version: 1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rolldown@1.0.0-beta.45)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
+        version: 1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
       vite:
         specifier: 7.1.12
         version: 7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
@@ -19269,7 +19272,7 @@ snapshots:
       magic-string-ast: 1.0.3
       unplugin: 2.3.10
 
-  unplugin-dts@1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rolldown@1.0.0-beta.45)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
+  unplugin-dts@1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
     dependencies:
       '@rollup/pluginutils': 5.3.0(rollup@4.52.5)
       '@volar/typescript': 2.4.23
@@ -19283,7 +19286,6 @@ snapshots:
     optionalDependencies:
       '@microsoft/api-extractor': 7.52.13(@types/node@24.10.0)
       esbuild: 0.25.11
-      rolldown: 1.0.0-beta.45
       rollup: 4.52.5
       vite: 7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
