@@ -2,14 +2,89 @@
 
 ## 项目概述
 
-Afilmory 是一个现代化的照片展示站点生成器，类似于 Hexo/Hugo，但专门为照片集设计。它将照片处理和前端构建整合为一个完整的静态站点生成流程。
+Afilmory 是一个现代化的照片展示站点生成器，专注于照片展示的用户体验。它将照片处理和前端构建整合为一个完整的静态站点生成流程。
 
 ## 核心理念
 
 - **📸 照片优先**: 专注于照片展示的用户体验
-- **⚡ 静态优先**: 无需数据库和后端服务器
-- **🚀 易于部署**: 一键部署到 Vercel、Netlify 等平台
-- **🎨 现代设计**: Glassmorphic 设计系统，流畅的交互体验
+- **⚡ 静态优先**: 无需数据库和后端服务器，使用 JSON Manifest 作为数据源
+- **🚀 易于部署**: 专为 Vercel 优化，支持 S3 存储
+- **🎨 现代设计**: Glassmorphic 设计系统，React 19 + Tailwind CSS 4
+
+## 技术架构
+
+### Monorepo 结构
+
+项目使用 PNPM Workspace 管理多包结构：
+
+- **根目录**: 包含整体构建脚本和配置
+- **`apps/web`**: 前端 SPA 应用 (Vite + React)
+- **`packages/builder`**: 核心照片处理逻辑 (Node.js)
+- **`packages/data`**: 数据类型定义和加载器
+- **`packages/utils`**: 通用工具函数 (RSS, Crypto, etc.)
+- **`packages/ui`**: UI 组件库
+- **`packages/webgl-viewer`**: 高性能图片查看器
+- **`packages/hooks`**: React Hooks
+
+### 关键依赖
+
+- **构建工具**: Vite 7, TypeScript, TSX
+- **前端框架**: React 19, React Router 7
+- **样式方案**: Tailwind CSS 4, DaisyUI 5
+- **状态管理**: Jotai, TanStack Query
+- **图片处理**: Sharp, Heic-to (Node.js)
+- **EXIF 处理**: ExifTool-vendored
+- **地图组件**: MapLibre GL
+
+## 模块功能详解
+
+### 1. Builder (`@afilmory/builder`)
+照片处理的核心引擎。
+- **职责**: 扫描 S3/本地照片，提取 EXIF，生成缩略图，计算 Blurhash，生成 `photos-manifest.json`。
+- **关键技术**: 
+    - `sharp`: 高性能图片处理
+    - `exiftool-vendored`: 强大的 EXIF 数据提取
+    - `heic-to`: HEIC 格式转换
+
+### 2. Data (`@afilmory/data`)
+数据层抽象，作为类型定义的中心。
+- **职责**: 定义核心数据结构 (`PhotoManifestItem`, `PickedExif`) 和提供数据加载逻辑。
+- **重要性**: 所有包共享的类型定义都在 `src/types.ts` 中，避免了循环依赖。
+
+### 3. Utils (`@afilmory/utils`)
+通用工具库。
+- **职责**: 提供 RSS 生成、加密解密、弹簧动画算法等通用功能。
+- **依赖**: 依赖 `@afilmory/data` 获取类型定义。
+
+### 4. Web (`@afilmory/web`)
+用户直接交互的前端应用。
+- **构建**: 这是一个纯静态 SPA，构建时注入 `site.config.ts` 配置。
+- **特性**: Masonry 布局，WebGL 查看器，PWA 支持，SSR (SSG) 友好的元数据注入。
+
+## 软件工程重点关注点
+
+### 1. 构建流程
+- **两阶段构建**: 
+    1. `pnpm build:manifest`: builder 运行，生成数据。
+    2. `pnpm build:web`: vite 运行，打包前端。
+- **增量构建**: Builder 支持基于 Hash 的增量更新，避免重复处理照片。
+
+### 2. 类型安全
+- 全面使用 TypeScript。
+- **架构**: 所有共享类型定义集中在 `@afilmory/data/types`，实现了：
+  - ✅ 类型定义单一来源
+  - ✅ 消除循环依赖
+  - ✅ 更好的类型复用
+
+### 3. 配置管理
+- **环境变量**: `.env` 用于敏感信息 (S3 Keys)。
+- **静态配置**: `site.config.ts` 用于站点元数据。
+- **构建注入**: 环境变量在构建时注入到前端，前端运行时不依赖 `process.env`。
+
+### 4. 性能优化
+- **图片加载**: 缩略图 -> 预览图 -> 原图 (渐进式加载)。
+- **虚拟滚动**: 使用 `masonic` 处理大量照片的瀑布流。
+- **WebGL**: 使用 WebGL 加速大图浏览。
 
 ## 快速开始
 
@@ -22,354 +97,69 @@ pnpm install
 # 本地开发（不处理照片）
 pnpm dev
 
-# 构建完整静态站点（处理照片 + 构建前端）
-pnpm build
-
-# 只处理照片生成 manifest
+# 处理照片并生成 manifest
 pnpm build:manifest
 
-# 只构建前端
-pnpm build:web
+# 构建完整静态站点（处理照片 + 构建前端）
+pnpm build
 
 # 预览构建结果
 pnpm preview
 ```
 
-### 构建流程详解
+### 配置说明
 
-```bash
-# 1. 配置 S3 存储（照片必须存储在 S3 中）
-# 编辑 .env 文件，配置 S3 相关环境变量
-
-# 2. 配置站点信息（可选）
-# 2. 配置站点信息（可选）
-# 推荐使用环境变量配置，也可以直接修改 site.config.ts
-
-
-# 3. 构建静态站点
-pnpm build
-
-# 输出目录: apps/web/dist
+#### 1. S3 存储配置
+在 `.env` 文件中配置（参考 `.env.template`）：
+```env
+S3_BUCKET_NAME=your-bucket
+S3_REGION=us-east-1
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_ACCESS_KEY_ID=your-key
+S3_SECRET_ACCESS_KEY=your-secret
 ```
 
-**重要提示：** 项目仅支持 S3 兼容存储，照片不会被打包到部署产物中。
-
-### Manifest 构建选项
-
-```bash
-# 强制重新处理所有照片
-pnpm build:manifest -- --force
-
-# 只重新生成缩略图
-pnpm build:manifest -- --force-thumbnails
-
-# 只重新生成 manifest 文件
-pnpm build:manifest -- --force-manifest
-```
-
-## 项目架构
-
-### 目录结构
-
-```
-afilmory/
-├── photos/                    # 📸 照片源文件目录（仅供参考，实际使用S3存储）
-│   ├── 2024/
-│   └── 2023/
-├── apps/
-│   └── web/                   # 🎨 前端 SPA 应用
-│       ├── src/
-│       ├── public/
-│       └── dist/              # 构建产物
-├── packages/
-│   ├── builder/               # 🔨 照片处理工具
-│   ├── webgl-viewer/          # 🖼️ WebGL 图片查看器
-│   ├── data/                  # 📊 数据层
-│   ├── ui/                    # 🎨 UI 组件
-│   ├── hooks/                 # ⚓ React Hooks
-│   └── utils/                 # 🔧 工具函数
-├── site.config.ts           # 站点默认配置
-├── site.config.build.ts     # 构建时配置注入
-├── builder.config.ts   # 构建配置
-└── vercel.json                # Vercel 部署配置
-```
-
-### 核心组件
-
-#### 1. **照片处理工具** (`packages/builder`)
-
-负责从存储源（本地文件系统或 S3）读取照片并进行处理：
-
-- **格式转换**: HEIC → JPEG, TIFF → JPEG
-- **缩略图生成**: 生成多种尺寸的缩略图
-- **EXIF 提取**: 提取相机型号、拍摄参数、GPS 等信息
-- **Live Photo 检测**: 识别 iPhone 动态照片
-- **Blurhash 生成**: 生成模糊占位图
-- **Manifest 生成**: 输出 `photos-manifest.json`
-
-#### 2. **前端应用** (`apps/web`)
-
-使用 Vite + React 19 构建的 SPA 应用：
-
-- **技术栈**:
-  - React 19 + TypeScript
-  - Vite 7 构建工具
-  - Tailwind CSS 4
-  - Jotai 状态管理
-  - TanStack Query 数据获取
-  - React Router 7 路由
-  - i18next 国际化
-
-- **核心功能**:
-  - 📷 Masonry 瀑布流布局
-  - 🖼️ WebGL 高性能图片查看器
-  - 🗺️ MapLibre 地图展示（GPS 信息）
-  - 🎨 Glassmorphic 设计系统
-  - 📱 PWA 支持
-  - 🌐 多语言支持
-  - 🔍 照片搜索和过滤
-
-#### 3. **WebGL 查看器** (`packages/webgl-viewer`)
-
-自定义 WebGL 组件，提供流畅的图片缩放和平移操作。
-
-#### 4. **数据层** (`packages/data`)
-
-- `PhotoLoader`: 照片数据加载单例
-- 从 `photos-manifest.json` 读取照片元数据
-- 支持分页、过滤、搜索
-
-## 配置文件
-
-## 配置文件
-
-### 站点配置
-
-推荐使用环境变量配置站点信息（见 `README.md`），这样可以在 Vercel 等平台直接修改而无需重新部署。
-
-**重要配置说明**：
-1. **无需 `VITE_` 前缀**：本项目使用构建时注入机制，环境变量**不需要**添加 `VITE_` 前缀。
-2. **注入机制**：构建过程中，`vite.config.ts` 会读取环境变量并通过 `site-config-inject` 插件注入到前端代码中 (`window.__SITE_CONFIG__`)。
-3. **优先级**：环境变量 > `site.config.ts` 默认值。
-
-也可以直接修改 `site.config.ts` 文件来设置默认值：
-
+#### 2. 站点配置
+编辑 `site.config.ts` 或使用环境变量：
 ```typescript
 export const siteConfig: SiteConfig = {
   name: '我的照片集',
-  title: 'My Afilmory',
-  description: '记录生活中的美好瞬间',
+  title: 'My Photos',
+  description: '记录生活',
   url: 'https://your-site.vercel.app',
-  accentColor: '#007bff',
-  author: {
-    name: 'Your Name',
-    url: 'https://your-website.com',
-    avatar: 'https://your-avatar.jpg'
-  },
-  social: {
-    github: 'username',
-    twitter: 'handle',
-    rss: true
-  },
-  map: ['maplibre'],
-  mapStyle: 'builtin',
-  mapProjection: 'mercator'
+  author: { name: 'Your Name' }
 }
 ```
 
-### 构建配置 (`builder.config.ts`)
+### 部署
 
-项目仅支持 S3 存储，配置示例：
-
-```typescript
-export default defineBuilderConfig(() => ({
-  // 存储配置（仅支持 S3）
-  storage: {
-    provider: 's3',
-    bucket: env.S3_BUCKET_NAME,
-    region: env.S3_REGION,
-    endpoint: env.S3_ENDPOINT,
-    accessKeyId: env.S3_ACCESS_KEY_ID,
-    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    prefix: env.S3_PREFIX,
-    customDomain: env.S3_CUSTOM_DOMAIN,
-  },
-
-  // 处理选项
-  system: {
-    processing: {
-      defaultConcurrency: 10,           // 并发数
-      enableLivePhotoDetection: true,   // Live Photo
-      digestSuffixLength: 0,
-    },
-    observability: {
-      showProgress: true,
-      showDetailedStats: true,
-    },
-  },
-}))
-```
-
-## 构建流程详解
-
-### 完整构建 (`pnpm build`)
-
-执行 `scripts/build-static.sh`:
-
-```mermaid
-graph LR
-    A[S3 存储] --> B[Builder: 图片处理]
-    B --> C[生成缩略图]
-    B --> D[提取 EXIF]
-    C --> E[photos-manifest.json]
-    D --> E
-    E --> F[Vite: 构建前端]
-    F --> G[apps/web/dist]
-```
-
-1. **从 S3 读取照片**: Builder 从 S3 存储桶读取照片文件
-2. **运行 Builder**: 处理照片并生成 manifest
-   - 转换 HEIC/TIFF 格式
-   - 生成多尺寸缩略图
-   - 提取 EXIF 信息
-   - 生成 Blurhash
-   - 输出 `apps/web/src/data/photos-manifest.json`
-3. **构建前端**: Vite 打包 React 应用
-   - 代码分割和优化
-   - 生成 PWA manifest
-   - 生成 OG 图片
-   - 生成 sitemap.xml
-   - 输出到 `apps/web/dist`
-
-**注意**: 照片文件不会被打包到 `dist` 目录，照片通过 S3（或配置的 CDN）直接访问。
-
-### 增量构建
-
-Builder 会智能检测变更：
-
-- **新增照片**: 只处理新文件
-- **修改照片**: 重新处理修改的文件
-- **删除照片**: 从 manifest 中移除
-
-使用文件 hash 和修改时间来判断变更。
-
-## 部署
-
-项目支持两种部署方式：
-
-### 1. Vercel 部署（推荐）
-
-**方式一：GitHub 自动部署**
+**Vercel 部署（推荐）**：
 ```bash
+# 方式一：GitHub 集成（推荐）
 git push origin main
-```
 
-**方式二：CLI 部署**
-```bash
+# 方式二：CLI 部署
 vercel --prod
 ```
 
-`vercel.json` 已配置：
-
-```json
-{
-  "buildCommand": "sh scripts/build-static.sh",
-  "outputDirectory": "apps/web/dist"
-}
-```
-
-### 2. 静态部署
-
-构建后会生成静态文件在 `apps/web/dist` 目录，可以部署到任何静态托管平台：
-
+**本地构建后部署**：
 ```bash
-# 构建静态站点
 pnpm build
-
-# 输出目录: apps/web/dist
+# 输出在 apps/web/dist，可部署到任何静态托管平台
 ```
-
-详见 [部署指南](./DEPLOY_STATIC.md)
-
-## 性能优化
-
-### 图片加载策略
-
-- **缩略图优先**: 瀑布流使用小尺寸缩略图
-- **懒加载**: 使用 Intersection Observer
-- **渐进式加载**: Blurhash → 缩略图 → 原图
-- **WebP 格式**: 自动生成 WebP 缩略图
-
-### 代码分割
-
-- 按路由分割
-- 重依赖单独打包 (heic-to, maplibre-gl)
-- Tree-shaking 移除未使用代码
-
-### 缓存策略
-
-```
-/assets/*    - Cache-Control: immutable, max-age=31536000
-/photos/*    - Cache-Control: immutable, max-age=31536000
-/index.html  - Cache-Control: no-cache
-```
-
-## 国际化
-
-支持多语言，配置在 `locales/` 目录：
-
-- `en/`: English
-- `zh-CN/`: 简体中文
-- `ja/`: 日本語
-
-添加新语言：
-
-1. 在 `locales/` 创建语言目录
-2. 复制 `common.json` 并翻译
-3. 更新 `apps/web/src/i18n.ts`
 
 ## 常见问题
 
-### 1. 构建很慢
+### 构建慢？
+- 调整 `builder.config.ts` 中的 `defaultConcurrency` 参数
+- 后续构建是增量的，只处理变更的照片
 
-- **原因**: 照片数量多，首次构建需要处理所有照片
-- **解决**:
-  - 调整 `defaultConcurrency` 参数
-  - 后续构建是增量的，只处理变更
-  - 考虑使用 CI/CD 缓存
+### 类型错误？
+- 确保所有包的依赖都已安装：`pnpm install`
+- 类型定义在 `@afilmory/data/types`，由 `exiftool-vendored` 提供支持
 
-### 2. 图片不显示
+## 待改进项目 (架构债)
 
-- **检查**: S3 存储桶配置是否正确
-- **检查**: `photos-manifest.json` 是否生成
-- **检查**: 浏览器控制台是否有 CORS 或 404 错误
-- **检查**: S3 存储桶的公开访问策略和 CORS 配置
-
-### 3. EXIF 信息缺失
-
-- **原因**: 照片可能被编辑软件移除了 EXIF
-- **解决**: 使用原始照片文件
-
-### 4. Vercel 构建超时
-
-- **原因**: 免费版构建时间限制 45 分钟
-- **解决**: 本地构建后使用 `vercel --prebuilt` 部署
-
-## 代码质量
-
-```bash
-# 类型检查
-pnpm --filter web type-check
-
-# 代码检查和自动修复
-pnpm lint
-
-# 代码格式化
-pnpm format
-```
-
-## 更多信息
-
-- [部署指南](./DEPLOY_STATIC.md)
-- [完整 README](./README.md)
-- [GitHub Issues](https://github.com/vsxd/afilmory-vercel/issues)
+1. ~~**类型统一**: 将核心类型迁移到 `@afilmory/data`~~ ✅ 已完成
+2. ~~**依赖解耦**: 解除循环依赖~~ ✅ 已完成
+3. **Linting**: 统一各包的 ESLint 配置

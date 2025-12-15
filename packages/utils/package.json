@@ -8,7 +8,7 @@
     "./*": "./src/*"
   },
   "dependencies": {
-    "@afilmory/builder": "workspace:*",
+    "@afilmory/data": "workspace:*",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.3.1"
   },

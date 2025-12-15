@@ -8,6 +8,6 @@
     "./types": "./src/types.ts"
   },
   "dependencies": {
-    "@afilmory/builder": "workspace:*"
+    "exiftool-vendored": "31.2.0"
   }
 }
