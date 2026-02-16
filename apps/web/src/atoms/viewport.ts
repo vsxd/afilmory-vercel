@@ -1,6 +1,7 @@
 import { atom } from 'jotai'
 
-const { innerWidth: w, innerHeight: h } = window
+const w = typeof window !== 'undefined' ? window.innerWidth : 0
+const h = typeof window !== 'undefined' ? window.innerHeight : 0
 const sm = w >= 640
 const md = w >= 768
 const lg = w >= 1024

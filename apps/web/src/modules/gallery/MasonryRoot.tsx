@@ -220,24 +220,27 @@ export const MasonryItem = memo(
     const delay = shouldAnimate ? (data instanceof MasonryHeaderItem ? 0 : Math.min(index * 0.05, 0.3)) : 0
 
     // Framer Motion 动画变体
-    const itemVariants = {
-      hidden: {
-        opacity: 0,
-        y: 30,
-        scale: 0.95,
-        filter: 'blur(4px)',
-      },
-      visible: {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        filter: 'blur(0px)',
-        transition: {
-          ...Spring.presets.smooth,
-          delay,
+    const itemVariants = useMemo(
+      () => ({
+        hidden: {
+          opacity: 0,
+          y: 30,
+          scale: 0.95,
+          filter: 'blur(4px)',
         },
-      },
-    }
+        visible: {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          filter: 'blur(0px)',
+          transition: {
+            ...Spring.presets.smooth,
+            delay,
+          },
+        },
+      }),
+      [delay],
+    )
 
     if (data instanceof MasonryHeaderItem) {
       return <MasonryHeaderMasonryItem style={{ width }} key={itemKey} />

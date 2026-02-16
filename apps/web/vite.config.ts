@@ -182,8 +182,6 @@ export default defineConfig(() => {
       tailwindcss(),
       ...staticWebBuildPlugins,
       process.env.analyzer && analyzer(),
-
-      process.env.analyzer && analyzer(),
     ],
     server: {
       port: 1924, // 1924 年首款 35mm 相机问世

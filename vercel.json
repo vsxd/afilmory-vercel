@@ -47,6 +47,15 @@
       ]
     },
     {
+      "source": "/(feed\\.json|sitemap\\.xml)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|xml|json|webmanifest)",
       "headers": [
         {

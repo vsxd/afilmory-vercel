@@ -2,7 +2,6 @@
   "name": "@afilmory/webgl-viewer",
   "type": "module",
   "version": "0.2.0",
-  "packageManager": "pnpm@10.18.1",
   "description": "",
   "author": "Innei",
   "license": "MIT",

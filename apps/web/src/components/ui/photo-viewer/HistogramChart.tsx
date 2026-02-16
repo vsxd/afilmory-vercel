@@ -1,4 +1,4 @@
-import { cx } from '@afilmory/utils'
+import { clsxm as cx } from '@afilmory/utils'
 import clsx from 'clsx'
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'

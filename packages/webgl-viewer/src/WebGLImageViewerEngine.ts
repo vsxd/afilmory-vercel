@@ -123,8 +123,12 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   // 瓦片系统
   private tileCache = new Map<TileKey, TileInfo>()
   private loadingTiles = new Map<TileKey, { priority: number }>()
-  private pendingTileRequests: Array<{ key: TileKey; priority: number }> = []
+  private pendingTileRequests = new Map<TileKey, number>()
   private tileProcessingFrameId: number | null = null
+
+  // Reusable buffers
+  private matrixBuffer = new Float32Array(9)
+  private tileMatrixBuffer = new Float32Array(9)
 
   // 可视区域信息
   private currentVisibleTiles = new Set<TileKey>()
@@ -772,14 +776,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       const key = this.getTileKey(tile.x, tile.y, tile.lodLevel)
       newVisibleTiles.add(key)
 
-      const pendingRequest = this.pendingTileRequests.find((request) => request.key === key)
+      const pendingPriority = this.pendingTileRequests.get(key)
 
-      if (!this.tileCache.has(key) && !this.loadingTiles.has(key) && !pendingRequest) {
-        this.pendingTileRequests.push({ key, priority: tile.priority })
+      if (!this.tileCache.has(key) && !this.loadingTiles.has(key) && pendingPriority === undefined) {
+        this.pendingTileRequests.set(key, tile.priority)
         addedNewRequest = true
-      } else if (pendingRequest) {
+      } else if (pendingPriority !== undefined) {
         // Update priority when tile stays in view to keep ordering useful
-        pendingRequest.priority = Math.min(pendingRequest.priority, tile.priority)
+        this.pendingTileRequests.set(key, Math.min(pendingPriority, tile.priority))
       } else if (this.tileCache.has(key)) {
         // 更新使用时间
         const tileInfo = this.tileCache.get(key)!
@@ -790,7 +794,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.currentVisibleTiles = newVisibleTiles
     this.cleanupOldTiles()
 
-    if (viewportChanged || addedNewRequest || this.pendingTileRequests.length > 0) {
+    if (viewportChanged || addedNewRequest || this.pendingTileRequests.size > 0) {
       this.processPendingTileRequests()
     }
   }
@@ -830,7 +834,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       return
     }
 
-    if (this.pendingTileRequests.length === 0) {
+    if (this.pendingTileRequests.size === 0) {
       if (this.tileProcessingFrameId !== null) {
         cancelAnimationFrame(this.tileProcessingFrameId)
         this.tileProcessingFrameId = null
@@ -839,14 +843,18 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     // 按优先级排序
-    this.pendingTileRequests.sort((a, b) => a.priority - b.priority)
+    const sortedRequests = Array.from(this.pendingTileRequests.entries())
+      .map(([key, priority]) => ({ key, priority }))
+      .sort((a, b) => a.priority - b.priority)
 
-    const halfCount = Math.max(1, Math.ceil(this.pendingTileRequests.length / 2))
+    const halfCount = Math.max(1, Math.ceil(sortedRequests.length / 2))
     const batchSize = Math.min(MAX_TILES_PER_FRAME, halfCount)
-    const batch = this.pendingTileRequests.splice(0, batchSize)
+    const batch = sortedRequests.slice(0, batchSize)
 
     for (const request of batch) {
       const { key, priority } = request
+      this.pendingTileRequests.delete(key) // Remove processed request from map
+
       if (this.loadingTiles.has(key) || this.tileCache.has(key)) {
         continue
       }
@@ -871,7 +879,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       })
     }
 
-    if (this.pendingTileRequests.length > 0 && this.tileProcessingFrameId === null) {
+    if (this.pendingTileRequests.size > 0 && this.tileProcessingFrameId === null) {
       this.tileProcessingFrameId = requestAnimationFrame(() => {
         this.tileProcessingFrameId = null
         this.processPendingTileRequests()
@@ -1080,14 +1088,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       cacheSize: this.tileCache.size,
       visibleTiles: this.currentVisibleTiles.size,
       loadingTiles: this.loadingTiles.size,
-      pendingRequests: this.pendingTileRequests.length,
+      pendingRequests: this.pendingTileRequests.size,
       cacheLimit: TILE_CACHE_SIZE,
       maxTilesPerFrame: MAX_TILES_PER_FRAME,
       tileSize: TILE_SIZE,
       cacheKeys: Array.from(this.tileCache.keys()),
       visibleKeys: Array.from(this.currentVisibleTiles),
       loadingKeys: Array.from(this.loadingTiles.keys()),
-      pendingKeys: this.pendingTileRequests.map((req) => req.key),
+      pendingKeys: Array.from(this.pendingTileRequests.keys()),
     }
 
     this.onDebugUpdate.current({

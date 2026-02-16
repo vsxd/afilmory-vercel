@@ -48,7 +48,9 @@ export class LRUCache<K, V> {
     // Add new item (most recently used)
     this.cache.set(key, value)
 
-    console.info(`LRU Cache: Added ${String(key)}, cache size: ${this.cache.size}/${this.maxSize}`)
+    if (import.meta.env.DEV) {
+      console.info(`LRU Cache: Added ${String(key)}, cache size: ${this.cache.size}/${this.maxSize}`)
+    }
   }
 
   /**
@@ -75,7 +77,9 @@ export class LRUCache<K, V> {
       cleanedCount++
     }
     this.cache.clear()
-    console.info(`LRU Cache: Cleared ${cleanedCount} cached items`)
+    if (import.meta.env.DEV) {
+      console.info(`LRU Cache: Cleared ${cleanedCount} cached items`)
+    }
   }
 
   size(): number {

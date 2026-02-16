@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@afilmory/data": "workspace:*",
+    "@afilmory/utils": "workspace:*",
     "@aws-sdk/client-s3": "3.921.0",
     "@aws-sdk/node-http-handler": "3.374.0",
     "@aws-sdk/s3-request-presigner": "3.921.0",
@@ -28,7 +29,6 @@
     "thumbhash": "0.1.1"
   },
   "devDependencies": {
-    "@afilmory/utils": "workspace:*",
     "tsdown": "0.15.12"
   },
   "publishConfig": {
