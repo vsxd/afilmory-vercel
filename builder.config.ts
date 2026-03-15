@@ -4,6 +4,20 @@ import { defineBuilderConfig } from '@afilmory/builder'
 
 import { env } from './env.js'
 
+const requiredS3Vars = {
+  S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY_ID,
+  S3_SECRET_ACCESS_KEY: env.S3_SECRET_ACCESS_KEY,
+  S3_BUCKET_NAME: env.S3_BUCKET_NAME,
+}
+
+const missingS3Vars = Object.entries(requiredS3Vars)
+  .filter(([, value]) => !value)
+  .map(([key]) => key)
+
+if (missingS3Vars.length > 0) {
+  throw new Error(`Missing required S3 environment variables: ${missingS3Vars.join(', ')}`)
+}
+
 /**
  * 静态部署配置 - 仅支持 S3 存储
  *

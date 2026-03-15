@@ -3,6 +3,7 @@
  * 支持多种浏览器原生不支持的图片格式转换
  */
 import { i18nAtom } from '~/i18n'
+import { detectFileTypeFromBlob } from '~/lib/file-type'
 import { jotaiStore } from '~/lib/jotai'
 
 import type { LoadingCallbacks } from '../image-loader-manager'
@@ -72,9 +73,7 @@ export class ImageConverterManager {
    */
   async findSuitableStrategy(blob: Blob): Promise<ImageConverterStrategy | null> {
     try {
-      // 使用 file-type 检测文件格式
-      const { fileTypeFromBlob } = await import('file-type')
-      const fileType = await fileTypeFromBlob(blob)
+      const fileType = await detectFileTypeFromBlob(blob)
 
       if (!fileType) {
         console.info('Could not detect file type with file-type library')
