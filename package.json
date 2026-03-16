@@ -14,6 +14,7 @@
     "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
     "build:static": "pnpm build:manifest && pnpm build:web",
     "build:web": "pnpm --filter @afilmory/web build",
+    "check:architecture": "tsx scripts/check-architecture.ts",
     "dev": "pnpm --filter @afilmory/web dev",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
