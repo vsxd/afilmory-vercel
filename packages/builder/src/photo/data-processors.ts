@@ -8,7 +8,7 @@ import { HEIC_FORMATS } from '../constants/index.js'
 import { extractExifData } from '../image/exif.js'
 import { calculateHistogramAndAnalyzeTone } from '../image/histogram.js'
 import { generateThumbnailAndBlurhash, thumbnailExists } from '../image/thumbnail.js'
-import { workdir } from '../path.js'
+import { THUMBNAILS_DIR } from '../path.js'
 import type { PhotoManifestItem, PickedExif, ToneAnalysis } from '../types/photo.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 import type { PhotoProcessorOptions } from './processor.js'
@@ -39,7 +39,7 @@ export async function processThumbnailAndBlurhash(
     (await thumbnailExists(photoId))
   ) {
     try {
-      const thumbnailPath = path.join(workdir, 'public/thumbnails', `${photoId}.jpg`)
+      const thumbnailPath = path.join(THUMBNAILS_DIR, `${photoId}.jpg`)
       const thumbnailBuffer = await fs.readFile(thumbnailPath)
       const thumbnailUrl = `/thumbnails/${photoId}.jpg`
 

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { SUPPORTED_FORMATS } from '@afilmory/builder/constants/index.js'
-import { workdir } from '@afilmory/builder/path.js'
+import { ORIGINALS_DIR } from '@afilmory/builder/path.js'
 import { getGlobalLoggers } from '@afilmory/builder/photo/logger-adapter.js'
 
 import { logger } from '../../logger/index.js'
@@ -58,7 +58,7 @@ export interface EagleImageMetadata {
 const defaultEagleConfig = {
   provider: 'eagle',
   libraryPath: '',
-  distPath: path.join(workdir, 'public', 'originals'),
+  distPath: ORIGINALS_DIR,
   baseUrl: '/originals/',
   include: [],
   exclude: [],

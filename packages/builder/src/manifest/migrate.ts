@@ -1,14 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { workdir } from '@afilmory/builder/path.js'
+import { MANIFEST_PATH } from '@afilmory/builder/path.js'
 
 import { logger } from '../logger/index.js'
 import type { AfilmoryManifest } from '../types/manifest.js'
 import type { ManifestVersion } from './version.js'
 import { CURRENT_MANIFEST_VERSION } from './version.js'
-
-const manifestPath = path.join(workdir, 'src/data/photos-manifest.json')
 
 // Placeholder migration scaffolding (chain-of-executors)
 // Supports sequential migrations: v1 -> v2 -> v3 -> ... -> CURRENT
@@ -147,8 +145,8 @@ export async function migrateManifestFileIfNeeded(parsed: AfilmoryManifest): Pro
   try {
     if (parsed?.version === CURRENT_MANIFEST_VERSION) return null
     const migrated = migrateManifest(parsed, CURRENT_MANIFEST_VERSION)
-    await fs.mkdir(path.dirname(manifestPath), { recursive: true })
-    await fs.writeFile(manifestPath, JSON.stringify(migrated, null, 2))
+    await fs.mkdir(path.dirname(MANIFEST_PATH), { recursive: true })
+    await fs.writeFile(MANIFEST_PATH, JSON.stringify(migrated, null, 2))
     logger.main.success(`✅ Manifest 版本已更新为 ${CURRENT_MANIFEST_VERSION}`)
     return migrated
   } catch (e) {

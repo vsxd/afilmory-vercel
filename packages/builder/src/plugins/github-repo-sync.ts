@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { $ } from 'execa'
 
-import { workdir } from '../path.js'
+import { MANIFEST_PATH, THUMBNAILS_DIR, workdir } from '../path.js'
 import type { BuilderPlugin } from './types.js'
 
 const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
@@ -125,7 +125,7 @@ async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareReposito
     await fs.writeFile(manifestSourcePath, initial)
   }
 
-  const thumbnailsDir = path.resolve(workdir, 'public', 'thumbnails')
+  const thumbnailsDir = THUMBNAILS_DIR
   if (existsSync(thumbnailsDir)) {
     await $({ cwd: workdir, stdio: 'inherit' })`rm -rf ${thumbnailsDir}`
   }
@@ -134,7 +134,7 @@ async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareReposito
     stdio: 'inherit',
   })`ln -s ${thumbnailsSourceDir} ${thumbnailsDir}`
 
-  const photosManifestPath = path.resolve(workdir, 'src', 'data', 'photos-manifest.json')
+  const photosManifestPath = MANIFEST_PATH
   if (existsSync(photosManifestPath)) {
     await $({ cwd: workdir, stdio: 'inherit' })`rm -f ${photosManifestPath}`
   }

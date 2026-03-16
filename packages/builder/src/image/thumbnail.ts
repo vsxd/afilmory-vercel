@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { workdir } from '@afilmory/builder/path.js'
+import { THUMBNAILS_DIR } from '@afilmory/builder/path.js'
 import sharp from 'sharp'
 
 import { getGlobalLoggers } from '../photo/logger-adapter.js'
@@ -9,7 +9,7 @@ import type { ThumbnailResult } from '../types/photo.js'
 import { generateBlurhash } from './blurhash.js'
 
 // 常量定义
-const THUMBNAIL_DIR = path.join(workdir, 'public/thumbnails')
+const THUMBNAIL_DIR = THUMBNAILS_DIR
 const THUMBNAIL_QUALITY = 100
 const THUMBNAIL_WIDTH = 600
 
