@@ -8,5 +8,9 @@ export { resolveRuntimeManifest } from './runtime-manifest'
 export const photoLoader = createPhotoLoader(resolveRuntimeManifest())
 
 export function createRuntimePhotoLoader(manifest?: AfilmoryManifest | null) {
-  return createPhotoLoader(manifest ?? resolveRuntimeManifest())
+  if (arguments.length > 0) {
+    return createPhotoLoader(manifest ?? null)
+  }
+
+  return createPhotoLoader(resolveRuntimeManifest())
 }

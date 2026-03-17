@@ -19,7 +19,8 @@
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
     "prepare": "simple-git-hooks",
-    "preview": "pnpm --filter @afilmory/web serve"
+    "preview": "pnpm --filter @afilmory/web serve",
+    "test:unit": "node --import tsx --test tests/unit/**/*.test.ts"
   },
   "devDependencies": {
     "@afilmory/builder": "workspace:*",
