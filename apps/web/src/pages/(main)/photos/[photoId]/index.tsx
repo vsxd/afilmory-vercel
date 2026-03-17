@@ -25,7 +25,7 @@ export const Component = () => {
       console.warn('[PhotoDetail] Photos array is empty or not loaded yet', {
         photosLength: photos?.length || 0,
         photoId,
-        hasManifest: typeof window !== 'undefined' && (window as any).__MANIFEST__ !== undefined,
+        hasManifest: typeof window !== 'undefined' && window.__MANIFEST__ !== undefined,
       })
       return -1
     }
@@ -117,8 +117,8 @@ export const Component = () => {
       console.error('[PhotoDetail] Photo not found:', {
         requestedPhotoId: photoId,
         photosLength: photos?.length || 0,
-        hasManifest: (window as any).__MANIFEST__ !== undefined,
-        manifestData: (window as any).__MANIFEST__ !== undefined ? (window as any).__MANIFEST__ : null,
+        hasManifest: window.__MANIFEST__ !== undefined,
+        manifestData: window.__MANIFEST__ !== undefined ? window.__MANIFEST__ : null,
         photoIds: photos?.slice(0, 10).map((p) => p?.id) || [],
       })
     }

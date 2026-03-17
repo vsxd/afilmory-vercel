@@ -1,5 +1,5 @@
+import type { AfilmoryManifest } from '@afilmory/data/types'
 import type { SiteConfig } from '@config'
-import type { AfilmoryManifest } from '@packages/builder/src/types/manifest'
 import type { FC, PropsWithChildren } from 'react'
 
 import type { InjectConfig } from './config/types'
@@ -32,6 +32,7 @@ declare global {
 
   interface Window {
     __SITE_CONFIG__?: Partial<SiteConfig>
+    __MANIFEST__?: AfilmoryManifest
   }
 }
 
