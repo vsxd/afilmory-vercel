@@ -1,6 +1,6 @@
 import type { AfilmoryManifest } from './types'
 
-type RuntimeManifestGlobal = typeof globalThis & {
+export type RuntimeManifestGlobal = typeof globalThis & {
   __MANIFEST__?: AfilmoryManifest
   window?: {
     __MANIFEST__?: AfilmoryManifest
@@ -15,7 +15,10 @@ function readFromGlobalThis(runtimeGlobal: RuntimeManifestGlobal): AfilmoryManif
   return runtimeGlobal.__MANIFEST__ ?? null
 }
 
-export function resolveRuntimeManifest(): AfilmoryManifest | null {
-  const runtimeGlobal = globalThis as RuntimeManifestGlobal
+export function resolveRuntimeManifestFrom(runtimeGlobal: RuntimeManifestGlobal): AfilmoryManifest | null {
   return readFromWindow(runtimeGlobal) ?? readFromGlobalThis(runtimeGlobal)
+}
+
+export function resolveRuntimeManifest(): AfilmoryManifest | null {
+  return resolveRuntimeManifestFrom(globalThis as RuntimeManifestGlobal)
 }

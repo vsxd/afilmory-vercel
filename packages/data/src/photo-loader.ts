@@ -1,4 +1,9 @@
+import { collectSortedTags, createPhotoMap } from './manifest-queries'
 import type { AfilmoryManifest, CameraInfo, LensInfo, PhotoManifestItem } from './types'
+
+export type PhotoLoaderLogger = Pick<typeof console, 'error' | 'info'>
+
+const defaultPhotoLoaderLogger: PhotoLoaderLogger = console
 
 export class PhotoLoader {
   private readonly photos: PhotoManifestItem[]
@@ -6,24 +11,23 @@ export class PhotoLoader {
   private readonly cameras: CameraInfo[]
   private readonly lenses: LensInfo[]
 
-  constructor(manifest: AfilmoryManifest | null) {
+  constructor(
+    manifest: AfilmoryManifest | null,
+    private readonly logger: PhotoLoaderLogger = defaultPhotoLoaderLogger,
+  ) {
     this.photos = manifest?.data ?? []
     this.cameras = manifest?.cameras ?? []
     this.lenses = manifest?.lenses ?? []
-
-    this.photoMap = this.photos.reduce<Record<string, PhotoManifestItem>>((acc, photo) => {
-      if (photo?.id) {
-        acc[photo.id] = photo
-      }
-      return acc
-    }, {})
+    this.photoMap = createPhotoMap(this.photos)
 
     if (!manifest) {
-      console.error('[PhotoLoader] __MANIFEST__ is not defined. Make sure manifest-inject plugin is working correctly.')
+      this.logger.error(
+        '[PhotoLoader] __MANIFEST__ is not defined. Make sure manifest-inject plugin is working correctly.',
+      )
       return
     }
 
-    console.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
+    this.logger.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
   }
 
   getPhotos(): PhotoManifestItem[] {
@@ -35,14 +39,7 @@ export class PhotoLoader {
   }
 
   getAllTags(): string[] {
-    const tagSet = new Set<string>()
-    for (const photo of this.photos) {
-      for (const tag of photo.tags) {
-        tagSet.add(tag)
-      }
-    }
-
-    return [...tagSet].sort()
+    return collectSortedTags(this.photos)
   }
 
   getAllCameras(): CameraInfo[] {
@@ -54,6 +51,6 @@ export class PhotoLoader {
   }
 }
 
-export function createPhotoLoader(manifest: AfilmoryManifest | null): PhotoLoader {
-  return new PhotoLoader(manifest)
+export function createPhotoLoader(manifest: AfilmoryManifest | null, logger?: PhotoLoaderLogger): PhotoLoader {
+  return new PhotoLoader(manifest, logger)
 }

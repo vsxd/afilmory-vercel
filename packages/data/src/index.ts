@@ -2,8 +2,9 @@ import { createPhotoLoader } from './photo-loader'
 import { resolveRuntimeManifest } from './runtime-manifest'
 import type { AfilmoryManifest } from './types'
 
+export { collectSortedTags, createPhotoMap } from './manifest-queries'
 export { createPhotoLoader, PhotoLoader } from './photo-loader'
-export { resolveRuntimeManifest } from './runtime-manifest'
+export { resolveRuntimeManifest, resolveRuntimeManifestFrom } from './runtime-manifest'
 
 export const photoLoader = createPhotoLoader(resolveRuntimeManifest())
 

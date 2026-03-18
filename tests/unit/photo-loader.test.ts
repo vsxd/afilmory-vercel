@@ -29,7 +29,6 @@ const manifest: AfilmoryManifest = {
   data: [buildPhoto('1', ['a', 'b']), buildPhoto('2', ['b', 'c'])],
   cameras: [
     {
-      id: 'cam-1',
       make: 'Canon',
       model: 'R6',
       displayName: 'Canon R6',
@@ -37,7 +36,6 @@ const manifest: AfilmoryManifest = {
   ],
   lenses: [
     {
-      id: 'lens-1',
       make: 'Canon',
       model: 'RF24-70',
       displayName: 'Canon RF24-70',
@@ -46,13 +44,19 @@ const manifest: AfilmoryManifest = {
 }
 
 test('PhotoLoader 基本查询能力正确', () => {
-  const loader = createPhotoLoader(manifest)
+  const logs: string[] = []
+  const logger = {
+    info: (line: string) => logs.push(line),
+    error: (line: string) => logs.push(line),
+  }
+  const loader = createPhotoLoader(manifest, logger)
 
   assert.equal(loader.getPhotos().length, 2)
   assert.equal(loader.getPhoto('1')?.id, '1')
   assert.deepEqual(loader.getAllTags(), ['a', 'b', 'c'])
   assert.equal(loader.getAllCameras().length, 1)
   assert.equal(loader.getAllLenses().length, 1)
+  assert.ok(logs.some((line) => line.includes('Loaded 2 photos')))
 })
 
 test('createRuntimePhotoLoader 显式传入 null 时不回退 runtime manifest', () => {
