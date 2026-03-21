@@ -10,9 +10,9 @@
     "url": "https://github.com/vsxd/afilmory-vercel"
   },
   "scripts": {
-    "build": "pnpm exec turbo run build --filter=@afilmory/web",
+    "build": "pnpm build:manifest && pnpm build:web",
     "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
-    "build:web": "pnpm --filter @afilmory/web build",
+    "build:web": "pnpm exec turbo run build --filter=@afilmory/web",
     "dev": "pnpm --filter @afilmory/web dev",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
