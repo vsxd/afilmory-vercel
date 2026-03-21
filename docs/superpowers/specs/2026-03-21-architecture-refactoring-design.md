@@ -36,11 +36,11 @@ S3 照片源 → builder CLI → manifest.json → Vite 注入 → React 渲染
 
 ### 已识别问题
 
-1. 依赖重复：motion 在根和 ui 中重复，exiftool-vendored 在 data 和 builder 中重复
+1. 依赖重复：exiftool-vendored 在 data 和 builder 中重复
 2. 构建脚本冗余：build 和 build:static 完全相同
 3. 类型导入混乱：web 从 builder 导入类型，应从 data 导入
 4. 包过度拆分：hooks 和 utils 体量小，独立成包增加维护成本
-5. 8 个自定义 Vite 插件，部分功能重叠
+5. 10 个自定义 Vite 插件，部分功能重叠
 6. 无测试覆盖
 
 ## 执行策略
@@ -55,7 +55,6 @@ S3 照片源 → builder CLI → manifest.json → Vite 注入 → React 渲染
 
 ### 1.1 依赖去重
 
-- 从根 `devDependencies` 移除 `motion`（仅保留在 `@afilmory/ui`）
 - `@afilmory/builder` 中的 `exiftool-vendored` 通过 `@afilmory/data` 重新导出，避免重复声明
 
 ### 1.2 构建脚本整理
@@ -113,11 +112,15 @@ hooks 清单：
 | `clsxm`、`focusInput`、`focusRing`、`hasErrorInput` | `@afilmory/ui/src/utils/` | UI 样式工具 |
 | `Spring` | `@afilmory/ui/src/utils/` | 动画预设，UI 专用 |
 | `generateRSSFeed` | `apps/web/plugins/vite/` 同目录 | 仅 Vite 插件使用 |
-| `compressUint8Array`、`decompressUint8Array` | `apps/web/src/lib/` | 仅 web 使用 |
+| `compressUint8Array`、`decompressUint8Array` | `@afilmory/data/src/` | 跨包共享（builder、ui、web 均使用），放入数据层 |
 | `backoffDelay`、`sleep`、`Semaphore` | `@afilmory/builder/src/utils/` | 构建时并发控制 |
 | `tenant.ts`、`storage-provider.ts` | 移除（阶段一确认） | 后端遗留 |
 
 最终删除 `packages/utils/` 包。
+
+注意：`@afilmory/builder` 中存在通过相对路径直接引用 utils 源码的情况（如 `s3-provider.ts` 中 `import { backoffDelay } from '../../../../utils/src/backoff.js'`），迁移时需同步修复为包内导入。
+
+此外，`@afilmory/builder/src/index.ts` 中有 `export * from '@afilmory/utils'`，删除 utils 包后此行会报错。需在迁移时删除该重新导出，并确保所有通过 builder 间接使用 utils 的消费者已迁移到新的导入路径。
 
 ### 2.3 引入 Turborepo
 
@@ -158,7 +161,7 @@ hooks 清单：
 ```
 packages/
 ├── builder/        # 构建工具（+ backoff/semaphore/sleep）
-├── data/           # 类型中心 + PhotoLoader
+├── data/           # 类型中心 + PhotoLoader + u8array 编解码
 ├── ui/             # UI 组件 + hooks + UI utils（clsxm/Spring）
 └── webgl-viewer/   # WebGL 3D 查看器
 ```
@@ -203,7 +206,12 @@ packages/
 - `localesJsonPlugin` — `enforce: 'pre'` 资源预处理
 - `photosStaticPlugin` — 开发服务器中间件
 
-### 3.4 最终插件结构（8 → 6）
+### 3.4 处置遗留插件
+
+- `i18n-hmr.ts` — 检查是否在 vite.config.ts 中使用；如已废弃则删除，如仍在用则保留为独立插件
+- `locales.ts` — 同上，检查使用情况后决定保留或删除
+
+### 3.5 最终插件结构（10 → 6~8，取决于遗留插件处置结果）
 
 ```
 apps/web/plugins/vite/
@@ -213,9 +221,10 @@ apps/web/plugins/vite/
 ├── deps.ts             # 依赖 chunk 分割
 ├── locales-json.ts     # 本地化 JSON 预处理
 └── photos-static.ts    # 开发环境照片静态服务
+（+ i18n-hmr.ts、locales.ts 视使用情况保留）
 ```
 
-### 3.5 引入 Vitest
+### 3.6 引入 Vitest
 
 - 根目录添加 `vitest` 依赖和 `vitest.workspace.ts`
 - 测试覆盖范围：
