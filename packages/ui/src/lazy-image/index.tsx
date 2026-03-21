@@ -1,7 +1,7 @@
-import { Thumbhash } from '@afilmory/ui'
 import { useCallback, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 
+import { Thumbhash } from '../thumbhash'
 import { clsxm } from '../utils/cn'
 
 export interface LazyImageProps {
