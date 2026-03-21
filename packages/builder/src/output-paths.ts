@@ -16,7 +16,10 @@ export function createDefaultOutputSettings(): BuilderOutputSettings {
   }
 }
 
-let currentOutputSettings = createDefaultOutputSettings()
+// Singleton — must be initialised exactly once via setBuilderOutputSettings()
+// before any call to getBuilderOutputSettings(). AfilmoryBuilder constructor
+// handles this. Do NOT instantiate multiple builders in the same process.
+let currentOutputSettings: BuilderOutputSettings | null = null
 
 export function setBuilderOutputSettings(output: BuilderOutputSettings): void {
   currentOutputSettings = {
@@ -27,5 +30,11 @@ export function setBuilderOutputSettings(output: BuilderOutputSettings): void {
 }
 
 export function getBuilderOutputSettings(): BuilderOutputSettings {
+  if (!currentOutputSettings) {
+    throw new Error(
+      '[builder] Output settings have not been initialised. ' +
+        'Ensure AfilmoryBuilder is constructed before accessing output paths.',
+    )
+  }
   return currentOutputSettings
 }

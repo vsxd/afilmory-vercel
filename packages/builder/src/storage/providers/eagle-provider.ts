@@ -5,7 +5,7 @@ import { SUPPORTED_FORMATS } from '@afilmory/builder/constants/index.js'
 import { getGlobalLoggers } from '@afilmory/builder/photo/logger-adapter.js'
 
 import { logger } from '../../logger/index.js'
-import { createDefaultOutputSettings } from '../../output-paths.js'
+import { getBuilderOutputSettings } from '../../output-paths.js'
 import type { EagleConfig, EagleRule, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces.js'
 
 const EAGLE_VERSION = '4.0.0'
@@ -55,16 +55,18 @@ export interface EagleImageMetadata {
   lastModified: number
 }
 
-const defaultEagleConfig = {
-  provider: 'eagle',
-  libraryPath: '',
-  distPath: createDefaultOutputSettings().originalsDir,
-  baseUrl: '/originals/',
-  include: [],
-  exclude: [],
-  folderAsTag: false,
-  omitTagNamesInMetadata: [],
-} satisfies Required<EagleConfig>
+function createDefaultEagleConfig(): Required<EagleConfig> {
+  return {
+    provider: 'eagle',
+    libraryPath: '',
+    distPath: getBuilderOutputSettings().originalsDir,
+    baseUrl: '/originals/',
+    include: [],
+    exclude: [],
+    folderAsTag: false,
+    omitTagNamesInMetadata: [],
+  }
+}
 
 export class EagleStorageProvider implements StorageProvider {
   private readonly config: Required<EagleConfig>
@@ -84,11 +86,12 @@ export class EagleStorageProvider implements StorageProvider {
       throw new Error(`EagleStorageProvider: distPath 必须是绝对路径. distPath: ${userConfig.distPath}`)
     }
 
+    const defaults = createDefaultEagleConfig()
     this.config = {
-      ...defaultEagleConfig,
+      ...defaults,
       ...userConfig,
       libraryPath: path.resolve(userConfig.libraryPath),
-      distPath: path.resolve(userConfig.distPath ?? defaultEagleConfig.distPath),
+      distPath: path.resolve(userConfig.distPath ?? defaults.distPath),
     }
   }
 

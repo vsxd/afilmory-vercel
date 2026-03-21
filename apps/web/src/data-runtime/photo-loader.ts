@@ -46,7 +46,7 @@ class PhotoLoader {
     return this.photos
   }
 
-  getPhoto(id: string) {
+  getPhoto(id: string): PhotoManifestItem | undefined {
     return this.photoMap[id]
   }
 
