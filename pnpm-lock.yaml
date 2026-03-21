@@ -427,12 +427,19 @@ importers:
       tsdown:
         specifier: 0.15.12
         version: 0.15.12(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/data:
     dependencies:
       exiftool-vendored:
         specifier: 'catalog:'
         version: 31.2.0
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
 
   packages/ui:
     dependencies:
@@ -535,7 +542,7 @@ importers:
         version: 0.15.12(typescript@5.9.3)
       unplugin-dts:
         specifier: 1.0.0-beta.6
-        version: 1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rolldown@1.0.0-beta.45)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
+        version: 1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1))
       vite:
         specifier: 7.1.12
         version: 7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
@@ -14940,7 +14947,7 @@ snapshots:
       magic-string-ast: 1.0.3
       unplugin: 2.3.10
 
-  unplugin-dts@1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rolldown@1.0.0-beta.45)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
+  unplugin-dts@1.0.0-beta.6(@microsoft/api-extractor@7.52.13(@types/node@24.10.0))(esbuild@0.25.11)(rollup@4.52.5)(typescript@5.9.3)(vite@7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)):
     dependencies:
       '@rollup/pluginutils': 5.3.0(rollup@4.52.5)
       '@volar/typescript': 2.4.23
@@ -14954,7 +14961,6 @@ snapshots:
     optionalDependencies:
       '@microsoft/api-extractor': 7.52.13(@types/node@24.10.0)
       esbuild: 0.25.11
-      rolldown: 1.0.0-beta.45
       rollup: 4.52.5
       vite: 7.1.12(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
