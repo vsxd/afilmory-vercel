@@ -1,5 +1,5 @@
+import type { AfilmoryManifest } from '@afilmory/data'
 import type { SiteConfig } from '@config'
-import type { AfilmoryManifest } from '@packages/builder/src/types/manifest'
 import type { FC, PropsWithChildren } from 'react'
 
 import type { InjectConfig } from './config/types'

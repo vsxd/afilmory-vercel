@@ -1,10 +1,10 @@
-import { photoLoader } from '@afilmory/data'
 import { m } from 'motion/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import { GenericMap, MapBackButton, MapInfoPanel, MapLoadingState } from '~/components/ui/map'
+import { photoLoader } from '~/data-runtime/photo-loader'
 import {
   calculateMapBounds,
   convertExifGPSToDecimal,

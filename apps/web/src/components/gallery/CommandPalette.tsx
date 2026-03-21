@@ -1,4 +1,3 @@
-import { photoLoader } from '@afilmory/data'
 import { clsxm } from '@afilmory/ui'
 import { useAtom } from 'jotai'
 import * as React from 'react'
@@ -7,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { gallerySettingAtom } from '~/atoms/app'
+import { photoLoader } from '~/data-runtime/photo-loader'
 import { usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MageLens } from '~/icons'
 
