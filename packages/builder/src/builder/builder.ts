@@ -4,6 +4,7 @@ import { thumbnailExists } from '../image/thumbnail.js'
 import { logger } from '../logger/index.js'
 import { handleDeletedPhotos, loadExistingManifest, needsUpdate, saveManifest } from '../manifest/manager.js'
 import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
+import { setBuilderOutputSettings } from '../output-paths.js'
 import type { PhotoProcessorOptions } from '../photo/processor.js'
 import { processPhoto } from '../photo/processor.js'
 import type { PluginRunState } from '../plugins/manager.js'
@@ -71,6 +72,7 @@ export class AfilmoryBuilder {
 
   constructor(config: BuilderConfig) {
     this.config = config
+    setBuilderOutputSettings(config.output)
 
     this.pluginReferences = this.resolvePluginReferences()
 
@@ -681,7 +683,7 @@ export class AfilmoryBuilder {
   }
 
   getStorageConfig(): StorageConfig {
-    const {storage} = this.getUserSettings()
+    const { storage } = this.getUserSettings()
     if (!storage) {
       throw new Error('Storage configuration is missing. 请配置 system/user storage 设置。')
     }

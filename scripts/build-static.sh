@@ -6,12 +6,12 @@ set -e
 
 echo "🚀 开始构建静态站点..."
 
-MANIFEST_PATH="packages/data/src/photos-manifest.json"
+MANIFEST_PATH="generated/photos-manifest.json"
 
 # 如果没有 S3 凭据但仓库里已有 manifest，则允许静态预览构建继续
 if [ -z "$S3_BUCKET_NAME" ] || [ -z "$S3_ACCESS_KEY_ID" ] || [ -z "$S3_SECRET_ACCESS_KEY" ]; then
   if [ -f "$MANIFEST_PATH" ]; then
-    echo "⚠️  未检测到完整的 S3 环境变量，使用仓库中的现有 manifest 继续构建 Preview"
+    echo "⚠️  未检测到完整的 S3 环境变量，使用现有 manifest 继续构建 Preview"
     export SKIP_MANIFEST_BUILD=true
   else
     echo "❌ 错误: S3 环境变量未设置，且未找到可复用的 manifest"
@@ -25,7 +25,7 @@ if [ -z "$S3_BUCKET_NAME" ] || [ -z "$S3_ACCESS_KEY_ID" ] || [ -z "$S3_SECRET_AC
     echo "   - S3_PREFIX (可选)"
     echo "   - S3_CUSTOM_DOMAIN (可选)"
     echo ""
-    echo "   或者提交已有的 photos-manifest.json 后再触发 Preview 构建"
+    echo "   或者先生成可复用的 photos-manifest.json 后再触发 Preview 构建"
     exit 1
   fi
 fi

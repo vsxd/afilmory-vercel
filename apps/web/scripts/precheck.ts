@@ -10,7 +10,7 @@ export const precheck = async () => {
   const shouldBuildManifest = process.env.SKIP_MANIFEST_BUILD !== 'true'
   const requiredS3Vars = ['S3_BUCKET_NAME', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const
   const missingS3Vars = requiredS3Vars.filter((key) => !process.env[key])
-  const manifestPath = path.join(workdir, 'packages/data/src/photos-manifest.json')
+  const manifestPath = path.join(workdir, 'generated/photos-manifest.json')
 
   if (!shouldBuildManifest) {
     console.warn(
@@ -23,7 +23,7 @@ export const precheck = async () => {
     try {
       await access(manifestPath)
       console.warn(
-        `[precheck] Missing S3 env vars (${missingS3Vars.join(', ')}), using checked-in manifest instead of running builder.`,
+        `[precheck] Missing S3 env vars (${missingS3Vars.join(', ')}), using existing manifest instead of running builder.`,
       )
       return
     } catch {

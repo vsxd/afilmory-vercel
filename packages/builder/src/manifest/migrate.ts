@@ -1,14 +1,11 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { workdir } from '@afilmory/builder/path.js'
-
 import { logger } from '../logger/index.js'
+import { getBuilderOutputSettings } from '../output-paths.js'
 import type { AfilmoryManifest } from '../types/manifest.js'
 import type { ManifestVersion } from './version.js'
 import { CURRENT_MANIFEST_VERSION } from './version.js'
-
-const manifestPath = path.join(workdir, 'src/data/photos-manifest.json')
 
 // Placeholder migration scaffolding (chain-of-executors)
 // Supports sequential migrations: v1 -> v2 -> v3 -> ... -> CURRENT
@@ -145,6 +142,7 @@ export function migrateManifest(
 
 export async function migrateManifestFileIfNeeded(parsed: AfilmoryManifest): Promise<AfilmoryManifest | null> {
   try {
+    const { manifestPath } = getBuilderOutputSettings()
     if (parsed?.version === CURRENT_MANIFEST_VERSION) return null
     const migrated = migrateManifest(parsed, CURRENT_MANIFEST_VERSION)
     await fs.mkdir(path.dirname(manifestPath), { recursive: true })

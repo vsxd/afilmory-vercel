@@ -1,4 +1,5 @@
 import os from 'node:os'
+import path from 'node:path'
 
 import { defineBuilderConfig } from '@afilmory/builder'
 
@@ -31,6 +32,12 @@ if (missingS3Vars.length > 0) {
  * 4. 部署 apps/web/dist 目录到托管平台
  */
 export default defineBuilderConfig(() => ({
+  output: {
+    manifestPath: path.resolve('generated/photos-manifest.json'),
+    thumbnailsDir: path.resolve('apps/web/public/thumbnails'),
+    originalsDir: path.resolve('apps/web/public/originals'),
+  },
+
   // 远程仓库缓存 - 根据环境变量自动启用
   repo: {
     enable: !!(env.REPO_URL && env.REPO_TOKEN),
