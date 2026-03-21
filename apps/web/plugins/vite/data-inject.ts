@@ -15,12 +15,18 @@ function resolveEmbedPreference(_command: 'serve' | 'build'): boolean {
   return true
 }
 
-function getManifestContent(): string {
+function getManifestContent(command: 'serve' | 'build'): string {
   try {
     const content = readFileSync(MANIFEST_PATH, 'utf-8')
     return content
   } catch (error) {
-    console.warn('Failed to read manifest file:', error)
+    if (command === 'build') {
+      throw new Error(
+        `[data-inject] Cannot read manifest at ${MANIFEST_PATH}. ` +
+          `Run "pnpm build:manifest" before "pnpm build:web". Original error: ${error}`,
+      )
+    }
+    console.warn('[data-inject] Failed to read manifest file (dev mode, using empty object):', error)
     return '{}'
   }
 }
@@ -74,7 +80,7 @@ export function dataInjectPlugin(): Plugin {
       embedManifest = shouldEmbed
 
       if (shouldEmbed) {
-        const manifestContent = getManifestContent()
+        const manifestContent = getManifestContent(command)
         const manifestScriptContent = `window.__MANIFEST__ = ${manifestContent};`
         html = html.replace(
           '<script id="manifest"></script>',
