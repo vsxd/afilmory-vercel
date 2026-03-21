@@ -28,8 +28,9 @@ if (missingS3Vars.length > 0) {
  * 使用方式：
  * 1. 配置 .env 文件中的 S3 相关环境变量（必填）
  * 2. 可选：配置 REPO_URL 和 REPO_TOKEN 启用远程仓库缓存
- * 3. 运行 pnpm build:static 生成静态站点
- * 4. 部署 apps/web/dist 目录到托管平台
+ * 3. 运行 pnpm build:manifest 生成 manifest 和缩略图
+ * 4. 再运行 pnpm build:web 或 pnpm build 打包静态站点
+ * 5. 部署 apps/web/dist 目录到托管平台
  */
 export default defineBuilderConfig(() => ({
   output: {
