@@ -1,3 +1,2 @@
-export type ManifestVersion = `v${number}`
-
-export const CURRENT_MANIFEST_VERSION: ManifestVersion = 'v8'
+export type { ManifestVersion } from '@afilmory/data'
+export { CURRENT_MANIFEST_VERSION } from '@afilmory/data'
