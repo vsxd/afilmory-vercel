@@ -4,7 +4,6 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./manifest": "./src/photos-manifest.json",
     "./types": "./src/types.ts"
   },
   "scripts": {

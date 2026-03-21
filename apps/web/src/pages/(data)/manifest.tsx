@@ -1,6 +1,7 @@
-import { photoLoader } from '@afilmory/data'
 import { Button, ScrollArea } from '@afilmory/ui'
 import { useMemo, useState } from 'react'
+
+import { photoLoader } from '~/data-runtime/photo-loader'
 
 // JSON 语法高亮组件
 const JsonHighlight = ({ data }: { data: any }) => {

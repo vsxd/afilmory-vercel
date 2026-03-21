@@ -1,5 +1,6 @@
-import { photoLoader } from '@afilmory/data'
 import { ScrollArea, Thumbhash } from '@afilmory/ui'
+
+import { photoLoader } from '~/data-runtime/photo-loader'
 
 export const Component = () => {
   const photos = photoLoader.getPhotos()
