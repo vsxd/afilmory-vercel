@@ -17,6 +17,8 @@ generated
 
 # 部署相关
 .vercel
+.turbo
+**/.turbo
 
 # Turbo
 .turbo
