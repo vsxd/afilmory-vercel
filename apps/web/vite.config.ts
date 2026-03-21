@@ -17,13 +17,11 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 import PKG from '../../package.json'
 import { siteConfig } from '../../site.config.build'
 import { astPlugin } from './plugins/vite/ast'
+import { buildAssetsPlugin } from './plugins/vite/build-assets'
+import { dataInjectPlugin } from './plugins/vite/data-inject'
 import { createDependencyChunksPlugin } from './plugins/vite/deps'
-import { createFeedSitemapPlugin } from './plugins/vite/feed-sitemap'
 import { localesJsonPlugin } from './plugins/vite/locales-json'
-import { manifestInjectPlugin } from './plugins/vite/manifest-inject'
-import { ogImagePlugin } from './plugins/vite/og-image-plugin'
 import { photosStaticPlugin } from './plugins/vite/photos-static'
-import { siteConfigInjectPlugin } from './plugins/vite/site-config-inject'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -39,8 +37,7 @@ const ReactCompilerConfig = {
 }
 
 const staticWebBuildPlugins: PluginOption[] = [
-  manifestInjectPlugin(),
-  siteConfigInjectPlugin(),
+  dataInjectPlugin(),
   photosStaticPlugin(),
 
   VitePWA({
@@ -120,13 +117,15 @@ const staticWebBuildPlugins: PluginOption[] = [
     },
   }),
 
-  ogImagePlugin({
-    title: siteConfig.title,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
-    siteUrl: siteConfig.url,
-  }),
-  createFeedSitemapPlugin(siteConfig),
+  buildAssetsPlugin(
+    {
+      title: siteConfig.title,
+      description: siteConfig.description,
+      siteName: siteConfig.name,
+      siteUrl: siteConfig.url,
+    },
+    siteConfig,
+  ),
   createHtmlPlugin({
     minify: {
       collapseWhitespace: true,
