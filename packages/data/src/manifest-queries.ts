@@ -1,12 +1,15 @@
 import type { PhotoManifestItem } from './types'
 
 export function createPhotoMap(photos: PhotoManifestItem[]): Record<string, PhotoManifestItem> {
-  return photos.reduce<Record<string, PhotoManifestItem>>((acc, photo) => {
-    if (photo?.id) {
-      acc[photo.id] = photo
-    }
-    return acc
-  }, {})
+  return photos.reduce<Record<string, PhotoManifestItem>>(
+    (acc, photo) => {
+      if (photo?.id) {
+        acc[photo.id] = photo
+      }
+      return acc
+    },
+    Object.create(null) as Record<string, PhotoManifestItem>,
+  )
 }
 
 export function collectSortedTags(photos: PhotoManifestItem[]): string[] {

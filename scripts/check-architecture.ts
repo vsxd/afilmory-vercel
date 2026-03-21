@@ -13,6 +13,10 @@ const readJson = async <T>(filePath: string): Promise<T> => {
   return JSON.parse(content) as T
 }
 
+function isMissingPackageJsonError(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT'
+}
+
 async function getWorkspaceNodes(): Promise<WorkspaceNode[]> {
   const nodes: WorkspaceNode[] = []
 
@@ -47,8 +51,12 @@ async function getWorkspaceNodes(): Promise<WorkspaceNode[]> {
           type,
           deps: Object.keys(allDeps ?? {}),
         })
-      } catch {
-        // Ignore directories without package.json
+      } catch (error) {
+        if (isMissingPackageJsonError(error)) {
+          continue
+        }
+
+        throw error
       }
     }
   }

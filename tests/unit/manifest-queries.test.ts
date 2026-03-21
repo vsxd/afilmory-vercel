@@ -37,6 +37,14 @@ test('createPhotoMap maps by id and skips invalid ids', () => {
   assert.equal(map.a?.id, 'a')
 })
 
+test('createPhotoMap handles special object keys safely', () => {
+  const photo = buildPhoto('__proto__', ['x'])
+  const map = createPhotoMap([photo])
+
+  assert.equal(map['__proto__']?.id, '__proto__')
+  assert.equal(Object.getPrototypeOf(map), null)
+})
+
 test('collectSortedTags returns unique sorted tags', () => {
   const tags = collectSortedTags([buildPhoto('a', ['b', 'a']), buildPhoto('b', ['a', 'c'])])
   assert.deepEqual(tags, ['a', 'b', 'c'])
