@@ -10,7 +10,7 @@
     "analyze": "analyzer=1 vite build",
     "build": "tsx scripts/build.ts",
     "dev": "tsx scripts/dev.ts",
-    "format": "prettier --write \"src/**/*.ts\" ",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "lint": "eslint --fix",
     "serve": "vite preview",
     "type-check": "tsc --noEmit",
