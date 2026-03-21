@@ -17,13 +17,15 @@
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint --fix",
     "prepare": "simple-git-hooks",
-    "preview": "pnpm --filter @afilmory/web serve"
+    "preview": "pnpm --filter @afilmory/web serve",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@afilmory/builder": "workspace:*",
     "@afilmory/ui": "workspace:*",
     "@innei/prettier": "1.0.0",
     "@t3-oss/env-core": "catalog:",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "24.9.2",
     "ast-kit": "2.1.3",
     "consola": "3.4.2",
@@ -32,6 +34,7 @@
     "es-toolkit": "1.41.0",
     "eslint": "9.38.0",
     "eslint-config-hyoban": "4.0.10",
+    "jsdom": "^29.0.1",
     "lint-staged": "16.2.6",
     "nbump": "2.1.8",
     "opentype.js": "1.3.4",
@@ -47,6 +50,7 @@
     "vite-bundle-analyzer": "1.2.3",
     "vite-plugin-checker": "0.11.0",
     "vite-tsconfig-paths": "5.1.4",
+    "vitest": "^3",
     "zod": "catalog:"
   },
   "simple-git-hooks": {
