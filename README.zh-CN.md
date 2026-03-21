@@ -274,8 +274,14 @@ pnpm install
 ### 构建和预览
 
 ```bash
-# 完整构建（处理照片 + 构建前端）
+# 完整构建（生成 manifest/缩略图 + 构建前端）
 pnpm build
+
+# 只生成 manifest 和缩略图
+pnpm build:manifest
+
+# 使用已有 manifest 只构建前端
+pnpm build:web
 
 # 本地预览
 pnpm preview
@@ -416,10 +422,9 @@ afilmory/
 ├── packages/
 │   ├── builder/               # 🔨 照片处理工具
 │   ├── webgl-viewer/          # 🖼️ WebGL 查看器
-│   ├── data/                  # 📊 数据层
-│   ├── ui/                    # 🎨 UI 组件
-│   ├── hooks/                 # ⚓ React Hooks
-│   └── utils/                 # 🔧 工具函数
+│   ├── data/                  # 📊 共享类型与 manifest 解析
+│   └── ui/                    # 🎨 共享 UI 基元与 hooks
+├── generated/                 # 📄 构建生成的 manifest 输出
 ├── site.config.ts             # ⚙️ 站点默认配置
 ├── site.config.build.ts       # ⚙️ 构建时配置注入
 ├── builder.config.ts          # ⚙️ 构建配置
@@ -508,5 +513,4 @@ export const siteConfig: SiteConfig = {
 <p align="center">
   <sub>如果这个项目对你有帮助，请给个 ⭐️ Star 支持一下！</sub>
 </p>
-
 
