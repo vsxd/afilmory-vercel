@@ -8,7 +8,7 @@
   },
   "scripts": {
     "analyze": "analyzer=1 vite build",
-    "build": "tsx scripts/build.ts",
+    "build": "vite build",
     "dev": "tsx scripts/dev.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "lint": "eslint --fix",
