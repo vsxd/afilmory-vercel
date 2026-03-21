@@ -13,6 +13,7 @@ apps/web/public/thumbnails
 apps/web/public/photos
 apps/web/public/originals
 apps/web/assets-git
+generated
 
 # 部署相关
 .vercel

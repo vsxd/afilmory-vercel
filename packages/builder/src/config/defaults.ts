@@ -1,5 +1,6 @@
 import os from 'node:os'
 
+import { createDefaultOutputSettings } from '../output-paths.js'
 import type { BuilderConfig } from '../types/config.js'
 
 export function createDefaultBuilderConfig(): BuilderConfig {
@@ -29,6 +30,7 @@ export function createDefaultBuilderConfig(): BuilderConfig {
       },
     },
     user: null!,
+    output: createDefaultOutputSettings(),
     plugins: [],
   }
 }

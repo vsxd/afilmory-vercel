@@ -47,9 +47,16 @@ export interface UserBuilderSettings {
   storage: StorageConfig | null
 }
 
+export interface BuilderOutputSettings {
+  manifestPath: string
+  thumbnailsDir: string
+  originalsDir: string
+}
+
 export interface BuilderConfig {
   system: SystemBuilderSettings
   user: UserBuilderSettings | null
+  output: BuilderOutputSettings
   plugins: BuilderPluginConfigEntry[]
 }
 
@@ -63,5 +70,6 @@ export type BuilderConfigInput = DeepPartial<Omit<UserBuilderSettings, 'storage'
   storage?: StorageConfig | null
   user?: DeepPartial<UserBuilderSettings>
   system?: DeepPartial<SystemBuilderSettings>
+  output?: DeepPartial<BuilderOutputSettings>
   plugins?: BuilderPluginConfigEntry[]
 }

@@ -2,10 +2,10 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { SUPPORTED_FORMATS } from '@afilmory/builder/constants/index.js'
-import { workdir } from '@afilmory/builder/path.js'
 import { getGlobalLoggers } from '@afilmory/builder/photo/logger-adapter.js'
 
 import { logger } from '../../logger/index.js'
+import { createDefaultOutputSettings } from '../../output-paths.js'
 import type { EagleConfig, EagleRule, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces.js'
 
 const EAGLE_VERSION = '4.0.0'
@@ -58,7 +58,7 @@ export interface EagleImageMetadata {
 const defaultEagleConfig = {
   provider: 'eagle',
   libraryPath: '',
-  distPath: path.join(workdir, 'public', 'originals'),
+  distPath: createDefaultOutputSettings().originalsDir,
   baseUrl: '/originals/',
   include: [],
   exclude: [],

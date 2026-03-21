@@ -5,10 +5,7 @@ import { migrateManifest } from '../packages/builder/src/manifest/migrate'
 import { CURRENT_MANIFEST_VERSION } from '../packages/builder/src/manifest/version'
 
 async function run() {
-  const manifestPath = path.resolve(
-    process.cwd(),
-    'src/data/photos-manifest.json',
-  )
+  const manifestPath = path.resolve(process.cwd(), 'generated/photos-manifest.json')
   try {
     const raw = await fs.readFile(manifestPath, 'utf-8')
     const parsed = JSON.parse(raw)

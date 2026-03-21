@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { $ } from 'execa'
 
-import { workdir } from '../path.js'
+import { getBuilderOutputSettings, webAppDir } from '../output-paths.js'
 import type { BuilderPlugin } from './types.js'
 
 const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
@@ -37,7 +37,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
           logger.main.warn('⚠️ 未配置远程仓库地址，跳过同步')
           return
         }
-        const assetsGitDir = path.resolve(workdir, 'assets-git')
+        const assetsGitDir = path.resolve(webAppDir, 'assets-git')
 
         context.runShared.set(RUN_SHARED_ASSETS_DIR, assetsGitDir)
 
@@ -48,7 +48,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
         if (!existsSync(assetsGitDir)) {
           logger.main.info('📥 克隆远程仓库...')
           await $({
-            cwd: workdir,
+            cwd: webAppDir,
             stdio: 'inherit',
           })`git clone ${repoUrl} assets-git`
         } else {
@@ -58,10 +58,10 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
           } catch {
             logger.main.warn('⚠️ git pull 失败，尝试重新克隆远程仓库...')
             logger.main.info('🗑️ 删除现有仓库目录...')
-            await $({ cwd: workdir, stdio: 'inherit' })`rm -rf assets-git`
+            await $({ cwd: webAppDir, stdio: 'inherit' })`rm -rf assets-git`
             logger.main.info('📥 重新克隆远程仓库...')
             await $({
-              cwd: workdir,
+              cwd: webAppDir,
               stdio: 'inherit',
             })`git clone ${repoUrl} assets-git`
           }
@@ -110,6 +110,7 @@ interface PrepareRepositoryLayoutOptions {
 }
 
 async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareRepositoryLayoutOptions): Promise<void> {
+  const { manifestPath, thumbnailsDir } = getBuilderOutputSettings()
   const thumbnailsSourceDir = path.resolve(assetsGitDir, 'thumbnails')
   const manifestSourcePath = path.resolve(assetsGitDir, 'photos-manifest.json')
 
@@ -121,27 +122,27 @@ async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareReposito
   if (!existsSync(manifestSourcePath)) {
     logger.main.info('📄 创建初始 manifest 文件...')
     const { CURRENT_MANIFEST_VERSION } = await import('../manifest/version.js')
-    const initial = JSON.stringify({ version: CURRENT_MANIFEST_VERSION, data: [] }, null, 2)
+    const initial = JSON.stringify({ version: CURRENT_MANIFEST_VERSION, data: [], cameras: [], lenses: [] }, null, 2)
     await fs.writeFile(manifestSourcePath, initial)
   }
 
-  const thumbnailsDir = path.resolve(workdir, 'public', 'thumbnails')
   if (existsSync(thumbnailsDir)) {
-    await $({ cwd: workdir, stdio: 'inherit' })`rm -rf ${thumbnailsDir}`
+    await $({ cwd: webAppDir, stdio: 'inherit' })`rm -rf ${thumbnailsDir}`
   }
+  await fs.mkdir(path.dirname(thumbnailsDir), { recursive: true })
   await $({
-    cwd: workdir,
+    cwd: webAppDir,
     stdio: 'inherit',
   })`ln -s ${thumbnailsSourceDir} ${thumbnailsDir}`
 
-  const photosManifestPath = path.resolve(workdir, 'src', 'data', 'photos-manifest.json')
-  if (existsSync(photosManifestPath)) {
-    await $({ cwd: workdir, stdio: 'inherit' })`rm -f ${photosManifestPath}`
+  if (existsSync(manifestPath)) {
+    await $({ cwd: webAppDir, stdio: 'inherit' })`rm -f ${manifestPath}`
   }
+  await fs.mkdir(path.dirname(manifestPath), { recursive: true })
   await $({
-    cwd: workdir,
+    cwd: webAppDir,
     stdio: 'inherit',
-  })`ln -s ${manifestSourcePath} ${photosManifestPath}`
+  })`ln -s ${manifestSourcePath} ${manifestPath}`
 }
 
 interface PushRemoteOptions {

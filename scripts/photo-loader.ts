@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-import { workdir } from '../packages/builder/src/path.js'
-import type { PhotoManifestItem } from '../packages/builder/src/types/photo.js'
+import type { PhotoManifestItem } from '@afilmory/data'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const monorepoRoot = path.resolve(__dirname, '..')
 
 class BuildTimePhotoLoader {
   private photos: PhotoManifestItem[] = []
@@ -10,7 +13,7 @@ class BuildTimePhotoLoader {
 
   constructor() {
     try {
-      const manifestPath = join(workdir, 'src/data/photos-manifest.json')
+      const manifestPath = path.join(monorepoRoot, 'generated', 'photos-manifest.json')
       const manifestContent = readFileSync(manifestPath, 'utf-8')
       this.photos = JSON.parse(manifestContent).data as PhotoManifestItem[]
 

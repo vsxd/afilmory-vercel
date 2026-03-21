@@ -82,11 +82,26 @@ function applyUserOverrides(target: BuilderConfig, overrides?: BuilderConfigInpu
   }
 }
 
+function applyOutputOverrides(target: BuilderConfig['output'], overrides?: BuilderConfigInput['output']): void {
+  if (!overrides) return
+
+  if (typeof overrides.manifestPath === 'string' && overrides.manifestPath.length > 0) {
+    target.manifestPath = overrides.manifestPath
+  }
+  if (typeof overrides.thumbnailsDir === 'string' && overrides.thumbnailsDir.length > 0) {
+    target.thumbnailsDir = overrides.thumbnailsDir
+  }
+  if (typeof overrides.originalsDir === 'string' && overrides.originalsDir.length > 0) {
+    target.originalsDir = overrides.originalsDir
+  }
+}
+
 function normalizeBuilderConfig(defaults: BuilderConfig, input: BuilderConfigInput): BuilderConfig {
   const next = clone(defaults)
 
   applySystemOverrides(next.system, input.system)
   applyUserOverrides(next, input.user)
+  applyOutputOverrides(next.output, input.output)
 
   if (input.repo) {
     const user = ensureUserSettings(next)

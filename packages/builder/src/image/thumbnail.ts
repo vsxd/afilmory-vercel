@@ -1,22 +1,22 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { workdir } from '@afilmory/builder/path.js'
 import sharp from 'sharp'
 
+import { getBuilderOutputSettings } from '../output-paths.js'
 import { getGlobalLoggers } from '../photo/logger-adapter.js'
 import type { ThumbnailResult } from '../types/photo.js'
 import { generateBlurhash } from './blurhash.js'
 
 // 常量定义
-const THUMBNAIL_DIR = path.join(workdir, 'public/thumbnails')
 const THUMBNAIL_QUALITY = 100
 const THUMBNAIL_WIDTH = 600
 
 // 获取缩略图路径信息
 function getThumbnailPaths(photoId: string) {
+  const { thumbnailsDir } = getBuilderOutputSettings()
   const filename = `${photoId}.jpg`
-  const thumbnailPath = path.join(THUMBNAIL_DIR, filename)
+  const thumbnailPath = path.join(thumbnailsDir, filename)
   const thumbnailUrl = `/thumbnails/${filename}`
 
   return { thumbnailPath, thumbnailUrl }
@@ -46,7 +46,8 @@ function createSuccessResult(
 
 // 确保缩略图目录存在
 async function ensureThumbnailDir(): Promise<void> {
-  await fs.mkdir(THUMBNAIL_DIR, { recursive: true })
+  const { thumbnailsDir } = getBuilderOutputSettings()
+  await fs.mkdir(thumbnailsDir, { recursive: true })
 }
 
 // 检查缩略图是否存在
