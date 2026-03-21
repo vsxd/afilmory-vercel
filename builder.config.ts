@@ -1,9 +1,12 @@
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { defineBuilderConfig } from '@afilmory/builder'
 
 import { env } from './env.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const requiredS3Vars = {
   S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY_ID,
@@ -34,9 +37,9 @@ if (missingS3Vars.length > 0) {
  */
 export default defineBuilderConfig(() => ({
   output: {
-    manifestPath: path.resolve('generated/photos-manifest.json'),
-    thumbnailsDir: path.resolve('apps/web/public/thumbnails'),
-    originalsDir: path.resolve('apps/web/public/originals'),
+    manifestPath: path.resolve(__dirname, 'generated/photos-manifest.json'),
+    thumbnailsDir: path.resolve(__dirname, 'apps/web/public/thumbnails'),
+    originalsDir: path.resolve(__dirname, 'apps/web/public/originals'),
   },
 
   // 远程仓库缓存 - 根据环境变量自动启用
