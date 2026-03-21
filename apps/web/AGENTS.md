@@ -222,20 +222,19 @@ pnpm build
 
 **构建步骤**:
 
-1. **预检查** (`scripts/precheck.ts`)
-   - 检查 `photos-manifest.json` 是否存在
-   - 检查 `site.config.ts` 配置
+1. **数据构建**（根目录 `pnpm build:manifest`）
+   - builder 生成 `generated/photos-manifest.json`
+   - builder 更新 `apps/web/public/thumbnails`
 
-2. **Vite 构建**
+2. **Vite 构建**（`pnpm build:web` / `vite build`）
    - 代码分割和 Tree-shaking
    - 资源优化和压缩
    - 生成 source maps
 
 3. **自定义插件处理**
-   - `manifestInjectPlugin`: 注入 manifest
+   - `dataInjectPlugin`: 注入 `window.__MANIFEST__` 和 `window.__SITE_CONFIG__`
    - `photosStaticPlugin`: 复制照片资源
-   - `ogImagePlugin`: 生成 OG 图片
-   - `feedSitemapPlugin`: 生成 sitemap.xml 和 feed.json
+   - `buildAssetsPlugin`: 生成 OG 图片、sitemap.xml 和 feed.xml
 
 4. **PWA 处理**
    - 生成 Service Worker
@@ -249,26 +248,25 @@ dist/
 │   ├── index-[hash].js
 │   ├── index-[hash].css
 │   └── [chunk]-[hash].js
-├── photos/
-│   └── thumbnails/
-├── manifest.json
+├── thumbnails/
+├── manifest.webmanifest
 ├── sitemap.xml
-├── feed.json
-└── og-image.png
+├── feed.xml
+└── og-image-[timestamp].png
 ```
 
 ## Vite 插件
 
-### 1. manifestInjectPlugin
+### 1. dataInjectPlugin
 
-将 `photos-manifest.json` 注入到构建产物：
+将 `generated/photos-manifest.json` 注入到构建产物：
 
 ```typescript
-export function manifestInjectPlugin(): Plugin {
+export function dataInjectPlugin(): Plugin {
   return {
-    name: 'manifest-inject',
+    name: 'data-inject',
     transformIndexHtml(html) {
-      const manifest = fs.readFileSync('src/data/photos-manifest.json', 'utf-8')
+      const manifest = fs.readFileSync('generated/photos-manifest.json', 'utf-8')
       return html.replace(
         '</body>',
         `<script>window.__MANIFEST__=${manifest}</script></body>`
@@ -286,26 +284,25 @@ export function manifestInjectPlugin(): Plugin {
 export function photosStaticPlugin(): Plugin {
   return {
     name: 'photos-static',
-    closeBundle() {
-      // 复制 public/photos 到 dist/photos
-      // 复制 public/thumbnails 到 dist/thumbnails
-    }
+    configureServer() {
+      // 开发环境下将 /photos/* 请求映射到本地 photos 目录
+    },
   }
 }
 ```
 
-### 3. ogImagePlugin
+### 3. buildAssetsPlugin
 
 生成 Open Graph 预览图：
 
 ```typescript
-export function ogImagePlugin(config: SiteConfig): Plugin {
+export function buildAssetsPlugin(config: SiteConfig): Plugin {
   return {
-    name: 'og-image',
-    async closeBundle() {
+    name: 'build-assets',
+    async buildStart() {
       // 使用 satori 生成 SVG
       // 使用 resvg 转换为 PNG
-      // 输出到 dist/og-image.png
+      // 生成 og-image / feed.xml / sitemap.xml
     }
   }
 }
