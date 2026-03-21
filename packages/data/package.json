@@ -7,7 +7,14 @@
     "./manifest": "./src/photos-manifest.json",
     "./types": "./src/types.ts"
   },
+  "scripts": {
+    "test": "pnpm --dir ../.. exec vitest run --project data",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "exiftool-vendored": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
   }
 }

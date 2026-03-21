@@ -1,4 +1,4 @@
-import { act,renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { useControlled } from '../useControlled'
@@ -24,7 +24,7 @@ describe('useControlled', () => {
 
   it('should call onChange when setting value', () => {
     const onChange = vi.fn()
-    const { result } = renderHook(() => useControlled(undefined, 'initial', onChange))
+    const { result } = renderHook(() => useControlled<string>(undefined, 'initial', onChange))
     act(() => {
       result.current[1]('new')
     })
