@@ -17,9 +17,11 @@ apps/web/assets-git
 # 部署相关
 .vercel
 
+# Turbo
+.turbo
+
 # IDE
 .claude
 .cursor
 .specstory
 .vscode
-

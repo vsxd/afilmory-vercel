@@ -10,7 +10,7 @@
     "url": "https://github.com/vsxd/afilmory-vercel"
   },
   "scripts": {
-    "build": "pnpm build:manifest && pnpm build:web",
+    "build": "pnpm build:manifest && turbo run build --filter=@afilmory/web",
     "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
     "build:web": "pnpm --filter @afilmory/web build",
     "dev": "pnpm --filter @afilmory/web dev",
@@ -40,6 +40,7 @@
     "simple-git-hooks": "2.13.1",
     "tailwindcss": "catalog:",
     "tsx": "4.20.6",
+    "turbo": "^2",
     "typescript": "catalog:",
     "unplugin-ast": "0.15.3",
     "vite": "7.1.12",
