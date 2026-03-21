@@ -3,7 +3,7 @@ import './PhotoViewer.css'
 import 'swiper/css'
 import 'swiper/css/navigation'
 
-import { Spring,Thumbhash  } from '@afilmory/ui'
+import { Spring, Thumbhash } from '@afilmory/ui'
 import { AnimatePresence, m } from 'motion/react'
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

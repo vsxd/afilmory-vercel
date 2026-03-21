@@ -1,4 +1,4 @@
-import { Spring,Toaster  } from '@afilmory/ui'
+import { Spring, Toaster } from '@afilmory/ui'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { Provider } from 'jotai'
 import { LazyMotion, MotionConfig } from 'motion/react'

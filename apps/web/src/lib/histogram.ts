@@ -1,4 +1,4 @@
-import type { CompressedHistogramData, HistogramData } from '@afilmory/builder/types/photo.js'
+import type { CompressedHistogramData, HistogramData } from '@afilmory/data'
 
 /**
  * 将压缩的直方图解压缩并插值到 256 点位

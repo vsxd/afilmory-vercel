@@ -1,4 +1,4 @@
-import { Button, clsxm,DropdownMenu, DropdownMenuContent, DropdownMenuTrigger  } from '@afilmory/ui'
+import { Button, clsxm, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@afilmory/ui'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { Drawer } from 'vaul'

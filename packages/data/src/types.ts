@@ -6,8 +6,8 @@
  *
  * 依赖关系：
  * - @afilmory/builder → 从此处导入类型
- * - @afilmory/utils → 从此处导入类型
- * - @afilmory/web → 间接通过 builder 使用这些类型
+ * - @afilmory/ui → 从此处导入 u8array 工具和类型
+ * - @afilmory/web → 从此处导入类型
  *
  * 注意：此文件依赖 exiftool-vendored 的类型定义
  */

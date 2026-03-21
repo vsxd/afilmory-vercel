@@ -124,37 +124,15 @@ hooks 清单：
 
 ### 2.3 引入 Turborepo
 
-添加 `turbo.json`：
+添加 `turbo.json`，配置任务依赖图：
 
-```json
-{
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
-      "cache": true
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "lint": {
-      "cache": true
-    },
-    "type-check": {
-      "dependsOn": ["^build"],
-      "cache": true
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "cache": true
-    }
-  }
-}
-```
+- `build`: `dependsOn: ["^build"]`，输出 `dist/**`，开启缓存
+- `@afilmory/web#build`: `cache: false`（依赖外部 S3 数据，不应缓存）
+- `type-check`: `dependsOn: ["^type-check"]`（包间通过源码直接导入，不需要先 build）
+- `test`: `dependsOn: ["^test"]`（同上）
+- `dev`: 不缓存，persistent
 
-根 `package.json` 添加 `turbo` 依赖，构建命令改为 `turbo run build`。
+根 `package.json` 添加 `turbo` 依赖，构建命令改为 `pnpm exec turbo run build`。
 
 ### 2.4 合并后的包结构
 
@@ -224,11 +202,11 @@ apps/web/plugins/vite/
 
 ### 3.6 引入 Vitest
 
-- 根目录添加 `vitest` 依赖和 `vitest.workspace.ts`
-- 测试覆盖范围：
-  - `@afilmory/data` — PhotoLoader 查询方法（getPhotos、getPhoto、getAllTags 等）
-  - `@afilmory/builder` — 图像处理核心逻辑（EXIF 提取、哈希计算）
-  - `@afilmory/ui` — 合并进来的 hooks（useControlled、useMeasure 等）
+- 根目录添加 `vitest` 依赖和 `vitest.config.ts`（使用 `test.projects` 配置）
+- 初始测试覆盖范围（最小可行覆盖）：
+  - `@afilmory/data` — u8array 压缩/解压 roundtrip 测试
+  - `@afilmory/ui` — useControlled hook 测试
+- 后续可扩展：PhotoLoader 查询方法、builder 图像处理、更多 hooks
 - Turbo 中 `test` 任务开启缓存
 
 ### 验证标准

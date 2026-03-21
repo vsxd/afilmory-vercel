@@ -1,4 +1,4 @@
-import { Button, clsxm, Spring  } from '@afilmory/ui'
+import { Button, clsxm, Spring } from '@afilmory/ui'
 import type en from '@locales/app/en.json'
 import { AnimatePresence, m, useAnimation } from 'motion/react'
 import { useEffect, useState } from 'react'

@@ -1,4 +1,4 @@
-import { clsxm, RootPortal, Spring  } from '@afilmory/ui'
+import { clsxm, RootPortal, Spring } from '@afilmory/ui'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { AnimatePresence, m } from 'motion/react'
 import { useCallback, useRef, useState } from 'react'
