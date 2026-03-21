@@ -1,8 +1,8 @@
-import { photoLoader } from '@afilmory/data'
 import { atom, useAtom, useAtomValue } from 'jotai'
 import { use, useCallback, useMemo } from 'react'
 
 import { gallerySettingAtom } from '~/atoms/app'
+import { photoLoader } from '~/data-runtime/photo-loader'
 import { jotaiStore } from '~/lib/jotai'
 import { PhotosContext } from '~/providers/photos-provider'
 
