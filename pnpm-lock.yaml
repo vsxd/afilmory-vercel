@@ -24,6 +24,9 @@ catalogs:
     dotenv-expand:
       specifier: 12.0.3
       version: 12.0.3
+    exiftool-vendored:
+      specifier: 31.2.0
+      version: 31.2.0
     tailwind-scrollbar:
       specifier: 4.0.2
       version: 4.0.2
@@ -406,7 +409,7 @@ importers:
         specifier: 9.6.0
         version: 9.6.0
       exiftool-vendored:
-        specifier: 31.2.0
+        specifier: 'catalog:'
         version: 31.2.0
       heic-convert:
         specifier: 2.1.0
@@ -428,7 +431,7 @@ importers:
   packages/data:
     dependencies:
       exiftool-vendored:
-        specifier: 31.2.0
+        specifier: 'catalog:'
         version: 31.2.0
 
   packages/hooks:

@@ -8,6 +8,6 @@
     "./types": "./src/types.ts"
   },
   "dependencies": {
-    "exiftool-vendored": "31.2.0"
+    "exiftool-vendored": "catalog:"
   }
 }
