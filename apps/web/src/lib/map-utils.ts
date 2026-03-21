@@ -1,4 +1,4 @@
-import type { PhotoManifestItem, PickedExif } from '@afilmory/builder'
+import type { PhotoManifestItem, PickedExif } from '@afilmory/data'
 
 import type { GPSCoordinates, MapBounds, MapViewState, PhotoMarker } from '~/types/map'
 import { GPSDirection } from '~/types/map'

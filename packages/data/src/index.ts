@@ -1,5 +1,7 @@
 import type { CameraInfo, LensInfo, PhotoManifestItem } from './types'
 
+export type * from './types'
+
 class PhotoLoader {
   private photos: PhotoManifestItem[] = []
   private photoMap: Record<string, PhotoManifestItem> = {}

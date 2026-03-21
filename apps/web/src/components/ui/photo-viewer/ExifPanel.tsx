@@ -1,6 +1,6 @@
 import './PhotoViewer.css'
 
-import type { PhotoManifestItem, PickedExif } from '@afilmory/builder'
+import type { PhotoManifestItem, PickedExif } from '@afilmory/data'
 import { MotionButtonBase, ScrollArea } from '@afilmory/ui'
 import { Spring } from '@afilmory/utils'
 import { isNil } from 'es-toolkit/compat'

@@ -1,4 +1,4 @@
-import type { FujiRecipe, PickedExif } from '@afilmory/builder'
+import type { FujiRecipe, PickedExif } from '@afilmory/data'
 import { EllipsisHorizontalTextWithTooltip } from '@afilmory/ui'
 import type { FC } from 'react'
 
