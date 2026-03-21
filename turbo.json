@@ -6,6 +6,9 @@
       "outputs": ["dist/**"],
       "cache": true
     },
+    "@afilmory/web#build": {
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true
@@ -14,11 +17,11 @@
       "cache": true
     },
     "type-check": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^type-check"],
       "cache": true
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^test"],
       "cache": true
     }
   }

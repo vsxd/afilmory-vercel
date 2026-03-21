@@ -23,18 +23,15 @@ class PhotoLoader {
       if (typeof window !== 'undefined' && (window as any).__MANIFEST__) {
         manifest = (window as any).__MANIFEST__
       } else {
-        // 回退到全局 __MANIFEST__（构建时注入的）
-        try {
-          manifest = __MANIFEST__
-        } catch {
-          // __MANIFEST__ 可能未定义，这是正常的错误处理
-        }
+        manifest = (globalThis as typeof globalThis & { __MANIFEST__?: unknown }).__MANIFEST__
       }
 
       if (!manifest) {
-        console.error(
-          '[PhotoLoader] __MANIFEST__ is not defined. Make sure manifest-inject plugin is working correctly.',
-        )
+        if (typeof window !== 'undefined') {
+          console.error(
+            '[PhotoLoader] __MANIFEST__ is not defined. Make sure manifest-inject plugin is working correctly.',
+          )
+        }
         this.photos = []
         this.cameras = []
         this.lenses = []

@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsdown",
     "bump": "nbump",
-    "cli": "tsx src/cli.ts"
+    "cli": "tsx src/cli.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@afilmory/data": "workspace:*",
@@ -28,7 +29,8 @@
     "thumbhash": "0.1.1"
   },
   "devDependencies": {
-    "tsdown": "0.15.12"
+    "tsdown": "0.15.12",
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",

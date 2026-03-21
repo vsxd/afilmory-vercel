@@ -7,6 +7,10 @@
     ".": "./src/index.ts",
     "./*": "./src/*"
   },
+  "scripts": {
+    "test": "pnpm --dir ../.. exec vitest run --project ui",
+    "type-check": "tsc --noEmit"
+  },
   "peerDependencies": {
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
