@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
 
-import { compressUint8Array } from '@afilmory/utils'
+import { compressUint8Array } from '@afilmory/data'
 import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
@@ -230,17 +230,17 @@ export async function executePhotoProcessingPipeline(
       video:
         motionPhotoMetadata?.isMotionPhoto && motionPhotoMetadata.motionPhotoOffset !== undefined
           ? {
-            type: 'motion-photo',
-            offset: motionPhotoMetadata.motionPhotoOffset,
-            size: motionPhotoMetadata.motionPhotoVideoSize,
-            presentationTimestamp: motionPhotoMetadata.presentationTimestampUs,
-          }
+              type: 'motion-photo',
+              offset: motionPhotoMetadata.motionPhotoOffset,
+              size: motionPhotoMetadata.motionPhotoVideoSize,
+              presentationTimestamp: motionPhotoMetadata.presentationTimestampUs,
+            }
           : livePhotoResult.isLivePhoto
             ? {
-              type: 'live-photo',
-              videoUrl: livePhotoResult.livePhotoVideoUrl!,
-              s3Key: livePhotoResult.livePhotoVideoS3Key!,
-            }
+                type: 'live-photo',
+                videoUrl: livePhotoResult.livePhotoVideoUrl!,
+                s3Key: livePhotoResult.livePhotoVideoS3Key!,
+              }
             : undefined,
       // HDR 相关字段
       isHDR:

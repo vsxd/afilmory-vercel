@@ -1,11 +1,11 @@
 'use client'
 
-import { useControlledState } from '@afilmory/hooks'
 import * as SwitchPrimitives from '@radix-ui/react-switch'
 import type { HTMLMotionProps, LegacyAnimationControls, TargetAndTransition, VariantLabels } from 'motion/react'
 import { m as motion } from 'motion/react'
 import * as React from 'react'
 
+import { useControlledState } from '../../../hooks/useControlledState'
 import { SwitchProvider, useSwitch } from './switch.context'
 
 type SwitchProps = Omit<React.ComponentProps<typeof SwitchPrimitives.Root>, 'asChild'> & HTMLMotionProps<'button'>

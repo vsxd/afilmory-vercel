@@ -1,4 +1,5 @@
 import {
+clsxm as cn, 
   ContextMenu,
   ContextMenuCheckboxItem,
   ContextMenuContent,
@@ -8,9 +9,7 @@ import {
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@afilmory/ui'
-import { clsxm as cn } from '@afilmory/utils'
+  ContextMenuTrigger} from '@afilmory/ui'
 import { Fragment, memo, useCallback, useEffect, useRef } from 'react'
 
 import type { FollowMenuItem } from '~/atoms/context-menu'

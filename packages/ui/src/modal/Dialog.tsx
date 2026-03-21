@@ -1,10 +1,11 @@
 'use client'
 
-import { clsxm } from '@afilmory/utils'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { AnimatePresence, m as motion } from 'motion/react'
 import * as React from 'react'
+
+import { clsxm } from '../utils/cn'
 
 type DialogContextType = {
   isOpen: boolean

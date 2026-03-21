@@ -1,8 +1,8 @@
-import { clsxm } from '@afilmory/utils'
 import * as ScrollAreaBase from '@radix-ui/react-scroll-area'
 import clsx from 'clsx'
 import * as React from 'react'
 
+import { clsxm } from '../utils/cn'
 import { ScrollElementContext } from './ctx'
 
 const Corner = ({

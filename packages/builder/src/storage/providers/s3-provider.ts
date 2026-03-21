@@ -3,11 +3,11 @@ import path from 'node:path'
 import type { _Object, S3Client } from '@aws-sdk/client-s3'
 import { DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand } from '@aws-sdk/client-s3'
 
-import { backoffDelay, sleep } from '../../../../utils/src/backoff.js'
-import { Semaphore } from '../../../../utils/src/semaphore.js'
 import { SUPPORTED_FORMATS } from '../../constants/index.js'
 import { logger } from '../../logger/index.js'
 import { createS3Client } from '../../s3/client.js'
+import { backoffDelay, sleep } from '../../utils/backoff.js'
+import { Semaphore } from '../../utils/semaphore.js'
 import type { ProgressCallback, S3Config, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces'
 
 // 将 AWS S3 对象转换为通用存储对象

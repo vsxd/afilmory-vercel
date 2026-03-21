@@ -1,11 +1,12 @@
 // Tremor Button [v0.2.0]
 
-import { clsxm, focusRing } from '@afilmory/utils'
 import { Slot } from '@radix-ui/react-slot'
 import { m } from 'motion/react'
 import * as React from 'react'
 import type { VariantProps } from 'tailwind-variants'
 import { tv } from 'tailwind-variants'
+
+import { clsxm, focusRing } from '../utils/cn'
 
 const buttonVariants = tv({
   base: [

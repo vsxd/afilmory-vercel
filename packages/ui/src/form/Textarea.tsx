@@ -1,5 +1,6 @@
-import { clsxm } from '@afilmory/utils'
 import type { TextareaHTMLAttributes } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /**

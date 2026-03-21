@@ -1,5 +1,6 @@
-import { clsxm } from '@afilmory/utils'
 import type { FC, HTMLAttributes } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 export interface FormHelperTextProps extends HTMLAttributes<HTMLParagraphElement> {
   /**

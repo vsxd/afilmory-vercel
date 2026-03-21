@@ -1,7 +1,8 @@
-import { clsxm } from '@afilmory/utils'
 import { AnimatePresence, m } from 'motion/react'
 import type { FC, ReactNode } from 'react'
 import { createContext, use, useState } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 type CollapsibleContextValue = {
   isOpen: boolean

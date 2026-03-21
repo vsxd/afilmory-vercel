@@ -1,4 +1,4 @@
-import { clsxm, Spring } from '@afilmory/utils'
+import { clsxm, Spring } from '@afilmory/ui'
 import { AnimatePresence, m } from 'motion/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'

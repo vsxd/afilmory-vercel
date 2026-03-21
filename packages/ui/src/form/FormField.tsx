@@ -1,5 +1,6 @@
-import { clsxm } from '@afilmory/utils'
 import type { FC, ReactNode } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 export interface FormFieldProps {
   /**

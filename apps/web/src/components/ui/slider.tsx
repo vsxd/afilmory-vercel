@@ -1,4 +1,4 @@
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

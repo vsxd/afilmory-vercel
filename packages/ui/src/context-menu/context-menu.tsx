@@ -1,6 +1,7 @@
-import { clsxm } from '@afilmory/utils'
 import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
 import * as React from 'react'
+
+import { clsxm } from '../utils/cn'
 
 const ContextMenu = ContextMenuPrimitive.Root
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger

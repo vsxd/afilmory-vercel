@@ -1,6 +1,7 @@
-import { clsxm } from '@afilmory/utils'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as React from 'react'
+
+import { clsxm } from './utils/cn'
 
 const DropdownMenu: typeof DropdownMenuPrimitive.Root = (props) => {
   return <DropdownMenuPrimitive.Root {...props} />

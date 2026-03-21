@@ -1,5 +1,5 @@
 import { photoLoader } from '@afilmory/data'
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import { useAtom } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

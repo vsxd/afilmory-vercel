@@ -1,8 +1,9 @@
-import { clsxm, Spring } from '@afilmory/utils'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { m } from 'motion/react'
 import * as React from 'react'
 
+import { clsxm } from '../utils/cn'
+import { Spring } from '../utils/spring'
 import { tooltipStyle } from './styles'
 
 const TooltipProvider = TooltipPrimitive.Provider
