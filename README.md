@@ -275,8 +275,14 @@ Upload your photos to an S3-compatible object storage. Supported formats:
 ### Build and preview
 
 ```bash
-# Full build (process photos + build frontend)
+# Full build (generate manifest/thumbnails + build frontend)
 pnpm build
+
+# Only generate manifest and thumbnails
+pnpm build:manifest
+
+# Only build the frontend app from an existing manifest
+pnpm build:web
 
 # Local preview
 pnpm preview
@@ -418,10 +424,9 @@ afilmory/
 ├── packages/
 │   ├── builder/               # 🔨 Photo processing tools
 │   ├── webgl-viewer/          # 🖼️ WebGL viewer
-│   ├── data/                  # 📊 Data layer
-│   ├── ui/                    # 🎨 UI components
-│   ├── hooks/                 # ⚓ React hooks
-│   └── utils/                 # 🔧 Utility functions
+│   ├── data/                  # 📊 Shared types and manifest parsing
+│   └── ui/                    # 🎨 Shared UI primitives and hooks
+├── generated/                 # 📄 Generated manifest output
 ├── site.config.ts             # ⚙️ Site defaults
 ├── site.config.build.ts       # ⚙️ Build-time config injection
 ├── builder.config.ts          # ⚙️ Builder configuration
@@ -511,5 +516,4 @@ See [LICENSE](LICENSE) for details.
 <p align="center">
   <sub>If this project helps you, please consider giving it a ⭐️ on GitHub!</sub>
 </p>
-
 

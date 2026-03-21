@@ -51,8 +51,8 @@ apps/web/
 │   │   ├── i18n.ts         # 国际化配置
 │   │   ├── query-client.ts # TanStack Query 配置
 │   │   └── router.tsx      # 路由配置
-│   ├── data/               # 数据层
-│   │   └── photos-manifest.json  # 照片元数据（构建时生成）
+│   ├── data/               # 运行时数据辅助
+│   ├── data-runtime/       # manifest 读取与 PhotoLoader
 │   ├── hooks/              # 自定义 Hooks
 │   ├── store/              # 全局状态
 │   └── main.tsx            # 入口文件
@@ -63,10 +63,10 @@ apps/web/
 │   └── favicon.ico
 ├── plugins/                # Vite 插件
 │   └── vite/
-│       ├── manifest-inject.ts      # 注入 manifest
-│       ├── photos-static.ts        # 复制照片资源
-│       ├── feed-sitemap.ts         # 生成 sitemap/feed
-│       └── og-image-plugin.ts      # 生成 OG 图片
+│       ├── data-inject.ts          # 注入 manifest / site config
+│       ├── photos-static.ts        # 开发环境照片静态映射
+│       ├── build-assets.ts         # 生成 sitemap/feed/OG 图片
+│       └── __internal__/constants.ts
 ├── index.html
 ├── vite.config.ts
 └── package.json
