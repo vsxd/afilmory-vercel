@@ -1,5 +1,4 @@
-import { useScrollViewElement } from '@afilmory/ui'
-import { clsxm, Spring } from '@afilmory/utils'
+import { clsxm, Spring,useScrollViewElement  } from '@afilmory/ui'
 import { useAtomValue } from 'jotai'
 import { AnimatePresence, m } from 'motion/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'

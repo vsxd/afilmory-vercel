@@ -1,5 +1,4 @@
-import { LazyImage } from '@afilmory/ui'
-import { Spring } from '@afilmory/utils'
+import { LazyImage, Spring  } from '@afilmory/ui'
 import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'

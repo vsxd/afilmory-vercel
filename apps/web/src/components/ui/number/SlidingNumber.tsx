@@ -1,6 +1,6 @@
 'use client'
 
-import { clsxm, Spring } from '@afilmory/utils'
+import { clsxm, Spring } from '@afilmory/ui'
 import type { MotionValue, SpringOptions, UseInViewOptions } from 'motion/react'
 import { m as motion, useInView, useSpring, useTransform } from 'motion/react'
 import * as React from 'react'

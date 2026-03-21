@@ -1,6 +1,7 @@
 import type { CameraInfo, LensInfo, PhotoManifestItem } from './types'
 
 export type * from './types'
+export { compressUint8Array, decompressUint8Array } from './u8array'
 
 class PhotoLoader {
   private photos: PhotoManifestItem[] = []

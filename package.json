@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@afilmory/builder": "workspace:*",
-    "@afilmory/hooks": "workspace:*",
     "@afilmory/ui": "workspace:*",
     "@innei/prettier": "1.0.0",
     "@t3-oss/env-core": "catalog:",

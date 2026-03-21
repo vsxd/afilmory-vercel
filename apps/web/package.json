@@ -18,9 +18,7 @@
   },
   "dependencies": {
     "@afilmory/data": "workspace:*",
-    "@afilmory/hooks": "workspace:*",
     "@afilmory/ui": "workspace:*",
-    "@afilmory/utils": "workspace:*",
     "@afilmory/webgl-viewer": "workspace:*",
     "@essentials/request-timeout": "1.3.0",
     "@radix-ui/react-avatar": "1.1.10",

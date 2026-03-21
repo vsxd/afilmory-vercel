@@ -1,4 +1,4 @@
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import { AnimatePresence, m } from 'motion/react'
 import type { FC } from 'react'
 import { useCallback } from 'react'

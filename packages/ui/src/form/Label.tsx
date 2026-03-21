@@ -1,5 +1,6 @@
-import { clsxm } from '@afilmory/utils'
 import type { FC, LabelHTMLAttributes } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
   /**

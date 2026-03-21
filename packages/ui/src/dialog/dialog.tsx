@@ -1,9 +1,10 @@
-import { clsxm, Spring } from '@afilmory/utils'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { AnimatePresence, m } from 'motion/react'
 import * as React from 'react'
 
 import { useRootPortal } from '../portal/provider'
+import { clsxm } from '../utils/cn'
+import { Spring } from '../utils/spring'
 
 const DialogContext = React.createContext<{ open: boolean }>({ open: false })
 

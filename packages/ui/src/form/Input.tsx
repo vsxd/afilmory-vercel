@@ -1,5 +1,6 @@
-import { clsxm } from '@afilmory/utils'
 import type { InputHTMLAttributes } from 'react'
+
+import { clsxm } from '../utils/cn'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /**

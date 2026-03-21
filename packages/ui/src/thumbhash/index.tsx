@@ -1,6 +1,8 @@
-import { clsxm, decompressUint8Array } from '@afilmory/utils'
+import { decompressUint8Array } from '@afilmory/data'
 import { useMemo } from 'react'
 import { thumbHashToDataURL } from 'thumbhash'
+
+import { clsxm } from '../utils/cn'
 
 export const Thumbhash = ({ thumbHash, className }: { thumbHash: ArrayLike<number> | string; className?: string }) => {
   const dataURL = useMemo(() => {

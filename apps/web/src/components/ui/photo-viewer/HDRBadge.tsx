@@ -1,4 +1,4 @@
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import type { FC } from 'react'
 
 export const HDRBadge: FC = () => {

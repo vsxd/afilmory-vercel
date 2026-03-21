@@ -1,7 +1,9 @@
-import { clsxm, Spring } from '@afilmory/utils'
 import * as HoverCardPrimitive from '@radix-ui/react-hover-card'
 import { m } from 'motion/react'
 import * as React from 'react'
+
+import { clsxm } from '../utils/cn'
+import { Spring } from '../utils/spring'
 
 const HoverCard = HoverCardPrimitive.Root
 

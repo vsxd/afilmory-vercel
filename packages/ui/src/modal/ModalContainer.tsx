@@ -1,9 +1,10 @@
-import { clsxm, Spring } from '@afilmory/utils'
 import { useAtomValue } from 'jotai'
 import { AnimatePresence } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useEventCallback } from 'usehooks-ts'
 
+import { clsxm } from '../utils/cn'
+import { Spring } from '../utils/spring'
 import { Dialog, DialogContent } from './Dialog'
 import type { ModalItem } from './ModalManager'
 import { Modal, modalItemsAtom } from './ModalManager'

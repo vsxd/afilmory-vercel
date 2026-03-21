@@ -1,4 +1,4 @@
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import { m, useAnimationControls } from 'motion/react'
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 

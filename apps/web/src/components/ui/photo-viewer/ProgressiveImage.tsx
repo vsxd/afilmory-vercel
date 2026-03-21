@@ -1,4 +1,4 @@
-import { clsxm } from '@afilmory/utils'
+import { clsxm } from '@afilmory/ui'
 import { WebGLImageViewer } from '@afilmory/webgl-viewer'
 import { AnimatePresence, m } from 'motion/react'
 import { useCallback, useRef } from 'react'

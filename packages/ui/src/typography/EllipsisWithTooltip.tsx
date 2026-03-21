@@ -1,8 +1,8 @@
-import { clsxm } from '@afilmory/utils'
 import type { PropsWithChildren } from 'react'
 import { useEffect, useState } from 'react'
 
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '../tooltip'
+import { clsxm } from '../utils/cn'
 
 const isTextOverflowed = (element: HTMLElement, dir: 'h' | 'v') => {
   if (dir === 'h') {

@@ -4,9 +4,9 @@ import os from 'node:os'
 import path from 'node:path'
 
 import type { LocationInfo, PickedExif } from '../types/photo.js'
+import { sleep } from '../utils/backoff.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 const getBackoffDelay = (attempt: number, baseDelay: number): number => {
   const exponential = baseDelay * 2 ** (attempt - 1)
   const jitter = Math.random() * baseDelay

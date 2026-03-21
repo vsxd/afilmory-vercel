@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-import { decompressUint8Array } from '@afilmory/utils'
+import { decompressUint8Array } from '@afilmory/data'
 import type sharp from 'sharp'
 
 import { HEIC_FORMATS } from '../constants/index.js'
