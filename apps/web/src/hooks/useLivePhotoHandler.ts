@@ -13,7 +13,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false)
   const [isConvertingVideo, setIsConvertingVideo] = useState(false)
-  const [videoConvertionError, setVideoConversionError] = useState<unknown>(null)
+  const [videoConversionError, setVideoConversionError] = useState<unknown>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -23,11 +23,14 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
 
   // Live Photo/Motion Photo video loading logic
   useEffect(() => {
-    if (!data.video || !imageLoaded || livePhotoVideoLoaded || isConvertingVideo || !videoRef.current) {
+    if (!data.video || !imageLoaded || livePhotoVideoLoaded || !videoRef.current) {
       return
     }
 
+    const videoEl = videoRef.current
     const { video, originalUrl } = data
+
+    let cancelled = false
 
     const loadVideo = async () => {
       setIsConvertingVideo(true)
@@ -56,26 +59,32 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
         }
 
         if (videoSource.type !== 'none') {
-          await imageLoaderManager.processVideo(videoSource, videoRef.current!)
-          setLivePhotoVideoLoaded(true)
+          await imageLoaderManager.processVideo(videoSource, videoEl)
+          if (!cancelled) {
+            setLivePhotoVideoLoaded(true)
+          }
         }
       } catch (videoError) {
-        console.error('Failed to process video:', videoError)
-        setVideoConversionError(videoError)
+        if (!cancelled) {
+          console.error('Failed to process video:', videoError)
+          setVideoConversionError(videoError)
+        }
       } finally {
-        setIsConvertingVideo(false)
+        if (!cancelled) {
+          setIsConvertingVideo(false)
+        }
       }
     }
 
     loadVideo()
 
     return () => {
+      cancelled = true
       if (imageLoaderManagerRef.current) {
         imageLoaderManagerRef.current.cleanup()
         imageLoaderManagerRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.video, data.originalUrl, imageLoaded, livePhotoVideoLoaded])
 
   // Live Photo/Motion Photo hover handling (desktop only)
@@ -129,7 +138,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
     hasVideo,
     isPlayingLivePhoto,
     isConvertingVideo,
-    videoConvertionError,
+    videoConversionError,
     handleMouseEnter,
     handleMouseLeave,
     handleVideoEnded,

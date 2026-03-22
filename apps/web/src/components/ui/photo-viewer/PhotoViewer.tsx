@@ -188,6 +188,8 @@ export const PhotoViewer = ({
           <m.div
             ref={containerRef}
             tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
             aria-label="Photo viewer"
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
@@ -220,6 +222,8 @@ export const PhotoViewer = ({
                       {isMobile && (
                         <button
                           type="button"
+                          aria-label="Photo information"
+                          aria-pressed={showExifPanel}
                           className={`bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40 ${showExifPanel ? 'bg-accent' : ''}`}
                           onClick={toggleExifPanel}
                         >
@@ -248,6 +252,7 @@ export const PhotoViewer = ({
                       {/* 关闭按钮 */}
                       <button
                         type="button"
+                        aria-label="Close"
                         className="bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40"
                         onClick={onClose}
                       >
@@ -343,6 +348,7 @@ export const PhotoViewer = ({
                       {canGoPrevious && (
                         <button
                           type="button"
+                          aria-label="Previous photo"
                           className={`bg-material-medium absolute top-1/2 left-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
                           onClick={handlePrevious}
                         >
@@ -353,6 +359,7 @@ export const PhotoViewer = ({
                       {canGoNext && (
                         <button
                           type="button"
+                          aria-label="Next photo"
                           className={`bg-material-medium absolute top-1/2 right-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
                           onClick={handleNext}
                         >
