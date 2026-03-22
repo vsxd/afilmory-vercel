@@ -58,6 +58,7 @@ export interface DOMImageViewerProps {
   alt: string
   highResLoaded: boolean
   onLoad?: () => void
+  onError?: () => void
   children?: React.ReactNode
 }
 

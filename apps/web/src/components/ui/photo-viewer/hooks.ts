@@ -113,12 +113,15 @@ export const useImageLoader = (
       isCrossOriginSource && DIRECT_RENDERABLE_IMAGE_FORMATS.has(getImageFormat(src))
 
     if (shouldUseDirectCrossOriginImage) {
+      loadingIndicatorRef?.current?.updateLoadingState({
+        isVisible: true,
+        loadingProgress: 0,
+        loadedBytes: 0,
+        totalBytes: 0,
+      })
       setBlobSrc?.(src)
       onBlobSrcChange?.(src)
       setHighResLoaded?.(true)
-      loadingIndicatorRef?.current?.updateLoadingState({
-        isVisible: false,
-      })
       return () => {
         imageLoaderManager.cleanup()
       }

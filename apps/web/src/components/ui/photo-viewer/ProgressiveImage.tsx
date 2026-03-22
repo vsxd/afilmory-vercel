@@ -101,6 +101,22 @@ export const ProgressiveImage = ({
     setState.setIsThumbnailLoaded(true)
   }, [setState])
 
+  const handleHighResImageLoad = useCallback(() => {
+    setState.setIsHighResImageRendered(true)
+    loadingIndicatorRef.current?.updateLoadingState({
+      isVisible: false,
+    })
+  }, [loadingIndicatorRef, setState])
+
+  const handleHighResImageError = useCallback(() => {
+    setState.setError(true)
+    loadingIndicatorRef.current?.updateLoadingState({
+      isVisible: true,
+      isError: true,
+      errorMessage: t('photo.error.loading'),
+    })
+  }, [loadingIndicatorRef, setState, t])
+
   const showContextMenu = useShowContextMenu()
 
   const isHDRSupported = useMediaQuery('(dynamic-range: high)')
@@ -160,7 +176,8 @@ export const ProgressiveImage = ({
               src={blobSrc}
               alt={alt}
               highResLoaded={highResLoaded}
-              onLoad={() => setState.setIsHighResImageRendered(true)}
+              onLoad={handleHighResImageLoad}
+              onError={handleHighResImageError}
             >
               {/* LivePhoto/Motion Photo 视频组件作为 children，跟随图片的变换 */}
               {hasVideo && videoSource && imageLoaderManagerRef.current && (

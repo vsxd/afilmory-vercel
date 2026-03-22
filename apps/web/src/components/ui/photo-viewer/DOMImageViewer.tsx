@@ -15,6 +15,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   alt,
   highResLoaded,
   onLoad,
+  onError,
   children,
 }) => {
   const transformRef = useRef<ReactZoomPanPinchRef>(null)
@@ -131,6 +132,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
             loading="eager"
             decoding="async"
             onLoad={onLoad}
+            onError={onError}
           />
           {children}
         </TransformComponent>
