@@ -1,9 +1,10 @@
 import { Thumbhash } from '@afilmory/ui'
 import clsx from 'clsx'
 import { m } from 'motion/react'
-import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useLivePhotoHandler } from '~/hooks/useLivePhotoHandler'
 import { useContextPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import {
   CarbonIsoOutline,
@@ -12,7 +13,6 @@ import {
   TablerAperture,
 } from '~/icons'
 import { isMobileDevice } from '~/lib/device-viewport'
-import { ImageLoaderManager } from '~/lib/image-loader-manager'
 import { getImageFormat } from '~/lib/image-utils'
 import type { PhotoManifest } from '~/types/photo'
 
@@ -24,16 +24,18 @@ export const MasonryPhotoItem = memo(
     const [imageLoaded, setImageLoaded] = useState(false)
     const [imageError, setImageError] = useState(false)
 
-    // Live Photo 相关状态
-    const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
-    const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false)
-    const [isConvertingVideo, setIsConvertingVideo] = useState(false)
-    const [videoConvertionError, setVideoConversionError] = useState<unknown>(null)
-
     const imageRef = useRef<HTMLImageElement>(null)
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
-    const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
+
+    const {
+      videoRef,
+      hasVideo,
+      isPlayingLivePhoto,
+      isConvertingVideo,
+      videoConvertionError,
+      handleMouseEnter,
+      handleMouseLeave,
+      handleVideoEnded,
+    } = useLivePhotoHandler({ data, imageLoaded })
 
     const handleImageLoad = () => {
       setImageLoaded(true)
@@ -100,117 +102,11 @@ export const MasonryPhotoItem = memo(
     // 使用通用的图片格式提取函数
     const imageFormat = getImageFormat(data.originalUrl || data.s3Key || '')
 
-    // 检查是否有视频内容（Live Photo 或 Motion Photo）
-    const hasVideo = data.video !== undefined
-
-    // Live Photo/Motion Photo 视频加载逻辑
-    useEffect(() => {
-      if (!data.video || !imageLoaded || livePhotoVideoLoaded || isConvertingVideo || !videoRef.current) {
-        return
-      }
-
-      const { video, originalUrl } = data
-
-      const loadVideo = async () => {
-        setIsConvertingVideo(true)
-
-        // 创建新的 image loader manager
-        const imageLoaderManager = new ImageLoaderManager()
-        imageLoaderManagerRef.current = imageLoaderManager
-
-        try {
-          // 构造 VideoSource（适配前端格式）- 使用 type narrowing
-          let videoSource: Parameters<typeof imageLoaderManager.processVideo>[0]
-
-          if (video.type === 'motion-photo') {
-            videoSource = {
-              type: 'motion-photo',
-              imageUrl: originalUrl,
-              offset: video.offset,
-              size: video.size,
-              presentationTimestamp: video.presentationTimestamp,
-            }
-          } else if (video.type === 'live-photo') {
-            videoSource = {
-              type: 'live-photo',
-              videoUrl: video.videoUrl,
-            }
-          } else {
-            videoSource = { type: 'none' }
-          }
-
-          if (videoSource.type !== 'none') {
-            await imageLoaderManager.processVideo(videoSource, videoRef.current!)
-            setLivePhotoVideoLoaded(true)
-          }
-        } catch (videoError) {
-          console.error('Failed to process video:', videoError)
-          setVideoConversionError(videoError)
-        } finally {
-          setIsConvertingVideo(false)
-        }
-      }
-
-      loadVideo()
-
-      return () => {
-        if (imageLoaderManagerRef.current) {
-          imageLoaderManagerRef.current.cleanup()
-          imageLoaderManagerRef.current = null
-        }
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.video, data.originalUrl, imageLoaded, livePhotoVideoLoaded])
-
-    // Live Photo/Motion Photo hover 处理（仅在桌面端）
-    const handleMouseEnter = useCallback(() => {
-      if (isMobileDevice || !hasVideo || !livePhotoVideoLoaded || isPlayingLivePhoto || isConvertingVideo) {
-        return
-      }
-
-      hoverTimerRef.current = setTimeout(() => {
-        setIsPlayingLivePhoto(true)
-        const video = videoRef.current
-        if (video) {
-          video.currentTime = 0
-          video.play()
-        }
-      }, 200) // 200ms hover 延迟
-    }, [hasVideo, livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo])
-
-    const handleMouseLeave = useCallback(() => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current)
-        hoverTimerRef.current = null
-      }
-
-      if (isPlayingLivePhoto) {
-        setIsPlayingLivePhoto(false)
-        const video = videoRef.current
-        if (video) {
-          video.pause()
-          video.currentTime = 0
-        }
-      }
-    }, [isPlayingLivePhoto])
-
-    // 视频播放结束处理
-    const handleVideoEnded = useCallback(() => {
-      setIsPlayingLivePhoto(false)
-    }, [])
-
-    // 清理定时器
-    useEffect(() => {
-      return () => {
-        if (hoverTimerRef.current) {
-          clearTimeout(hoverTimerRef.current)
-          hoverTimerRef.current = null
-        }
-      }
-    }, [])
-
     return (
       <m.div
+        role="button"
+        tabIndex={0}
+        aria-label={data.title || 'View photo'}
         className="bg-fill-quaternary group relative w-full cursor-pointer overflow-hidden"
         style={{
           width,

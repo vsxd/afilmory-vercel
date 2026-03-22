@@ -10,7 +10,7 @@ class ExifToolManagerStatic {
   async load() {
     if (this.isLoaded) return
     const exiftool = await import('@uswriting/exiftool')
-    console.info('ExifTool loaded...')
+    if (import.meta.env.DEV) console.info('ExifTool loaded...')
     this.exifTool = exiftool
     this.isLoaded = true
 

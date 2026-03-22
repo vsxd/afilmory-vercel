@@ -1,12 +1,13 @@
 import { AnimatePresence, m } from 'motion/react'
 import type { FC, ReactNode } from 'react'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useId, useState } from 'react'
 
 import { clsxm } from '../utils/cn'
 
 type CollapsibleContextValue = {
   isOpen: boolean
   toggle: () => void
+  contentId: string
 }
 
 const CollapsibleContext = createContext<CollapsibleContextValue | null>(null)
@@ -35,6 +36,7 @@ export const Collapsible: FC<CollapsibleProps> = ({
   className,
 }) => {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const contentId = useId()
 
   const isControlled = controlledOpen !== undefined
   const isOpen = isControlled ? controlledOpen : uncontrolledOpen
@@ -48,7 +50,7 @@ export const Collapsible: FC<CollapsibleProps> = ({
   }
 
   return (
-    <CollapsibleContext value={{ isOpen, toggle }}>
+    <CollapsibleContext value={{ isOpen, toggle, contentId }}>
       <div className={clsxm('overflow-hidden', className)}>{children}</div>
     </CollapsibleContext>
   )
@@ -61,12 +63,14 @@ type CollapsibleTriggerProps = {
 }
 
 export const CollapsibleTrigger: FC<CollapsibleTriggerProps> = ({ children, className }) => {
-  const { toggle } = useCollapsibleContext()
+  const { toggle, isOpen, contentId } = useCollapsibleContext()
 
   return (
     <button
       type="button"
       onClick={toggle}
+      aria-expanded={isOpen}
+      aria-controls={contentId}
       className={clsxm('flex w-full items-center justify-between text-left transition-colors duration-200', className)}
     >
       {children}
@@ -80,12 +84,14 @@ type CollapsibleContentProps = {
 }
 
 export const CollapsibleContent: FC<CollapsibleContentProps> = ({ children, className }) => {
-  const { isOpen } = useCollapsibleContext()
+  const { isOpen, contentId } = useCollapsibleContext()
 
   return (
     <AnimatePresence>
       {isOpen && (
         <m.div
+          id={contentId}
+          role="region"
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}

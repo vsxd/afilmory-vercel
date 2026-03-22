@@ -1,8 +1,10 @@
 import { Button, clsxm, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@afilmory/ui'
+import type { SetStateAction } from 'jotai'
 import { useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { Drawer } from 'vaul'
 
+import type { GallerySetting } from '~/atoms/app'
 import { gallerySettingAtom } from '~/atoms/app'
 import { useMobile } from '~/hooks/useMobile'
 
@@ -57,7 +59,7 @@ export const DesktopActionButton = ({
   children: React.ReactNode
   contentClassName?: string
   open?: boolean
-  onOpenChange?: (open: boolean, setGallerySetting: (setting: any) => void) => void
+  onOpenChange?: (open: boolean, setGallerySetting: (setting: SetStateAction<GallerySetting>) => void) => void
 }) => {
   const setGallerySetting = useSetAtom(gallerySettingAtom)
   return (
@@ -125,7 +127,7 @@ export const ResponsiveActionButton = ({
   children: React.ReactNode
   contentClassName?: string
   globalOpen?: boolean
-  onGlobalOpenChange?: (open: boolean, setGallerySetting: (setting: any) => void) => void
+  onGlobalOpenChange?: (open: boolean, setGallerySetting: (setting: SetStateAction<GallerySetting>) => void) => void
 }) => {
   const isMobile = useMobile()
   const [open, setOpen] = useState(false)

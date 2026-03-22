@@ -10,6 +10,7 @@
     "build": "tsdown",
     "bump": "nbump",
     "cli": "tsx src/cli.ts",
+    "test": "pnpm --dir ../.. exec vitest run --project builder",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

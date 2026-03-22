@@ -71,6 +71,13 @@ export class S3StorageProvider implements StorageProvider {
             return response.Body
           }
 
+          // 大文件内存压力警告
+          const contentLength = response.ContentLength
+          const LARGE_FILE_THRESHOLD = 500 * 1024 * 1024 // 500MB
+          if (contentLength && contentLength > LARGE_FILE_THRESHOLD) {
+            logger.s3.warn(`大文件下载警告：${key} (${Math.round(contentLength / 1024 / 1024)}MB)，可能造成内存压力`)
+          }
+
           // 以流方式读取并监控首字节与空闲超时
           const chunks: Uint8Array[] = []
           const stream = response.Body as NodeJS.ReadableStream

@@ -72,7 +72,7 @@ const heicCache: LRUCache<string, ConversionResult> = new LRUCache<string, Conve
   (value, key, reason) => {
     try {
       URL.revokeObjectURL(value.url)
-      console.info(`HEIC cache: Revoked blob URL - ${reason}`)
+      if (import.meta.env.DEV) console.info(`HEIC cache: Revoked blob URL - ${reason}`)
     } catch (error) {
       console.warn(`Failed to revoke HEIC blob URL (${reason}):`, error)
     }
@@ -125,7 +125,7 @@ export async function convertHeicImage(
   // 检查缓存
   const cachedResult = heicCache.get(cacheKey)
   if (cachedResult) {
-    console.info('Using cached HEIC conversion result', cachedResult)
+    if (import.meta.env.DEV) console.info('Using cached HEIC conversion result', cachedResult)
     return cachedResult
   }
 
@@ -155,9 +155,11 @@ export async function convertHeicImage(
 
     // 缓存结果
     heicCache.set(cacheKey, result)
-    console.info(
-      `HEIC conversion completed and cached: ${(file.size / 1024).toFixed(1)}KB → ${(convertedBlob.size / 1024).toFixed(1)}KB`,
-    )
+    if (import.meta.env.DEV) {
+      console.info(
+        `HEIC conversion completed and cached: ${(file.size / 1024).toFixed(1)}KB → ${(convertedBlob.size / 1024).toFixed(1)}KB`,
+      )
+    }
 
     return result
   } catch (error) {

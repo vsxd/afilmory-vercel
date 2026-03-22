@@ -4,6 +4,7 @@ import { use, useCallback, useMemo } from 'react'
 import { gallerySettingAtom } from '~/atoms/app'
 import { photoLoader } from '~/data-runtime/photo-loader'
 import { jotaiStore } from '~/lib/jotai'
+import { getPhotoDateString } from '~/lib/photo-date'
 import { PhotosContext } from '~/providers/photos-provider'
 
 const openAtom = atom(false)
@@ -70,20 +71,8 @@ const filterAndSortPhotos = (
 
   // 然后排序
   const sortedPhotos = filteredPhotos.toSorted((a, b) => {
-    let aDateStr = ''
-    let bDateStr = ''
-
-    if (a.exif && a.exif.DateTimeOriginal) {
-      aDateStr = a.exif.DateTimeOriginal as unknown as string
-    } else {
-      aDateStr = a.lastModified
-    }
-
-    if (b.exif && b.exif.DateTimeOriginal) {
-      bDateStr = b.exif.DateTimeOriginal as unknown as string
-    } else {
-      bDateStr = b.lastModified
-    }
+    const aDateStr = getPhotoDateString(a)
+    const bDateStr = getPhotoDateString(b)
 
     return sortOrder === 'asc' ? aDateStr.localeCompare(bDateStr) : bDateStr.localeCompare(aDateStr)
   })

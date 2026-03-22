@@ -13,6 +13,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "lint": "eslint --fix",
     "serve": "vite preview",
+    "test": "pnpm --dir ../.. exec vitest run --project web",
     "type-check": "tsc --noEmit",
     "web": "vite"
   },

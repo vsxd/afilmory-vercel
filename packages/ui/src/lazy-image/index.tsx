@@ -71,7 +71,7 @@ export const LazyImage = ({
 
       {/* Error state */}
       {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-800">
+        <div role="alert" className="absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-800">
           <span className="text-sm text-gray-500 dark:text-gray-400">Failed to load image</span>
         </div>
       )}

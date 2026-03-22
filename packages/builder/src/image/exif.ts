@@ -14,7 +14,7 @@ const exiftool = new ExifTool({
 })
 
 let isExiftoolClosed = false
-const closeExiftool = () => {
+export const closeExiftool = () => {
   if (isExiftoolClosed) {
     return
   }
@@ -184,7 +184,7 @@ function handleExifData(exifData: Tags): PickedExif {
     Reflect.deleteProperty(result, key)
   }
   for (const key of pickKeys) {
-    result[key] = exifData[key]
+    result[key] = exifData[key as keyof Tags]
   }
 
   return {

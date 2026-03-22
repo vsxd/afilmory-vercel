@@ -147,7 +147,21 @@ export async function loadBuilderConfig(options: LoadBuilderConfigOptions = {}):
   if (process.env.DEBUG === '1') {
     const logger = consola.withTag('CONFIG')
     logger.info('Using builder config from', result.configFile ?? 'defaults')
-    logger.info(config)
+    const sanitized = { ...config, user: config.user ? { ...config.user } : config.user }
+    if (sanitized.user?.storage) {
+      sanitized.user = {
+        ...sanitized.user,
+        storage: {
+          ...sanitized.user.storage,
+          accessKeyId: '***',
+          secretAccessKey: '***',
+        } as typeof sanitized.user.storage,
+      }
+    }
+    if (sanitized.user?.repo) {
+      sanitized.user = { ...sanitized.user, repo: { ...sanitized.user.repo, token: '***' } }
+    }
+    logger.info(sanitized)
   }
 
   return config

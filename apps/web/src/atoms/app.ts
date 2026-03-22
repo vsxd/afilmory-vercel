@@ -3,16 +3,26 @@ import { atom } from 'jotai'
 export type GallerySortBy = 'date'
 export type GallerySortOrder = 'asc' | 'desc'
 
-export const gallerySettingAtom = atom({
-  sortBy: 'date' as GallerySortBy,
-  sortOrder: 'desc' as GallerySortOrder,
-  selectedTags: [] as string[],
-  selectedCameras: [] as string[], // Selected camera display names
-  selectedLenses: [] as string[], // Selected lens display names
-  selectedRatings: null as number | null, // Selected minimum rating threshold
-  tagFilterMode: 'union' as 'union' | 'intersection', // Tag filtering logic mode
+export interface GallerySetting {
+  sortBy: GallerySortBy
+  sortOrder: GallerySortOrder
+  selectedTags: string[]
+  selectedCameras: string[]
+  selectedLenses: string[]
+  selectedRatings: number | null
+  tagFilterMode: 'union' | 'intersection'
+  columns: number | 'auto'
+}
 
-  columns: 'auto' as number | 'auto', // 自定义列数，auto 表示自动计算
+export const gallerySettingAtom = atom<GallerySetting>({
+  sortBy: 'date',
+  sortOrder: 'desc',
+  selectedTags: [],
+  selectedCameras: [],
+  selectedLenses: [],
+  selectedRatings: null,
+  tagFilterMode: 'union',
+  columns: 'auto',
 })
 
 export const isExiftoolLoadedAtom = atom(false)

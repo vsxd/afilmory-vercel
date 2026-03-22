@@ -72,7 +72,7 @@ export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): Route
       return 0
     })
 
-    // TODO biz priority
+    // Business priority: (main) group always comes first
     // move `(main)` to the top
     const mainIndex = pathKeys.indexOf(MainGroupSegment)
     if (mainIndex !== -1) {
