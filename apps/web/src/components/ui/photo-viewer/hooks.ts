@@ -62,8 +62,8 @@ export const useProgressiveImageState = (): [
 export const useImageLoader = (
   src: string,
   isCurrentImage: boolean,
-  highResLoaded: boolean,
-  error: boolean,
+  _highResLoaded: boolean,
+  _error: boolean,
   onProgress?: (progress: number) => void,
   onError?: () => void,
   onBlobSrcChange?: (blobSrc: string | null) => void,
@@ -77,13 +77,7 @@ export const useImageLoader = (
   const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
 
   useEffect(() => {
-    if (highResLoaded || error || !isCurrentImage) return
-
-    // Create new image loader manager
-    const imageLoaderManager = new ImageLoaderManager()
-    imageLoaderManagerRef.current = imageLoaderManager
-
-    function cleanup() {
+    const resetState = () => {
       setHighResLoaded?.(false)
       setBlobSrc?.(null)
       setError?.(false)
@@ -93,6 +87,17 @@ export const useImageLoader = (
       // Reset loading indicator
       loadingIndicatorRef?.current?.resetLoadingState()
     }
+
+    if (!isCurrentImage) {
+      resetState()
+      imageLoaderManagerRef.current?.cleanup()
+      imageLoaderManagerRef.current = null
+      return
+    }
+
+    // Create new image loader manager
+    const imageLoaderManager = new ImageLoaderManager()
+    imageLoaderManagerRef.current = imageLoaderManager
 
     const isCrossOriginSource = (() => {
       try {
@@ -138,15 +143,13 @@ export const useImageLoader = (
       }
     }
 
-    cleanup()
+    resetState()
     loadImage()
 
     return () => {
       imageLoaderManager.cleanup()
     }
   }, [
-    highResLoaded,
-    error,
     onProgress,
     src,
     onError,
