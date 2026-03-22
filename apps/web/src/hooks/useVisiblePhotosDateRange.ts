@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { getPhotoDate } from '~/lib/photo-date'
 import type { PhotoManifest } from '~/types/photo'
 
 interface DateRange {
@@ -29,21 +30,6 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
 
   const currentRange = useRef<VisibleRange>({ start: 0, end: 0 })
 
-  const getPhotoDate = useCallback((photo: PhotoManifest): Date => {
-    // 优先使用 EXIF 中的拍摄时间
-    if (photo.exif?.DateTimeOriginal) {
-      const dateStr = photo.exif.DateTimeOriginal as unknown as string
-      // EXIF 日期格式通常是 "YYYY:MM:DD HH:mm:ss"
-      const formattedDateStr = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')
-      const date = new Date(formattedDateStr)
-      if (!Number.isNaN(date.getTime())) {
-        return date
-      }
-    }
-
-    // 回退到 lastModified
-    return new Date(photo.lastModified)
-  }, [])
   const { i18n } = useTranslation()
 
   const formatDateRange = useCallback(
@@ -112,7 +98,7 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
 
   // 计算当前可视范围内照片的日期范围
   const calculateDateRange = useCallback(
-    (startIndex: number, endIndex: number, items: any[]) => {
+    (startIndex: number, endIndex: number, items: (PhotoManifest | { id?: never })[]) => {
       if (!items || items.length === 0) {
         setDateRange({
           startDate: null,
@@ -167,12 +153,12 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
       // 更新当前范围
       currentRange.current = { start: startIndex, end: endIndex }
     },
-    [getPhotoDate, formatDateRange],
+    [formatDateRange],
   )
 
   // 用于传递给 masonry 的 onRender 回调
   const handleRender = useCallback(
-    (startIndex: number, stopIndex: number, items: any[]) => {
+    (startIndex: number, stopIndex: number, items: (PhotoManifest | { id?: never })[]) => {
       calculateDateRange(startIndex, stopIndex, items)
     },
     [calculateDateRange],

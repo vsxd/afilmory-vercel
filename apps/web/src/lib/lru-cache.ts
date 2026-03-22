@@ -134,7 +134,7 @@ export function createBlobUrlCache<T extends { url?: string }>(maxSize = 10): LR
     if (value.url) {
       try {
         URL.revokeObjectURL(value.url)
-        console.info(`Blob URL revoked - ${reason}`)
+        if (import.meta.env.DEV) console.info(`Blob URL revoked - ${reason}`)
       } catch (error) {
         console.warn(`Failed to revoke blob URL (${reason}):`, error)
       }

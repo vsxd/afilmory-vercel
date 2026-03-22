@@ -11,7 +11,9 @@ import type { Swiper as SwiperType } from 'swiper'
 import { Keyboard, Navigation, Virtual } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
+import { useExifPanel } from '~/hooks/useExifPanel'
 import { useMobile } from '~/hooks/useMobile'
+import { usePhotoNavigation } from '~/hooks/usePhotoNavigation'
 import type { PhotoManifest } from '~/types/photo'
 
 import { PhotoViewerTransitionPreview } from './animations/PhotoViewerTransitionPreview'
@@ -43,7 +45,7 @@ export const PhotoViewer = ({
   const { t } = useTranslation()
   const swiperRef = useRef<SwiperType | null>(null)
   const [isImageZoomed, setIsImageZoomed] = useState(false)
-  const [showExifPanel, setShowExifPanel] = useState(false)
+  const { showExifPanel, toggleExifPanel, closeExifPanel } = useExifPanel()
   const [currentBlobSrc, setCurrentBlobSrc] = useState<string | null>(null)
 
   const isMobile = useMobile()
@@ -68,27 +70,20 @@ export const PhotoViewer = ({
     isMobile,
   })
 
+  const { handlePrevious, handleNext, canGoPrevious, canGoNext } = usePhotoNavigation({
+    currentIndex,
+    totalPhotos: photos.length,
+    onIndexChange,
+    swiperRef: swiperRef as React.RefObject<any>,
+  })
+
   useEffect(() => {
     if (!isOpen) {
       setIsImageZoomed(false)
-      setShowExifPanel(false)
+      closeExifPanel()
       setCurrentBlobSrc(null)
     }
-  }, [isOpen])
-
-  const handlePrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      onIndexChange(currentIndex - 1)
-      swiperRef.current?.slidePrev()
-    }
-  }, [currentIndex, onIndexChange])
-
-  const handleNext = useCallback(() => {
-    if (currentIndex < photos.length - 1) {
-      onIndexChange(currentIndex + 1)
-      swiperRef.current?.slideNext()
-    }
-  }, [currentIndex, photos.length, onIndexChange])
+  }, [isOpen, closeExifPanel])
 
   // 同步 Swiper 的索引
   useEffect(() => {
@@ -192,6 +187,8 @@ export const PhotoViewer = ({
         {isOpen && (
           <m.div
             ref={containerRef}
+            tabIndex={-1}
+            aria-label="Photo viewer"
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
               touchAction: isMobile ? 'manipulation' : 'none',
@@ -224,7 +221,7 @@ export const PhotoViewer = ({
                         <button
                           type="button"
                           className={`bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40 ${showExifPanel ? 'bg-accent' : ''}`}
-                          onClick={() => setShowExifPanel(!showExifPanel)}
+                          onClick={toggleExifPanel}
                         >
                           <i className="i-mingcute-information-line" />
                         </button>
@@ -343,7 +340,7 @@ export const PhotoViewer = ({
 
                   {!isMobile && (
                     <Fragment>
-                      {currentIndex > 0 && (
+                      {canGoPrevious && (
                         <button
                           type="button"
                           className={`bg-material-medium absolute top-1/2 left-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
@@ -353,7 +350,7 @@ export const PhotoViewer = ({
                         </button>
                       )}
 
-                      {currentIndex < photos.length - 1 && (
+                      {canGoNext && (
                         <button
                           type="button"
                           className={`bg-material-medium absolute top-1/2 right-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
@@ -385,7 +382,7 @@ export const PhotoViewer = ({
                       currentPhoto={currentPhoto}
                       exifData={currentPhoto.exif}
                       visible={isViewerContentVisible}
-                      onClose={isMobile ? () => setShowExifPanel(false) : undefined}
+                      onClose={isMobile ? closeExifPanel : undefined}
                     />
                   )}
                 </AnimatePresenceOnlyMobile>

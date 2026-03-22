@@ -44,7 +44,7 @@ export async function transmuxMovToMp4Simple(
   const { onProgress } = options
 
   try {
-    console.info(`🎯 Starting simple transmux conversion`)
+    if (import.meta.env.DEV) console.info(`Starting simple transmux conversion`)
 
     const { t } = getI18n()
     onProgress?.({

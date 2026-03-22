@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import type { BuildProgressListener } from './builder/builder.js'
 import { AfilmoryBuilder } from './builder/index.js'
 import { loadBuilderConfig } from './config/index.js'
+import { closeExiftool } from './image/exif.js'
 import { logger, setLogListener } from './logger/index.js'
 import { runAsWorker } from './runAsWorker.js'
 
@@ -181,6 +182,8 @@ async function main() {
     }
   }
 
+  // 清理 ExifTool 进程后退出
+  closeExiftool()
   // eslint-disable-next-line unicorn/no-process-exit
   process.exit(0)
 }
@@ -188,6 +191,7 @@ async function main() {
 // 运行主函数
 main().catch((error) => {
   logger.main.error('构建失败：', error)
+  closeExiftool()
   throw error
 })
 

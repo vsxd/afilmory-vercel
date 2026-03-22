@@ -71,6 +71,8 @@ const hyobanConfig = await defineConfig(
 
       'unicorn/no-array-callback-reference': 'off',
 
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+
       'no-restricted-globals': [
         'error',
         {

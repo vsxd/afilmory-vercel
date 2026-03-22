@@ -73,7 +73,7 @@ const MapSectionContent = () => {
         const photoMarkers = convertPhotosToMarkersFromEXIF(photos)
 
         setMarkers(photoMarkers)
-        console.info(`Found ${photoMarkers.length} photos with GPS coordinates`)
+        if (import.meta.env.DEV) console.info(`Found ${photoMarkers.length} photos with GPS coordinates`)
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to load photo markers')
         setError(error)

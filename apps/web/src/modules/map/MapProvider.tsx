@@ -57,9 +57,7 @@ const getPreferredAdapter = () => {
   // If no map configuration is provided, use the first available adapter
   if (!mapConfig) {
     const adapter = ADAPTERS.find((a) => a.adapter.isAvailable) || null
-    if (adapter) {
-      console.info(`Map: Selected default adapter: ${adapter.name}`)
-    }
+    if (adapter && import.meta.env.DEV) console.info(`Map: Selected default adapter: ${adapter.name}`)
     return adapter
   }
 
@@ -67,14 +65,12 @@ const getPreferredAdapter = () => {
   if (typeof mapConfig === 'string') {
     const adapter = ADAPTERS.find((a) => a.name === mapConfig && a.adapter.isAvailable)
     if (adapter) {
-      console.info(`Map: Selected specified adapter: ${adapter.name}`)
+      if (import.meta.env.DEV) console.info(`Map: Selected specified adapter: ${adapter.name}`)
       return adapter
     }
     // If specified provider is not available, fall back to first available
     const fallbackAdapter = ADAPTERS.find((a) => a.adapter.isAvailable) || null
-    if (fallbackAdapter) {
-      console.info(`Map: Specified adapter '${mapConfig}' not available, using fallback: ${fallbackAdapter.name}`)
-    }
+    if (fallbackAdapter && import.meta.env.DEV) console.info(`Map: Specified adapter '${mapConfig}' not available, using fallback: ${fallbackAdapter.name}`)
     return fallbackAdapter
   }
 
@@ -83,22 +79,20 @@ const getPreferredAdapter = () => {
     for (const providerName of mapConfig) {
       const adapter = ADAPTERS.find((a) => a.name === providerName && a.adapter.isAvailable)
       if (adapter) {
-        console.info(`Map: Selected adapter from priority list: ${adapter.name}`)
+        if (import.meta.env.DEV) console.info(`Map: Selected adapter from priority list: ${adapter.name}`)
         return adapter
       }
     }
     // If none of the priority providers are available, use first available
     const fallbackAdapter = ADAPTERS.find((a) => a.adapter.isAvailable) || null
-    if (fallbackAdapter) {
-      console.info(`Map: None of the priority providers available, using fallback: ${fallbackAdapter.name}`)
-    }
+    if (fallbackAdapter && import.meta.env.DEV) console.info(`Map: None of the priority providers available, using fallback: ${fallbackAdapter.name}`)
     return fallbackAdapter
   }
 
   // Default to first available adapter
   const adapter = ADAPTERS.find((a) => a.adapter.isAvailable) || null
   if (adapter) {
-    console.info(`Map: Selected default adapter: ${adapter.name}`)
+    if (import.meta.env.DEV) console.info(`Map: Selected default adapter: ${adapter.name}`)
   } else {
     console.warn('Map: No adapters are available')
   }

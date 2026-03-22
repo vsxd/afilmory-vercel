@@ -17,7 +17,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "skipDefaultLibCheck": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "noEmit": true,
     "jsx": "preserve",
   }

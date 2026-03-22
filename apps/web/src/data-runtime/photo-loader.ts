@@ -39,7 +39,7 @@ class PhotoLoader {
       }
     }
 
-    console.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
+    if (import.meta.env.DEV) console.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
   }
 
   getPhotos() {

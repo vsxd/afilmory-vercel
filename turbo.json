@@ -65,7 +65,7 @@
         "SOCIAL_RSS",
         "SOCIAL_TWITTER"
       ],
-      "cache": false
+      "cache": true
     },
     "dev": {
       "cache": false,
