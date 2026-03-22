@@ -7,11 +7,14 @@ import { toast } from 'sonner'
 import { MenuItemSeparator, MenuItemText } from '~/atoms/context-menu'
 import { isMobileDevice } from '~/lib/device-viewport'
 import { ImageLoaderManager } from '~/lib/image-loader-manager'
+import { getImageFormat } from '~/lib/image-utils'
 
 import type { LivePhotoVideoHandle } from './LivePhotoVideo'
 import type { LoadingIndicatorRef } from './LoadingIndicator'
 import type { ProgressiveImageState } from './types'
 import { SHOW_SCALE_INDICATOR_DURATION } from './types'
+
+const DIRECT_RENDERABLE_IMAGE_FORMATS = new Set(['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'AVIF'])
 
 export const useProgressiveImageState = (): [
   ProgressiveImageState,
@@ -106,6 +109,20 @@ export const useImageLoader = (
         return false
       }
     })()
+    const shouldUseDirectCrossOriginImage =
+      isCrossOriginSource && DIRECT_RENDERABLE_IMAGE_FORMATS.has(getImageFormat(src))
+
+    if (shouldUseDirectCrossOriginImage) {
+      setBlobSrc?.(src)
+      onBlobSrcChange?.(src)
+      setHighResLoaded?.(true)
+      loadingIndicatorRef?.current?.updateLoadingState({
+        isVisible: false,
+      })
+      return () => {
+        imageLoaderManager.cleanup()
+      }
+    }
 
     const loadImage = async () => {
       try {
