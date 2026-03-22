@@ -1,7 +1,7 @@
 import { clsxm } from '@afilmory/ui'
 import { WebGLImageViewer } from '@afilmory/webgl-viewer'
 import { AnimatePresence, m } from 'motion/react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
 import { useMediaQuery } from 'usehooks-ts'
@@ -95,6 +95,7 @@ export const ProgressiveImage = ({
   const { handleLongPressStart, handleLongPressEnd } = useLivePhotoControls(hasVideo, isLivePhotoPlaying, livePhotoRef)
 
   const handleWebGLLoadingStateChange = useWebGLLoadingState(loadingIndicatorRef)
+  const markHighResImageRendered = setState.setIsHighResImageRendered
 
   const handleThumbnailLoad = useCallback(() => {
     setState.setIsThumbnailLoaded(true)
@@ -105,6 +106,16 @@ export const ProgressiveImage = ({
   const isHDRSupported = useMediaQuery('(dynamic-range: high)')
   // Only use HDR if the browser supports it and the image is HDR
   const shouldUseHDR = isHDR && isHDRSupported
+  const shouldUseDOMViewer = hasVideo || shouldUseHDR || !blobSrc || !blobSrc.startsWith('blob:')
+  const shouldUseWebGLViewer = !shouldUseDOMViewer && canUseWebGL
+
+  useEffect(() => {
+    // WebGL viewer does not emit an image onLoad event like the DOM viewer path,
+    // so mark the high-res layer as rendered once the canvas-backed viewer is active.
+    if (highResLoaded && blobSrc && isActiveImage && !error && shouldUseWebGLViewer) {
+      markHighResImageRendered(true)
+    }
+  }, [blobSrc, error, highResLoaded, isActiveImage, markHighResImageRendered, shouldUseWebGLViewer])
 
   return (
     <div
@@ -123,7 +134,7 @@ export const ProgressiveImage = ({
           key={thumbnailSrc}
           alt={alt}
           className={clsxm(
-            'absolute inset-0 h-full w-full object-contain transition-opacity duration-300',
+            'pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300',
             isThumbnailLoaded ? 'opacity-100' : 'opacity-0',
           )}
           onLoad={handleThumbnailLoad}
@@ -140,7 +151,7 @@ export const ProgressiveImage = ({
           }}
         >
           {/* LivePhoto/Motion Photo 或 HDR 模式使用 DOMImageViewer */}
-          {hasVideo || shouldUseHDR ? (
+          {shouldUseDOMViewer ? (
             <DOMImageViewer
               ref={domImageViewerRef}
               onZoomChange={onDOMTransformed}

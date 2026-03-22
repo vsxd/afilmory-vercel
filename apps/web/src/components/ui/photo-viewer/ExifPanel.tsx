@@ -3,13 +3,11 @@ import './PhotoViewer.css'
 import type { PhotoManifestItem, PickedExif } from '@afilmory/data'
 import { MotionButtonBase, ScrollArea, Spring } from '@afilmory/ui'
 import { isNil } from 'es-toolkit/compat'
-import { useAtomValue } from 'jotai'
 import { m } from 'motion/react'
 import type { FC } from 'react'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { isExiftoolLoadedAtom } from '~/atoms/app'
 import { useMobile } from '~/hooks/useMobile'
 import {
   CarbonIsoOutline,
@@ -36,7 +34,6 @@ export const ExifPanel: FC<{
   const { t } = useTranslation()
   const isMobile = useMobile()
   const formattedExifData = formatExifData(exifData)
-  const isExiftoolLoaded = useAtomValue(isExiftoolLoadedAtom)
 
   // Compute decimal GPS coordinates from raw EXIF data
   const gpsData = useMemo(() => convertExifGPSToDecimal(exifData), [exifData])
@@ -86,7 +83,7 @@ export const ExifPanel: FC<{
       />
       <div className="relative z-10 mb-4 flex shrink-0 items-center justify-between p-4 pb-0">
         <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>{t('exif.header.title')}</h3>
-        {!isMobile && isExiftoolLoaded && <RawExifViewer currentPhoto={currentPhoto} />}
+        {!isMobile && <RawExifViewer currentPhoto={currentPhoto} />}
         {isMobile && onClose && (
           <button
             type="button"
