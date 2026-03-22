@@ -1,4 +1,4 @@
-import { useCallback, useImperativeHandle, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface LoadingState {
@@ -45,27 +45,66 @@ const initialLoadingState: LoadingState = {
   errorMessage: undefined,
 }
 
+const MIN_VISIBLE_DURATION_MS = 300
+
 export const LoadingIndicator = ({ ref }: { ref?: React.Ref<LoadingIndicatorRef | null> }) => {
   const { t } = useTranslation()
   const [loadingState, setLoadingState] = useState<LoadingState>(initialLoadingState)
+  const visibleSinceRef = useRef<number | null>(null)
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+  }, [])
+
+  const hideImmediately = useCallback(() => {
+    clearHideTimer()
+    visibleSinceRef.current = null
+    setLoadingState(initialLoadingState)
+  }, [clearHideTimer])
+
+  useEffect(() => {
+    return () => {
+      clearHideTimer()
+    }
+  }, [clearHideTimer])
 
   useImperativeHandle(
     ref,
     useCallback(
       () => ({
         updateLoadingState: (partialState: Partial<LoadingState>) => {
-          setLoadingState((prev) => {
-            if (partialState.isVisible === false) {
-              return initialLoadingState
+          if (partialState.isVisible === false) {
+            const visibleSince = visibleSinceRef.current
+            const elapsed = visibleSince == null ? MIN_VISIBLE_DURATION_MS : Date.now() - visibleSince
+            const remaining = Math.max(0, MIN_VISIBLE_DURATION_MS - elapsed)
+
+            clearHideTimer()
+
+            if (remaining === 0) {
+              hideImmediately()
+              return
             }
-            return { ...prev, ...partialState }
-          })
+
+            hideTimerRef.current = setTimeout(() => {
+              hideImmediately()
+            }, remaining)
+            return
+          }
+
+          clearHideTimer()
+          visibleSinceRef.current ??= Date.now()
+
+          setLoadingState((prev) => ({ ...prev, ...partialState, isVisible: true }))
         },
         resetLoadingState: () => {
-          setLoadingState(initialLoadingState)
+          hideImmediately()
         },
       }),
-      [],
+      [clearHideTimer, hideImmediately],
     ),
   )
 
