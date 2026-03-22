@@ -43,6 +43,7 @@ export const WebGLImageViewer = ({
   onZoomChange,
   onImageCopied,
   onLoadingStateChange,
+  onImagePainted,
   debug = false,
   ...divProps
 }: WebGLImageViewerProps &
@@ -82,6 +83,7 @@ export const WebGLImageViewer = ({
       onZoomChange: onZoomChange || (() => {}),
       onImageCopied: onImageCopied || (() => {}),
       onLoadingStateChange: onLoadingStateChange || (() => {}),
+      onImagePainted: onImagePainted || (() => {}),
       debug: debug || false,
     }),
     [
@@ -104,6 +106,7 @@ export const WebGLImageViewer = ({
       onZoomChange,
       onImageCopied,
       onLoadingStateChange,
+      onImagePainted,
       debug,
     ],
   )

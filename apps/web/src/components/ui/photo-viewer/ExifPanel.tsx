@@ -83,16 +83,19 @@ export const ExifPanel: FC<{
       />
       <div className="relative z-10 mb-4 flex shrink-0 items-center justify-between p-4 pb-0">
         <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>{t('exif.header.title')}</h3>
-        {!isMobile && <RawExifViewer currentPhoto={currentPhoto} />}
-        {isMobile && onClose && (
-          <button
-            type="button"
-            className="glassmorphic-btn border-accent/20 flex size-6 items-center justify-center rounded-full border text-white/70 duration-200 hover:text-white"
-            onClick={onClose}
-          >
-            <i className="i-mingcute-close-line text-sm" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <RawExifViewer currentPhoto={currentPhoto} />
+          {isMobile && onClose && (
+            <button
+              type="button"
+              aria-label={t('common.close', { defaultValue: 'Close' })}
+              className="glassmorphic-btn border-accent/20 flex size-6 items-center justify-center rounded-full border text-white/70 duration-200 hover:text-white"
+              onClick={onClose}
+            >
+              <i className="i-mingcute-close-line text-sm" />
+            </button>
+          )}
+        </div>
       </div>
 
       <ScrollArea
