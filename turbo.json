@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["generated/photos-manifest.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -6,7 +6,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../Collapsi
 // Mock motion/react to avoid animation issues in tests.
 // Use vi.hoisted to ensure React is available in the mock factory.
 const { mockAnimatePresence, mockMDiv } = vi.hoisted(() => {
-   
   const React = require('react')
   return {
     mockAnimatePresence: ({ children }: { children: unknown }) => React.createElement(React.Fragment, null, children),

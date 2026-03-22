@@ -10,7 +10,7 @@ export function createEmptyManifest(): AfilmoryManifest {
   }
 }
 
-export function parseManifest(input: unknown): AfilmoryManifest {
+export function parseManifest(input?: unknown): AfilmoryManifest {
   if (!input || typeof input !== 'object') {
     return createEmptyManifest()
   }

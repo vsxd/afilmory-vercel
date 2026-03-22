@@ -1,7 +1,7 @@
 import { Thumbhash } from '@afilmory/ui'
 import clsx from 'clsx'
 import { m } from 'motion/react'
-import { Fragment, memo, useCallback, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useLivePhotoHandler } from '~/hooks/useLivePhotoHandler'
@@ -36,6 +36,11 @@ export const MasonryPhotoItem = memo(
       handleMouseLeave,
       handleVideoEnded,
     } = useLivePhotoHandler({ data, imageLoaded })
+
+    useEffect(() => {
+      setImageLoaded(false)
+      setImageError(false)
+    }, [data.id])
 
     const handleImageLoad = () => {
       setImageLoaded(true)

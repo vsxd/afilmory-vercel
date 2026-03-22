@@ -10,6 +10,7 @@ interface UseLivePhotoHandlerProps {
 }
 
 export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerProps) => {
+  const { id, video, originalUrl } = data
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false)
   const [isConvertingVideo, setIsConvertingVideo] = useState(false)
@@ -19,16 +20,29 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
   const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
 
-  const hasVideo = data.video !== undefined
+  const hasVideo = video !== undefined
+
+  useEffect(() => {
+    setIsPlayingLivePhoto(false)
+    setLivePhotoVideoLoaded(false)
+    setIsConvertingVideo(false)
+    setVideoConversionError(null)
+
+    const video = videoRef.current
+    if (video) {
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
+  }, [id])
 
   // Live Photo/Motion Photo video loading logic
   useEffect(() => {
-    if (!data.video || !imageLoaded || livePhotoVideoLoaded || !videoRef.current) {
+    if (!video || !imageLoaded || livePhotoVideoLoaded || !videoRef.current) {
       return
     }
 
     const videoEl = videoRef.current
-    const { video, originalUrl } = data
 
     let cancelled = false
 
@@ -85,7 +99,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
         imageLoaderManagerRef.current = null
       }
     }
-  }, [data.video, data.originalUrl, imageLoaded, livePhotoVideoLoaded])
+  }, [video, originalUrl, imageLoaded, livePhotoVideoLoaded])
 
   // Live Photo/Motion Photo hover handling (desktop only)
   const handleMouseEnter = useCallback(() => {
