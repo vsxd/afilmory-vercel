@@ -11,7 +11,7 @@ import { getImageFormat } from '~/lib/image-utils'
 
 import type { LivePhotoVideoHandle } from './LivePhotoVideo'
 import type { LoadingIndicatorRef } from './LoadingIndicator'
-import type { ProgressiveImageState } from './types'
+import type { HighResSourceKind, ProgressiveImageState } from './types'
 import { SHOW_SCALE_INDICATOR_DURATION } from './types'
 
 const DIRECT_RENDERABLE_IMAGE_FORMATS = new Set(['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'AVIF'])
@@ -19,20 +19,18 @@ const DIRECT_RENDERABLE_IMAGE_FORMATS = new Set(['JPG', 'JPEG', 'PNG', 'WEBP', '
 export const useProgressiveImageState = (): [
   ProgressiveImageState,
   {
-    setBlobSrc: (src: string | null) => void
-    setHighResLoaded: (loaded: boolean) => void
-    setError: (error: boolean) => void
-    setIsHighResImageRendered: (rendered: boolean) => void
+    setResolvedSrc: (src: string | null) => void
+    setSourceKind: (kind: HighResSourceKind | null) => void
+    setLoadPhase: (phase: ProgressiveImageState['loadPhase']) => void
     setCurrentScale: (scale: number) => void
     setShowScaleIndicator: (show: boolean) => void
     setIsThumbnailLoaded: (loaded: boolean) => void
     setIsLivePhotoPlaying: (playing: boolean) => void
   },
 ] => {
-  const [blobSrc, setBlobSrc] = useState<string | null>(null)
-  const [highResLoaded, setHighResLoaded] = useState(false)
-  const [error, setError] = useState(false)
-  const [isHighResImageRendered, setIsHighResImageRendered] = useState(false)
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
+  const [sourceKind, setSourceKind] = useState<HighResSourceKind | null>(null)
+  const [loadPhase, setLoadPhase] = useState<ProgressiveImageState['loadPhase']>('idle')
   const [currentScale, setCurrentScale] = useState(1)
   const [showScaleIndicator, setShowScaleIndicator] = useState(false)
   const [isThumbnailLoaded, setIsThumbnailLoaded] = useState(false)
@@ -40,20 +38,18 @@ export const useProgressiveImageState = (): [
 
   return [
     {
-      blobSrc,
-      highResLoaded,
-      error,
-      isHighResImageRendered,
+      resolvedSrc,
+      sourceKind,
+      loadPhase,
       currentScale,
       showScaleIndicator,
       isThumbnailLoaded,
       isLivePhotoPlaying,
     },
     {
-      setBlobSrc,
-      setHighResLoaded,
-      setError,
-      setIsHighResImageRendered,
+      setResolvedSrc,
+      setSourceKind,
+      setLoadPhase,
       setCurrentScale,
       setShowScaleIndicator,
       setIsThumbnailLoaded,
@@ -65,27 +61,23 @@ export const useProgressiveImageState = (): [
 export const useImageLoader = (
   src: string,
   isCurrentImage: boolean,
-  _highResLoaded: boolean,
-  _error: boolean,
   onProgress?: (progress: number) => void,
   onError?: () => void,
   onBlobSrcChange?: (blobSrc: string | null) => void,
   loadingIndicatorRef?: React.RefObject<LoadingIndicatorRef | null>,
-  setBlobSrc?: (src: string | null) => void,
-  setHighResLoaded?: (loaded: boolean) => void,
-  setError?: (error: boolean) => void,
-  setIsHighResImageRendered?: (rendered: boolean) => void,
+  setResolvedSrc?: (src: string | null) => void,
+  setSourceKind?: (kind: HighResSourceKind | null) => void,
+  setLoadPhase?: (phase: ProgressiveImageState['loadPhase']) => void,
 ) => {
   const { t } = useTranslation()
   const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
 
   useEffect(() => {
     const resetState = () => {
-      setHighResLoaded?.(false)
-      setBlobSrc?.(null)
-      setError?.(false)
+      setResolvedSrc?.(null)
+      setSourceKind?.(null)
+      setLoadPhase?.('idle')
       onBlobSrcChange?.(null)
-      setIsHighResImageRendered?.(false)
 
       // Reset loading indicator
       loadingIndicatorRef?.current?.resetLoadingState()
@@ -119,9 +111,10 @@ export const useImageLoader = (
         loadedBytes: 0,
         totalBytes: 0,
       })
-      setBlobSrc?.(src)
+      setResolvedSrc?.(src)
+      setSourceKind?.('direct')
+      setLoadPhase?.('loading')
       onBlobSrcChange?.(src)
-      setHighResLoaded?.(true)
       return () => {
         imageLoaderManager.cleanup()
       }
@@ -137,22 +130,27 @@ export const useImageLoader = (
           },
         })
 
-        setBlobSrc?.(result.blobSrc)
+        setResolvedSrc?.(result.blobSrc)
+        setSourceKind?.(result.blobSrc.startsWith('blob:') ? 'blob' : 'direct')
+        setLoadPhase?.('ready')
         onBlobSrcChange?.(result.blobSrc)
-        setHighResLoaded?.(true)
       } catch (loadError) {
         if (isCrossOriginSource) {
-          setBlobSrc?.(src)
-          onBlobSrcChange?.(src)
-          setHighResLoaded?.(true)
           loadingIndicatorRef?.current?.updateLoadingState({
-            isVisible: false,
+            isVisible: true,
+            loadingProgress: 0,
+            loadedBytes: 0,
+            totalBytes: 0,
           })
+          setResolvedSrc?.(src)
+          setSourceKind?.('direct')
+          setLoadPhase?.('loading')
+          onBlobSrcChange?.(src)
           return
         }
 
         console.error('Failed to load image:', loadError)
-        setError?.(true)
+        setLoadPhase?.('error')
 
         // 显示错误状态，而不是完全隐藏图片
         loadingIndicatorRef?.current?.updateLoadingState({
@@ -177,10 +175,9 @@ export const useImageLoader = (
     onBlobSrcChange,
     loadingIndicatorRef,
     t,
-    setBlobSrc,
-    setHighResLoaded,
-    setError,
-    setIsHighResImageRendered,
+    setResolvedSrc,
+    setSourceKind,
+    setLoadPhase,
   ])
 
   return imageLoaderManagerRef

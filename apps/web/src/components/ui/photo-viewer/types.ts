@@ -49,6 +49,9 @@ export interface WebGLImageViewerRef {
   getScale: () => number
 }
 
+export type HighResSourceKind = 'blob' | 'direct'
+export type HighResLoadPhase = 'idle' | 'loading' | 'ready' | 'painted' | 'error'
+
 export interface DOMImageViewerProps {
   ref?: React.RefObject<import('react-zoom-pan-pinch').ReactZoomPanPinchRef | null>
   onZoomChange?: (isZoomed: boolean, scale: number) => any
@@ -56,7 +59,7 @@ export interface DOMImageViewerProps {
   maxZoom: number
   src: string
   alt: string
-  highResLoaded: boolean
+  isVisible: boolean
   onLoad?: () => void
   onError?: () => void
   children?: React.ReactNode
@@ -69,10 +72,9 @@ export interface LivePhotoBadgeProps {
 }
 
 export interface ProgressiveImageState {
-  blobSrc: string | null
-  highResLoaded: boolean
-  error: boolean
-  isHighResImageRendered: boolean
+  resolvedSrc: string | null
+  sourceKind: HighResSourceKind | null
+  loadPhase: HighResLoadPhase
   currentScale: number
   showScaleIndicator: boolean
   isThumbnailLoaded: boolean

@@ -6,7 +6,8 @@
 export const getImageFormat = (url: string): string => {
   if (!url) return 'UNKNOWN'
 
-  const extension = url.split('.').pop()?.toUpperCase()
+  const sanitizedUrl = url.split('?')[0]?.split('#')[0] ?? url
+  const extension = sanitizedUrl.split('.').pop()?.toUpperCase()
   return extension || 'UNKNOWN'
 }
 

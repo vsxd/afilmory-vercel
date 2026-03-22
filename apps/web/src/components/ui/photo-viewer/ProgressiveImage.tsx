@@ -49,10 +49,9 @@ export const ProgressiveImage = ({
   // State management
   const [state, setState] = useProgressiveImageState()
   const {
-    blobSrc,
-    highResLoaded,
-    error,
-    isHighResImageRendered,
+    resolvedSrc,
+    sourceKind,
+    loadPhase,
     currentScale,
     showScaleIndicator,
     isThumbnailLoaded,
@@ -74,16 +73,13 @@ export const ProgressiveImage = ({
   const imageLoaderManagerRef = useImageLoader(
     src,
     isCurrentImage,
-    highResLoaded,
-    error,
     onProgress,
     onError,
     onBlobSrcChange,
     loadingIndicatorRef,
-    setState.setBlobSrc,
-    setState.setHighResLoaded,
-    setState.setError,
-    setState.setIsHighResImageRendered,
+    setState.setResolvedSrc,
+    setState.setSourceKind,
+    setState.setLoadPhase,
   )
 
   const { onTransformed, onDOMTransformed } = useScaleIndicator(
@@ -95,21 +91,20 @@ export const ProgressiveImage = ({
   const { handleLongPressStart, handleLongPressEnd } = useLivePhotoControls(hasVideo, isLivePhotoPlaying, livePhotoRef)
 
   const handleWebGLLoadingStateChange = useWebGLLoadingState(loadingIndicatorRef)
-  const markHighResImageRendered = setState.setIsHighResImageRendered
 
   const handleThumbnailLoad = useCallback(() => {
     setState.setIsThumbnailLoaded(true)
   }, [setState])
 
   const handleHighResImageLoad = useCallback(() => {
-    setState.setIsHighResImageRendered(true)
+    setState.setLoadPhase('painted')
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: false,
     })
   }, [loadingIndicatorRef, setState])
 
   const handleHighResImageError = useCallback(() => {
-    setState.setError(true)
+    setState.setLoadPhase('error')
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: true,
       isError: true,
@@ -122,16 +117,21 @@ export const ProgressiveImage = ({
   const isHDRSupported = useMediaQuery('(dynamic-range: high)')
   // Only use HDR if the browser supports it and the image is HDR
   const shouldUseHDR = isHDR && isHDRSupported
-  const shouldUseDOMViewer = hasVideo || shouldUseHDR || !blobSrc || !blobSrc.startsWith('blob:')
+  const shouldUseDOMViewer = hasVideo || shouldUseHDR || sourceKind !== 'blob'
   const shouldUseWebGLViewer = !shouldUseDOMViewer && canUseWebGL
+  const hasHighResSource = Boolean(resolvedSrc)
+  const isHighResPainted = loadPhase === 'painted'
+  const hasHighResError = loadPhase === 'error'
+  const shouldRenderHighResLayer = hasHighResSource && isActiveImage && !hasHighResError
 
   useEffect(() => {
-    // WebGL viewer does not emit an image onLoad event like the DOM viewer path,
-    // so mark the high-res layer as rendered once the canvas-backed viewer is active.
-    if (highResLoaded && blobSrc && isActiveImage && !error && shouldUseWebGLViewer) {
-      markHighResImageRendered(true)
+    // WebGL viewer does not emit a DOM image onLoad event, so the closest stable
+    // point we have is when the resolved blob source is ready and the viewer path
+    // has been selected.
+    if (resolvedSrc && loadPhase === 'ready' && isActiveImage && shouldUseWebGLViewer) {
+      setState.setLoadPhase('painted')
     }
-  }, [blobSrc, error, highResLoaded, isActiveImage, markHighResImageRendered, shouldUseWebGLViewer])
+  }, [resolvedSrc, loadPhase, isActiveImage, shouldUseWebGLViewer, setState])
 
   return (
     <div
@@ -143,7 +143,7 @@ export const ProgressiveImage = ({
       onTouchEnd={handleLongPressEnd}
     >
       {/* 缩略图 - 在高分辨率图片未加载或加载失败时显示 */}
-      {thumbnailSrc && (!isHighResImageRendered || error) && (
+      {thumbnailSrc && (!isHighResPainted || hasHighResError) && (
         <img
           ref={thumbnailRef}
           src={thumbnailSrc}
@@ -158,11 +158,11 @@ export const ProgressiveImage = ({
       )}
 
       {/* 高分辨率图片 - 只在成功加载且非错误状态时显示 */}
-      {highResLoaded && blobSrc && isActiveImage && !error && (
+      {shouldRenderHighResLayer && resolvedSrc && (
         <div
           className="absolute inset-0 h-full w-full"
           onContextMenu={(e) => {
-            const items = createContextMenuItems(blobSrc, alt, t)
+            const items = createContextMenuItems(resolvedSrc, alt, t)
             showContextMenu(items, e)
           }}
         >
@@ -173,9 +173,9 @@ export const ProgressiveImage = ({
               onZoomChange={onDOMTransformed}
               minZoom={minZoom}
               maxZoom={maxZoom}
-              src={blobSrc}
+              src={resolvedSrc}
               alt={alt}
-              highResLoaded={highResLoaded}
+              isVisible={loadPhase !== 'idle'}
               onLoad={handleHighResImageLoad}
               onError={handleHighResImageError}
             >
@@ -196,7 +196,7 @@ export const ProgressiveImage = ({
             /* 非 LivePhoto 模式使用 WebGLImageViewer */
             <WebGLImageViewer
               ref={webglImageViewerRef}
-              src={blobSrc}
+              src={resolvedSrc}
               className="absolute inset-0 h-full w-full"
               width={width}
               height={height}
@@ -214,7 +214,7 @@ export const ProgressiveImage = ({
         </div>
       )}
 
-      {hasVideo && highResLoaded && blobSrc && isActiveImage && !error && (
+      {hasVideo && shouldRenderHighResLayer && resolvedSrc && (
         <LivePhotoBadge
           livePhotoRef={livePhotoRef}
           isLivePhotoPlaying={isLivePhotoPlaying}
@@ -222,10 +222,10 @@ export const ProgressiveImage = ({
         />
       )}
 
-      {shouldUseHDR && highResLoaded && blobSrc && isActiveImage && !error && <HDRBadge />}
+      {shouldUseHDR && shouldRenderHighResLayer && resolvedSrc && <HDRBadge />}
 
       {/* 备用图片（当 WebGL 不可用时） - 只在非错误状态时显示 */}
-      {!canUseWebGL && highResLoaded && blobSrc && isActiveImage && !error && (
+      {!canUseWebGL && shouldUseWebGLViewer && shouldRenderHighResLayer && resolvedSrc && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/20">
           <i className="i-mingcute-warning-line mb-2 text-4xl" />
           <span className="text-center text-sm text-white">{t('photo.webgl.unavailable')}</span>
