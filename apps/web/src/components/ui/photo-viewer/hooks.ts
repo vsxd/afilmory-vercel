@@ -1,6 +1,6 @@
 import { LoadingState } from '@afilmory/webgl-viewer'
 import type { TFunction } from 'i18next'
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -35,6 +35,22 @@ export const useProgressiveImageState = (): [
   const [isThumbnailLoaded, setIsThumbnailLoaded] = useState(false)
   const [isLivePhotoPlaying, setIsLivePhotoPlaying] = useState(false)
 
+  const setters = useMemo(
+    () => ({
+      setBlobSrc,
+      setHighResLoaded,
+      setError,
+      setIsHighResImageRendered,
+      setCurrentScale,
+      setShowScaleIndicator,
+      setIsThumbnailLoaded,
+      setIsLivePhotoPlaying,
+    }),
+    // useState setters are stable across renders, so this memo never recomputes
+     
+    [],
+  )
+
   return [
     {
       blobSrc,
@@ -46,16 +62,7 @@ export const useProgressiveImageState = (): [
       isThumbnailLoaded,
       isLivePhotoPlaying,
     },
-    {
-      setBlobSrc,
-      setHighResLoaded,
-      setError,
-      setIsHighResImageRendered,
-      setCurrentScale,
-      setShowScaleIndicator,
-      setIsThumbnailLoaded,
-      setIsLivePhotoPlaying,
-    },
+    setters,
   ]
 }
 
