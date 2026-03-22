@@ -65,6 +65,7 @@
         "SOCIAL_RSS",
         "SOCIAL_TWITTER"
       ],
+      "outputs": ["dist/**"],
       "cache": true
     },
     "dev": {

@@ -17,6 +17,25 @@ import type { PhotoManifest } from '~/types/photo'
 import { ExifFieldGroup } from './exif/ExifFieldGroup'
 import { exifCategories } from './exif/field-definitions'
 
+// Category configuration for rendering — static, defined outside component
+const CATEGORY_CONFIG = [
+  { key: 'basic', title: 'File Information', translationKey: 'exif.raw.category.basic' },
+  { key: 'camera', title: 'Camera Information', translationKey: 'exif.raw.category.camera' },
+  { key: 'exposure', title: 'Exposure Settings', translationKey: 'exif.raw.category.exposure' },
+  { key: 'lens', title: 'Lens Information', translationKey: 'exif.raw.category.lens' },
+  { key: 'datetime', title: 'Date & Time', translationKey: 'exif.raw.category.datetime' },
+  { key: 'gps', title: 'GPS Information', translationKey: 'exif.raw.category.gps' },
+  { key: 'focus', title: 'Focus System', translationKey: 'exif.raw.category.focus' },
+  { key: 'flash', title: 'Flash & Lighting', translationKey: 'exif.raw.category.flash' },
+  { key: 'imageProperties', title: 'Image Properties', translationKey: 'exif.raw.category.imageProperties' },
+  { key: 'whiteBalance', title: 'White Balance', translationKey: 'exif.raw.category.whiteBalance' },
+  { key: 'fuji', title: 'Fuji Film Simulation', translationKey: 'exif.raw.category.fuji' },
+  { key: 'technical', title: 'Technical Parameters', translationKey: 'exif.raw.category.technical' },
+  { key: 'video', title: 'Video/HEIF Properties', translationKey: 'exif.raw.category.video' },
+  { key: 'faceDetection', title: 'Face Detection', translationKey: 'exif.raw.category.faceDetection' },
+  { key: 'other', title: 'Other Metadata', translationKey: 'exif.raw.category.other' },
+] as const
+
 interface RawExifViewerProps {
   currentPhoto: PhotoManifest
 }
@@ -92,25 +111,6 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
     return dataEntries.filter(([key]) => !allCategoryKeys.some((catKey) => key.includes(catKey)))
   }
 
-  // Category configuration for rendering
-  const categoryConfig = [
-    { key: 'basic', title: 'File Information', translationKey: 'exif.raw.category.basic' },
-    { key: 'camera', title: 'Camera Information', translationKey: 'exif.raw.category.camera' },
-    { key: 'exposure', title: 'Exposure Settings', translationKey: 'exif.raw.category.exposure' },
-    { key: 'lens', title: 'Lens Information', translationKey: 'exif.raw.category.lens' },
-    { key: 'datetime', title: 'Date & Time', translationKey: 'exif.raw.category.datetime' },
-    { key: 'gps', title: 'GPS Information', translationKey: 'exif.raw.category.gps' },
-    { key: 'focus', title: 'Focus System', translationKey: 'exif.raw.category.focus' },
-    { key: 'flash', title: 'Flash & Lighting', translationKey: 'exif.raw.category.flash' },
-    { key: 'imageProperties', title: 'Image Properties', translationKey: 'exif.raw.category.imageProperties' },
-    { key: 'whiteBalance', title: 'White Balance', translationKey: 'exif.raw.category.whiteBalance' },
-    { key: 'fuji', title: 'Fuji Film Simulation', translationKey: 'exif.raw.category.fuji' },
-    { key: 'technical', title: 'Technical Parameters', translationKey: 'exif.raw.category.technical' },
-    { key: 'video', title: 'Video/HEIF Properties', translationKey: 'exif.raw.category.video' },
-    { key: 'faceDetection', title: 'Face Detection', translationKey: 'exif.raw.category.faceDetection' },
-    { key: 'other', title: 'Other Metadata', translationKey: 'exif.raw.category.other' },
-  ] as const
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -154,7 +154,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
           flex
         >
           <div className="min-w-0 space-y-6">
-            {categoryConfig.map(({ key, title, translationKey }) => (
+            {CATEGORY_CONFIG.map(({ key, title, translationKey }) => (
               <ExifFieldGroup
                 key={key}
                 title={title}

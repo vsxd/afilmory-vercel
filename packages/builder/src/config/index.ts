@@ -149,14 +149,11 @@ export async function loadBuilderConfig(options: LoadBuilderConfigOptions = {}):
     logger.info('Using builder config from', result.configFile ?? 'defaults')
     const sanitized = { ...config, user: config.user ? { ...config.user } : config.user }
     if (sanitized.user?.storage) {
-      sanitized.user = {
-        ...sanitized.user,
-        storage: {
-          ...sanitized.user.storage,
-          accessKeyId: '***',
-          secretAccessKey: '***',
-        } as typeof sanitized.user.storage,
-      }
+      const storage = { ...sanitized.user.storage }
+      if ('accessKeyId' in storage) (storage as Record<string, unknown>).accessKeyId = '***'
+      if ('secretAccessKey' in storage) (storage as Record<string, unknown>).secretAccessKey = '***'
+      if ('token' in storage) (storage as Record<string, unknown>).token = '***'
+      sanitized.user = { ...sanitized.user, storage: storage as typeof sanitized.user.storage }
     }
     if (sanitized.user?.repo) {
       sanitized.user = { ...sanitized.user, repo: { ...sanitized.user.repo, token: '***' } }

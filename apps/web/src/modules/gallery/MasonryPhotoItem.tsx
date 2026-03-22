@@ -1,7 +1,7 @@
 import { Thumbhash } from '@afilmory/ui'
 import clsx from 'clsx'
 import { m } from 'motion/react'
-import { Fragment, memo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useLivePhotoHandler } from '~/hooks/useLivePhotoHandler'
@@ -31,7 +31,7 @@ export const MasonryPhotoItem = memo(
       hasVideo,
       isPlayingLivePhoto,
       isConvertingVideo,
-      videoConvertionError,
+      videoConversionError,
       handleMouseEnter,
       handleMouseLeave,
       handleVideoEnded,
@@ -54,6 +54,17 @@ export const MasonryPhotoItem = memo(
         photoViewer.openViewer(photoIndex, triggerEl ?? undefined)
       }
     }
+
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleClick()
+        }
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [photos, data.id],
+    )
 
     // 计算基于宽度的高度
     const calculatedHeight = width / data.aspectRatio
@@ -106,7 +117,7 @@ export const MasonryPhotoItem = memo(
       <m.div
         role="button"
         tabIndex={0}
-        aria-label={data.title || 'View photo'}
+        aria-label={data.title || data.description || undefined}
         className="bg-fill-quaternary group relative w-full cursor-pointer overflow-hidden"
         style={{
           width,
@@ -114,6 +125,7 @@ export const MasonryPhotoItem = memo(
         }}
         data-photo-id={data.id}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -175,11 +187,11 @@ export const MasonryPhotoItem = memo(
               <Fragment>
                 <i className="i-mingcute-live-photo-line size-4 shrink-0" />
                 <span className="mr-1 shrink-0">{t('photo.live.badge')}</span>
-                {videoConvertionError ? (
+                {videoConversionError ? (
                   <span className={'bg-warning/20 ml-0.5 rounded px-1 text-xs'}>
                     <div
                       className="text-yellow w-3 text-center font-bold"
-                      title={(videoConvertionError as Error).message}
+                      title={(videoConversionError as Error).message}
                     >
                       !
                     </div>
