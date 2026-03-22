@@ -153,6 +153,8 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
           type="button"
           onClick={handleOpenModal}
           disabled={isLoading}
+          aria-label={t('exif.raw.title', { defaultValue: 'Raw EXIF Data' })}
+          title={t('exif.raw.title', { defaultValue: 'Raw EXIF Data' })}
           className="cursor-pointer text-white/70 duration-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? (

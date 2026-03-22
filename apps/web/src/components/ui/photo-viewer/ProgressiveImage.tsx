@@ -1,7 +1,7 @@
 import { clsxm } from '@afilmory/ui'
 import { WebGLImageViewer } from '@afilmory/webgl-viewer'
 import { AnimatePresence, m } from 'motion/react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
 import { useMediaQuery } from 'usehooks-ts'
@@ -124,14 +124,12 @@ export const ProgressiveImage = ({
   const hasHighResError = loadPhase === 'error'
   const shouldRenderHighResLayer = hasHighResSource && isActiveImage && !hasHighResError
 
-  useEffect(() => {
-    // WebGL viewer does not emit a DOM image onLoad event, so the closest stable
-    // point we have is when the resolved blob source is ready and the viewer path
-    // has been selected.
-    if (resolvedSrc && loadPhase === 'ready' && isActiveImage && shouldUseWebGLViewer) {
-      setState.setLoadPhase('painted')
-    }
-  }, [resolvedSrc, loadPhase, isActiveImage, shouldUseWebGLViewer, setState])
+  const handleWebGLImagePainted = useCallback(() => {
+    setState.setLoadPhase('painted')
+    loadingIndicatorRef.current?.updateLoadingState({
+      isVisible: false,
+    })
+  }, [loadingIndicatorRef, setState])
 
   return (
     <div
@@ -208,6 +206,7 @@ export const ProgressiveImage = ({
               smooth={true}
               onZoomChange={onTransformed}
               onLoadingStateChange={handleWebGLLoadingStateChange}
+              onImagePainted={handleWebGLImagePainted}
               debug={import.meta.env.DEV}
             />
           )}

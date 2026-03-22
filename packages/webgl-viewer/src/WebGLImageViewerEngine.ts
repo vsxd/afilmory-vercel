@@ -89,6 +89,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     state?: LoadingState,
     quality?: 'high' | 'medium' | 'low' | 'unknown',
   ) => void
+  private onImagePainted?: () => void
   private onDebugUpdate?: React.RefObject<(debugInfo: any) => void>
 
   // 当前质量状态
@@ -137,6 +138,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   // Promise resolvers for loadImage
   private loadImageResolve: (() => void) | null = null
   private loadImageReject: ((error: Error) => void) | null = null
+  private hasNotifiedImagePainted = false
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -149,6 +151,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.onZoomChange = config.onZoomChange
     this.onImageCopied = config.onImageCopied
     this.onLoadingStateChange = config.onLoadingStateChange
+    this.onImagePainted = config.onImagePainted
     this.onDebugUpdate = onDebugUpdate
 
     // 初始化 WebGL
@@ -460,6 +463,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   async loadImage(url: string, preknownWidth?: number, preknownHeight?: number) {
+    this.hasNotifiedImagePainted = false
     this.originalImageSrc = url
     this.isLoadingTexture = true
     this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING)
@@ -474,7 +478,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.loadImageResolve = resolve
       this.loadImageReject = reject
 
-      console.info('[Engine] Posting "load-image" to worker', this.worker)
       this.worker?.postMessage({
         type: 'load-image',
         payload: { url },
@@ -935,6 +938,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     this.drawTileOutlines(outlinedTileMatrices)
+    this.notifyImagePainted()
 
     // 更新调试信息
     this.updateDebugInfo()
@@ -945,6 +949,19 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.lastTileUpdateTime = performance.now()
       setTimeout(() => this.updateTileCache(), 0)
     }
+  }
+
+  private notifyImagePainted() {
+    if (this.hasNotifiedImagePainted || !this.imageLoaded || !this.texture) {
+      return
+    }
+
+    if (this.canvas.width === 0 || this.canvas.height === 0) {
+      return
+    }
+
+    this.hasNotifiedImagePainted = true
+    this.onImagePainted?.()
   }
 
   private createTileMatrix(tileX: number, tileY: number, lodLevel: number): Float32Array {
