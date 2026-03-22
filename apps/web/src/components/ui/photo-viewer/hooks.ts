@@ -94,6 +94,14 @@ export const useImageLoader = (
       loadingIndicatorRef?.current?.resetLoadingState()
     }
 
+    const isCrossOriginSource = (() => {
+      try {
+        return new URL(src, window.location.href).origin !== window.location.origin
+      } catch {
+        return false
+      }
+    })()
+
     const loadImage = async () => {
       try {
         const result = await imageLoaderManager.loadImage(src, {
@@ -108,6 +116,16 @@ export const useImageLoader = (
         onBlobSrcChange?.(result.blobSrc)
         setHighResLoaded?.(true)
       } catch (loadError) {
+        if (isCrossOriginSource) {
+          setBlobSrc?.(src)
+          onBlobSrcChange?.(src)
+          setHighResLoaded?.(true)
+          loadingIndicatorRef?.current?.updateLoadingState({
+            isVisible: false,
+          })
+          return
+        }
+
         console.error('Failed to load image:', loadError)
         setError?.(true)
 

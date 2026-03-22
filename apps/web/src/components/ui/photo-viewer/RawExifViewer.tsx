@@ -42,6 +42,31 @@ interface RawExifViewerProps {
 
 type ParsedExifData = Record<string, string | number | boolean | null>
 
+const stringifyExifValue = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return String(value)
+    }
+  }
+  return String(value)
+}
+
+const serializeManifestExifData = (exifData: PhotoManifest['exif']): string | null => {
+  if (!exifData) return null
+
+  const lines = Object.entries(exifData)
+    .flatMap(([key, value]) => {
+      const serialized = stringifyExifValue(value)
+      return serialized ? [`${key}: ${serialized}`] : []
+    })
+    .sort((a, b) => a.localeCompare(b))
+
+  return lines.length > 0 ? lines.join('\n') : null
+}
+
 const parseRawExifData = (rawData: string): ParsedExifData => {
   const lines = rawData.split('\n').filter((line) => line.trim())
   const data: ParsedExifData = {}
@@ -82,6 +107,9 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
     setIsLoading(true)
     try {
       const response = await fetch(currentPhoto.originalUrl)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch original image: ${response.status}`)
+      }
       const blob = await response.blob()
       const data = await ExifToolManager.parse(blob, currentPhoto.s3Key)
 
@@ -89,11 +117,18 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
       setIsOpen(true)
     } catch (error) {
       console.error('Failed to parse EXIF data:', error)
-      toast.error(
-        t('exif.raw.parse.error', {
-          defaultValue: 'Failed to parse EXIF data',
-        }),
-      )
+      const fallbackData = serializeManifestExifData(currentPhoto.exif)
+
+      if (fallbackData) {
+        setRawExifData(fallbackData)
+        setIsOpen(true)
+      } else {
+        toast.error(
+          t('exif.raw.parse.error', {
+            defaultValue: 'Failed to parse EXIF data',
+          }),
+        )
+      }
     } finally {
       setIsLoading(false)
     }
