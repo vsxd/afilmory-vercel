@@ -28,6 +28,16 @@ interface DebugInfoProps {
   onToggleOutline?: (value: boolean) => void
 }
 
+function formatTileKeyPreview(label: string, keys: string[] | undefined): string {
+  if (!keys || keys.length === 0) {
+    return `${label}: -`
+  }
+
+  const preview = keys.slice(0, 3).join(', ')
+  const suffix = keys.length > 3 ? ' ...' : ''
+  return `${label}: ${preview}${suffix}`
+}
+
 /**
  * 可折叠的调试信息分组组件
  */
@@ -172,22 +182,10 @@ const DebugInfoComponent = ({ ref, outlineEnabled, onToggleOutline }: DebugInfoP
         </div>
         {/* 可选：显示部分 key 信息，避免过长 */}
         <div style={{ fontSize: '10px', marginTop: 4, opacity: 0.7 }}>
-          <div>
-            Cache Keys: {tileSystem.cacheKeys?.slice(0, 3).join(', ')}
-            {tileSystem.cacheKeys?.length > 3 ? ' ...' : ''}
-          </div>
-          <div>
-            Visible Keys: {tileSystem.visibleKeys?.slice(0, 3).join(', ')}
-            {tileSystem.visibleKeys?.length > 3 ? ' ...' : ''}
-          </div>
-          <div>
-            Loading Keys: {tileSystem.loadingKeys?.slice(0, 3).join(', ')}
-            {tileSystem.loadingKeys?.length > 3 ? ' ...' : ''}
-          </div>
-          <div>
-            Pending Keys: {tileSystem.pendingKeys?.slice(0, 3).join(', ')}
-            {tileSystem.pendingKeys?.length > 3 ? ' ...' : ''}
-          </div>
+          <div>{formatTileKeyPreview('Cache Keys', tileSystem.cacheKeys)}</div>
+          <div>{formatTileKeyPreview('Visible Keys', tileSystem.visibleKeys)}</div>
+          <div>{formatTileKeyPreview('Loading Keys', tileSystem.loadingKeys)}</div>
+          <div>{formatTileKeyPreview('Pending Keys', tileSystem.pendingKeys)}</div>
         </div>
       </CollapsibleSection>
     )

@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '../tooltip'
 import { clsxm } from '../utils/cn'
@@ -21,17 +21,18 @@ type EllipsisProps = PropsWithChildren<{
 export const EllipsisTextWithTooltip = (props: EllipsisProps) => {
   const { children, className, width, disabled, dir = 'v' } = props
 
-  const [textElRef, setTextElRef] = useState<HTMLSpanElement | null>()
+  const [textElRef, setTextElRef] = useState<HTMLSpanElement | null>(null)
   const [isOverflowed, setIsOverflowed] = useState(false)
 
-  const judgment = () => {
+  const judgment = useCallback(() => {
     if (!textElRef) return
 
     setIsOverflowed(isTextOverflowed(textElRef, dir))
-  }
+  }, [dir, textElRef])
+
   useEffect(() => {
     judgment()
-  }, [textElRef, children])
+  }, [children, judgment])
 
   useEffect(() => {
     if (!textElRef) return
@@ -43,7 +44,7 @@ export const EllipsisTextWithTooltip = (props: EllipsisProps) => {
     return () => {
       resizeObserver.disconnect()
     }
-  }, [textElRef])
+  }, [judgment, textElRef])
 
   const Content = (
     <span

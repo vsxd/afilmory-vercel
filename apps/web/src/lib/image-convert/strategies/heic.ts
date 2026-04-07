@@ -1,5 +1,3 @@
-import { heicTo, isHeic } from 'heic-to'
-
 import { i18nAtom } from '~/i18n'
 import { isSafari } from '~/lib/device-viewport'
 import type { LoadingCallbacks } from '~/lib/image-loader-manager'
@@ -7,6 +5,15 @@ import { jotaiStore } from '~/lib/jotai'
 import { LRUCache } from '~/lib/lru-cache'
 
 import type { ConversionResult, ImageConverterStrategy } from '../type'
+
+type HeicModule = typeof import('heic-to')
+
+let heicModulePromise: Promise<HeicModule> | null = null
+
+async function loadHeicModule(): Promise<HeicModule> {
+  heicModulePromise ??= import('heic-to')
+  return await heicModulePromise
+}
 
 // HEIC 转换策略
 export class HeicConverterStrategy implements ImageConverterStrategy {
@@ -72,7 +79,6 @@ const heicCache: LRUCache<string, ConversionResult> = new LRUCache<string, Conve
   (value, key, reason) => {
     try {
       URL.revokeObjectURL(value.url)
-      if (import.meta.env.DEV) console.info(`HEIC cache: Revoked blob URL - ${reason}`)
     } catch (error) {
       console.warn(`Failed to revoke HEIC blob URL (${reason}):`, error)
     }
@@ -94,6 +100,7 @@ function generateCacheKey(src: string, options: HeicConversionOptions): string {
  */
 export async function detectHeicFormat(file: File | Blob): Promise<boolean> {
   try {
+    const { isHeic } = await loadHeicModule()
     return await isHeic(file as File)
   } catch (error) {
     console.warn('Failed to detect HEIC format:', error)
@@ -125,11 +132,12 @@ export async function convertHeicImage(
   // 检查缓存
   const cachedResult = heicCache.get(cacheKey)
   if (cachedResult) {
-    if (import.meta.env.DEV) console.info('Using cached HEIC conversion result', cachedResult)
     return cachedResult
   }
 
   try {
+    const { heicTo } = await loadHeicModule()
+
     // 检查是否为 HEIC 格式
     const isHeicFormat = await detectHeicFormat(file)
     if (!isHeicFormat) {
@@ -155,11 +163,6 @@ export async function convertHeicImage(
 
     // 缓存结果
     heicCache.set(cacheKey, result)
-    if (import.meta.env.DEV) {
-      console.info(
-        `HEIC conversion completed and cached: ${(file.size / 1024).toFixed(1)}KB → ${(convertedBlob.size / 1024).toFixed(1)}KB`,
-      )
-    }
 
     return result
   } catch (error) {

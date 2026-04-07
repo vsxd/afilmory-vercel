@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="<%- description %>" />
+    <meta name="description" content="<%= description %>" />
 
     <!-- PWA iOS Safari 配置 -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="<%- title %>" />
+    <meta name="apple-mobile-web-app-title" content="<%= title %>" />
 
-    <title><%- title %></title>
+    <title><%= title %></title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet" />
@@ -105,7 +105,7 @@
                 animation: titleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
               "
             >
-              <%- title %>
+              <%= title %>
             </h1>
             <p
               style="
@@ -117,7 +117,7 @@
                 animation: subtitleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
               "
             >
-              <%- description %>
+              <%= description %>
             </p>
           </div>
 

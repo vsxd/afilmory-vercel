@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router'
 
 import { GenericMap, MapBackButton, MapInfoPanel, MapLoadingState } from '~/components/ui/map'
 import { photoLoader } from '~/data-runtime/photo-loader'
+import { debugLog } from '~/lib/debug-log'
 import {
   calculateMapBounds,
   convertExifGPSToDecimal,
@@ -73,7 +74,7 @@ const MapSectionContent = () => {
         const photoMarkers = convertPhotosToMarkersFromEXIF(photos)
 
         setMarkers(photoMarkers)
-        if (import.meta.env.DEV) console.info(`Found ${photoMarkers.length} photos with GPS coordinates`)
+        debugLog(`Found ${photoMarkers.length} photos with GPS coordinates`)
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to load photo markers')
         setError(error)

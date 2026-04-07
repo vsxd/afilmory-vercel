@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { codeInspectorPlugin } from 'code-inspector-plugin'
 import type { PluginOption } from 'vite'
 import { defineConfig } from 'vite'
 import { analyzer } from 'vite-bundle-analyzer'
@@ -75,7 +74,7 @@ const staticWebBuildPlugins: PluginOption[] = [
     workbox: {
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
       globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-      globIgnores: ['**/*.{jpg,jpeg}'], // 忽略大图片文件
+      globIgnores: ['**/*.{jpg,jpeg}', '**/vendor/heic-*.js'], // 忽略大图片文件和按需 HEIC codec
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -150,14 +149,23 @@ const staticWebBuildPlugins: PluginOption[] = [
 ]
 
 // https://vitejs.dev/config/
-export default defineConfig(() => {
-  return {
-    base: '/',
-    plugins: [
+export default defineConfig(async ({ command }) => {
+  const devOnlyPlugins: PluginOption[] = []
+
+  if (command === 'serve') {
+    const { codeInspectorPlugin } = await import('code-inspector-plugin')
+    devOnlyPlugins.push(
       codeInspectorPlugin({
         bundler: 'vite',
         hotKeys: ['altKey'],
       }),
+    )
+  }
+
+  return {
+    base: '/',
+    plugins: [
+      ...devOnlyPlugins,
       react({
         babel: {
           plugins: [['babel-plugin-react-compiler', ReactCompilerConfig]],
@@ -173,9 +181,56 @@ export default defineConfig(() => {
       }),
 
       createDependencyChunksPlugin([
-        ['heic-to'],
-        ['react', 'react-dom'],
-        ['i18next', 'i18next-browser-languagedetector', 'react-i18next'],
+        { name: 'react', patterns: ['react', 'react-dom', 'react-router', 'scheduler'] },
+        { name: 'i18n', patterns: ['i18next', 'i18next-browser-languagedetector', 'react-i18next'] },
+        { name: 'map', patterns: ['maplibre-gl', 'react-map-gl', '@vis.gl/*', '@maplibre/*'] },
+        { name: 'motion', patterns: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'] },
+        { name: 'swiper', patterns: ['swiper'] },
+        { name: 'state', patterns: ['jotai', 'zustand', '@tanstack/*'] },
+        {
+          name: 'ui',
+          patterns: [
+            '@radix-ui/*',
+            '@floating-ui/*',
+            'react-remove-scroll',
+            'react-remove-scroll-bar',
+            'react-style-singleton',
+            'aria-hidden',
+            'use-sidecar',
+            'use-callback-ref',
+            'sonner',
+            'vaul',
+          ],
+        },
+        {
+          name: 'masonry',
+          patterns: [
+            'masonic',
+            'trie-memoize',
+            'raf-schd',
+            '@react-hook/*',
+            'react-intersection-observer',
+            'react-use-measure',
+            'usehooks-ts',
+          ],
+        },
+        { name: 'heic', patterns: ['heic-to'] },
+        {
+          name: 'file-type',
+          patterns: [
+            'file-type',
+            'strtok3',
+            'token-types',
+            'iobuffer',
+            'uint8array-extras',
+            'peek-readable',
+            'ieee754',
+          ],
+        },
+        { name: 'zoom', patterns: ['react-zoom-pan-pinch'] },
+        { name: 'thumbhash', patterns: ['thumbhash'] },
+        { name: 'exiftool', patterns: ['@uswriting/exiftool'] },
+        { name: 'utils', patterns: ['es-toolkit', 'clsx', 'tailwind-merge', 'tailwind-variants', 'foxact', 'fflate'] },
       ]),
       localesJsonPlugin(),
       tailwindcss(),

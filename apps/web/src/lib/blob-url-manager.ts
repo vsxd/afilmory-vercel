@@ -78,32 +78,30 @@ export function useBlobUrlManager() {
  */
 export function useBlobUrl(blob: Blob | null): string | null {
   const [url, setUrl] = useState<string | null>(null)
+  const currentUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (currentUrlRef.current) {
+      URL.revokeObjectURL(currentUrlRef.current)
+      currentUrlRef.current = null
+    }
+
     if (!blob) {
-      if (url) {
-        URL.revokeObjectURL(url)
-        setUrl(null)
-      }
+      setUrl(null)
       return
     }
 
     const newUrl = URL.createObjectURL(blob)
+    currentUrlRef.current = newUrl
     setUrl(newUrl)
 
     return () => {
-      URL.revokeObjectURL(newUrl)
-    }
-  }, [blob])
-
-  // 清理 URL 当组件卸载
-  useEffect(() => {
-    return () => {
-      if (url) {
-        URL.revokeObjectURL(url)
+      if (currentUrlRef.current === newUrl) {
+        URL.revokeObjectURL(newUrl)
+        currentUrlRef.current = null
       }
     }
-  }, [])
+  }, [blob])
 
   return url
 }

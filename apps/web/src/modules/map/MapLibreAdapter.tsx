@@ -1,10 +1,12 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import * as React from 'react'
 import { lazy } from 'react'
 import type { MapRef } from 'react-map-gl/maplibre'
 
 import type { BaseMapProps, PhotoMarker } from '~/types/map'
 
-import type { MapAdapter } from './MapProvider'
+import type { MapAdapter } from './map-context'
 
 const Maplibre = lazy(() => import('~/components/ui/map/MapLibre').then((m) => ({ default: m.Maplibre })))
 /**

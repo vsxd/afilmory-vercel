@@ -24,6 +24,20 @@ export const ContextMenuProvider: Component = ({ children }) => (
   </>
 )
 
+function getMenuItemKey(
+  item: FollowMenuItem,
+  previousItem: FollowMenuItem | undefined,
+  nextItem: FollowMenuItem | undefined,
+): string {
+  if (item instanceof MenuItemSeparator) {
+    const previousLabel = previousItem instanceof MenuItemSeparator ? 'separator' : (previousItem?.label ?? 'start')
+    const nextLabel = nextItem instanceof MenuItemSeparator ? 'separator' : (nextItem?.label ?? 'end')
+    return `separator:${previousLabel}:${nextLabel}`
+  }
+
+  return `action:${item.label}`
+}
+
 const Handler = () => {
   const ref = useRef<HTMLSpanElement>(null)
   const [contextMenuState, setContextMenuState] = useContextMenuState()
@@ -72,7 +86,7 @@ const Handler = () => {
             if (!nextItem && item instanceof MenuItemSeparator) {
               return null
             }
-            return <Item key={index} item={item} />
+            return <Item key={getMenuItemKey(item, prevItem, nextItem)} item={item} />
           })}
       </ContextMenuContent>
     </ContextMenu>
@@ -121,8 +135,11 @@ const Item = memo(({ item }: { item: FollowMenuItem }) => {
           {hasSubmenu && (
             <ContextMenuPortal>
               <ContextMenuSubContent>
-                {item.submenu.map((subItem, index) => (
-                  <Item key={index} item={subItem} />
+                {item.submenu.map((subItem, submenuIndex) => (
+                  <Item
+                    key={`submenu:${item.label}:${getMenuItemKey(subItem, item.submenu[submenuIndex - 1], item.submenu[submenuIndex + 1])}`}
+                    item={subItem}
+                  />
                 ))}
               </ContextMenuSubContent>
             </ContextMenuPortal>

@@ -1,5 +1,6 @@
 import type { VideoSource } from '~/components/ui/photo-viewer/types'
 import { i18nAtom } from '~/i18n'
+import { debugLog } from '~/lib/debug-log'
 import { detectFileTypeFromBlob } from '~/lib/file-type'
 import { imageConverterManager } from '~/lib/image-convert'
 import { jotaiStore } from '~/lib/jotai'
@@ -47,7 +48,7 @@ const regularImageCache: LRUCache<string, ImageCacheResult> = new LRUCache<strin
   (value, _key, reason) => {
     try {
       URL.revokeObjectURL(value.blobSrc)
-      if (import.meta.env.DEV) console.info(`Regular image cache: Revoked blob URL - ${reason}`)
+      debugLog(`Regular image cache: Revoked blob URL - ${reason}`)
     } catch (error) {
       console.warn(`Failed to revoke regular image blob URL (${reason}):`, error)
     }
@@ -94,7 +95,7 @@ export class ImageLoaderManager {
         return false
       }
 
-      if (import.meta.env.DEV) console.info(`Valid image detected: ${fileType.ext} (${fileType.mime})`)
+      debugLog(`Valid image detected: ${fileType.ext} (${fileType.mime})`)
       return true
     } catch (error) {
       console.error('Failed to detect file type:', error)
@@ -201,7 +202,7 @@ export class ImageLoaderManager {
           // Pattern matching on VideoSource
           if (videoSource.type === 'motion-photo') {
             // Motion Photo: 从图片中提取嵌入视频
-            if (import.meta.env.DEV) console.info('Processing Motion Photo embedded video...')
+            debugLog('Processing Motion Photo embedded video...')
             onLoadingStateUpdate?.({
               isVisible: true,
               conversionMessage: i18n.t('video.motion-photo.extracting'),
@@ -217,7 +218,7 @@ export class ImageLoaderManager {
               videoElement.src = extractedVideoUrl
               videoElement.load()
 
-              if (import.meta.env.DEV) console.info('Motion Photo video extracted successfully')
+              debugLog('Motion Photo video extracted successfully')
 
               onLoadingStateUpdate?.({
                 isVisible: false,
@@ -279,11 +280,9 @@ export class ImageLoaderManager {
 
       if (conversionResult) {
         // 需要转换的格式
-        if (import.meta.env.DEV) {
-          console.info(
-            `Image converted: ${(blob.size / 1024).toFixed(1)}KB → ${(conversionResult.convertedSize / 1024).toFixed(1)}KB`,
-          )
-        }
+        debugLog(
+          `Image converted: ${(blob.size / 1024).toFixed(1)}KB → ${(conversionResult.convertedSize / 1024).toFixed(1)}KB`,
+        )
 
         // Hide loading indicator
         onLoadingStateUpdate?.({
@@ -303,7 +302,7 @@ export class ImageLoaderManager {
 
       // 转换失败时，尝试按普通图片处理
       try {
-        if (import.meta.env.DEV) console.info('Falling back to regular image processing')
+        debugLog('Falling back to regular image processing')
         return this.processRegularImage(blob, originalUrl, callbacks)
       } catch (fallbackError) {
         console.error('Fallback to regular image processing also failed:', fallbackError)
@@ -332,7 +331,7 @@ export class ImageLoaderManager {
     // 检查缓存
     const cachedResult = regularImageCache.get(cacheKey)
     if (cachedResult) {
-      if (import.meta.env.DEV) console.info('Using cached regular image result', cachedResult)
+      debugLog('Using cached regular image result', cachedResult)
 
       // Hide loading indicator
       onLoadingStateUpdate?.({
@@ -355,9 +354,7 @@ export class ImageLoaderManager {
 
     // 缓存结果
     regularImageCache.set(cacheKey, result)
-    if (import.meta.env.DEV) {
-      console.info(`Regular image processed and cached: ${(blob.size / 1024).toFixed(1)}KB, URL: ${originalUrl}`)
-    }
+    debugLog(`Regular image processed and cached: ${(blob.size / 1024).toFixed(1)}KB, URL: ${originalUrl}`)
 
     // Hide loading indicator
     onLoadingStateUpdate?.({
@@ -383,7 +380,7 @@ export class ImageLoaderManager {
       loadingProgress: 0,
     })
 
-    if (import.meta.env.DEV) console.info('Converting MOV video to MP4...')
+    debugLog('Converting MOV video to MP4...')
 
     const i18n = jotaiStore.get(i18nAtom)
 
@@ -414,11 +411,9 @@ export class ImageLoaderManager {
       videoElement.src = result.videoUrl
       videoElement.load()
 
-      if (import.meta.env.DEV) {
-        console.info(
-          `Video conversion completed. Size: ${result.convertedSize ? Math.round(result.convertedSize / 1024) : 'unknown'}KB`,
-        )
-      }
+      debugLog(
+        `Video conversion completed. Size: ${result.convertedSize ? Math.round(result.convertedSize / 1024) : 'unknown'}KB`,
+      )
 
       onLoadingStateUpdate?.({
         isVisible: false,

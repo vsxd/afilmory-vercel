@@ -1,7 +1,7 @@
 import * as React from 'react'
 
 import { getInitialViewStateForMarkers } from '~/lib/map-utils'
-import { useMapAdapter } from '~/modules/map/MapProvider'
+import { useMapAdapter } from '~/modules/map/map-context'
 import type { BaseMapProps, PhotoMarker } from '~/types/map'
 
 interface GenericMapProps extends Omit<BaseMapProps, 'handlers'> {

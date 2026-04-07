@@ -5,7 +5,7 @@ import { MotionButtonBase, ScrollArea, Spring } from '@afilmory/ui'
 import { isNil } from 'es-toolkit/compat'
 import { m } from 'motion/react'
 import type { FC } from 'react'
-import { Fragment, useMemo } from 'react'
+import { Fragment, lazy, Suspense, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useMobile } from '~/hooks/useMobile'
@@ -21,8 +21,9 @@ import { convertExifGPSToDecimal } from '~/lib/map-utils'
 
 import { formatExifData, Row } from './formatExifData'
 import { HistogramChart } from './HistogramChart'
-import { MiniMap } from './MiniMap'
 import { RawExifViewer } from './RawExifViewer'
+
+const MiniMap = lazy(() => import('./MiniMap').then((m) => ({ default: m.MiniMap })))
 
 export const ExifPanel: FC<{
   currentPhoto: PhotoManifestItem
@@ -412,9 +413,13 @@ export const ExifPanel: FC<{
 
                     {/* Maplibre MiniMap */}
                     {decimalLatitude !== null && decimalLongitude !== null && (
-                      <div className="mt-3">
-                        <MiniMap latitude={decimalLatitude} longitude={decimalLongitude} photoId={currentPhoto.id} />
-                      </div>
+                      <Suspense
+                        fallback={<div className="mt-3 h-40 w-full rounded-lg border border-white/10 bg-white/5" />}
+                      >
+                        <div className="mt-3">
+                          <MiniMap latitude={decimalLatitude} longitude={decimalLongitude} photoId={currentPhoto.id} />
+                        </div>
+                      </Suspense>
                     )}
                   </div>
                 </div>

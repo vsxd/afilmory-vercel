@@ -2,6 +2,8 @@ import { get, omit } from 'es-toolkit/compat'
 import { Fragment } from 'react/jsx-runtime'
 import type { RouteObject } from 'react-router'
 
+import { debugLog } from './debug-log'
+
 type NestedStructure = { [key: string]: NestedStructure }
 
 const MainGroupSegment = '(main)'
@@ -28,9 +30,7 @@ function nestPaths(paths: string[]): NestedStructure {
 
 export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): RouteObject[] {
   const keys = Object.keys(glob)
-  if (import.meta.env.DEV) {
-    console.info('import.meta.glob keys:', keys)
-  }
+  debugLog('import.meta.glob keys:', keys)
   const paths = nestPaths(keys)
   const pathGetterSet = new Set<string>()
 
@@ -175,9 +175,7 @@ export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): Route
   }
 
   dtsRoutes('./pages/', routeObject, paths)
-  if (import.meta.env.DEV) {
-    console.info('routeObject:', JSON.stringify(routeObject, null, 2))
-  }
+  debugLog('routeObject:', JSON.stringify(routeObject, null, 2))
   return routeObject
 }
 

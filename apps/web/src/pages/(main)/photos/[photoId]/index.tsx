@@ -30,29 +30,13 @@ export const Component = () => {
       return -1
     }
     const index = photos.findIndex((photo) => photo?.id === photoId)
-    if (import.meta.env.DEV) {
-      console.info('[PhotoDetail] 查找照片:', {
-        photoId,
-        photosLength: photos.length,
-        foundIndex: index,
-        firstFewIds: photos.slice(0, 3).map((p) => p?.id),
-      })
-    }
     return index
   }, [photos, photoId])
 
   const currentPhoto = useMemo(() => {
     const photo = photoIndex !== -1 && photos[photoIndex] ? photos[photoIndex] : null
-    if (import.meta.env.DEV) {
-      console.info('[PhotoDetail] 当前照片:', {
-        photoIndex,
-        hasPhoto: !!photo,
-        photoId: photo?.id,
-        requestedPhotoId: photoId,
-      })
-    }
     return photo
-  }, [photos, photoIndex, photoId])
+  }, [photos, photoIndex])
 
   // 处理照片索引变化：更新 photoViewer 的 currentIndex，URL 由 layout.tsx 的 useSyncStateToUrl 自动同步
   const handleIndexChange = useCallback(

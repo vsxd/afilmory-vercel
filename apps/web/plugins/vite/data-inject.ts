@@ -31,6 +31,19 @@ function getManifestContent(command: 'serve' | 'build'): string {
   }
 }
 
+function escapeInlineScriptJson(json: string): string {
+  return json
+    .replaceAll('&', '\\u0026')
+    .replaceAll('<', '\\u003C')
+    .replaceAll('>', '\\u003E')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029')
+}
+
+function buildInlineScriptAssignment(name: '__MANIFEST__' | '__SITE_CONFIG__', json: string): string {
+  return `window.${name} = ${escapeInlineScriptJson(json)};`
+}
+
 // ── site-config helpers ───────────────────────────────────────────────────────
 
 const CONFIG_SCRIPT_ID = 'config'
@@ -42,7 +55,7 @@ export function dataInjectPlugin(): Plugin {
   let embedManifest: boolean | undefined
 
   const siteConfigPayload = JSON.stringify(siteConfig)
-  const siteConfigScriptContent = `window.__SITE_CONFIG__ = ${siteConfigPayload};`
+  const siteConfigScriptContent = buildInlineScriptAssignment('__SITE_CONFIG__', siteConfigPayload)
   const parser = new DOMParser()
 
   return {
@@ -64,7 +77,7 @@ export function dataInjectPlugin(): Plugin {
 
       server.watcher.on('change', (file) => {
         if (file === MANIFEST_PATH) {
-          console.info('[data-inject] Manifest file changed, triggering HMR...')
+          server.config.logger.info('[data-inject] Manifest file changed, triggering full reload')
           // 触发页面重新加载
           server.ws.send({
             type: 'full-reload',
@@ -78,18 +91,19 @@ export function dataInjectPlugin(): Plugin {
       const command: 'serve' | 'build' = ctx?.server ? 'serve' : 'build'
       const shouldEmbed = embedManifest ?? resolveEmbedPreference(command)
       embedManifest = shouldEmbed
+      let nextHtml = html
 
       if (shouldEmbed) {
         const manifestContent = getManifestContent(command)
-        const manifestScriptContent = `window.__MANIFEST__ = ${manifestContent};`
-        html = html.replace(
+        const manifestScriptContent = buildInlineScriptAssignment('__MANIFEST__', manifestContent)
+        nextHtml = nextHtml.replace(
           '<script id="manifest"></script>',
           `<script id="manifest">${manifestScriptContent}</script>`,
         )
       }
 
       // ── inject __SITE_CONFIG__ ─────────────────────────────────────────────
-      const document = parser.parseFromString(html, 'text/html')
+      const document = parser.parseFromString(nextHtml, 'text/html')
       if (!document.querySelector(`#${INJECTED_SCRIPT_ID}`)) {
         const scriptEl = document.createElement('script', 'text/javascript')
         scriptEl.id = INJECTED_SCRIPT_ID
@@ -105,10 +119,10 @@ export function dataInjectPlugin(): Plugin {
           fallbackParent?.append(scriptEl)
         }
 
-        html = document.toString()
+        nextHtml = document.toString()
       }
 
-      return html
+      return nextHtml
     },
   }
 }

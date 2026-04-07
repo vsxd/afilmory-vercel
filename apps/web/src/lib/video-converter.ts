@@ -1,5 +1,6 @@
 import { getI18n } from '~/i18n'
 
+import { debugLog } from './debug-log'
 import { isSafari } from './device-viewport'
 import { LRUCache } from './lru-cache'
 import { transmuxMovToMp4 } from './mp4-utils'
@@ -24,7 +25,7 @@ const videoCache: LRUCache<string, ConversionResult> = new LRUCache<string, Conv
     if (value.videoUrl) {
       try {
         URL.revokeObjectURL(value.videoUrl)
-        if (import.meta.env.DEV) console.info(`Video cache: Revoked blob URL - ${reason}`)
+        debugLog(`Video cache: Revoked blob URL - ${reason}`)
       } catch (error) {
         console.warn(`Failed to revoke video blob URL (${reason}):`, error)
       }
@@ -84,12 +85,12 @@ export function needsVideoConversion(url: string): boolean {
 
   // 如果浏览器原生支持 MOV，不需要转换
   if (isBrowserSupportMov()) {
-    if (import.meta.env.DEV) console.info('Browser natively supports MOV format, skipping conversion')
+    debugLog('Browser natively supports MOV format, skipping conversion')
     return false
   }
 
   // 浏览器不支持 MOV，需要转换
-  if (import.meta.env.DEV) console.info('Browser does not support MOV format, conversion needed')
+  debugLog('Browser does not support MOV format, conversion needed')
   return true
 }
 
@@ -104,22 +105,22 @@ export async function convertMovToMp4(
   if (!forceReconvert) {
     const cachedResult = videoCache.get(videoUrl)
     if (cachedResult) {
-      if (import.meta.env.DEV) console.info('Using cached video conversion result')
+      debugLog('Using cached video conversion result')
       onProgress?.({
         isConverting: false,
         progress: 100,
         message: t('video.conversion.cached.result'),
       })
-      if (import.meta.env.DEV) console.info(`Cached video conversion result:`, cachedResult)
+      debugLog('Cached video conversion result:', cachedResult)
       return cachedResult
     }
   } else {
-    if (import.meta.env.DEV) console.info('Force reconversion: clearing cached result for', videoUrl)
+    debugLog('Force reconversion: clearing cached result for', videoUrl)
     videoCache.delete(videoUrl)
   }
 
   try {
-    if (import.meta.env.DEV) console.info(`Target format: MP4 (H.264)`)
+    debugLog('Target format: MP4 (H.264)')
     onProgress?.({
       isConverting: true,
       progress: 0,
@@ -132,7 +133,7 @@ export async function convertMovToMp4(
     videoCache.set(videoUrl, result)
 
     if (result.success) {
-      if (import.meta.env.DEV) console.info('conversion completed successfully and cached')
+      debugLog('conversion completed successfully and cached')
     } else {
       console.error('conversion failed:', result.error)
     }

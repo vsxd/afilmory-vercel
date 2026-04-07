@@ -187,7 +187,7 @@ export const Maplibre = ({
         type: projectionType,
       })
     }
-  }, [])
+  }, [mapRef])
 
   // 当标记点变化时，重新适配边界
   useEffect(() => {

@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { readdir, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 

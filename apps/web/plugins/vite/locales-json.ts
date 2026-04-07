@@ -21,7 +21,6 @@ export function localesJsonPlugin(): Plugin {
         set(obj, accessorKey, (content as any)[accessorKey])
       }
 
-      console.info('[locales-json-transform] Transformed:', id)
       return {
         code: JSON.stringify(obj),
         map: null,

@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import type { FujiRecipe, PickedExif } from '@afilmory/data'
 import { EllipsisHorizontalTextWithTooltip } from '@afilmory/ui'
 import type { FC } from 'react'

@@ -1,4 +1,5 @@
 import { getI18n } from '~/i18n'
+import { debugLog } from '~/lib/debug-log'
 
 interface ConversionProgress {
   isConverting: boolean
@@ -44,7 +45,7 @@ export async function transmuxMovToMp4Simple(
   const { onProgress } = options
 
   try {
-    if (import.meta.env.DEV) console.info(`Starting simple transmux conversion`)
+    debugLog('Starting simple transmux conversion')
 
     const { t } = getI18n()
     onProgress?.({

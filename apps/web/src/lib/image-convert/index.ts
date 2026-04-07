@@ -3,6 +3,7 @@
  * 支持多种浏览器原生不支持的图片格式转换
  */
 import { i18nAtom } from '~/i18n'
+import { debugLog } from '~/lib/debug-log'
 import { detectFileTypeFromBlob } from '~/lib/file-type'
 import { jotaiStore } from '~/lib/jotai'
 
@@ -36,7 +37,7 @@ export class ImageConverterManager {
     strategy.getSupportedFormats().forEach((format) => {
       this.strategies.set(format, strategy)
     })
-    if (import.meta.env.DEV) console.info(`Registered image converter strategy: ${strategy.getName()}`)
+    debugLog(`Registered image converter strategy: ${strategy.getName()}`)
   }
 
   /**
@@ -53,7 +54,7 @@ export class ImageConverterManager {
           removed = true
         }
       })
-      if (removed && import.meta.env.DEV) console.info(`Removed image converter strategy: ${strategyName}`)
+      if (removed) debugLog(`Removed image converter strategy: ${strategyName}`)
     }
     return removed
   }
@@ -74,11 +75,11 @@ export class ImageConverterManager {
       const fileType = await detectFileTypeFromBlob(blob)
 
       if (!fileType) {
-        if (import.meta.env.DEV) console.info('Could not detect file type with file-type library')
+        debugLog('Could not detect file type with file-type library')
         return null
       }
 
-      if (import.meta.env.DEV) console.info(`Detected file type: ${fileType.ext} (${fileType.mime})`)
+      debugLog(`Detected file type: ${fileType.ext} (${fileType.mime})`)
 
       // 直接根据 MIME 类型查找策略
       const strategy = this.strategies.get(fileType.mime)
@@ -87,15 +88,15 @@ export class ImageConverterManager {
         // 验证策略是否确实需要转换这个文件
         const shouldConvert = await strategy.shouldConvert(blob)
         if (shouldConvert) {
-          if (import.meta.env.DEV) console.info(`Found suitable conversion strategy: ${strategy.getName()}`)
+          debugLog(`Found suitable conversion strategy: ${strategy.getName()}`)
           return strategy
         } else {
-          if (import.meta.env.DEV) console.info(`Strategy ${strategy.getName()} detected but conversion not needed`)
+          debugLog(`Strategy ${strategy.getName()} detected but conversion not needed`)
           return null
         }
       }
 
-      if (import.meta.env.DEV) console.info(`No strategy found for MIME type: ${fileType.mime}`)
+      debugLog(`No strategy found for MIME type: ${fileType.mime}`)
       return null
     } catch (error) {
       console.error('File type detection failed:', error)
@@ -110,11 +111,11 @@ export class ImageConverterManager {
     const strategy = await this.findSuitableStrategy(blob)
 
     if (!strategy) {
-      if (import.meta.env.DEV) console.info('No conversion strategy needed for this image')
+      debugLog('No conversion strategy needed for this image')
       return null
     }
 
-    if (import.meta.env.DEV) console.info(`Converting image using ${strategy.getName()} strategy`)
+    debugLog(`Converting image using ${strategy.getName()} strategy`)
     const taskKey = this.getConversionTaskKey(strategy, originalUrl)
 
     const onLoadingStateUpdate = callbacks?.onLoadingStateUpdate
@@ -124,8 +125,7 @@ export class ImageConverterManager {
 
     const existingTask = this.pendingConversions.get(taskKey)
     if (existingTask) {
-      if (import.meta.env.DEV)
-        console.info(`Joining pending conversion task for ${strategy.getName()} (${originalUrl})`)
+      debugLog(`Joining pending conversion task for ${strategy.getName()} (${originalUrl})`)
       return await existingTask
     }
 

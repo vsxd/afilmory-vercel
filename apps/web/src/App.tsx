@@ -1,8 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { Outlet } from 'react-router'
 
-import { CommandPalette } from './components/gallery/CommandPalette'
 import { useCommandPaletteShortcut } from './hooks/useCommandPaletteShortcut'
 import { RootProviders } from './providers/root-providers'
+
+const CommandPalette = lazy(() =>
+  import('./components/gallery/CommandPalette').then((m) => ({ default: m.CommandPalette })),
+)
 
 // prefetch preview page route - 使用 import.meta.glob 让 Vite 在构建时正确处理
 // 这样 Vite 可以在构建时正确解析包含方括号的路径
@@ -30,6 +34,14 @@ function App() {
 
 const CommandPaletteContainer = () => {
   const { isOpen, setIsOpen } = useCommandPaletteShortcut()
-  return <CommandPalette isOpen={isOpen} onClose={() => setIsOpen(false)} />
+  if (!isOpen) {
+    return null
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <CommandPalette isOpen={isOpen} onClose={() => setIsOpen(false)} />
+    </Suspense>
+  )
 }
 export default App

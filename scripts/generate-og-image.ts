@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -16,10 +18,8 @@ async function getLatestPhotos(count = 4) {
       return 0
     }
 
-    const aDate =
-      (a.exif.DateTimeOriginal as unknown as string) || a.lastModified
-    const bDate =
-      (b.exif.DateTimeOriginal as unknown as string) || b.lastModified
+    const aDate = (a.exif.DateTimeOriginal as unknown as string) || a.lastModified
+    const bDate = (b.exif.DateTimeOriginal as unknown as string) || b.lastModified
     return bDate.localeCompare(aDate)
   })
 
@@ -33,10 +33,7 @@ async function downloadAndProcessThumbnail(thumbnailUrl: string, size = 150) {
     if (thumbnailUrl.startsWith('/')) {
       const localPath = join(process.cwd(), 'public', thumbnailUrl)
       if (existsSync(localPath)) {
-        return await sharp(localPath)
-          .resize(size, size, { fit: 'cover' })
-          .png()
-          .toBuffer()
+        return await sharp(localPath).resize(size, size, { fit: 'cover' }).png().toBuffer()
       }
     }
 
@@ -50,11 +47,7 @@ async function downloadAndProcessThumbnail(thumbnailUrl: string, size = 150) {
 }
 
 // 创建带特效的照片（旋转、阴影、边框）
-async function createPhotoWithEffects(
-  imageBuffer: Buffer,
-  size: number,
-  rotation: number,
-) {
+async function createPhotoWithEffects(imageBuffer: Buffer, size: number, rotation: number) {
   try {
     // 计算旋转后需要的画布大小
     const diagonal = Math.ceil(size * Math.sqrt(2))
@@ -149,15 +142,7 @@ interface OGImageOptions {
 }
 
 export async function generateOGImage(options: OGImageOptions) {
-  const {
-    title,
-    description,
-    width = 1200,
-    height = 630,
-    outputPath,
-    includePhotos = true,
-    photoCount = 4,
-  } = options
+  const { title, description, width = 1200, height = 630, outputPath, includePhotos = true, photoCount = 4 } = options
 
   // 确保输出目录存在
   const outputDir = join(process.cwd(), 'public')
@@ -206,9 +191,7 @@ export async function generateOGImage(options: OGImageOptions) {
         </svg>
       `
 
-      const gradientBuffer = await sharp(Buffer.from(gradientSvg))
-        .png()
-        .toBuffer()
+      const gradientBuffer = await sharp(Buffer.from(gradientSvg)).png().toBuffer()
 
       // 创建文字层 - 使用 SVG 路径绘制 Helvetica 风格字体
       const wrappedTitle = wrapSVGText(title, width - 120, {
@@ -270,10 +253,7 @@ export async function generateOGImage(options: OGImageOptions) {
       const length = Math.min(latestPhotos.length, photoCount)
       for (let i = length - 1; i >= 0; i--) {
         const photo = latestPhotos[i]
-        const thumbnailBuffer = await downloadAndProcessThumbnail(
-          photo.thumbnailUrl,
-          photoSize,
-        )
+        const thumbnailBuffer = await downloadAndProcessThumbnail(photo.thumbnailUrl, photoSize)
 
         if (thumbnailBuffer) {
           const rotation = rotations[i] || 0
@@ -282,11 +262,7 @@ export async function generateOGImage(options: OGImageOptions) {
           const y = baseY + offset.y
 
           // 创建带阴影和边框的照片
-          const photoWithEffects = await createPhotoWithEffects(
-            thumbnailBuffer,
-            photoSize,
-            rotation,
-          )
+          const photoWithEffects = await createPhotoWithEffects(thumbnailBuffer, photoSize, rotation)
 
           composite.push({
             input: photoWithEffects,
@@ -294,9 +270,7 @@ export async function generateOGImage(options: OGImageOptions) {
             left: x,
           })
 
-          console.info(
-            `📷 Added photo: ${photo.title} at position (${x}, ${y}) with rotation ${rotation}°`,
-          )
+          console.info(`📷 Added photo: ${photo.title} at position (${x}, ${y}) with rotation ${rotation}°`)
         }
       }
 
@@ -320,16 +294,11 @@ export async function generateOGImage(options: OGImageOptions) {
         letterSpacing: 3,
       })
 
-      const simpleDescriptionSVG = renderSVGText(
-        simpleWrappedDescription,
-        60,
-        256,
-        {
-          fontSize: 32,
-          color: 'rgba(255,255,255,0.9)',
-          letterSpacing: 1.5,
-        },
-      )
+      const simpleDescriptionSVG = renderSVGText(simpleWrappedDescription, 60, 256, {
+        fontSize: 32,
+        color: 'rgba(255,255,255,0.9)',
+        letterSpacing: 1.5,
+      })
 
       const simpleFooterSVG = renderSVGText(simpleFooterText, 60, 526, {
         fontSize: 24,

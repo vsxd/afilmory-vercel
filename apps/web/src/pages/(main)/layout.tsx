@@ -23,17 +23,13 @@ export const Component = () => {
     <>
       <PhotosProvider photos={photos}>
         {siteConfig.accentColor && (
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `
+          <style>{`
           :root:has(input.theme-controller[value=dark]:checked), [data-theme="dark"] {
             --color-primary: ${siteConfig.accentColor};
             --color-accent: ${siteConfig.accentColor};
             --color-secondary: ${siteConfig.accentColor};
           }
-          `,
-            }}
-          />
+          `}</style>
         )}
 
         {isMobile ? (

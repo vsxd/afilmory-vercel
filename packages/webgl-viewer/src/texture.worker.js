@@ -29,7 +29,6 @@ self.onmessage = async (e) => {
         const blob = await response.blob()
         originalImage = await createImageBitmap(blob)
 
-        console.info('[Worker] Image decoded, posting init-done')
         self.postMessage({ type: 'init-done' })
 
         // Create initial LOD texture

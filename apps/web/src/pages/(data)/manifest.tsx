@@ -3,40 +3,58 @@ import { useMemo, useState } from 'react'
 
 import { photoLoader } from '~/data-runtime/photo-loader'
 
+const JSON_TOKEN_REGEX =
+  /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g
+
 // JSON 语法高亮组件
 const JsonHighlight = ({ data }: { data: any }) => {
   const jsonString = JSON.stringify(data, null, 2)
 
   const highlightJson = (str: string) => {
-    return str.replaceAll(
-      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-      (match) => {
-        let cls = 'text-zinc-500'
-        if (match.startsWith('"')) {
-          if (match.endsWith(':')) {
-            cls = 'text-blue-400' // 键名
-          } else {
-            cls = 'text-emerald-400' // 字符串值
-          }
-        } else if (/true|false/.test(match)) {
-          cls = 'text-purple-400' // 布尔值
-        } else if (/null/.test(match)) {
-          cls = 'text-red-400' // null
+    const nodes: React.ReactNode[] = []
+    let lastIndex = 0
+
+    for (const match of str.matchAll(JSON_TOKEN_REGEX)) {
+      const token = match[0]
+      const index = match.index ?? 0
+
+      if (index > lastIndex) {
+        nodes.push(str.slice(lastIndex, index))
+      }
+
+      let cls = 'text-zinc-500'
+      if (token.startsWith('"')) {
+        if (token.endsWith(':')) {
+          cls = 'text-blue-400'
         } else {
-          cls = 'text-orange-400' // 数字
+          cls = 'text-emerald-400'
         }
-        return `<span class="${cls}">${match}</span>`
-      },
-    )
+      } else if (/true|false/.test(token)) {
+        cls = 'text-purple-400'
+      } else if (/null/.test(token)) {
+        cls = 'text-red-400'
+      } else {
+        cls = 'text-orange-400'
+      }
+
+      nodes.push(
+        <span key={`token-${index}`} className={cls}>
+          {token}
+        </span>,
+      )
+      lastIndex = index + token.length
+    }
+
+    if (lastIndex < str.length) {
+      nodes.push(str.slice(lastIndex))
+    }
+
+    return nodes
   }
 
   return (
     <pre className="text-sm leading-6 text-zinc-300">
-      <code
-        dangerouslySetInnerHTML={{
-          __html: highlightJson(jsonString),
-        }}
-      />
+      <code>{highlightJson(jsonString)}</code>
     </pre>
   )
 }
@@ -152,9 +170,9 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
           {/* 标签 */}
           {photo.tags && photo.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {photo.tags.slice(0, 3).map((tag: string, tagIndex: number) => (
+              {photo.tags.slice(0, 3).map((tag: string) => (
                 <span
-                  key={tagIndex}
+                  key={`${photo.id}:${tag}`}
                   className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 ring-1 ring-blue-500/20"
                 >
                   {tag}

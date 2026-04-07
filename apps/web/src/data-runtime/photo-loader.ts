@@ -1,6 +1,8 @@
 import type { AfilmoryManifest, CameraInfo, LensInfo, PhotoManifestItem } from '@afilmory/data'
 import { createEmptyManifest, parseManifest } from '@afilmory/data'
 
+import { debugLog } from '~/lib/debug-log'
+
 function getInjectedManifest(): AfilmoryManifest {
   try {
     const injected =
@@ -39,7 +41,7 @@ class PhotoLoader {
       }
     }
 
-    if (import.meta.env.DEV) console.info(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
+    debugLog(`[PhotoLoader] Loaded ${this.photos.length} photos from manifest`)
   }
 
   getPhotos() {

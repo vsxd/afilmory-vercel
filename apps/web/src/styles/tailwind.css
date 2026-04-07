@@ -1,7 +1,10 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 @plugin '@egoist/tailwindcss-icons';
-@plugin 'daisyui';
+@plugin 'daisyui' {
+  /* Avoid shipping unused radial progress CSS and the related @property warning. */
+  exclude: properties, radialprogress;
+}
 @plugin 'tailwind-scrollbar';
 @plugin 'tailwindcss-animate';
 @import 'tailwindcss-safe-area';

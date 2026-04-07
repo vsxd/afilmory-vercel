@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -135,32 +137,26 @@ function normalizeGlyphPath(path: opentype.Path, unitsPerEm: number): string {
   path.commands.forEach((cmd) => {
     switch (cmd.type) {
       case 'M': {
-        commands.push(
-          `M ${(cmd.x * scale).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`,
-        )
+        commands.push(`M ${(cmd.x * scale).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`)
         break
       }
       case 'L': {
-        commands.push(
-          `L ${(cmd.x * scale).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`,
-        )
+        commands.push(`L ${(cmd.x * scale).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`)
         break
       }
       case 'C': {
         commands.push(
-          `C ${(cmd.x1 * scale).toFixed(1)} ${(100 - cmd.y1 * scale).toFixed(1)} ${(
-            cmd.x2 * scale
-          ).toFixed(1)} ${(100 - cmd.y2 * scale).toFixed(1)} ${(
-            cmd.x * scale
-          ).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`,
+          `C ${(cmd.x1 * scale).toFixed(1)} ${(100 - cmd.y1 * scale).toFixed(1)} ${(cmd.x2 * scale).toFixed(
+            1,
+          )} ${(100 - cmd.y2 * scale).toFixed(1)} ${(cmd.x * scale).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`,
         )
         break
       }
       case 'Q': {
         commands.push(
-          `Q ${(cmd.x1 * scale).toFixed(1)} ${(100 - cmd.y1 * scale).toFixed(1)} ${(
-            cmd.x * scale
-          ).toFixed(1)} ${(100 - cmd.y * scale).toFixed(1)}`,
+          `Q ${(cmd.x1 * scale).toFixed(1)} ${(100 - cmd.y1 * scale).toFixed(1)} ${(cmd.x * scale).toFixed(
+            1,
+          )} ${(100 - cmd.y * scale).toFixed(1)}`,
         )
         break
       }
@@ -203,12 +199,7 @@ async function extractGlyphs(): Promise<Record<string, GlyphData>> {
         advanceWidth,
       }
 
-      console.info(
-        'Extracted glyph for:',
-        char,
-        'width:',
-        advanceWidth.toFixed(1),
-      )
+      console.info('Extracted glyph for:', char, 'width:', advanceWidth.toFixed(1))
     } else {
       console.warn('No glyph found for character:', char)
       if (char === ' ') {
@@ -377,11 +368,7 @@ async function main() {
     console.info('Searching for Helvetica font...')
     const glyphs = await extractGlyphs()
 
-    console.info(
-      'Generating SVG text renderer with',
-      Object.keys(glyphs).length,
-      'glyphs...',
-    )
+    console.info('Generating SVG text renderer with', Object.keys(glyphs).length, 'glyphs...')
     const rendererCode = generateSVGTextRenderer(glyphs)
 
     const originalPath = join(process.cwd(), 'scripts', 'svg-text-renderer.ts')

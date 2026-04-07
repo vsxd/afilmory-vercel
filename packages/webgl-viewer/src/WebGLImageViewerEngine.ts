@@ -96,6 +96,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private currentQuality: 'high' | 'medium' | 'low' | 'unknown' = 'unknown'
   private isLoadingTexture = true
   private worker: Worker | null = null
+  private workerUrl: string | null = null
   private textureWorkerInitialized = false
 
   // WebGL attribute/uniform缓存
@@ -344,7 +345,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private initWorker() {
-    this.worker = new Worker(URL.createObjectURL(new Blob([TextureWorkerRaw])), {
+    this.workerUrl = URL.createObjectURL(new Blob([TextureWorkerRaw]))
+    this.worker = new Worker(this.workerUrl, {
       name: 'texture-worker',
     })
 
@@ -1084,6 +1086,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     this.worker?.terminate()
+    if (this.workerUrl) {
+      URL.revokeObjectURL(this.workerUrl)
+      this.workerUrl = null
+    }
   }
 
   private updateDebugInfo() {

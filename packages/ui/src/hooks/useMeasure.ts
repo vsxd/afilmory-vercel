@@ -1,7 +1,7 @@
 // @copy https://github.com/pmndrs/react-use-measure/blob/master/src/web/index.ts
 
 import { debounce } from 'es-toolkit/compat'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const createDebounce = debounce
 declare type ResizeObserverCallback = (entries: any[], observer: ResizeObserver) => void
@@ -114,7 +114,7 @@ export function useMeasure({ debounce, scroll, offsetSize }: Options = defaultOp
   }, [set, offsetSize, scrollDebounce, resizeDebounce])
 
   // cleanup current scroll-listeners / observers
-  function removeListeners() {
+  const removeListeners = useCallback(() => {
     if (state.current.scrollContainers) {
       state.current.scrollContainers.forEach((element) => element.removeEventListener('scroll', scrollChange, true))
       state.current.scrollContainers = null
@@ -124,10 +124,10 @@ export function useMeasure({ debounce, scroll, offsetSize }: Options = defaultOp
       state.current.resizeObserver.disconnect()
       state.current.resizeObserver = null
     }
-  }
+  }, [scrollChange])
 
   // add scroll-listeners / observers
-  function addListeners() {
+  const addListeners = useCallback(() => {
     if (!state.current.element) return
     state.current.resizeObserver = new ResizeObserver(scrollChange)
     state.current.resizeObserver!.observe(state.current.element)
@@ -139,16 +139,19 @@ export function useMeasure({ debounce, scroll, offsetSize }: Options = defaultOp
         }),
       )
     }
-  }
+  }, [scroll, scrollChange])
 
   // the ref we expose to the user
-  const ref = (node: HTMLOrSVGElement | null) => {
-    if (!node || node === state.current.element) return
-    removeListeners()
-    state.current.element = node
-    state.current.scrollContainers = findScrollContainers(node)
-    addListeners()
-  }
+  const ref = useCallback(
+    (node: HTMLOrSVGElement | null) => {
+      if (!node || node === state.current.element) return
+      removeListeners()
+      state.current.element = node
+      state.current.scrollContainers = findScrollContainers(node)
+      addListeners()
+    },
+    [addListeners, removeListeners],
+  )
 
   // add general event listeners
   useOnWindowScroll(scrollChange, Boolean(scroll))
@@ -158,10 +161,10 @@ export function useMeasure({ debounce, scroll, offsetSize }: Options = defaultOp
   useEffect(() => {
     removeListeners()
     addListeners()
-  }, [scroll, scrollChange, resizeChange])
+  }, [addListeners, removeListeners, resizeChange, scroll, scrollChange])
 
   // remove all listeners when the components unmounts
-  useEffect(() => removeListeners, [])
+  useEffect(() => removeListeners, [removeListeners])
   return [ref, bounds, forceRefresh]
 }
 

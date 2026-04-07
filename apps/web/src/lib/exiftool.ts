@@ -1,5 +1,6 @@
 import { isExiftoolLoadedAtom } from '~/atoms/app'
 
+import { debugLog } from './debug-log'
 import { jotaiStore } from './jotai'
 
 class ExifToolManagerStatic {
@@ -10,7 +11,7 @@ class ExifToolManagerStatic {
   async load() {
     if (this.isLoaded) return
     const exiftool = await import('@uswriting/exiftool')
-    if (import.meta.env.DEV) console.info('ExifTool loaded...')
+    debugLog('ExifTool loaded...')
     this.exifTool = exiftool
     this.isLoaded = true
 

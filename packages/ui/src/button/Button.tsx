@@ -1,5 +1,7 @@
 // Tremor Button [v0.2.0]
 
+/* eslint-disable react-refresh/only-export-components */
+
 import { Slot } from '@radix-ui/react-slot'
 import { m } from 'motion/react'
 import * as React from 'react'

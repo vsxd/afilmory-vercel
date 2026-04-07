@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import path, { join } from 'node:path'
 

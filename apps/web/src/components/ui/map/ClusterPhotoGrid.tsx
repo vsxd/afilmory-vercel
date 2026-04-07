@@ -14,7 +14,42 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
   // 最多显示 6 张照片
   const displayPhotos = photos.slice(0, 6)
   const remainingCount = Math.max(0, photos.length - 6)
+  const primaryPhoto = photos[0]
   const { t, i18n } = useTranslation()
+  const locationLabel = primaryPhoto
+    ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${primaryPhoto.latitudeRef || 'N'}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${primaryPhoto.longitudeRef || 'E'}`
+    : null
+  const dateRangeLabel = (() => {
+    const dates = photos
+      .map((p) => p.photo.exif?.DateTimeOriginal)
+      .filter(Boolean)
+      .map((d) => new Date(d!))
+      .sort((a, b) => a.getTime() - b.getTime())
+
+    if (dates.length === 0) return null
+
+    const earliest = dates[0]
+    const latest = dates.at(-1)
+    const isSameDay = earliest.toDateString() === latest?.toDateString()
+
+    if (isSameDay) {
+      return earliest.toLocaleDateString(i18n.language, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    }
+
+    return `${earliest.toLocaleDateString(i18n.language, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })} - ${latest?.toLocaleDateString(i18n.language, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })}`
+  })()
 
   return (
     <div className="space-y-3">
@@ -95,53 +130,20 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
       </div>
 
       {/* 位置信息 */}
-      {photos[0] && (
+      {primaryPhoto && (
         <div className="border-border space-y-2 border-t pt-3">
           <div className="text-text-secondary flex items-center gap-2 text-xs">
             <i className="i-mingcute-location-line text-sm" />
-            <span className="font-mono">
-              {Math.abs(photos[0].latitude).toFixed(4)}°{photos[0].latitudeRef || 'N'},{' '}
-              {Math.abs(photos[0].longitude).toFixed(4)}°{photos[0].longitudeRef || 'E'}
-            </span>
+            <span className="font-mono">{locationLabel}</span>
           </div>
 
           {/* 拍摄时间范围 */}
-          {(() => {
-            const dates = photos
-              .map((p) => p.photo.exif?.DateTimeOriginal)
-              .filter(Boolean)
-              .map((d) => new Date(d!))
-              .sort((a, b) => a.getTime() - b.getTime())
-
-            if (dates.length === 0) return null
-
-            const earliest = dates[0]
-            const latest = dates.at(-1)
-            const isSameDay = earliest.toDateString() === latest?.toDateString()
-
-            return (
-              <div className="text-text-secondary flex items-center gap-2 text-xs">
-                <i className="i-mingcute-calendar-line text-sm" />
-                <span>
-                  {isSameDay
-                    ? earliest.toLocaleDateString(i18n.language, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : `${earliest.toLocaleDateString(i18n.language, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })} - ${latest?.toLocaleDateString(i18n.language, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}`}
-                </span>
-              </div>
-            )
-          })()}
+          {dateRangeLabel && (
+            <div className="text-text-secondary flex items-center gap-2 text-xs">
+              <i className="i-mingcute-calendar-line text-sm" />
+              <span>{dateRangeLabel}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -7,6 +7,8 @@
  */
 import { useEffect, useRef } from 'react'
 
+import { debugLog } from './debug-log'
+
 export class LRUCache<K, V> {
   private maxSize: number
   private cache: Map<K, V>
@@ -48,9 +50,7 @@ export class LRUCache<K, V> {
     // Add new item (most recently used)
     this.cache.set(key, value)
 
-    if (import.meta.env.DEV) {
-      console.info(`LRU Cache: Added ${String(key)}, cache size: ${this.cache.size}/${this.maxSize}`)
-    }
+    debugLog(`LRU Cache: Added ${String(key)}, cache size: ${this.cache.size}/${this.maxSize}`)
   }
 
   /**
@@ -77,9 +77,7 @@ export class LRUCache<K, V> {
       cleanedCount++
     }
     this.cache.clear()
-    if (import.meta.env.DEV) {
-      console.info(`LRU Cache: Cleared ${cleanedCount} cached items`)
-    }
+    debugLog(`LRU Cache: Cleared ${cleanedCount} cached items`)
   }
 
   size(): number {
@@ -134,7 +132,7 @@ export function createBlobUrlCache<T extends { url?: string }>(maxSize = 10): LR
     if (value.url) {
       try {
         URL.revokeObjectURL(value.url)
-        if (import.meta.env.DEV) console.info(`Blob URL revoked - ${reason}`)
+        debugLog(`Blob URL revoked - ${reason}`)
       } catch (error) {
         console.warn(`Failed to revoke blob URL (${reason}):`, error)
       }

@@ -1,6 +1,6 @@
 import { AnimatePresence, m } from 'motion/react'
 import type { FC, ReactNode } from 'react'
-import { createContext, use, useId, useState } from 'react'
+import { createContext, use, useCallback, useId, useMemo, useState } from 'react'
 
 import { clsxm } from '../utils/cn'
 
@@ -41,16 +41,25 @@ export const Collapsible: FC<CollapsibleProps> = ({
   const isControlled = controlledOpen !== undefined
   const isOpen = isControlled ? controlledOpen : uncontrolledOpen
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     const newValue = !isOpen
     if (!isControlled) {
       setUncontrolledOpen(newValue)
     }
     onOpenChange?.(newValue)
-  }
+  }, [isControlled, isOpen, onOpenChange])
+
+  const contextValue = useMemo(
+    () => ({
+      isOpen,
+      toggle,
+      contentId,
+    }),
+    [contentId, isOpen, toggle],
+  )
 
   return (
-    <CollapsibleContext value={{ isOpen, toggle, contentId }}>
+    <CollapsibleContext value={contextValue}>
       <div className={clsxm('overflow-hidden', className)}>{children}</div>
     </CollapsibleContext>
   )

@@ -17,6 +17,19 @@ interface OGImagePluginOptions {
   siteUrl?: string
 }
 
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function normalizeBaseUrl(url: string): string {
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+
 export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConfig: SiteConfig): Plugin {
   const {
     title = 'Afilmory',
@@ -48,7 +61,7 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
           photoCount: 4,
         })
         ogImagePath = `/${fileName}`
-        console.info(`🖼️  OG image generated: ${ogImagePath}`)
+        this.info(`OG image generated: ${ogImagePath}`)
 
         // 清理旧的 OG 图片
         await cleanupOldOGImages(3)
@@ -85,8 +98,8 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
           source: sitemapXml,
         })
 
-        console.info(`Generated RSS feed with ${sortedPhotos.length} photos`)
-        console.info(`Generated sitemap with ${sortedPhotos.length + 1} URLs`)
+        this.info(`Generated RSS feed with ${sortedPhotos.length} photos`)
+        this.info(`Generated sitemap with ${sortedPhotos.length + 1} URLs`)
       } catch (error) {
         console.error('Error generating RSS feed and sitemap:', error)
       }
@@ -99,26 +112,34 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
           return html
         }
 
+        const baseUrl = normalizeBaseUrl(siteUrl || '')
+        const ogImageUrl = `${baseUrl}${ogImagePath}`
+        const safeBaseUrl = escapeHtmlAttribute(baseUrl)
+        const safeTitle = escapeHtmlAttribute(title)
+        const safeDescription = escapeHtmlAttribute(description)
+        const safeSiteName = escapeHtmlAttribute(siteName)
+        const safeOgImageUrl = escapeHtmlAttribute(ogImageUrl)
+
         // 生成 meta 标签
         const metaTags = `
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="${siteUrl}" />
-    <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="${description}" />
-    <meta property="og:image" content="${siteUrl}${ogImagePath}" />
-    <meta property="og:site_name" content="${siteName}" />
+    <meta property="og:url" content="${safeBaseUrl}" />
+    <meta property="og:title" content="${safeTitle}" />
+    <meta property="og:description" content="${safeDescription}" />
+    <meta property="og:image" content="${safeOgImageUrl}" />
+    <meta property="og:site_name" content="${safeSiteName}" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="${siteUrl}" />
-    <meta property="twitter:title" content="${title}" />
-    <meta property="twitter:description" content="${description}" />
-    <meta property="twitter:image" content="${siteUrl}${ogImagePath}" />
+    <meta property="twitter:url" content="${safeBaseUrl}" />
+    <meta property="twitter:title" content="${safeTitle}" />
+    <meta property="twitter:description" content="${safeDescription}" />
+    <meta property="twitter:image" content="${safeOgImageUrl}" />
 
     <!-- Additional meta tags -->
-    <meta name="description" content="${description}" />
-    <meta name="author" content="${siteName}" />
+    <meta name="description" content="${safeDescription}" />
+    <meta name="author" content="${safeSiteName}" />
     <meta name="generator" content="Vite + React" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#0a0a0a" />
@@ -141,10 +162,11 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
 
 function generateSitemap(photos: PhotoManifestItem[], config: SiteConfig): string {
   const now = new Date().toISOString()
+  const baseUrl = normalizeBaseUrl(config.url)
 
   // Main page
   const mainPageXml = `  <url>
-    <loc>${config.url}</loc>
+    <loc>${baseUrl}</loc>
     <lastmod>${now}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -154,8 +176,9 @@ function generateSitemap(photos: PhotoManifestItem[], config: SiteConfig): strin
   const photoUrls = photos
     .map((photo) => {
       const lastmod = new Date(photo.lastModified || photo.dateTaken).toISOString()
+      const photoUrl = `${baseUrl}/photos/${encodeURIComponent(photo.id)}`
       return `  <url>
-    <loc>${config.url}/${photo.id}</loc>
+    <loc>${photoUrl}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

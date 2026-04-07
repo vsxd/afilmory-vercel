@@ -1,13 +1,11 @@
+/* eslint-disable no-console */
+
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import sharp from 'sharp'
 
-import {
-  measureSVGText,
-  renderSVGText,
-  wrapSVGText,
-} from './svg-text-renderer.js'
+import { measureSVGText, renderSVGText, wrapSVGText } from './svg-text-renderer.js'
 
 async function generateTestImages() {
   const width = 1200
@@ -123,14 +121,8 @@ async function generateTestImages() {
     console.info(`✅ SVG font test image generated: ${svgPath}`)
 
     // 生成传统字体版本
-    const traditionalBuffer = await sharp(Buffer.from(traditionalTestImage))
-      .png()
-      .toBuffer()
-    const traditionalPath = join(
-      process.cwd(),
-      'public',
-      'test-traditional-font-rendering.png',
-    )
+    const traditionalBuffer = await sharp(Buffer.from(traditionalTestImage)).png().toBuffer()
+    const traditionalPath = join(process.cwd(), 'public', 'test-traditional-font-rendering.png')
     writeFileSync(traditionalPath, traditionalBuffer)
     console.info(`✅ Traditional font test image generated: ${traditionalPath}`)
 
