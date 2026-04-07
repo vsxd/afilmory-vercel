@@ -183,7 +183,6 @@ export default defineConfig(async ({ command }) => {
       createDependencyChunksPlugin([
         { name: 'react', patterns: ['react', 'react-dom', 'react-router', 'scheduler'] },
         { name: 'i18n', patterns: ['i18next', 'i18next-browser-languagedetector', 'react-i18next'] },
-        { name: 'map', patterns: ['maplibre-gl', 'react-map-gl', '@vis.gl/*', '@maplibre/*'] },
         { name: 'motion', patterns: ['motion', 'framer-motion', 'motion-dom', 'motion-utils'] },
         { name: 'swiper', patterns: ['swiper'] },
         { name: 'state', patterns: ['jotai', 'zustand', '@tanstack/*'] },

@@ -11,7 +11,10 @@ type HeicModule = typeof import('heic-to')
 let heicModulePromise: Promise<HeicModule> | null = null
 
 async function loadHeicModule(): Promise<HeicModule> {
-  heicModulePromise ??= import('heic-to')
+  heicModulePromise ??= import('heic-to').catch((error) => {
+    heicModulePromise = null
+    throw error
+  })
   return await heicModulePromise
 }
 
