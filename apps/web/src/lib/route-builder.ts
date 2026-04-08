@@ -7,6 +7,7 @@ import { debugLog } from './debug-log'
 type NestedStructure = { [key: string]: NestedStructure }
 
 const MainGroupSegment = '(main)'
+const PRIVATE_ROUTE_GROUPS = ['(data)', '(debug)']
 
 function nestPaths(paths: string[]): NestedStructure {
   const result: NestedStructure = {}
@@ -29,7 +30,13 @@ function nestPaths(paths: string[]): NestedStructure {
 }
 
 export function buildGlobRoutes(glob: Record<string, () => Promise<any>>): RouteObject[] {
-  const keys = Object.keys(glob)
+  const keys = Object.keys(glob).filter((key) => {
+    if (import.meta.env.DEV) {
+      return true
+    }
+
+    return !PRIVATE_ROUTE_GROUPS.some((group) => key.includes(`/pages/${group}/`))
+  })
   debugLog('import.meta.glob keys:', keys)
   const paths = nestPaths(keys)
   const pathGetterSet = new Set<string>()

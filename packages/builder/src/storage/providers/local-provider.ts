@@ -136,8 +136,13 @@ export class LocalStorageProvider implements StorageProvider {
     const filePath = path.join(this.basePath, key)
     const resolvedPath = path.resolve(filePath)
     const resolvedBasePath = path.resolve(this.basePath)
+    const relativePath = path.relative(resolvedBasePath, resolvedPath)
 
-    if (!resolvedPath.startsWith(resolvedBasePath)) {
+    if (relativePath === '' || relativePath === '.') {
+      throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
+    }
+
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
       throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
     }
 

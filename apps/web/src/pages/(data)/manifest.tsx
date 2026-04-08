@@ -1,6 +1,7 @@
 import { Button, ScrollArea } from '@afilmory/ui'
 import { useMemo, useState } from 'react'
 
+import { NotFound } from '~/components/common/NotFound'
 import { photoLoader } from '~/data-runtime/photo-loader'
 
 const JSON_TOKEN_REGEX =
@@ -191,7 +192,7 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
   </div>
 )
 
-export const Component = () => {
+const ManifestInspectorPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'stats' | 'raw'>('stats')
 
@@ -353,4 +354,12 @@ export const Component = () => {
       </div>
     </div>
   )
+}
+
+export const Component = () => {
+  if (!import.meta.env.DEV) {
+    return <NotFound />
+  }
+
+  return <ManifestInspectorPage />
 }

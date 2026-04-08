@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { DOMParser } from 'linkedom'
@@ -48,15 +49,53 @@ function buildInlineScriptAssignment(name: '__MANIFEST__' | '__SITE_CONFIG__', j
 
 const CONFIG_SCRIPT_ID = 'config'
 const INJECTED_SCRIPT_ID = 'config-runtime'
+const MANIFEST_DEV_PUBLIC_PATH = '/__afilmory/photos-manifest.json'
+
+function buildInlineManifestScriptContent(manifestJson: string): string {
+  const manifestAssignment = buildInlineScriptAssignment('__MANIFEST__', manifestJson)
+  return `${manifestAssignment}window.__MANIFEST_PROMISE__ = Promise.resolve(window.__MANIFEST__);`
+}
+
+function buildExternalManifestScriptContent(manifestUrl: string): string {
+  const safeUrl = JSON.stringify(manifestUrl)
+
+  return [
+    `window.__MANIFEST_URL__ = ${safeUrl};`,
+    `window.__MANIFEST_PROMISE__ ??= (() => {`,
+    `  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;`,
+    `  const timeoutId = window.setTimeout(() => controller?.abort(), 15000);`,
+    `  return fetch(window.__MANIFEST_URL__, {`,
+    `    credentials: 'same-origin',`,
+    `    cache: 'force-cache',`,
+    `    signal: controller ? controller.signal : undefined,`,
+    `    headers: { accept: 'application/json' },`,
+    `  })`,
+    `    .then((response) => {`,
+    `      if (!response.ok) {`,
+    `        throw new Error(\`[data-inject] Failed to fetch manifest: \${response.status} \${response.statusText}\`.trim());`,
+    `      }`,
+    `      return response.json();`,
+    `    })`,
+    `    .finally(() => window.clearTimeout(timeoutId));`,
+    `})();`,
+  ].join('')
+}
 
 // ── combined plugin ───────────────────────────────────────────────────────────
 
 export function dataInjectPlugin(): Plugin {
   let embedManifest: boolean | undefined
+  let emittedManifestAssetFileName: string | null = null
 
   const siteConfigPayload = JSON.stringify(siteConfig)
   const siteConfigScriptContent = buildInlineScriptAssignment('__SITE_CONFIG__', siteConfigPayload)
   const parser = new DOMParser()
+  const getBuildManifestAssetPublicPath = () => {
+    if (!emittedManifestAssetFileName) {
+      throw new Error('[data-inject] External manifest asset path was not initialized during build.')
+    }
+    return `/${emittedManifestAssetFileName}`
+  }
 
   return {
     name: 'data-inject',
@@ -66,13 +105,27 @@ export function dataInjectPlugin(): Plugin {
       embedManifest = resolveEmbedPreference(config.command as 'serve' | 'build')
     },
 
-    configureServer(server) {
-      const shouldEmbed = embedManifest ?? resolveEmbedPreference(server.config.command as 'serve')
-      if (!shouldEmbed) {
+    buildStart() {
+      const shouldEmbed = embedManifest ?? resolveEmbedPreference('build')
+      emittedManifestAssetFileName = null
+
+      if (shouldEmbed) {
         return
       }
 
-      // 监听 manifest 文件变化
+      const manifestContent = getManifestContent('build')
+      const manifestHash = createHash('sha256').update(manifestContent).digest('hex').slice(0, 10)
+      emittedManifestAssetFileName = `assets/photos-manifest.${manifestHash}.json`
+
+      this.emitFile({
+        type: 'asset',
+        fileName: emittedManifestAssetFileName,
+        source: manifestContent,
+      })
+    },
+
+    configureServer(server) {
+      const shouldEmbed = embedManifest ?? resolveEmbedPreference(server.config.command as 'serve')
       server.watcher.add(MANIFEST_PATH)
 
       server.watcher.on('change', (file) => {
@@ -84,26 +137,52 @@ export function dataInjectPlugin(): Plugin {
           })
         }
       })
+
+      if (shouldEmbed) {
+        return
+      }
+
+      server.middlewares.use(MANIFEST_DEV_PUBLIC_PATH, (_req, res) => {
+        try {
+          const manifestContent = getManifestContent('serve')
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.setHeader('Cache-Control', 'no-store')
+          res.end(manifestContent)
+        } catch (error) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: String(error) }))
+        }
+      })
     },
 
     transformIndexHtml(html, ctx) {
-      // ── inject __MANIFEST__ ────────────────────────────────────────────────
       const command: 'serve' | 'build' = ctx?.server ? 'serve' : 'build'
       const shouldEmbed = embedManifest ?? resolveEmbedPreference(command)
       embedManifest = shouldEmbed
-      let nextHtml = html
+      const document = parser.parseFromString(html, 'text/html')
 
-      if (shouldEmbed) {
-        const manifestContent = getManifestContent(command)
-        const manifestScriptContent = buildInlineScriptAssignment('__MANIFEST__', manifestContent)
-        nextHtml = nextHtml.replace(
-          '<script id="manifest"></script>',
-          `<script id="manifest">${manifestScriptContent}</script>`,
-        )
+      const manifestScriptContent = shouldEmbed
+        ? buildInlineManifestScriptContent(getManifestContent(command))
+        : buildExternalManifestScriptContent(
+            command === 'serve' ? MANIFEST_DEV_PUBLIC_PATH : getBuildManifestAssetPublicPath(),
+          )
+
+      const manifestScript = document.querySelector('#manifest')
+      if (manifestScript) {
+        manifestScript.textContent = manifestScriptContent
       }
 
-      // ── inject __SITE_CONFIG__ ─────────────────────────────────────────────
-      const document = parser.parseFromString(nextHtml, 'text/html')
+      if (!shouldEmbed) {
+        const manifestAssetPublicPath =
+          command === 'serve' ? MANIFEST_DEV_PUBLIC_PATH : getBuildManifestAssetPublicPath()
+        const preloadLink = document.createElement('link')
+        preloadLink.setAttribute('rel', 'preload')
+        preloadLink.setAttribute('as', 'fetch')
+        preloadLink.setAttribute('href', manifestAssetPublicPath)
+        preloadLink.setAttribute('crossorigin', 'anonymous')
+        document.head?.append(preloadLink)
+      }
+
       if (!document.querySelector(`#${INJECTED_SCRIPT_ID}`)) {
         const scriptEl = document.createElement('script', 'text/javascript')
         scriptEl.id = INJECTED_SCRIPT_ID
@@ -118,11 +197,9 @@ export function dataInjectPlugin(): Plugin {
           const fallbackParent = document.body ?? document.documentElement
           fallbackParent?.append(scriptEl)
         }
-
-        nextHtml = document.toString()
       }
 
-      return nextHtml
+      return document.toString()
     },
   }
 }

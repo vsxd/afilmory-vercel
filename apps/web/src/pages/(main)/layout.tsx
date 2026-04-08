@@ -93,15 +93,13 @@ const useStateRestoreFromUrl = () => {
       const index = photos.findIndex((photo) => photo.id === photoId)
       if (index !== -1) {
         openViewer(index)
-      } else {
-        // 如果找不到照片，打开第一张作为后备
-        openViewer(0)
       }
     }
   }, [openViewer, photoId, searchParams, setGallerySetting])
 }
 
 const useSyncStateToUrl = () => {
+  const wasOpenRef = useRef(false)
   const { selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode } =
     useAtomValue(gallerySettingAtom)
   const [_, setSearchParams] = useSearchParams()
@@ -113,15 +111,11 @@ const useSyncStateToUrl = () => {
   useEffect(() => {
     if (!isRestored) return
 
-    if (!isOpen) {
-      const isExplorePath = location.pathname === '/explore'
-      if (!isExplorePath) {
-        const timer = setTimeout(() => {
-          navigate('/')
-        }, 500)
-        return () => clearTimeout(timer)
-      }
-    } else {
+    const isExplorePath = location.pathname === '/explore'
+    const isPhotoDetailPath = /^\/photos\/[^/]+$/.test(location.pathname)
+
+    if (isOpen) {
+      wasOpenRef.current = true
       const photos = getFilteredPhotos()
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
       if (currentIndex >= 0 && currentIndex < photos.length) {
@@ -131,6 +125,17 @@ const useSyncStateToUrl = () => {
           navigate(targetPathname, { replace: true })
         }
       }
+      return
+    }
+
+    const justClosedViewer = wasOpenRef.current
+    wasOpenRef.current = false
+
+    if (justClosedViewer && isPhotoDetailPath && !isExplorePath) {
+      const timer = setTimeout(() => {
+        navigate('/', { replace: true })
+      }, 500)
+      return () => clearTimeout(timer)
     }
   }, [currentIndex, isOpen, location.pathname, navigate])
 

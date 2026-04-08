@@ -1,28 +1,7 @@
 import type { AfilmoryManifest, CameraInfo, LensInfo, PhotoManifestItem } from '@afilmory/data'
-import { createEmptyManifest, parseManifest } from '@afilmory/data'
+import { createEmptyManifest } from '@afilmory/data'
 
 import { debugLog } from '~/lib/debug-log'
-
-function getInjectedManifest(): AfilmoryManifest {
-  try {
-    const injected =
-      typeof window !== 'undefined'
-        ? (window as typeof window & { __MANIFEST__?: unknown }).__MANIFEST__
-        : (globalThis as typeof globalThis & { __MANIFEST__?: unknown }).__MANIFEST__
-
-    if (!injected) {
-      if (typeof window !== 'undefined') {
-        console.error('[PhotoLoader] __MANIFEST__ is not defined. Make sure data injection is working correctly.')
-      }
-      return createEmptyManifest()
-    }
-
-    return parseManifest(injected)
-  } catch (error) {
-    console.error('[PhotoLoader] Failed to read manifest:', error)
-    return createEmptyManifest()
-  }
-}
 
 class PhotoLoader {
   private photos: PhotoManifestItem[] = []
@@ -30,8 +9,13 @@ class PhotoLoader {
   private cameras: CameraInfo[] = []
   private lenses: LensInfo[] = []
 
-  constructor(manifest: AfilmoryManifest) {
+  constructor(manifest: AfilmoryManifest = createEmptyManifest()) {
+    this.replaceManifest(manifest)
+  }
+
+  replaceManifest(manifest: AfilmoryManifest) {
     this.photos = manifest.data
+    this.photoMap = {}
     this.cameras = manifest.cameras
     this.lenses = manifest.lenses
 
@@ -71,4 +55,8 @@ class PhotoLoader {
   }
 }
 
-export const photoLoader = new PhotoLoader(getInjectedManifest())
+export const photoLoader = new PhotoLoader()
+
+export function initializePhotoLoader(manifest: AfilmoryManifest): void {
+  photoLoader.replaceManifest(manifest)
+}

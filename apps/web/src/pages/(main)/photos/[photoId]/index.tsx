@@ -100,13 +100,11 @@ export const Component = () => {
 
   // 如果照片不存在，显示 NotFound
   if (!currentPhoto || photoIndex === -1) {
-    // 添加详细的调试信息
     if (typeof window !== 'undefined') {
       console.error('[PhotoDetail] Photo not found:', {
         requestedPhotoId: photoId,
         photosLength: photos?.length || 0,
         hasManifest: (window as any).__MANIFEST__ !== undefined,
-        manifestData: (window as any).__MANIFEST__ !== undefined ? (window as any).__MANIFEST__ : null,
         photoIds: photos?.slice(0, 10).map((p) => p?.id) || [],
       })
     }

@@ -1,5 +1,4 @@
 import { execSync } from 'node:child_process'
-import { rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,13 +22,6 @@ import { localesJsonPlugin } from './plugins/vite/locales-json'
 import { photosStaticPlugin } from './plugins/vite/photos-static'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-if (process.env.CI) {
-  rmSync(path.join(process.cwd(), 'src/pages/(debug)'), {
-    recursive: true,
-    force: true,
-  })
-}
 
 const ReactCompilerConfig = {
   /* ... */
@@ -73,7 +65,7 @@ const staticWebBuildPlugins: PluginOption[] = [
     },
     workbox: {
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
-      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,json}'],
       globIgnores: ['**/*.{jpg,jpeg}', '**/vendor/heic-*.js'], // 忽略大图片文件和按需 HEIC codec
       runtimeCaching: [
         {

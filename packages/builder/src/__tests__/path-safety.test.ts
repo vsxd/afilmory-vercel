@@ -56,6 +56,19 @@ describe('LocalStorageProvider path safety', () => {
     expect(result).toBeNull()
   })
 
+  it('should block sibling directory prefix collisions via getFile (returns null)', async () => {
+    const siblingDir = `${tmpDir}-sibling`
+    await fs.mkdir(siblingDir, { recursive: true })
+    await fs.writeFile(path.join(siblingDir, 'secret.jpg'), 'secret-data')
+
+    try {
+      const result = await provider.getFile(`../${path.basename(siblingDir)}/secret.jpg`)
+      expect(result).toBeNull()
+    } finally {
+      await fs.rm(siblingDir, { recursive: true, force: true })
+    }
+  })
+
   it('should handle subdirectory paths correctly', async () => {
     const subDir = path.join(tmpDir, 'sub')
     await fs.mkdir(subDir)
@@ -71,8 +84,19 @@ describe('LocalStorageProvider path safety', () => {
     await expect(provider.uploadFile('../evil.txt', data)).rejects.toThrow('文件路径不安全')
   })
 
+  it('should reject sibling directory prefix collisions via uploadFile', async () => {
+    const data = Buffer.from('malicious')
+    await expect(provider.uploadFile(`../${path.basename(`${tmpDir}-evil`)}/evil.txt`, data)).rejects.toThrow(
+      '文件路径不安全',
+    )
+  })
+
   it('should reject path traversal via deleteFile', async () => {
     await expect(provider.deleteFile('../../etc/passwd')).rejects.toThrow('文件路径不安全')
+  })
+
+  it('should reject sibling directory prefix collisions via deleteFile', async () => {
+    await expect(provider.deleteFile(`../${path.basename(`${tmpDir}-evil`)}/passwd`)).rejects.toThrow('文件路径不安全')
   })
 
   it('should throw when basePath is empty', () => {

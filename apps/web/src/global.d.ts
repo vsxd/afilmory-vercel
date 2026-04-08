@@ -21,7 +21,9 @@ declare global {
   const BUILT_DATE: string
   const GIT_COMMIT_HASH: string
 
-  const __MANIFEST__: AfilmoryManifest
+  const __MANIFEST__: AfilmoryManifest | undefined
+  const __MANIFEST_URL__: string | undefined
+  const __MANIFEST_PROMISE__: Promise<unknown> | undefined
   const __SITE_CONFIG__: Partial<SiteConfig>
 
   const __CONFIG__: InjectConfig
@@ -31,6 +33,9 @@ declare global {
   export function tw(strings: TemplateStringsArray, ...values: any[]): string
 
   interface Window {
+    __MANIFEST__?: AfilmoryManifest
+    __MANIFEST_URL__?: string
+    __MANIFEST_PROMISE__?: Promise<unknown>
     __SITE_CONFIG__?: Partial<SiteConfig>
   }
 }
