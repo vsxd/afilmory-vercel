@@ -2,10 +2,12 @@
 
 import { createContext, use } from 'react'
 
+import { getDocumentBody } from '../utils/dom'
+
 export const useRootPortal = () => {
   const ctx = use(RootPortalContext)
 
-  return ctx.to || document.body
+  return ctx.to || getDocumentBody()
 }
 
 const RootPortalContext = createContext<{

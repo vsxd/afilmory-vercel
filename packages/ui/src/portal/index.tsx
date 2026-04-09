@@ -11,7 +11,12 @@ export const RootPortal: FC<
   } & PropsWithChildren
 > = (props) => {
   const to = useRootPortal()
+  const target = props.to || to
 
-  return createPortal(props.children, props.to || to || document.body)
+  if (!target) {
+    return props.children
+  }
+
+  return createPortal(props.children, target)
 }
 export { RootPortalProvider } from './provider'

@@ -1,6 +1,6 @@
 import { Button } from '@afilmory/ui'
 import { repository } from '@pkg'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isRouteErrorResponse, useRouteError } from 'react-router'
 
 export function ErrorElement() {
@@ -17,14 +17,29 @@ export function ErrorElement() {
   }, [error])
 
   const reloadRef = useRef(false)
-  if (
-    message.startsWith('Failed to fetch dynamically imported module') &&
-    window.sessionStorage.getItem('reload') !== '1'
-  ) {
-    if (reloadRef.current) return null
+  const [isReloading, setIsReloading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    if (!message.startsWith('Failed to fetch dynamically imported module')) {
+      return
+    }
+    if (window.sessionStorage.getItem('reload') === '1') {
+      return
+    }
+    if (reloadRef.current) {
+      return
+    }
+
+    reloadRef.current = true
+    setIsReloading(true)
     window.sessionStorage.setItem('reload', '1')
     window.location.reload()
-    reloadRef.current = true
+  }, [message])
+
+  if (isReloading) {
     return null
   }
 

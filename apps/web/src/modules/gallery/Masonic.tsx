@@ -104,7 +104,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item> & { ref?: React.Ref<Mas
   nextProps.resizeObserver = useResizeObserver(nextProps.positioner)
   nextProps.scrollTop = scrollTop
   nextProps.isScrolling = isScrolling
-  nextProps.height = window.innerHeight
+  nextProps.height = windowSize[1]
 
   const scrollToIndex = useScrollToIndex(nextProps.positioner, {
     height: nextProps.height,

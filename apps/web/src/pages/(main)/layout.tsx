@@ -18,6 +18,7 @@ export const Component = () => {
   const isMobile = useMobile()
 
   const photos = usePhotos()
+  const mobileScrollElement = typeof document === 'undefined' ? null : document.body
 
   return (
     <>
@@ -33,7 +34,7 @@ export const Component = () => {
         )}
 
         {isMobile ? (
-          <ScrollElementContext value={document.body}>
+          <ScrollElementContext value={mobileScrollElement}>
             <MasonryRoot />
           </ScrollElementContext>
         ) : (
