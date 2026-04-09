@@ -55,6 +55,12 @@
     "vitest": "^3",
     "zod": "catalog:"
   },
+  "pnpm": {
+    "overrides": {
+      "defu": "6.1.7",
+      "next": "16.2.3"
+    }
+  },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged"
   },

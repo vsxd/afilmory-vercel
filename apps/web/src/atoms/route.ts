@@ -21,6 +21,7 @@ export const [routeAtom, , , , getReadonlyRoute, setRoute] = createAtomHooks(
       hash: '',
       state: null,
       key: '',
+      unstable_mask: undefined,
     },
   }),
 )
