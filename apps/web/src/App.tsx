@@ -8,17 +8,42 @@ const CommandPalette = lazy(() =>
   import('./components/gallery/CommandPalette').then((m) => ({ default: m.CommandPalette })),
 )
 
-// prefetch preview page route - 使用 import.meta.glob 让 Vite 在构建时正确处理
-// 这样 Vite 可以在构建时正确解析包含方括号的路径
 const photoPagePrefetch = import.meta.glob('./pages/(main)/photos/[photoId]/index.tsx', { eager: false })
-// 在浏览器环境中延迟 prefetch，避免阻塞初始渲染
+
 if (typeof window !== 'undefined') {
   const moduleKey = './pages/(main)/photos/[photoId]/index.tsx'
-  setTimeout(() => {
-    if (photoPagePrefetch[moduleKey]) {
-      photoPagePrefetch[moduleKey]()
+
+  let hasPrefetchedPhotoPage = false
+
+  const prefetchPhotoPage = () => {
+    if (hasPrefetchedPhotoPage) {
+      return
     }
-  }, 100)
+
+    hasPrefetchedPhotoPage = true
+    void photoPagePrefetch[moduleKey]?.()
+    window.removeEventListener('pointerover', onPhotoLinkIntent, true)
+    window.removeEventListener('focusin', onPhotoLinkIntent, true)
+  }
+
+  const onPhotoLinkIntent = (event: Event) => {
+    const { target } = event
+
+    if (!(target instanceof Element)) {
+      return
+    }
+
+    const link = target.closest('a[href]')
+    const href = link?.getAttribute('href')
+    if (!href?.startsWith('/photos/')) {
+      return
+    }
+
+    prefetchPhotoPage()
+  }
+
+  window.addEventListener('pointerover', onPhotoLinkIntent, { capture: true, passive: true })
+  window.addEventListener('focusin', onPhotoLinkIntent, true)
 }
 
 function App() {

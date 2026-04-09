@@ -18,10 +18,6 @@ class ExifToolManagerStatic {
     jotaiStore.set(isExiftoolLoadedAtom, true)
   }
 
-  constructor() {
-    this.load()
-  }
-
   async parse(buffer: Blob, filename?: string) {
     if (!this.exifTool) {
       await this.load()

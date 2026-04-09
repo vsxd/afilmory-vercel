@@ -66,7 +66,13 @@ const staticWebBuildPlugins: PluginOption[] = [
     workbox: {
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
       globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,json}'],
-      globIgnores: ['**/*.{jpg,jpeg}', '**/vendor/heic-*.js', '**/assets/maplibre-gl-*.js', '**/og-image-*.png'], // 忽略大图片文件、按需 codec、重型地图依赖和历史 OG 图
+      globIgnores: [
+        '**/*.{jpg,jpeg}',
+        '**/vendor/heic-*.js',
+        '**/vendor/exiftool-*.js',
+        '**/assets/maplibre-gl-*.js',
+        '**/og-image-*.png',
+      ], // 忽略大图片文件、按需 codec、原始 EXIF 解析器、重型地图依赖和历史 OG 图
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

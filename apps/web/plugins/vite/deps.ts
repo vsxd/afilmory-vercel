@@ -40,6 +40,7 @@ export function createDependencyChunksPlugin(groups: DependencyChunkGroup[]): Pl
       const { output } = config.build.rollupOptions
       const outputConfig = Array.isArray(output) ? output[0] : output
       outputConfig.assetFileNames = 'assets/[name].[hash:6][extname]'
+      outputConfig.onlyExplicitManualChunks = true
       outputConfig.chunkFileNames = (chunkInfo) => {
         return chunkInfo.name.startsWith('vendor/') ? '[name]-[hash].js' : 'assets/[name]-[hash].js'
       }
