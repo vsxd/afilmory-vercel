@@ -1,11 +1,12 @@
 import { clsxm } from '@afilmory/ui'
 import { m, useAnimationControls } from 'motion/react'
-import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
 import type { ImageLoaderManager } from '~/lib/image-loader-manager'
 
 import type { LoadingIndicatorRef } from './LoadingIndicator'
-import type { VideoSource } from './types'
+import type {VideoSource} from './types';
+import { getVideoSourceKey  } from './types'
 
 function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -60,9 +61,38 @@ export const LivePhotoVideo = ({
   const [isConvertingVideo, setIsConvertingVideo] = useState(false)
   const hasAutoPlayedRef = useRef(false)
   const isConvertingVideoRef = useRef(false)
+  const loadedVideoSourceKeyRef = useRef<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const videoAnimateController = useAnimationControls()
+  const stableVideoSource = useMemo<VideoSource>(() => {
+    if (videoSource.type === 'motion-photo') {
+      return {
+        type: 'motion-photo',
+        imageUrl: videoSource.imageUrl,
+        offset: videoSource.offset,
+        size: videoSource.size,
+        presentationTimestamp: videoSource.presentationTimestamp,
+      }
+    }
+
+    if (videoSource.type === 'live-photo') {
+      return {
+        type: 'live-photo',
+        videoUrl: videoSource.videoUrl,
+      }
+    }
+
+    return { type: 'none' }
+  }, [
+    videoSource.type,
+    videoSource.type === 'live-photo' ? videoSource.videoUrl : null,
+    videoSource.type === 'motion-photo' ? videoSource.imageUrl : null,
+    videoSource.type === 'motion-photo' ? videoSource.offset : null,
+    videoSource.type === 'motion-photo' ? (videoSource.size ?? null) : null,
+    videoSource.type === 'motion-photo' ? (videoSource.presentationTimestamp ?? null) : null,
+  ])
+  const videoSourceKey = getVideoSourceKey(stableVideoSource)
 
   useEffect(() => {
     onPlayingChange?.(isPlayingLivePhoto)
@@ -73,28 +103,31 @@ export const LivePhotoVideo = ({
   }, [isConvertingVideo])
 
   useEffect(() => {
-    if (!isCurrentImage || livePhotoVideoLoaded || isConvertingVideoRef.current || !videoRef.current) {
+    if (!isCurrentImage || isConvertingVideoRef.current || !videoRef.current) {
       return
     }
-    // 如果没有视频源，直接返回
-    if (videoSource.type === 'none') {
+    if (stableVideoSource.type === 'none' || loadedVideoSourceKeyRef.current === videoSourceKey) {
       return
     }
 
     let cancelled = false
     const currentVideoElement = videoRef.current
+    loadedVideoSourceKeyRef.current = null
+    hasAutoPlayedRef.current = false
     isConvertingVideoRef.current = true
+    setLivePhotoVideoLoaded(false)
     setIsConvertingVideo(true)
 
     const processVideo = async () => {
       try {
-        await imageLoaderManager.processVideo(videoSource, currentVideoElement, {
+        await imageLoaderManager.processVideo(stableVideoSource, currentVideoElement, {
           onLoadingStateUpdate: (state) => {
             loadingIndicatorRef.current?.updateLoadingState(state)
           },
         })
 
         if (!cancelled) {
+          loadedVideoSourceKeyRef.current = videoSourceKey
           setLivePhotoVideoLoaded(true)
         }
       } catch (videoError) {
@@ -109,20 +142,20 @@ export const LivePhotoVideo = ({
       }
     }
 
-    processVideo()
+    void processVideo()
 
     return () => {
       cancelled = true
       isConvertingVideoRef.current = false
-      resetVideoElement(currentVideoElement)
     }
-  }, [isCurrentImage, livePhotoVideoLoaded, videoSource, imageLoaderManager, loadingIndicatorRef])
+  }, [isCurrentImage, videoSourceKey, stableVideoSource, imageLoaderManager, loadingIndicatorRef])
 
   useEffect(() => {
     if (!isCurrentImage) {
       setIsPlayingLivePhoto(false)
       setLivePhotoVideoLoaded(false)
       isConvertingVideoRef.current = false
+      loadedVideoSourceKeyRef.current = null
       setIsConvertingVideo(false)
       hasAutoPlayedRef.current = false
 
@@ -135,6 +168,7 @@ export const LivePhotoVideo = ({
     const currentVideoElement = videoRef.current
 
     return () => {
+      loadedVideoSourceKeyRef.current = null
       resetVideoElement(currentVideoElement)
     }
   }, [])

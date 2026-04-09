@@ -11,6 +11,26 @@ export type VideoSource =
   | { type: 'motion-photo'; imageUrl: string; offset: number; size?: number; presentationTimestamp?: number }
   | { type: 'none' }
 
+export function getVideoSourceKey(videoSource: VideoSource): string {
+  switch (videoSource.type) {
+    case 'live-photo': {
+      return `live-photo:${videoSource.videoUrl}`
+    }
+    case 'motion-photo': {
+      return [
+        'motion-photo',
+        videoSource.imageUrl,
+        videoSource.offset,
+        videoSource.size ?? '',
+        videoSource.presentationTimestamp ?? '',
+      ].join(':')
+    }
+    case 'none': {
+      return 'none'
+    }
+  }
+}
+
 export interface ProgressiveImageProps {
   src: string
   thumbnailSrc?: string

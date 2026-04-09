@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { isMobileDevice } from '~/lib/device-viewport'
 import { ImageLoaderManager } from '~/lib/image-loader-manager'
@@ -8,6 +8,11 @@ interface UseLivePhotoHandlerProps {
   data: PhotoManifest
   imageLoaded: boolean
 }
+
+type LoadableVideo =
+  | { type: 'motion-photo'; offset: number; size?: number; presentationTimestamp?: number }
+  | { type: 'live-photo'; videoUrl: string }
+  | undefined
 
 function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -23,6 +28,28 @@ function resetVideoElement(videoElement: HTMLVideoElement | null): void {
   videoElement.load()
 }
 
+function getVideoLoadKey(dataVideo: LoadableVideo, originalUrl: string): string {
+  if (!dataVideo) {
+    return 'none'
+  }
+
+  if (dataVideo.type === 'motion-photo') {
+    return [
+      'motion-photo',
+      originalUrl,
+      dataVideo.offset,
+      dataVideo.size ?? '',
+      dataVideo.presentationTimestamp ?? '',
+    ].join(':')
+  }
+
+  if (dataVideo.type === 'live-photo') {
+    return `live-photo:${dataVideo.videoUrl}`
+  }
+
+  return 'none'
+}
+
 export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerProps) => {
   const { id, video, originalUrl } = data
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
@@ -33,6 +60,37 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
   const videoRef = useRef<HTMLVideoElement>(null)
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
   const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
+  const loadedVideoKeyRef = useRef<string | null>(null)
+  const stableVideo = useMemo(() => {
+    if (!video) {
+      return
+    }
+
+    if (video.type === 'motion-photo') {
+      return {
+        type: 'motion-photo' as const,
+        offset: video.offset,
+        size: video.size,
+        presentationTimestamp: video.presentationTimestamp,
+      }
+    }
+
+    if (video.type === 'live-photo') {
+      return {
+        type: 'live-photo' as const,
+        videoUrl: video.videoUrl,
+      }
+    }
+
+    return video
+  }, [
+    video?.type,
+    video?.type === 'live-photo' ? video.videoUrl : null,
+    video?.type === 'motion-photo' ? video.offset : null,
+    video?.type === 'motion-photo' ? (video.size ?? null) : null,
+    video?.type === 'motion-photo' ? (video.presentationTimestamp ?? null) : null,
+  ])
+  const videoLoadKey = getVideoLoadKey(stableVideo, originalUrl)
 
   const hasVideo = video !== undefined
 
@@ -41,13 +99,14 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
     setLivePhotoVideoLoaded(false)
     setIsConvertingVideo(false)
     setVideoConversionError(null)
+    loadedVideoKeyRef.current = null
 
     resetVideoElement(videoRef.current)
   }, [id])
 
   // Live Photo/Motion Photo video loading logic
   useEffect(() => {
-    if (!video || !imageLoaded || livePhotoVideoLoaded || !videoRef.current) {
+    if (!stableVideo || !imageLoaded || !videoRef.current || loadedVideoKeyRef.current === videoLoadKey) {
       return
     }
 
@@ -56,6 +115,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
     let cancelled = false
 
     const loadVideo = async () => {
+      setLivePhotoVideoLoaded(false)
       setIsConvertingVideo(true)
 
       const imageLoaderManager = new ImageLoaderManager()
@@ -64,18 +124,18 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
       try {
         let videoSource: Parameters<typeof imageLoaderManager.processVideo>[0]
 
-        if (video.type === 'motion-photo') {
+        if (stableVideo.type === 'motion-photo') {
           videoSource = {
             type: 'motion-photo',
             imageUrl: originalUrl,
-            offset: video.offset,
-            size: video.size,
-            presentationTimestamp: video.presentationTimestamp,
+            offset: stableVideo.offset,
+            size: stableVideo.size,
+            presentationTimestamp: stableVideo.presentationTimestamp,
           }
-        } else if (video.type === 'live-photo') {
+        } else if (stableVideo.type === 'live-photo') {
           videoSource = {
             type: 'live-photo',
-            videoUrl: video.videoUrl,
+            videoUrl: stableVideo.videoUrl,
           }
         } else {
           videoSource = { type: 'none' }
@@ -84,6 +144,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
         if (videoSource.type !== 'none') {
           await imageLoaderManager.processVideo(videoSource, videoEl)
           if (!cancelled) {
+            loadedVideoKeyRef.current = videoLoadKey
             setLivePhotoVideoLoaded(true)
           }
         }
@@ -99,7 +160,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
       }
     }
 
-    loadVideo()
+    void loadVideo()
 
     return () => {
       cancelled = true
@@ -109,7 +170,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
       }
       resetVideoElement(videoEl)
     }
-  }, [video, originalUrl, imageLoaded, livePhotoVideoLoaded])
+  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey])
 
   // Live Photo/Motion Photo hover handling (desktop only)
   const handleMouseEnter = useCallback(() => {
@@ -165,6 +226,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
         imageLoaderManagerRef.current = null
       }
 
+      loadedVideoKeyRef.current = null
       resetVideoElement(currentVideoElement)
     }
   }, [])

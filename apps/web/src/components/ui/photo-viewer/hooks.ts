@@ -147,7 +147,6 @@ export const useImageLoader = (
     return () => {
       cancelled = true
       imageLoaderManager.cleanup()
-      imageLoaderManagerRef.current = null
     }
   }, [
     highResLoaded,
