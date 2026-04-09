@@ -9,6 +9,7 @@ import { getBuilderOutputSettings, webAppDir } from '../output-paths.js'
 import type { BuilderPlugin } from './types.js'
 
 const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
+const RUN_SHARED_SYNC_ENABLED = 'repoSyncEnabled'
 const GIT_ASKPASS_SCRIPT = fileURLToPath(new URL('git-askpass.js', import.meta.url))
 const GIT_HTTP_USERNAME = 'x-access-token'
 
@@ -47,32 +48,39 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
 
         logger.main.info('🔄 同步远程仓库...')
 
-        if (!existsSync(assetsGitDir)) {
-          logger.main.info('📥 克隆远程仓库...')
-          await $({
-            cwd: webAppDir,
-            env: gitEnv,
-            stdio: 'inherit',
-          })`git clone ${repo.url} assets-git`
-        } else {
-          logger.main.info('🔄 拉取远程仓库更新...')
-          try {
-            await $({ cwd: assetsGitDir, env: gitEnv, stdio: 'inherit' })`git pull --rebase`
-          } catch {
-            logger.main.warn('⚠️ git pull 失败，尝试重新克隆远程仓库...')
-            logger.main.info('🗑️ 删除现有仓库目录...')
-            await $({ cwd: webAppDir, stdio: 'inherit' })`rm -rf assets-git`
-            logger.main.info('📥 重新克隆远程仓库...')
+        try {
+          if (!existsSync(assetsGitDir)) {
+            logger.main.info('📥 克隆远程仓库...')
             await $({
               cwd: webAppDir,
               env: gitEnv,
               stdio: 'inherit',
             })`git clone ${repo.url} assets-git`
+          } else {
+            logger.main.info('🔄 拉取远程仓库更新...')
+            try {
+              await $({ cwd: assetsGitDir, env: gitEnv, stdio: 'inherit' })`git pull --rebase`
+            } catch {
+              logger.main.warn('⚠️ git pull 失败，尝试重新克隆远程仓库...')
+              logger.main.info('🗑️ 删除现有仓库目录...')
+              await $({ cwd: webAppDir, stdio: 'inherit' })`rm -rf assets-git`
+              logger.main.info('📥 重新克隆远程仓库...')
+              await $({
+                cwd: webAppDir,
+                env: gitEnv,
+                stdio: 'inherit',
+              })`git clone ${repo.url} assets-git`
+            }
           }
-        }
 
-        await prepareRepositoryLayout({ assetsGitDir, logger })
-        logger.main.success('✅ 远程仓库同步完成')
+          await prepareRepositoryLayout({ assetsGitDir, logger })
+          context.runShared.set(RUN_SHARED_SYNC_ENABLED, true)
+          logger.main.success('✅ 远程仓库同步完成')
+        } catch (error) {
+          context.runShared.set(RUN_SHARED_SYNC_ENABLED, false)
+          logger.main.warn('⚠️ 远程仓库同步失败，已降级为本地构建输出（不会中断构建）')
+          logger.main.warn(error instanceof Error ? error.message : String(error))
+        }
       },
       afterBuild: async (context) => {
         const userConfig = context.config.user
@@ -87,9 +95,10 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
 
         const { result } = context.payload
         const assetsGitDir = context.runShared.get(RUN_SHARED_ASSETS_DIR) as string | undefined
+        const syncEnabled = context.runShared.get(RUN_SHARED_SYNC_ENABLED) as boolean | undefined
 
-        if (!assetsGitDir) {
-          context.logger.main.warn('⚠️ 未找到仓库目录，跳过推送')
+        if (!syncEnabled || !assetsGitDir) {
+          context.logger.main.warn('⚠️ 远程仓库同步未就绪，跳过推送')
           return
         }
 

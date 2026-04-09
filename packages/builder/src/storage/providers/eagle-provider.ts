@@ -202,8 +202,9 @@ export class EagleStorageProvider implements StorageProvider {
   }
 
   detectLivePhotos(_allObjects: StorageObject[]): Map<string, StorageObject> {
-    // TODO
-    return new Map()
+    // Eagle 数据源当前未暴露与图片稳定绑定的 Live Photo 视频键，
+    // 因此在 Eagle provider 中显式返回空映射。
+    return new Map<string, StorageObject>()
   }
 
   private async copyToDist(key: string) {
