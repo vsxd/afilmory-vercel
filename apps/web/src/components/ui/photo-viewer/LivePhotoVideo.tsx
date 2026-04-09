@@ -154,6 +154,7 @@ export const LivePhotoVideo = ({
     return () => {
       cancelled = true
       isConvertingVideoRef.current = false
+      imageLoaderManager.cleanup()
     }
   }, [isCurrentImage, videoSourceKey, stableVideoSource, imageLoaderManager, loadingIndicatorRef])
 

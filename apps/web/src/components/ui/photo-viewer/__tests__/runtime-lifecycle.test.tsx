@@ -138,6 +138,7 @@ describe('photo viewer runtime lifecycle', () => {
   it('keeps the live photo video source after the initial load settles', async () => {
     const imageLoaderManager = {
       processVideo: processVideoMock,
+      cleanup: cleanupMock,
     } as never
     const loadingIndicatorRef = {
       current: {
@@ -175,7 +176,83 @@ describe('photo viewer runtime lifecycle', () => {
     )
 
     expect(processVideoMock).toHaveBeenCalledTimes(1)
+    expect(cleanupMock).not.toHaveBeenCalled()
     expect(videoElement?.getAttribute('src')).toBe('blob:loaded-live-photo')
+  })
+
+  it('cleans up the active live photo request when the current image changes', async () => {
+    let resolveVideoLoad: (() => void) | null = null
+    processVideoMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVideoLoad = resolve
+        }),
+    )
+
+    const imageLoaderManager = {
+      processVideo: processVideoMock,
+      cleanup: cleanupMock,
+    } as never
+    const loadingIndicatorRef = {
+      current: {
+        updateLoadingState: vi.fn(),
+      },
+    } as never
+
+    const { rerender } = render(
+      <LivePhotoVideo
+        videoSource={{ type: 'live-photo', videoUrl: 'https://example.com/live.mov' }}
+        imageLoaderManager={imageLoaderManager}
+        loadingIndicatorRef={loadingIndicatorRef}
+        isCurrentImage={true}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(processVideoMock).toHaveBeenCalledTimes(1)
+    })
+
+    rerender(
+      <LivePhotoVideo
+        videoSource={{ type: 'live-photo', videoUrl: 'https://example.com/live.mov' }}
+        imageLoaderManager={imageLoaderManager}
+        loadingIndicatorRef={loadingIndicatorRef}
+        isCurrentImage={false}
+      />,
+    )
+
+    expect(cleanupMock).toHaveBeenCalledTimes(1)
+
+    resolveVideoLoad?.()
+  })
+
+  it('cleans up the live photo manager on unmount', async () => {
+    const imageLoaderManager = {
+      processVideo: processVideoMock,
+      cleanup: cleanupMock,
+    } as never
+    const loadingIndicatorRef = {
+      current: {
+        updateLoadingState: vi.fn(),
+      },
+    } as never
+
+    const { unmount } = render(
+      <LivePhotoVideo
+        videoSource={{ type: 'live-photo', videoUrl: 'https://example.com/live.mov' }}
+        imageLoaderManager={imageLoaderManager}
+        loadingIndicatorRef={loadingIndicatorRef}
+        isCurrentImage={true}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(processVideoMock).toHaveBeenCalledTimes(1)
+    })
+
+    unmount()
+
+    expect(cleanupMock).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the image loader manager ref available after the high-res image loads', async () => {
