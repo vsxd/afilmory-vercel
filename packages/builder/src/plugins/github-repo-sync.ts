@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -78,8 +79,16 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
           logger.main.success('✅ 远程仓库同步完成')
         } catch (error) {
           context.runShared.set(RUN_SHARED_SYNC_ENABLED, false)
-          logger.main.warn('⚠️ 远程仓库同步失败，已降级为本地构建输出（不会中断构建）')
+          logger.main.warn('⚠️ 远程仓库同步失败，正在恢复本地构建输出布局...')
           logger.main.warn(error instanceof Error ? error.message : String(error))
+
+          try {
+            await restoreLocalOutputLayout({ logger })
+            logger.main.warn('⚠️ 已降级为本地构建输出（不会中断构建）')
+          } catch (restoreError) {
+            logger.main.error('❌ 恢复本地构建输出布局失败，后续构建可能中断')
+            logger.main.error(restoreError instanceof Error ? restoreError.message : String(restoreError))
+          }
         }
       },
       afterBuild: async (context) => {
@@ -122,40 +131,109 @@ interface PrepareRepositoryLayoutOptions {
   logger: typeof import('../logger/index.js').logger
 }
 
-async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareRepositoryLayoutOptions): Promise<void> {
+interface OutputLayoutOptions {
+  logger: typeof import('../logger/index.js').logger
+}
+
+interface DirectorySnapshot {
+  rootDir: string
+  path: string
+}
+
+async function createInitialManifestContent(): Promise<string> {
+  const { CURRENT_MANIFEST_VERSION } = await import('../manifest/version.js')
+
+  return JSON.stringify({ version: CURRENT_MANIFEST_VERSION, data: [], cameras: [], lenses: [] }, null, 2)
+}
+
+async function removePathIfPresent(targetPath: string): Promise<void> {
+  try {
+    const stat = await fs.lstat(targetPath)
+    await fs.rm(targetPath, {
+      force: true,
+      recursive: stat.isDirectory() && !stat.isSymbolicLink(),
+    })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return
+    }
+    throw error
+  }
+}
+
+async function replacePathWithSymlink(linkPath: string, targetPath: string): Promise<void> {
+  await removePathIfPresent(linkPath)
+  await fs.mkdir(path.dirname(linkPath), { recursive: true })
+  await fs.symlink(targetPath, linkPath)
+}
+
+async function snapshotDirectory(sourceDir: string): Promise<DirectorySnapshot | null> {
+  const snapshotRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-repo-sync-'))
+  const snapshotPath = path.join(snapshotRoot, path.basename(sourceDir))
+
+  try {
+    await fs.cp(sourceDir, snapshotPath, {
+      dereference: true,
+      force: true,
+      recursive: true,
+    })
+    return {
+      rootDir: snapshotRoot,
+      path: snapshotPath,
+    }
+  } catch {
+    await fs.rm(snapshotRoot, { force: true, recursive: true })
+    return null
+  }
+}
+
+export async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareRepositoryLayoutOptions): Promise<void> {
   const { manifestPath, thumbnailsDir } = getBuilderOutputSettings()
   const thumbnailsSourceDir = path.resolve(assetsGitDir, 'thumbnails')
   const manifestSourcePath = path.resolve(assetsGitDir, 'photos-manifest.json')
 
   if (!existsSync(thumbnailsSourceDir)) {
     logger.main.info('📁 创建 thumbnails 目录...')
-    await $({ cwd: assetsGitDir, stdio: 'inherit' })`mkdir -p thumbnails`
+    await fs.mkdir(thumbnailsSourceDir, { recursive: true })
   }
 
   if (!existsSync(manifestSourcePath)) {
     logger.main.info('📄 创建初始 manifest 文件...')
-    const { CURRENT_MANIFEST_VERSION } = await import('../manifest/version.js')
-    const initial = JSON.stringify({ version: CURRENT_MANIFEST_VERSION, data: [], cameras: [], lenses: [] }, null, 2)
-    await fs.writeFile(manifestSourcePath, initial)
+    await fs.writeFile(manifestSourcePath, await createInitialManifestContent())
   }
 
-  if (existsSync(thumbnailsDir)) {
-    await $({ cwd: webAppDir, stdio: 'inherit' })`rm -rf ${thumbnailsDir}`
-  }
-  await fs.mkdir(path.dirname(thumbnailsDir), { recursive: true })
-  await $({
-    cwd: webAppDir,
-    stdio: 'inherit',
-  })`ln -s ${thumbnailsSourceDir} ${thumbnailsDir}`
+  await replacePathWithSymlink(thumbnailsDir, thumbnailsSourceDir)
+  await replacePathWithSymlink(manifestPath, manifestSourcePath)
+}
 
-  if (existsSync(manifestPath)) {
-    await $({ cwd: webAppDir, stdio: 'inherit' })`rm -f ${manifestPath}`
+export async function restoreLocalOutputLayout({ logger }: OutputLayoutOptions): Promise<void> {
+  const { manifestPath, thumbnailsDir } = getBuilderOutputSettings()
+  const manifestContent = await fs.readFile(manifestPath, 'utf-8').catch(() => null)
+  const thumbnailsSnapshot = await snapshotDirectory(thumbnailsDir)
+
+  try {
+    await removePathIfPresent(thumbnailsDir)
+    await fs.mkdir(path.dirname(thumbnailsDir), { recursive: true })
+
+    if (thumbnailsSnapshot) {
+      await fs.cp(thumbnailsSnapshot.path, thumbnailsDir, {
+        force: true,
+        recursive: true,
+      })
+    } else {
+      await fs.mkdir(thumbnailsDir, { recursive: true })
+    }
+
+    await removePathIfPresent(manifestPath)
+    await fs.mkdir(path.dirname(manifestPath), { recursive: true })
+    await fs.writeFile(manifestPath, manifestContent ?? (await createInitialManifestContent()))
+  } finally {
+    if (thumbnailsSnapshot) {
+      await fs.rm(thumbnailsSnapshot.rootDir, { force: true, recursive: true })
+    }
   }
-  await fs.mkdir(path.dirname(manifestPath), { recursive: true })
-  await $({
-    cwd: webAppDir,
-    stdio: 'inherit',
-  })`ln -s ${manifestSourcePath} ${manifestPath}`
+
+  logger.main.info('📁 已恢复本地 manifest / thumbnails 输出布局')
 }
 
 interface PushRemoteOptions {
