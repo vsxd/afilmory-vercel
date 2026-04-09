@@ -8,6 +8,7 @@ import { NotFound } from '~/components/common/NotFound'
 import { PhotoViewer } from '~/components/ui/photo-viewer'
 import { useContextPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { useTitle } from '~/hooks/useTitle'
+import { applyAccentTransitionStyle } from '~/lib/accent-transition-style'
 import { deriveAccentFromSources } from '~/lib/color'
 
 export const Component = () => {
@@ -64,7 +65,7 @@ export const Component = () => {
     if (!currentPhoto) return
 
     let isCancelled = false
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let cleanupAccentTransitionStyle: (() => void) | null = null
 
     ;(async () => {
       try {
@@ -73,18 +74,7 @@ export const Component = () => {
           thumbnailUrl: currentPhoto.thumbnailUrl,
         })
         if (!isCancelled) {
-          const $css = document.createElement('style')
-          $css.textContent = `
-         * {
-             transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
-            }
-          `
-          document.head.append($css)
-
-          timeoutId = setTimeout(() => {
-            $css.remove()
-          }, 100)
-
+          cleanupAccentTransitionStyle = applyAccentTransitionStyle(100)
           setAccentColor(color ?? null)
         }
       } catch {
@@ -94,7 +84,7 @@ export const Component = () => {
 
     return () => {
       isCancelled = true
-      if (timeoutId) clearTimeout(timeoutId)
+      cleanupAccentTransitionStyle?.()
     }
   }, [currentPhoto])
 
