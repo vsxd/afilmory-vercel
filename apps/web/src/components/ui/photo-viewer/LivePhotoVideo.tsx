@@ -62,6 +62,7 @@ export const LivePhotoVideo = ({
   const hasAutoPlayedRef = useRef(false)
   const isConvertingVideoRef = useRef(false)
   const loadedVideoSourceKeyRef = useRef<string | null>(null)
+  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const videoSourceType = videoSource.type
   const livePhotoUrl = videoSourceType === 'live-photo' ? videoSource.videoUrl : undefined
   const motionPhotoImageUrl = videoSourceType === 'motion-photo' ? videoSource.imageUrl : undefined
@@ -108,6 +109,15 @@ export const LivePhotoVideo = ({
   useEffect(() => {
     isConvertingVideoRef.current = isConvertingVideo
   }, [isConvertingVideo])
+
+  const clearPlayTimer = useCallback(() => {
+    if (!playTimerRef.current) {
+      return
+    }
+
+    clearTimeout(playTimerRef.current)
+    playTimerRef.current = null
+  }, [])
 
   useEffect(() => {
     if (!isCurrentImage || isConvertingVideoRef.current || !videoRef.current) {
@@ -160,6 +170,7 @@ export const LivePhotoVideo = ({
 
   useEffect(() => {
     if (!isCurrentImage) {
+      clearPlayTimer()
       setIsPlayingLivePhoto(false)
       setLivePhotoVideoLoaded(false)
       isConvertingVideoRef.current = false
@@ -170,21 +181,25 @@ export const LivePhotoVideo = ({
       videoAnimateController.set({ opacity: 0 })
       resetVideoElement(videoRef.current)
     }
-  }, [isCurrentImage, videoAnimateController])
+  }, [isCurrentImage, videoAnimateController, clearPlayTimer])
 
   useEffect(() => {
     const currentVideoElement = videoRef.current
 
     return () => {
+      clearPlayTimer()
       loadedVideoSourceKeyRef.current = null
       resetVideoElement(currentVideoElement)
     }
-  }, [])
+  }, [clearPlayTimer])
 
   const play = useCallback(async () => {
     if (!livePhotoVideoLoaded || isPlayingLivePhoto || isConvertingVideo) return
     setIsPlayingLivePhoto(true)
-    setTimeout(async () => {
+
+    clearPlayTimer()
+    playTimerRef.current = setTimeout(async () => {
+      playTimerRef.current = null
       await videoAnimateController.start({
         opacity: 1,
         transition: { duration: 0.15, ease: 'easeOut' },
@@ -198,10 +213,12 @@ export const LivePhotoVideo = ({
         })
       }
     }, 0)
-  }, [livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo, videoAnimateController])
+  }, [livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo, videoAnimateController, clearPlayTimer])
 
   const stop = useCallback(async () => {
     if (!isPlayingLivePhoto) return
+
+    clearPlayTimer()
     const video = videoRef.current
     if (video) {
       video.pause()
@@ -212,7 +229,7 @@ export const LivePhotoVideo = ({
       transition: { duration: 0.2, ease: 'easeIn' },
     })
     setIsPlayingLivePhoto(false)
-  }, [isPlayingLivePhoto, videoAnimateController])
+  }, [isPlayingLivePhoto, videoAnimateController, clearPlayTimer])
 
   // Auto-play effect - play once when video is loaded
   useEffect(() => {

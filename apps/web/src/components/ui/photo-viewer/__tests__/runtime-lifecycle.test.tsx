@@ -1,8 +1,9 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useImageLoader } from '../hooks'
+import type { LivePhotoVideoHandle } from '../LivePhotoVideo'
 import { LivePhotoVideo } from '../LivePhotoVideo'
 
 let loadImageMock: ReturnType<typeof vi.fn>
@@ -120,6 +121,9 @@ describe('photo viewer runtime lifecycle', () => {
     cleanupMock = vi.fn()
     animationStartMock = vi.fn().mockResolvedValue()
     animationSetMock = vi.fn()
+    loadSpy.mockClear()
+    pauseSpy.mockClear()
+    playSpy.mockClear()
 
     loadImageMock.mockResolvedValue({
       blobSrc: 'blob:loaded-image',
@@ -132,6 +136,7 @@ describe('photo viewer runtime lifecycle', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     cleanup()
   })
 
@@ -253,6 +258,48 @@ describe('photo viewer runtime lifecycle', () => {
     unmount()
 
     expect(cleanupMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels a scheduled live photo play when the component unmounts before the timer fires', async () => {
+    const imageLoaderManager = {
+      processVideo: processVideoMock,
+      cleanup: cleanupMock,
+    } as never
+    const loadingIndicatorRef = {
+      current: {
+        updateLoadingState: vi.fn(),
+      },
+    } as never
+    const livePhotoRef = { current: null } as React.RefObject<LivePhotoVideoHandle | null>
+
+    const { unmount } = render(
+      <LivePhotoVideo
+        ref={livePhotoRef}
+        videoSource={{ type: 'live-photo', videoUrl: 'https://example.com/live.mov' }}
+        imageLoaderManager={imageLoaderManager}
+        loadingIndicatorRef={loadingIndicatorRef}
+        isCurrentImage={true}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(processVideoMock).toHaveBeenCalledTimes(1)
+    })
+
+    vi.useFakeTimers()
+
+    await act(async () => {
+      livePhotoRef.current?.play()
+    })
+
+    unmount()
+
+    await act(async () => {
+      vi.runAllTimers()
+    })
+
+    expect(animationStartMock).not.toHaveBeenCalled()
+    expect(playSpy).not.toHaveBeenCalled()
   })
 
   it('keeps the image loader manager ref available after the high-res image loads', async () => {
