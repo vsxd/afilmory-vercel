@@ -13,6 +13,10 @@ import type { LoadingIndicatorRef } from './LoadingIndicator'
 import type { ProgressiveImageState } from './types'
 import { SHOW_SCALE_INDICATOR_DURATION } from './types'
 
+function isAbortLikeError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
 export const useProgressiveImageState = (): [
   ProgressiveImageState,
   {
@@ -47,7 +51,7 @@ export const useProgressiveImageState = (): [
       setIsLivePhotoPlaying,
     }),
     // useState setters are stable across renders, so this memo never recomputes
-     
+
     [],
   )
 
@@ -101,6 +105,8 @@ export const useImageLoader = (
       loadingIndicatorRef?.current?.resetLoadingState()
     }
 
+    let cancelled = false
+
     const loadImage = async () => {
       try {
         const result = await imageLoaderManager.loadImage(src, {
@@ -111,10 +117,18 @@ export const useImageLoader = (
           },
         })
 
+        if (cancelled) {
+          return
+        }
+
         setBlobSrc?.(result.blobSrc)
         onBlobSrcChange?.(result.blobSrc)
         setHighResLoaded?.(true)
       } catch (loadError) {
+        if (cancelled || isAbortLikeError(loadError)) {
+          return
+        }
+
         console.error('Failed to load image:', loadError)
         setError?.(true)
 
@@ -131,7 +145,9 @@ export const useImageLoader = (
     loadImage()
 
     return () => {
+      cancelled = true
       imageLoaderManager.cleanup()
+      imageLoaderManagerRef.current = null
     }
   }, [
     highResLoaded,

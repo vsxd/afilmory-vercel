@@ -9,6 +9,20 @@ interface UseLivePhotoHandlerProps {
   imageLoaded: boolean
 }
 
+function isAbortLikeError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+function resetVideoElement(videoElement: HTMLVideoElement | null): void {
+  if (!videoElement) {
+    return
+  }
+
+  videoElement.pause()
+  videoElement.removeAttribute('src')
+  videoElement.load()
+}
+
 export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerProps) => {
   const { id, video, originalUrl } = data
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
@@ -28,12 +42,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
     setIsConvertingVideo(false)
     setVideoConversionError(null)
 
-    const video = videoRef.current
-    if (video) {
-      video.pause()
-      video.removeAttribute('src')
-      video.load()
-    }
+    resetVideoElement(videoRef.current)
   }, [id])
 
   // Live Photo/Motion Photo video loading logic
@@ -79,7 +88,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
           }
         }
       } catch (videoError) {
-        if (!cancelled) {
+        if (!cancelled && !isAbortLikeError(videoError)) {
           console.error('Failed to process video:', videoError)
           setVideoConversionError(videoError)
         }
@@ -98,6 +107,7 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
         imageLoaderManagerRef.current.cleanup()
         imageLoaderManagerRef.current = null
       }
+      resetVideoElement(videoEl)
     }
   }, [video, originalUrl, imageLoaded, livePhotoVideoLoaded])
 
@@ -112,7 +122,10 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
       const video = videoRef.current
       if (video) {
         video.currentTime = 0
-        video.play()
+        void video.play().catch((error: unknown) => {
+          console.error('Failed to play masonry live photo video:', error)
+          setIsPlayingLivePhoto(false)
+        })
       }
     }, 200)
   }, [hasVideo, livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo])
@@ -139,11 +152,20 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
 
   // Clean up timer on unmount
   useEffect(() => {
+    const currentVideoElement = videoRef.current
+
     return () => {
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current)
         hoverTimerRef.current = null
       }
+
+      if (imageLoaderManagerRef.current) {
+        imageLoaderManagerRef.current.cleanup()
+        imageLoaderManagerRef.current = null
+      }
+
+      resetVideoElement(currentVideoElement)
     }
   }, [])
 

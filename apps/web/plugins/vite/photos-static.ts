@@ -129,7 +129,7 @@ export function photosStaticPlugin(): Plugin {
         res.setHeader('Content-Type', contentType)
 
         // 设置缓存头
-        res.setHeader('Cache-Control', 'public, max-age=31536000') // 1 year
+        res.setHeader('Cache-Control', 'no-store')
         const etag = generateETag(stats)
         res.setHeader('ETag', etag)
 

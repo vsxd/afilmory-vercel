@@ -32,6 +32,10 @@ interface SocialShareOption {
   bgColor: string
 }
 
+function isAbortLikeError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
 export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -76,38 +80,52 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
     const shareUrl = window.location.href
     const shareTitle = photo.title || t('photo.share.default.title')
     const shareText = t('photo.share.text', { title: shareTitle })
+    const sharePayload = {
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+    }
 
     try {
-      // 优先使用 blobSrc（转换后的图片），如果没有则使用 originalUrl
-      const imageUrl = blobSrc || photo.originalUrl
-      const response = await fetch(imageUrl)
-      const blob = await response.blob()
-      const file = new File([blob], `${photo.title || 'photo'}.jpg`, {
-        type: blob.type || 'image/jpeg',
-      })
+      if (navigator.canShare) {
+        const imageUrl = blobSrc || photo.originalUrl
+        const response = await fetch(imageUrl)
+        const blob = await response.blob()
+        const file = new File([blob], `${photo.title || 'photo'}.jpg`, {
+          type: blob.type || 'image/jpeg',
+        })
 
-      // 检查是否支持文件分享
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-          files: [file],
-        })
-      } else {
-        // 不支持文件分享，只分享链接
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        })
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            ...sharePayload,
+            files: [file],
+          })
+          setIsOpen(false)
+          return
+        }
       }
+
+      await navigator.share(sharePayload)
       setIsOpen(false)
-    } catch {
-      // 如果分享失败，复制链接
-      await navigator.clipboard.writeText(shareUrl)
-      toast.success(t('photo.share.link.copied'))
-      setIsOpen(false)
+    } catch (error) {
+      if (isAbortLikeError(error)) {
+        setIsOpen(false)
+        return
+      }
+
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(shareUrl)
+          toast.success(t('photo.share.link.copied'))
+          setIsOpen(false)
+          return
+        } catch {
+          toast.error(t('photo.share.copy.failed'))
+          return
+        }
+      }
+
+      toast.error(t('photo.share.copy.failed'))
     }
   }, [photo.title, blobSrc, photo.originalUrl, t])
 

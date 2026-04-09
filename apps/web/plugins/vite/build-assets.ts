@@ -64,7 +64,7 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
         this.info(`OG image generated: ${ogImagePath}`)
 
         // 清理旧的 OG 图片
-        await cleanupOldOGImages(3)
+        await cleanupOldOGImages(1)
       } catch (error) {
         console.error('Failed to generate OG image:', error)
       }

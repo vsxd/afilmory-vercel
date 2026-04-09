@@ -16,6 +16,7 @@ interface ConversionResult {
 
 interface TransmuxOptions {
   onProgress?: (progress: ConversionProgress) => void
+  signal?: AbortSignal
 }
 
 /**
@@ -26,6 +27,9 @@ export async function transmuxMovToMp4(videoUrl: string, options: TransmuxOption
   try {
     return await transmuxMovToMp4Simple(videoUrl, options)
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error
+    }
     console.error('Transmux error:', error)
     return {
       success: false,
@@ -42,7 +46,7 @@ export async function transmuxMovToMp4Simple(
   videoUrl: string,
   options: TransmuxOptions = {},
 ): Promise<ConversionResult> {
-  const { onProgress } = options
+  const { onProgress, signal } = options
 
   try {
     debugLog('Starting simple transmux conversion')
@@ -55,7 +59,7 @@ export async function transmuxMovToMp4Simple(
     })
 
     // Fetch the video file
-    const response = await fetch(videoUrl)
+    const response = await fetch(videoUrl, { signal })
     if (!response.ok) {
       throw new Error(`Failed to fetch video: ${response.statusText}`)
     }
@@ -103,6 +107,9 @@ export async function transmuxMovToMp4Simple(
       convertedSize: blob.size,
     }
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error
+    }
     console.error('Simple transmux error:', error)
     return {
       success: false,

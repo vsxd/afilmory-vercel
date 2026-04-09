@@ -42,6 +42,12 @@ export interface ImageCacheResult {
   format: string
 }
 
+function createAbortError(message: string): Error {
+  const error = new Error(message)
+  error.name = 'AbortError'
+  return error
+}
+
 // Regular image cache using LRU cache
 const regularImageCache: LRUCache<string, ImageCacheResult> = new LRUCache<string, ImageCacheResult>(
   50, // Cache size for regular images
@@ -66,6 +72,93 @@ function generateRegularImageCacheKey(url: string): string {
 export class ImageLoaderManager {
   private currentXHR: XMLHttpRequest | null = null
   private delayTimer: NodeJS.Timeout | null = null
+  private pendingLoadReject: ((reason?: unknown) => void) | null = null
+  private pendingVideoReject: ((reason?: unknown) => void) | null = null
+  private pendingVideoCleanup: (() => void) | null = null
+  private currentVideoAbortController: AbortController | null = null
+  private activeVideoElement: HTMLVideoElement | null = null
+  private ownedVideoUrl: string | null = null
+
+  private rejectPendingVideo(error: Error): void {
+    if (this.pendingVideoReject) {
+      const rejectVideo = this.pendingVideoReject
+      this.pendingVideoReject = null
+      rejectVideo(error)
+    }
+  }
+
+  private clearVideoElement(): void {
+    this.rejectPendingVideo(createAbortError('Video load cancelled'))
+
+    if (this.pendingVideoCleanup) {
+      this.pendingVideoCleanup()
+      this.pendingVideoCleanup = null
+    }
+
+    const videoElement = this.activeVideoElement
+    if (videoElement) {
+      try {
+        videoElement.pause()
+      } catch (error) {
+        console.warn('Failed to pause video during cleanup:', error)
+      }
+
+      videoElement.removeAttribute('src')
+      videoElement.load()
+    }
+
+    if (this.ownedVideoUrl) {
+      try {
+        URL.revokeObjectURL(this.ownedVideoUrl)
+        debugLog('Revoked owned video blob URL during cleanup')
+      } catch (error) {
+        console.warn('Failed to revoke owned video blob URL:', error)
+      }
+    }
+
+    this.activeVideoElement = null
+    this.ownedVideoUrl = null
+  }
+
+  private setVideoSource(videoElement: HTMLVideoElement, src: string, options: { ownedBlobUrl?: boolean } = {}): void {
+    this.clearVideoElement()
+    this.activeVideoElement = videoElement
+    this.ownedVideoUrl = options.ownedBlobUrl ? src : null
+    videoElement.src = src
+    videoElement.load()
+  }
+
+  private waitForVideoReady(videoElement: HTMLVideoElement, result: VideoProcessResult): Promise<VideoProcessResult> {
+    return new Promise((resolve, reject) => {
+      this.pendingVideoReject = reject
+
+      const cleanup = () => {
+        videoElement.removeEventListener('canplaythrough', handleVideoCanPlay)
+        videoElement.removeEventListener('error', handleVideoError)
+        if (this.pendingVideoCleanup === cleanup) {
+          this.pendingVideoCleanup = null
+        }
+        if (this.pendingVideoReject === reject) {
+          this.pendingVideoReject = null
+        }
+      }
+
+      const handleVideoCanPlay = () => {
+        cleanup()
+        resolve(result)
+      }
+
+      const handleVideoError = () => {
+        cleanup()
+        reject(new Error('Video failed to load'))
+      }
+
+      this.pendingVideoCleanup = cleanup
+
+      videoElement.addEventListener('canplaythrough', handleVideoCanPlay)
+      videoElement.addEventListener('error', handleVideoError)
+    })
+  }
 
   /**
    * 验证 Blob 是否为有效的图片格式
@@ -112,12 +205,34 @@ export class ImageLoaderManager {
     })
 
     return new Promise((resolve, reject) => {
+      this.pendingLoadReject = reject
+
+      const resolveLoad = (result: ImageLoadResult) => {
+        if (this.pendingLoadReject === reject) {
+          this.pendingLoadReject = null
+        }
+        resolve(result)
+      }
+
+      const rejectLoad = (error: unknown) => {
+        if (this.pendingLoadReject === reject) {
+          this.pendingLoadReject = null
+        }
+        reject(error)
+      }
+
       this.delayTimer = setTimeout(async () => {
+        this.delayTimer = null
         const xhr = new XMLHttpRequest()
         xhr.open('GET', src)
         xhr.responseType = 'blob'
+        this.currentXHR = xhr
 
         xhr.onload = async () => {
+          if (this.currentXHR === xhr) {
+            this.currentXHR = null
+          }
+
           if (xhr.status === 200) {
             try {
               // 验证响应是否为图片
@@ -127,7 +242,7 @@ export class ImageLoaderManager {
                   isVisible: false,
                 })
                 onError?.()
-                reject(new Error('Response is not a valid image'))
+                rejectLoad(new Error('Response is not a valid image'))
                 return
               }
 
@@ -136,20 +251,20 @@ export class ImageLoaderManager {
                 src, // 传递原始 URL
                 callbacks,
               )
-              resolve(result)
+              resolveLoad(result)
             } catch (error) {
               onLoadingStateUpdate?.({
                 isVisible: false,
               })
               onError?.()
-              reject(error)
+              rejectLoad(error)
             }
           } else {
             onLoadingStateUpdate?.({
               isVisible: false,
             })
             onError?.()
-            reject(new Error(`HTTP ${xhr.status}`))
+            rejectLoad(new Error(`HTTP ${xhr.status}`))
           }
         }
 
@@ -168,18 +283,33 @@ export class ImageLoaderManager {
           }
         }
 
+        xhr.onabort = () => {
+          if (this.currentXHR === xhr) {
+            this.currentXHR = null
+          }
+
+          onLoadingStateUpdate?.({
+            isVisible: false,
+          })
+
+          rejectLoad(createAbortError('Image load cancelled'))
+        }
+
         xhr.onerror = () => {
+          if (this.currentXHR === xhr) {
+            this.currentXHR = null
+          }
+
           // Hide loading indicator on error
           onLoadingStateUpdate?.({
             isVisible: false,
           })
 
           onError?.()
-          reject(new Error('Network error'))
+          rejectLoad(new Error('Network error'))
         }
 
         xhr.send()
-        this.currentXHR = xhr
       }, 300)
     })
   }
@@ -193,78 +323,61 @@ export class ImageLoaderManager {
     callbacks: LoadingCallbacks = {},
   ): Promise<VideoProcessResult> {
     const { onLoadingStateUpdate } = callbacks
+    const i18n = jotaiStore.get(i18nAtom)
 
-    return new Promise((resolve, reject) => {
-      const processVideo = async () => {
-        const i18n = jotaiStore.get(i18nAtom)
+    this.currentVideoAbortController?.abort()
+    this.currentVideoAbortController = new AbortController()
 
-        try {
-          // Pattern matching on VideoSource
-          if (videoSource.type === 'motion-photo') {
-            // Motion Photo: 从图片中提取嵌入视频
-            debugLog('Processing Motion Photo embedded video...')
-            onLoadingStateUpdate?.({
-              isVisible: true,
-              conversionMessage: i18n.t('video.motion-photo.extracting'),
-            })
+    try {
+      if (videoSource.type === 'motion-photo') {
+        debugLog('Processing Motion Photo embedded video...')
+        onLoadingStateUpdate?.({
+          isVisible: true,
+          conversionMessage: i18n.t('video.motion-photo.extracting'),
+        })
 
-            const extractedVideoUrl = await extractMotionPhotoVideo(videoSource.imageUrl, {
-              motionPhotoOffset: videoSource.offset,
-              motionPhotoVideoSize: videoSource.size,
-              presentationTimestampUs: videoSource.presentationTimestamp,
-            })
+        const extractedVideoUrl = await extractMotionPhotoVideo(
+          videoSource.imageUrl,
+          {
+            motionPhotoOffset: videoSource.offset,
+            motionPhotoVideoSize: videoSource.size,
+            presentationTimestampUs: videoSource.presentationTimestamp,
+          },
+          this.currentVideoAbortController.signal,
+        )
 
-            if (extractedVideoUrl) {
-              videoElement.src = extractedVideoUrl
-              videoElement.load()
-
-              debugLog('Motion Photo video extracted successfully')
-
-              onLoadingStateUpdate?.({
-                isVisible: false,
-              })
-
-              const result = await new Promise<VideoProcessResult>((resolveVideo) => {
-                const handleVideoCanPlay = () => {
-                  videoElement.removeEventListener('canplaythrough', handleVideoCanPlay)
-                  resolveVideo({
-                    convertedVideoUrl: extractedVideoUrl,
-                    conversionMethod: 'motion-photo-extraction',
-                  })
-                }
-
-                videoElement.addEventListener('canplaythrough', handleVideoCanPlay)
-              })
-
-              resolve(result)
-            } else {
-              throw new Error('Failed to extract Motion Photo video')
-            }
-          } else if (videoSource.type === 'live-photo') {
-            // Live Photo: 处理独立视频文件
-            if (needsVideoConversion(videoSource.videoUrl)) {
-              const result = await this.convertVideo(videoSource.videoUrl, videoElement, callbacks)
-              resolve(result)
-            } else {
-              const result = await this.loadDirectVideo(videoSource.videoUrl, videoElement)
-              resolve(result)
-            }
-          } else {
-            // type === 'none'
-            throw new Error('No video source provided')
-          }
-        } catch (error) {
-          console.error('Failed to process video:', error)
-          onLoadingStateUpdate?.({
-            isVisible: false,
-          })
-          reject(error)
+        if (!extractedVideoUrl) {
+          throw new Error('Failed to extract Motion Photo video')
         }
+
+        this.setVideoSource(videoElement, extractedVideoUrl, { ownedBlobUrl: true })
+        debugLog('Motion Photo video extracted successfully')
+        onLoadingStateUpdate?.({
+          isVisible: false,
+        })
+
+        return await this.waitForVideoReady(videoElement, {
+          convertedVideoUrl: extractedVideoUrl,
+          conversionMethod: 'motion-photo-extraction',
+        })
       }
 
-      // 异步处理视频，不阻塞图片显示
-      processVideo()
-    })
+      if (videoSource.type === 'live-photo') {
+        if (needsVideoConversion(videoSource.videoUrl)) {
+          return await this.convertVideo(videoSource.videoUrl, videoElement, callbacks)
+        }
+
+        return await this.loadDirectVideo(videoSource.videoUrl, videoElement)
+      }
+
+      throw new Error('No video source provided')
+    } catch (error) {
+      console.error('Failed to process video:', error)
+      onLoadingStateUpdate?.({
+        isVisible: false,
+      })
+      throw error
+    }
   }
 
   private async processImageBlob(
@@ -384,32 +497,36 @@ export class ImageLoaderManager {
 
     const i18n = jotaiStore.get(i18nAtom)
 
-    const result = await convertMovToMp4(livePhotoVideoUrl, (progress) => {
-      // 检查是否包含编码器信息（支持多语言）
-      const codecKeywords: string[] = [
-        i18n.t('video.codec.keyword'), // 翻译键
-        'encoder',
-        'codec',
-        '编码器', // 备用关键词
-      ]
-      const isCodecInfo = codecKeywords.some((keyword: string) =>
-        progress.message.toLowerCase().includes(keyword.toLowerCase()),
-      )
+    const result = await convertMovToMp4(
+      livePhotoVideoUrl,
+      (progress) => {
+        // 检查是否包含编码器信息（支持多语言）
+        const codecKeywords: string[] = [
+          i18n.t('video.codec.keyword'), // 翻译键
+          'encoder',
+          'codec',
+          '编码器', // 备用关键词
+        ]
+        const isCodecInfo = codecKeywords.some((keyword: string) =>
+          progress.message.toLowerCase().includes(keyword.toLowerCase()),
+        )
 
-      onLoadingStateUpdate?.({
-        isVisible: true,
-        isConverting: progress.isConverting,
-        loadingProgress: progress.progress,
-        conversionMessage: progress.message,
-        codecInfo: isCodecInfo ? progress.message : undefined,
-      })
-    })
+        onLoadingStateUpdate?.({
+          isVisible: true,
+          isConverting: progress.isConverting,
+          loadingProgress: progress.progress,
+          conversionMessage: progress.message,
+          codecInfo: isCodecInfo ? progress.message : undefined,
+        })
+      },
+      false,
+      { signal: this.currentVideoAbortController?.signal },
+    )
 
     if (result.success && result.videoUrl) {
       const convertedVideoUrl = result.videoUrl
 
-      videoElement.src = result.videoUrl
-      videoElement.load()
+      this.setVideoSource(videoElement, result.videoUrl)
 
       debugLog(
         `Video conversion completed. Size: ${result.convertedSize ? Math.round(result.convertedSize / 1024) : 'unknown'}KB`,
@@ -419,15 +536,8 @@ export class ImageLoaderManager {
         isVisible: false,
       })
 
-      return new Promise((resolve) => {
-        const handleVideoCanPlay = () => {
-          videoElement.removeEventListener('canplaythrough', handleVideoCanPlay)
-          resolve({
-            convertedVideoUrl,
-          })
-        }
-
-        videoElement.addEventListener('canplaythrough', handleVideoCanPlay)
+      return await this.waitForVideoReady(videoElement, {
+        convertedVideoUrl,
       })
     } else {
       console.error('Video conversion failed:', result.error)
@@ -443,18 +553,10 @@ export class ImageLoaderManager {
     videoElement: HTMLVideoElement,
   ): Promise<VideoProcessResult> {
     // 直接使用原始视频
-    videoElement.src = livePhotoVideoUrl
-    videoElement.load()
+    this.setVideoSource(videoElement, livePhotoVideoUrl)
 
-    return new Promise((resolve) => {
-      const handleVideoCanPlay = () => {
-        videoElement.removeEventListener('canplaythrough', handleVideoCanPlay)
-        resolve({
-          conversionMethod: '',
-        })
-      }
-
-      videoElement.addEventListener('canplaythrough', handleVideoCanPlay)
+    return await this.waitForVideoReady(videoElement, {
+      conversionMethod: '',
     })
   }
 
@@ -463,6 +565,12 @@ export class ImageLoaderManager {
     if (this.delayTimer) {
       clearTimeout(this.delayTimer)
       this.delayTimer = null
+
+      if (this.pendingLoadReject) {
+        const rejectLoad = this.pendingLoadReject
+        this.pendingLoadReject = null
+        rejectLoad(createAbortError('Image load cancelled'))
+      }
     }
 
     // 取消正在进行的请求
@@ -470,6 +578,17 @@ export class ImageLoaderManager {
       this.currentXHR.abort()
       this.currentXHR = null
     }
+
+    if (this.currentVideoAbortController) {
+      this.currentVideoAbortController.abort()
+      this.currentVideoAbortController = null
+    }
+
+    if (this.pendingVideoReject) {
+      this.rejectPendingVideo(createAbortError('Video load cancelled'))
+    }
+
+    this.clearVideoElement()
   }
 }
 

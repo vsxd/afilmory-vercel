@@ -18,6 +18,10 @@ interface ConversionResult {
   convertedSize?: number
 }
 
+interface ConversionOptions {
+  signal?: AbortSignal
+}
+
 // Global video cache instance using the generic LRU cache with custom cleanup
 const videoCache: LRUCache<string, ConversionResult> = new LRUCache<string, ConversionResult>(
   10,
@@ -36,16 +40,22 @@ const videoCache: LRUCache<string, ConversionResult> = new LRUCache<string, Conv
 function convertMOVtoMP4(
   videoUrl: string,
   onProgress?: (progress: ConversionProgress) => void,
+  options: ConversionOptions = {},
 ): Promise<ConversionResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     // Start transmux conversion
     transmuxMovToMp4(videoUrl, {
       onProgress,
+      signal: options.signal,
     })
       .then((result) => {
         resolve(result)
       })
       .catch((error) => {
+        if (error instanceof Error && error.name === 'AbortError') {
+          reject(error)
+          return
+        }
         console.error('Transmux conversion failed:', error)
         resolve({
           success: false,
@@ -99,6 +109,7 @@ export async function convertMovToMp4(
 
   onProgress?: (progress: ConversionProgress) => void,
   forceReconvert = false, // 添加强制重新转换参数
+  options: ConversionOptions = {},
 ): Promise<ConversionResult> {
   const { t } = getI18n()
   // Check cache first, unless forced to reconvert
@@ -127,7 +138,7 @@ export async function convertMovToMp4(
       message: t('video.conversion.transmux.high.quality'),
     })
 
-    const result = await convertMOVtoMP4(videoUrl, onProgress)
+    const result = await convertMOVtoMP4(videoUrl, onProgress, options)
 
     // Cache the result
     videoCache.set(videoUrl, result)
@@ -140,6 +151,9 @@ export async function convertMovToMp4(
 
     return result
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw error
+    }
     console.error('conversion failed:', error)
     const fallbackResult = {
       success: false,

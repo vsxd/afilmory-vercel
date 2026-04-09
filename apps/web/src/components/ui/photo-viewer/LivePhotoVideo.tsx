@@ -7,6 +7,20 @@ import type { ImageLoaderManager } from '~/lib/image-loader-manager'
 import type { LoadingIndicatorRef } from './LoadingIndicator'
 import type { VideoSource } from './types'
 
+function isAbortLikeError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+function resetVideoElement(videoElement: HTMLVideoElement | null): void {
+  if (!videoElement) {
+    return
+  }
+
+  videoElement.pause()
+  videoElement.removeAttribute('src')
+  videoElement.load()
+}
+
 interface LivePhotoVideoProps {
   /** Video source (Live Photo or Motion Photo) */
   videoSource: VideoSource
@@ -45,6 +59,7 @@ export const LivePhotoVideo = ({
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false)
   const [isConvertingVideo, setIsConvertingVideo] = useState(false)
   const hasAutoPlayedRef = useRef(false)
+  const isConvertingVideoRef = useRef(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const videoAnimateController = useAnimationControls()
@@ -54,7 +69,11 @@ export const LivePhotoVideo = ({
   }, [isPlayingLivePhoto, onPlayingChange])
 
   useEffect(() => {
-    if (!isCurrentImage || livePhotoVideoLoaded || isConvertingVideo || !videoRef.current) {
+    isConvertingVideoRef.current = isConvertingVideo
+  }, [isConvertingVideo])
+
+  useEffect(() => {
+    if (!isCurrentImage || livePhotoVideoLoaded || isConvertingVideoRef.current || !videoRef.current) {
       return
     }
     // 如果没有视频源，直接返回
@@ -62,35 +81,63 @@ export const LivePhotoVideo = ({
       return
     }
 
+    let cancelled = false
+    const currentVideoElement = videoRef.current
+    isConvertingVideoRef.current = true
     setIsConvertingVideo(true)
+
     const processVideo = async () => {
       try {
-        await imageLoaderManager.processVideo(videoSource, videoRef.current!, {
+        await imageLoaderManager.processVideo(videoSource, currentVideoElement, {
           onLoadingStateUpdate: (state) => {
             loadingIndicatorRef.current?.updateLoadingState(state)
           },
         })
 
-        setLivePhotoVideoLoaded(true)
+        if (!cancelled) {
+          setLivePhotoVideoLoaded(true)
+        }
       } catch (videoError) {
-        console.error('Failed to process video:', videoError)
+        if (!cancelled && !isAbortLikeError(videoError)) {
+          console.error('Failed to process video:', videoError)
+        }
       } finally {
-        setIsConvertingVideo(false)
+        if (!cancelled) {
+          isConvertingVideoRef.current = false
+          setIsConvertingVideo(false)
+        }
       }
     }
+
     processVideo()
-  }, [isCurrentImage, livePhotoVideoLoaded, isConvertingVideo, videoSource, imageLoaderManager, loadingIndicatorRef])
+
+    return () => {
+      cancelled = true
+      isConvertingVideoRef.current = false
+      resetVideoElement(currentVideoElement)
+    }
+  }, [isCurrentImage, livePhotoVideoLoaded, videoSource, imageLoaderManager, loadingIndicatorRef])
 
   useEffect(() => {
     if (!isCurrentImage) {
       setIsPlayingLivePhoto(false)
       setLivePhotoVideoLoaded(false)
+      isConvertingVideoRef.current = false
       setIsConvertingVideo(false)
       hasAutoPlayedRef.current = false
 
       videoAnimateController.set({ opacity: 0 })
+      resetVideoElement(videoRef.current)
     }
   }, [isCurrentImage, videoAnimateController])
+
+  useEffect(() => {
+    const currentVideoElement = videoRef.current
+
+    return () => {
+      resetVideoElement(currentVideoElement)
+    }
+  }, [])
 
   const play = useCallback(async () => {
     if (!livePhotoVideoLoaded || isPlayingLivePhoto || isConvertingVideo) return
@@ -103,7 +150,10 @@ export const LivePhotoVideo = ({
       const video = videoRef.current
       if (video) {
         video.currentTime = 0
-        video.play()
+        void video.play().catch((error: unknown) => {
+          console.error('Failed to play live photo video:', error)
+          setIsPlayingLivePhoto(false)
+        })
       }
     }, 0)
   }, [livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo, videoAnimateController])
