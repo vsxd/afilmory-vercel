@@ -40,7 +40,9 @@ export function createDependencyChunksPlugin(groups: DependencyChunkGroup[]): Pl
       const { output } = config.build.rollupOptions
       const outputConfig = Array.isArray(output) ? output[0] : output
       outputConfig.assetFileNames = 'assets/[name].[hash:6][extname]'
-      outputConfig.onlyExplicitManualChunks = true
+      // Let Rollup place shared helpers into a neutral shared chunk.
+      // Forcing only-explicit manual chunks can make vendor chunks import the entry chunk,
+      // which creates bootstrap-time ESM cycles in production.
       outputConfig.chunkFileNames = (chunkInfo) => {
         return chunkInfo.name.startsWith('vendor/') ? '[name]-[hash].js' : 'assets/[name]-[hash].js'
       }
@@ -59,6 +61,31 @@ export function createDependencyChunksPlugin(groups: DependencyChunkGroup[]): Pl
           group.patterns.some((pattern) => matchesPattern(packageName, pattern)),
         )
         return matchedGroup ? `vendor/${matchedGroup.name}` : null
+      }
+    },
+    generateBundle(_outputOptions, bundle) {
+      const entryFiles = new Set(
+        Object.values(bundle)
+          .filter((item): item is Extract<(typeof bundle)[string], { type: 'chunk' }> => item.type === 'chunk')
+          .filter((chunk) => chunk.isEntry)
+          .map((chunk) => chunk.fileName),
+      )
+
+      for (const item of Object.values(bundle)) {
+        if (item.type !== 'chunk' || !item.fileName.startsWith('vendor/')) {
+          continue
+        }
+
+        const importedEntryChunk = [...item.imports, ...item.dynamicImports].find((importedFile) =>
+          entryFiles.has(importedFile),
+        )
+
+        if (importedEntryChunk) {
+          this.error(
+            `Vendor chunk ${item.fileName} must not depend on entry chunk ${importedEntryChunk}. ` +
+              'This creates a bootstrap cycle and can break production initialization.',
+          )
+        }
       }
     },
   }
