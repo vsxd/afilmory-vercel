@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { handleDeletedPhotos } from '../manifest/manager.js'
+import { handleDeletedPhotos, loadExistingManifest } from '../manifest/manager.js'
 import { setBuilderOutputSettings } from '../output-paths.js'
 import type { PhotoManifestItem } from '../types/photo.js'
 
@@ -63,5 +63,39 @@ describe('handleDeletedPhotos', () => {
     expect(deletedCount).toBe(1)
     await expect(fs.access(path.join(thumbnailsDir, 'keep.jpg'))).resolves.toBeUndefined()
     await expect(fs.access(path.join(thumbnailsDir, 'remove.jpg'))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+})
+
+describe('loadExistingManifest', () => {
+  let tmpDir: string
+  let manifestPath: string
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-load-manifest-'))
+    manifestPath = path.join(tmpDir, 'photos-manifest.json')
+
+    setBuilderOutputSettings({
+      manifestPath,
+      thumbnailsDir: path.join(tmpDir, 'thumbnails'),
+      originalsDir: path.join(tmpDir, 'originals'),
+    })
+  })
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true })
+  })
+
+  it('creates a new manifest only when the file does not exist', async () => {
+    const manifest = await loadExistingManifest()
+
+    expect(manifest.version).toBe('v8')
+    await expect(fs.access(manifestPath)).resolves.toBeUndefined()
+  })
+
+  it('preserves an unreadable manifest instead of overwriting it', async () => {
+    await fs.writeFile(manifestPath, '{ invalid json')
+
+    await expect(loadExistingManifest()).rejects.toThrow(/解析 manifest 失败/)
+    await expect(fs.readFile(manifestPath, 'utf-8')).resolves.toBe('{ invalid json')
   })
 })

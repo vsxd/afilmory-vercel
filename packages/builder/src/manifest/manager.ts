@@ -12,12 +12,16 @@ import { CURRENT_MANIFEST_VERSION } from './version.js'
 
 export async function loadExistingManifest(): Promise<AfilmoryManifest> {
   const { manifestPath } = getBuilderOutputSettings()
-  let manifest: AfilmoryManifest
+  let manifestContent: string
+
   try {
-    const manifestContent = await fs.readFile(manifestPath, 'utf-8')
-    manifest = JSON.parse(manifestContent) as AfilmoryManifest
-  } catch {
-    logger.fs.error('🔍 未找到 manifest 文件/解析失败，创建新的 manifest 文件...')
+    manifestContent = await fs.readFile(manifestPath, 'utf-8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new Error(`读取 manifest 失败：${manifestPath} - ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    logger.fs.error('🔍 未找到 manifest 文件，创建新的 manifest 文件...')
     await saveManifest([])
     return {
       version: CURRENT_MANIFEST_VERSION,
@@ -25,6 +29,17 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
       cameras: [],
       lenses: [],
     }
+  }
+
+  let manifest: AfilmoryManifest
+  try {
+    const parsed = JSON.parse(manifestContent)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('manifest 内容不是有效的对象')
+    }
+    manifest = parsed as AfilmoryManifest
+  } catch (error) {
+    throw new Error(`解析 manifest 失败：${manifestPath} - ${error instanceof Error ? error.message : String(error)}`)
   }
 
   if (manifest.version !== CURRENT_MANIFEST_VERSION) {
