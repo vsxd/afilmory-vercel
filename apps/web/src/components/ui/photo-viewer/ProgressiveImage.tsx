@@ -1,7 +1,7 @@
 import { clsxm } from '@afilmory/ui'
 import { WebGLImageViewer } from '@afilmory/webgl-viewer'
 import { AnimatePresence, m } from 'motion/react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
 import { useMediaQuery } from 'usehooks-ts'
@@ -100,6 +100,18 @@ export const ProgressiveImage = ({
     setState.setIsThumbnailLoaded(true)
   }, [setState])
 
+  useEffect(() => {
+    if (!thumbnailSrc) {
+      setState.setIsThumbnailLoaded(false)
+      return
+    }
+
+    const thumbnailElement = thumbnailRef.current
+    const isThumbnailReady = Boolean(thumbnailElement?.complete && thumbnailElement.naturalWidth > 0)
+
+    setState.setIsThumbnailLoaded(isThumbnailReady)
+  }, [thumbnailSrc, setState])
+
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {
     setState.setIsHighResImageRendered(true)
@@ -134,6 +146,8 @@ export const ProgressiveImage = ({
             'pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300',
             isThumbnailLoaded ? 'opacity-100' : 'opacity-0',
           )}
+          loading="eager"
+          decoding="async"
           onLoad={handleThumbnailLoad}
         />
       )}
