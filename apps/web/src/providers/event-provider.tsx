@@ -34,6 +34,7 @@ export const EventProvider: FC = () => {
     window.addEventListener('resize', readViewport)
     return () => {
       window.removeEventListener('resize', readViewport)
+      readViewport.cancel()
     }
   }, [])
 
