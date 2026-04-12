@@ -6,7 +6,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
-import { getFilteredPhotos, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { getViewerPhotos, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 
@@ -90,7 +90,7 @@ const useStateRestoreFromUrl = () => {
     // 如果 URL 中有 photoId，打开查看器
     // 找到对应的照片索引，确保 currentIndex 和 URL 保持一致
     if (photoId) {
-      const photos = getFilteredPhotos()
+      const photos = getViewerPhotos(photoId)
       const index = photos.findIndex((photo) => photo.id === photoId)
       if (index !== -1) {
         openViewer(index)
@@ -107,6 +107,7 @@ const useSyncStateToUrl = () => {
   const navigate = useNavigate()
 
   const location = useLocation()
+  const { photoId } = useParams()
   const { isOpen, currentIndex } = usePhotoViewer()
 
   useEffect(() => {
@@ -117,7 +118,7 @@ const useSyncStateToUrl = () => {
 
     if (isOpen) {
       wasOpenRef.current = true
-      const photos = getFilteredPhotos()
+      const photos = getViewerPhotos(photoId)
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
       if (currentIndex >= 0 && currentIndex < photos.length) {
         const targetPathname = `/photos/${photos[currentIndex].id}`
@@ -138,7 +139,7 @@ const useSyncStateToUrl = () => {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [currentIndex, isOpen, location.pathname, navigate])
+  }, [currentIndex, isOpen, location.pathname, navigate, photoId])
 
   useEffect(() => {
     if (!isRestored) return

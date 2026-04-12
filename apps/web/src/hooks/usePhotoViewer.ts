@@ -11,6 +11,16 @@ const openAtom = atom(false)
 const currentIndexAtom = atom(0)
 const triggerElementAtom = atom<HTMLElement | null>(null)
 
+const getAllPhotos = () => photoLoader.getPhotos()
+const sortPhotos = (photos: ReturnType<typeof getAllPhotos>, sortOrder: 'asc' | 'desc') => {
+  return photos.toSorted((a, b) => {
+    const aDateStr = getPhotoDateString(a)
+    const bDateStr = getPhotoDateString(b)
+
+    return sortOrder === 'asc' ? aDateStr.localeCompare(bDateStr) : bDateStr.localeCompare(aDateStr)
+  })
+}
+
 // 抽取照片筛选和排序逻辑为独立函数
 const filterAndSortPhotos = (
   selectedTags: string[],
@@ -70,14 +80,25 @@ const filterAndSortPhotos = (
   }
 
   // 然后排序
-  const sortedPhotos = filteredPhotos.toSorted((a, b) => {
-    const aDateStr = getPhotoDateString(a)
-    const bDateStr = getPhotoDateString(b)
-
-    return sortOrder === 'asc' ? aDateStr.localeCompare(bDateStr) : bDateStr.localeCompare(aDateStr)
-  })
+  const sortedPhotos = sortPhotos(filteredPhotos, sortOrder)
 
   return sortedPhotos
+}
+
+const getAllPhotosForViewer = (sortOrder: 'asc' | 'desc') => {
+  return sortPhotos(getAllPhotos(), sortOrder)
+}
+
+const resolveViewerPhotos = (
+  photoId: string | null | undefined,
+  filteredPhotos: ReturnType<typeof getFilteredPhotos>,
+  sortOrder: 'asc' | 'desc',
+) => {
+  if (!photoId) {
+    return filteredPhotos
+  }
+
+  return filteredPhotos.some((photo) => photo.id === photoId) ? filteredPhotos : getAllPhotosForViewer(sortOrder)
 }
 
 // 提供一个 getter 函数供非 UI 组件使用
@@ -94,6 +115,11 @@ export const getFilteredPhotos = () => {
   )
 }
 
+export const getViewerPhotos = (photoId?: string | null) => {
+  const { sortOrder } = jotaiStore.get(gallerySettingAtom)
+  return resolveViewerPhotos(photoId, getFilteredPhotos(), sortOrder)
+}
+
 export const usePhotos = () => {
   const { sortOrder, selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode } =
     useAtomValue(gallerySettingAtom)
@@ -105,6 +131,13 @@ export const usePhotos = () => {
   return masonryItems
 }
 
+export const useViewerPhotos = (photoId?: string | null) => {
+  const { sortOrder } = useAtomValue(gallerySettingAtom)
+  const filteredPhotos = usePhotos()
+
+  return useMemo(() => resolveViewerPhotos(photoId, filteredPhotos, sortOrder), [filteredPhotos, photoId, sortOrder])
+}
+
 export const useContextPhotos = () => {
   const photos = use(PhotosContext)
   if (!photos) {
@@ -113,8 +146,7 @@ export const useContextPhotos = () => {
   return photos
 }
 
-export const usePhotoViewer = () => {
-  const photos = usePhotos()
+export const usePhotoViewer = (photoCount?: number) => {
   const [isOpen, setIsOpen] = useAtom(openAtom)
   const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom)
   const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom)
@@ -139,11 +171,12 @@ export const usePhotoViewer = () => {
 
   const goToIndex = useCallback(
     (index: number) => {
-      if (index >= 0 && index < photos.length) {
+      const maxPhotoCount = photoCount ?? getAllPhotos().length
+      if (index >= 0 && index < maxPhotoCount) {
         setCurrentIndex(index)
       }
     },
-    [photos, setCurrentIndex],
+    [photoCount, setCurrentIndex],
   )
 
   return {
