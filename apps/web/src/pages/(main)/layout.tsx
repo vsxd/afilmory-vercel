@@ -6,7 +6,7 @@ import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 're
 import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
-import { getViewerPhotos, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { getViewerPhotos, getViewerSourceMode, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 
@@ -93,7 +93,7 @@ const useStateRestoreFromUrl = () => {
       const photos = getViewerPhotos(photoId)
       const index = photos.findIndex((photo) => photo.id === photoId)
       if (index !== -1) {
-        openViewer(index)
+        openViewer(index, { sourceMode: getViewerSourceMode(photoId) })
       }
     }
   }, [openViewer, photoId, searchParams, setGallerySetting])

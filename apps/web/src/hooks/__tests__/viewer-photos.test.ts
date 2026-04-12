@@ -1,11 +1,19 @@
 import type { AfilmoryManifest, PhotoManifestItem } from '@afilmory/data'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { Provider } from 'jotai'
+import * as React from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type {GallerySetting} from '~/atoms/app';
+import type { GallerySetting } from '~/atoms/app'
 import { gallerySettingAtom } from '~/atoms/app'
 import { initializePhotoLoader } from '~/data-runtime/photo-loader'
-import { getFilteredPhotos, getViewerPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import {
+  getFilteredPhotos,
+  getViewerPhotos,
+  getViewerSourceMode,
+  usePhotoViewer,
+  useViewerPhotos,
+} from '~/hooks/usePhotoViewer'
 import { jotaiStore } from '~/lib/jotai'
 
 const defaultGallerySetting: GallerySetting = {
@@ -67,10 +75,19 @@ const manifest: AfilmoryManifest = {
   ],
 }
 
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(Provider, { store: jotaiStore }, children)
+
 describe('viewer photo resolution', () => {
   beforeEach(() => {
     initializePhotoLoader(manifest)
     jotaiStore.set(gallerySettingAtom, defaultGallerySetting)
+
+    const { result, unmount } = renderHook(() => usePhotoViewer(), { wrapper })
+    act(() => {
+      result.current.closeViewer()
+    })
+    unmount()
   })
 
   it('keeps the filtered viewer set when the requested photo is still visible', () => {
@@ -114,13 +131,47 @@ describe('viewer photo resolution', () => {
   })
 
   it('keeps goToIndex bounded by the active viewer photo count', () => {
-    const { result } = renderHook(() => usePhotoViewer(1))
+    const { result } = renderHook(() => usePhotoViewer(1), { wrapper })
 
     act(() => {
-      result.current.openViewer(0)
+      result.current.openViewer(0, { sourceMode: 'filtered' })
       result.current.goToIndex(1)
     })
 
     expect(result.current.currentIndex).toBe(0)
+  })
+
+  it('keeps an all-photos viewer session stable after navigating to a visible filtered photo', async () => {
+    jotaiStore.set(gallerySettingAtom, {
+      ...defaultGallerySetting,
+      selectedTags: ['keep'],
+    })
+
+    const { result, rerender } = renderHook(
+      ({ photoId }) => {
+        const photos = useViewerPhotos(photoId)
+        const viewer = usePhotoViewer(photos.length)
+        return { photos, viewer }
+      },
+      { initialProps: { photoId: 'hidden-photo' as string | null }, wrapper },
+    )
+
+    act(() => {
+      result.current.viewer.openViewer(1, { sourceMode: getViewerSourceMode('hidden-photo') })
+    })
+
+    rerender({ photoId: 'visible-photo' })
+    expect(result.current.photos.map((photo) => photo.id)).toEqual(['visible-photo', 'hidden-photo'])
+    expect(result.current.viewer.viewerSourceMode).toBe('all')
+
+    act(() => {
+      result.current.viewer.closeViewer()
+    })
+
+    rerender({ photoId: 'visible-photo' })
+    await waitFor(() => {
+      expect(result.current.photos.map((photo) => photo.id)).toEqual(['visible-photo'])
+      expect(result.current.viewer.viewerSourceMode).toBeNull()
+    })
   })
 })

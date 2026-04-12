@@ -64,7 +64,7 @@ export const MasonryPhotoItem = memo(
         const triggerEl =
           imageRef.current?.parentElement instanceof HTMLElement ? imageRef.current.parentElement : imageRef.current
 
-        photoViewer.openViewer(photoIndex, triggerEl ?? undefined)
+        photoViewer.openViewer(photoIndex, { element: triggerEl ?? undefined, sourceMode: 'filtered' })
       }
     }
 
