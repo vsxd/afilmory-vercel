@@ -7,6 +7,7 @@ import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
 import { getViewerPhotos, getViewerSourceMode, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { getSafeReturnTo } from '~/lib/return-to'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 
@@ -124,7 +125,7 @@ const useSyncStateToUrl = () => {
         const targetPathname = `/photos/${photos[currentIndex].id}`
         if (location.pathname !== targetPathname) {
           // 使用 replace 避免在浏览器历史中堆积过多记录
-          navigate(targetPathname, { replace: true })
+          navigate({ pathname: targetPathname, search: location.search }, { replace: true })
         }
       }
       return
@@ -134,12 +135,13 @@ const useSyncStateToUrl = () => {
     wasOpenRef.current = false
 
     if (justClosedViewer && isPhotoDetailPath && !isExplorePath) {
+      const returnTo = getSafeReturnTo(location.search)
       const timer = setTimeout(() => {
-        navigate('/', { replace: true })
+        navigate(returnTo || '/', { replace: true })
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [currentIndex, isOpen, location.pathname, navigate, photoId])
+  }, [currentIndex, isOpen, location.pathname, location.search, navigate, photoId])
 
   useEffect(() => {
     if (!isRestored) return

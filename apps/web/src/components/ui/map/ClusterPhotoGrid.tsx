@@ -1,8 +1,9 @@
 import { LazyImage, Spring } from '@afilmory/ui'
 import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 
+import { buildPhotoDetailSearch } from '~/lib/return-to'
 import type { PhotoMarker } from '~/types/map'
 
 interface ClusterPhotoGridProps {
@@ -16,6 +17,8 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
   const remainingCount = Math.max(0, photos.length - 6)
   const primaryPhoto = photos[0]
   const { t, i18n } = useTranslation()
+  const location = useLocation()
+  const returnTo = `${location.pathname}${location.search}`
   const locationLabel = primaryPhoto
     ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${primaryPhoto.latitudeRef || 'N'}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${primaryPhoto.longitudeRef || 'E'}`
     : null
@@ -73,7 +76,10 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
             className="group relative aspect-square overflow-hidden rounded-lg"
           >
             <Link
-              to={`/photos/${photoMarker.photo.id}`}
+              to={{
+                pathname: `/photos/${photoMarker.photo.id}`,
+                search: buildPhotoDetailSearch(returnTo),
+              }}
               target="_blank"
               onClick={(e) => {
                 e.stopPropagation()

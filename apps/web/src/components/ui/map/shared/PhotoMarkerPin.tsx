@@ -2,12 +2,16 @@ import { GlassButton, HoverCard, HoverCardContent, HoverCardTrigger, LazyImage }
 import { m } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Marker } from 'react-map-gl/maplibre'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
+
+import { buildPhotoDetailSearch } from '~/lib/return-to'
 
 import type { PhotoMarkerPinProps } from './types'
 
 export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }: PhotoMarkerPinProps) => {
   const { i18n } = useTranslation()
+  const location = useLocation()
+  const returnTo = `${location.pathname}${location.search}`
 
   const handleClick = () => {
     onClick?.(marker)
@@ -118,7 +122,10 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
             <div className="space-y-3 p-4">
               {/* Title with link */}
               <Link
-                to={`/photos/${marker.photo.id}`}
+                to={{
+                  pathname: `/photos/${marker.photo.id}`,
+                  search: buildPhotoDetailSearch(returnTo),
+                }}
                 target="_blank"
                 className="group/link hover:text-blue flex items-center gap-2 transition-colors"
               >

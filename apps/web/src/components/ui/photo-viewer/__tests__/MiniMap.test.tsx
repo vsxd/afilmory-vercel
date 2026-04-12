@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MiniMap } from '../MiniMap'
 
+vi.mock('maplibre-gl', () => ({}))
+
 vi.mock('react-map-gl/maplibre', async () => {
   const React = await import('react')
 
