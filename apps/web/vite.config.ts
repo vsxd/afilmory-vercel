@@ -247,7 +247,7 @@ export default defineConfig(async ({ command }) => {
     define: {
       APP_DEV_CWD: JSON.stringify(process.cwd()),
       APP_NAME: JSON.stringify(PKG.name),
-      BUILT_DATE: JSON.stringify(new Date().toLocaleDateString()),
+      BUILT_DATE: JSON.stringify(new Date().toISOString()),
       GIT_COMMIT_HASH: JSON.stringify(getGitHash()),
     },
   }
