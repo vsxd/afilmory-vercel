@@ -106,7 +106,7 @@ export function ErrorElement() {
                 `### Error\n\n${message}\n\n### Stack\n\n\`\`\`\n${stack}\n\`\`\``,
               )}&label=bug`}
               target="_blank"
-              rel="noreferrer"
+              rel="noreferrer noopener"
               className="text-text-secondary hover:text-text inline-flex items-center text-sm transition-colors"
             >
               <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">

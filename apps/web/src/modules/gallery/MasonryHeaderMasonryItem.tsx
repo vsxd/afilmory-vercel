@@ -52,7 +52,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               <a
                 href={`https://github.com/${siteConfig.social.github}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="text-text-secondary flex items-center justify-center p-2 duration-200 hover:text-[#E7E8E8]"
                 title="GitHub"
               >
@@ -63,7 +63,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               <a
                 href={`https://twitter.com/${siteConfig.social.twitter.replace('@', '')}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="text-text-secondary flex items-center justify-center p-2 duration-200 hover:text-[#1da1f2]"
                 title="Twitter"
               >
@@ -74,6 +74,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               <a
                 href="/feed.xml"
                 target="_blank"
+                rel="noreferrer noopener"
                 className="text-text-secondary flex items-center justify-center p-2 duration-200 hover:text-[#ec672c]"
                 title="RSS"
               >
@@ -110,7 +111,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                 <a
                   href={`${repository.url}/commit/${GIT_COMMIT_HASH}`}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noreferrer noopener"
                   className="text-gray-500 dark:text-gray-400"
                 >
                   {GIT_COMMIT_HASH.slice(0, 6)}
