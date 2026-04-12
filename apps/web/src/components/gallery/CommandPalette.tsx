@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router'
 import { gallerySettingAtom } from '~/atoms/app'
 import { photoLoader } from '~/data-runtime/photo-loader'
 import { fuzzyMatch, getLocationTokens, searchPhotos } from '~/hooks/useCommandSearch'
-import { getViewerPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { getViewerPhotos, getViewerSourceMode, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MageLens } from '~/icons'
 
 // Command types
@@ -243,7 +243,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             const viewerPhotos = getViewerPhotos(photo.id)
             const photoIndex = viewerPhotos.findIndex((p) => p.id === photo.id)
             if (photoIndex !== -1) {
-              openViewer(photoIndex)
+              openViewer(photoIndex, { sourceMode: getViewerSourceMode(photo.id) })
               navigate(`/photos/${photo.id}`)
               onClose()
             }
