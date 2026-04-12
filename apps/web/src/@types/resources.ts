@@ -17,6 +17,9 @@ export const resources = {
   'zh-HK': {
     app: zhHk,
   },
+  ja: {
+    app: jp,
+  },
   jp: {
     app: jp,
   },
