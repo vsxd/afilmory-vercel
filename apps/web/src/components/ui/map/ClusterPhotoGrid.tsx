@@ -80,7 +80,6 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
                 pathname: `/photos/${photoMarker.photo.id}`,
                 search: buildPhotoDetailSearch(returnTo),
               }}
-              target="_blank"
               onClick={(e) => {
                 e.stopPropagation()
                 onPhotoClick?.(photoMarker)

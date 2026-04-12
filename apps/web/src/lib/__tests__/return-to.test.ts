@@ -15,4 +15,9 @@ describe('return-to helpers', () => {
     expect(getSafeReturnTo('?returnTo=https%3A%2F%2Fevil.example')).toBeNull()
     expect(getSafeReturnTo('?returnTo=%2F%2Fevil.example')).toBeNull()
   })
+
+  it('rejects internal paths outside the allowed browse surfaces', () => {
+    expect(getSafeReturnTo('?returnTo=%2Fphotos%2FA7C09524')).toBeNull()
+    expect(getSafeReturnTo('?returnTo=%2F')).toBeNull()
+  })
 })

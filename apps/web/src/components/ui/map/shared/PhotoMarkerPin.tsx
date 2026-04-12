@@ -126,7 +126,6 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
                   pathname: `/photos/${marker.photo.id}`,
                   search: buildPhotoDetailSearch(returnTo),
                 }}
-                target="_blank"
                 className="group/link hover:text-blue flex items-center gap-2 transition-colors"
               >
                 <h3
