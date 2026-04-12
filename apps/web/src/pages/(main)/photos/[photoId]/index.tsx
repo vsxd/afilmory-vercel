@@ -6,15 +6,15 @@ import { useParams } from 'react-router'
 
 import { NotFound } from '~/components/common/NotFound'
 import { PhotoViewer } from '~/components/ui/photo-viewer'
-import { useContextPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { usePhotoViewer, useViewerPhotos } from '~/hooks/usePhotoViewer'
 import { useTitle } from '~/hooks/useTitle'
 import { applyAccentTransitionStyle } from '~/lib/accent-transition-style'
 import { deriveAccentFromSources } from '~/lib/color'
 
 export const Component = () => {
   const { photoId } = useParams()
-  const photoViewer = usePhotoViewer()
-  const photos = useContextPhotos()
+  const photos = useViewerPhotos(photoId)
+  const photoViewer = usePhotoViewer(photos.length)
 
   // 直接根据 photoId 从 Context 的照片列表中查找照片和索引
   const photoIndex = useMemo(() => {
