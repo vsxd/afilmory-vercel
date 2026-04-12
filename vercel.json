@@ -76,7 +76,7 @@
       ]
     },
     {
-      "source": "/(feed\\.json|sitemap\\.xml)",
+      "source": "/(feed\\.xml|sitemap\\.xml)",
       "headers": [
         {
           "key": "Cache-Control",
