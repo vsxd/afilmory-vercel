@@ -7,7 +7,7 @@ import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
 import { getViewerPhotos, getViewerSourceMode, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
-import { getSafeReturnTo } from '~/lib/return-to'
+import { getSafeReturnTo, syncPhotoDetailSearch } from '~/lib/return-to'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
 
@@ -122,10 +122,12 @@ const useSyncStateToUrl = () => {
       const photos = getViewerPhotos(photoId)
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
       if (currentIndex >= 0 && currentIndex < photos.length) {
-        const targetPathname = `/photos/${photos[currentIndex].id}`
-        if (location.pathname !== targetPathname) {
+        const targetPhotoId = photos[currentIndex].id
+        const targetPathname = `/photos/${targetPhotoId}`
+        const targetSearch = syncPhotoDetailSearch(location.search, targetPhotoId)
+        if (location.pathname !== targetPathname || location.search !== targetSearch) {
           // 使用 replace 避免在浏览器历史中堆积过多记录
-          navigate({ pathname: targetPathname, search: location.search }, { replace: true })
+          navigate({ pathname: targetPathname, search: targetSearch }, { replace: true })
         }
       }
       return
