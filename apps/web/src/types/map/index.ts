@@ -49,6 +49,8 @@ export interface MapBounds {
   maxLng: number
   centerLat: number
   centerLng: number
+  longitudeSpan: number
+  crossesAntimeridian: boolean
   bounds: [[number, number], [number, number]]
 }
 

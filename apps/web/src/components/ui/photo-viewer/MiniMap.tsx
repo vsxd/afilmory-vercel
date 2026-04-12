@@ -6,6 +6,7 @@ import Map from 'react-map-gl/maplibre'
 import { Link } from 'react-router'
 
 import { getMapStyle } from '~/lib/map/style'
+import { isValidGPSCoordinates } from '~/lib/map-utils'
 
 interface MiniMapProps {
   latitude: number
@@ -22,7 +23,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
   }, [])
 
   // 检查是否有有效的GPS坐标
-  const hasValidCoordinates = latitude !== 0 && longitude !== 0
+  const hasValidCoordinates = isValidGPSCoordinates({ latitude, longitude })
 
   if (!hasValidCoordinates) {
     return null

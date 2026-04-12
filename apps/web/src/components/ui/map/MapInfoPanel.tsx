@@ -1,20 +1,35 @@
 import { m } from 'motion/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { calculateApproximateCoverageAreaKm2, normalizeLongitude } from '~/lib/map-utils'
+import type { MapBounds } from '~/types/map'
 
 interface MapInfoPanelProps {
   markersCount: number
-  bounds?: {
-    minLat: number
-    maxLat: number
-    minLng: number
-    maxLng: number
-  } | null
+  bounds?: MapBounds | null
 }
 
 export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
+  const areaLabel = useMemo(() => {
+    if (!bounds) {
+      return null
+    }
+
+    return new Intl.NumberFormat(i18n.language, {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: 1,
+    }).format(calculateApproximateCoverageAreaKm2(bounds))
+  }, [bounds, i18n.language])
+
+  const formatLatitude = (latitude: number) => `${Math.abs(latitude).toFixed(6)}° ${latitude >= 0 ? 'N' : 'S'}`
+  const formatLongitude = (longitude: number) => {
+    const normalizedLongitude = normalizeLongitude(longitude)
+
+    return `${Math.abs(normalizedLongitude).toFixed(6)}° ${normalizedLongitude >= 0 ? 'E' : 'W'}`
+  }
 
   return (
     <m.div
@@ -47,7 +62,7 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary relative -top-2 -mb-2 flex size-8 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-all duration-200 ring-inset"
-                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                  aria-label={t(isExpanded ? 'explore.panel.toggle.collapse' : 'explore.panel.toggle.expand')}
                 >
                   <m.i
                     className="i-mingcute-down-line text-text-secondary text-base"
@@ -92,16 +107,16 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
                 <div className="bg-fill-vibrant-quinary border-fill-tertiary rounded-xl border p-4">
                   <div className="text-text-secondary mb-2 flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
                     <i className="i-mingcute-arrow-left-down-line text-sm" />
-                    Southwest
+                    {t('explore.bounds.southwest')}
                   </div>
                   <div className="space-y-1">
                     <div className="text-text flex items-center justify-between">
                       <span className="text-xs font-medium">Lat</span>
-                      <span className="font-mono text-sm tabular-nums">{bounds.minLat.toFixed(6)}°</span>
+                      <span className="font-mono text-sm tabular-nums">{formatLatitude(bounds.minLat)}</span>
                     </div>
                     <div className="text-text flex items-center justify-between">
                       <span className="text-xs font-medium">Lng</span>
-                      <span className="font-mono text-sm tabular-nums">{bounds.minLng.toFixed(6)}°</span>
+                      <span className="font-mono text-sm tabular-nums">{formatLongitude(bounds.minLng)}</span>
                     </div>
                   </div>
                 </div>
@@ -110,16 +125,16 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
                 <div className="bg-fill-vibrant-quinary border-fill-tertiary rounded-xl border p-4">
                   <div className="text-text-secondary mb-2 flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
                     <i className="i-mingcute-arrow-right-up-line text-sm" />
-                    Northeast
+                    {t('explore.bounds.northeast')}
                   </div>
                   <div className="space-y-1">
                     <div className="text-text flex items-center justify-between">
                       <span className="text-xs font-medium">Lat</span>
-                      <span className="font-mono text-sm tabular-nums">{bounds.maxLat.toFixed(6)}°</span>
+                      <span className="font-mono text-sm tabular-nums">{formatLatitude(bounds.maxLat)}</span>
                     </div>
                     <div className="text-text flex items-center justify-between">
                       <span className="text-xs font-medium">Lng</span>
-                      <span className="font-mono text-sm tabular-nums">{bounds.maxLng.toFixed(6)}°</span>
+                      <span className="font-mono text-sm tabular-nums">{formatLongitude(bounds.maxLng)}</span>
                     </div>
                   </div>
                 </div>
@@ -129,11 +144,7 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
               <div className="bg-gray/5 mt-4 rounded-xl p-3">
                 <div className="text-text-secondary flex items-center gap-2 text-xs">
                   <i className="i-mingcute-grid-line" />
-                  <span className="font-medium">
-                    Coverage: ~
-                    {Math.abs((bounds.maxLat - bounds.minLat) * (bounds.maxLng - bounds.minLng) * 111 * 111).toFixed(1)}{' '}
-                    km²
-                  </span>
+                  <span className="font-medium">{t('explore.coverage.approx', { area: areaLabel })}</span>
                 </div>
               </div>
             </div>

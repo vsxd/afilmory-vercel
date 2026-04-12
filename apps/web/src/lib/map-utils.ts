@@ -3,6 +3,14 @@ import type { PhotoManifestItem, PickedExif } from '@afilmory/data'
 import type { GPSCoordinates, MapBounds, MapViewState, PhotoMarker } from '~/types/map'
 import { GPSDirection } from '~/types/map'
 
+const KM_PER_LATITUDE_DEGREE = 111.32
+
+export function normalizeLongitude(longitude: number): number {
+  const normalized = ((((longitude + 180) % 360) + 360) % 360) - 180
+
+  return Object.is(normalized, -0) ? 0 : normalized
+}
+
 /**
  * Convert EXIF GPS data to decimal coordinates with proper directional handling
  */
@@ -155,12 +163,35 @@ export function calculateMapBounds(markers: PhotoMarker[]): MapBounds | null {
   }
 
   const latitudes = markers.map((m) => m.latitude)
-  const longitudes = markers.map((m) => m.longitude)
+  const longitudes = markers.map((m) => normalizeLongitude(m.longitude))
 
   const minLat = Math.min(...latitudes)
   const maxLat = Math.max(...latitudes)
-  const minLng = Math.min(...longitudes)
-  const maxLng = Math.max(...longitudes)
+  const sortedLongitudes = [...longitudes].sort((a, b) => a - b)
+
+  let largestGap = -1
+  let largestGapIndex = 0
+
+  for (let index = 0; index < sortedLongitudes.length; index += 1) {
+    const current = sortedLongitudes[index]
+    const next = index === sortedLongitudes.length - 1 ? sortedLongitudes[0] + 360 : sortedLongitudes[index + 1]
+    const gap = next - current
+
+    if (gap > largestGap) {
+      largestGap = gap
+      largestGapIndex = index
+    }
+  }
+
+  const intervalStart =
+    largestGapIndex === sortedLongitudes.length - 1 ? sortedLongitudes[0] : sortedLongitudes[largestGapIndex + 1]
+
+  const adjustedLongitudes = longitudes.map((longitude) => (longitude < intervalStart ? longitude + 360 : longitude))
+  const minLng = Math.min(...adjustedLongitudes)
+  const maxLng = Math.max(...adjustedLongitudes)
+  const longitudeSpan = maxLng - minLng
+  const centerLng = normalizeLongitude(minLng + longitudeSpan / 2)
+  const crossesAntimeridian = maxLng > 180 || minLng < -180
 
   return {
     minLat,
@@ -168,12 +199,25 @@ export function calculateMapBounds(markers: PhotoMarker[]): MapBounds | null {
     minLng,
     maxLng,
     centerLat: (minLat + maxLat) / 2,
-    centerLng: (minLng + maxLng) / 2,
+    centerLng,
+    longitudeSpan,
+    crossesAntimeridian,
     bounds: [
       [minLng, minLat], // Southwest coordinates
       [maxLng, maxLat], // Northeast coordinates
     ] as [[number, number], [number, number]],
   }
+}
+
+export function calculateApproximateCoverageAreaKm2(
+  bounds: Pick<MapBounds, 'minLat' | 'maxLat' | 'longitudeSpan'>,
+): number {
+  const latSpan = Math.abs(bounds.maxLat - bounds.minLat)
+  const midLatitude = ((bounds.minLat + bounds.maxLat) / 2) * (Math.PI / 180)
+  const widthKm = Math.abs(bounds.longitudeSpan) * KM_PER_LATITUDE_DEGREE * Math.cos(midLatitude)
+  const heightKm = latSpan * KM_PER_LATITUDE_DEGREE
+
+  return Math.abs(widthKm * heightKm)
 }
 
 /**
@@ -193,7 +237,7 @@ export function getInitialViewStateForMarkers(markers: PhotoMarker[]): MapViewSt
 
   // Calculate zoom level based on bounds
   const latDiff = bounds.maxLat - bounds.minLat
-  const lngDiff = bounds.maxLng - bounds.minLng
+  const lngDiff = bounds.longitudeSpan
   const maxDiff = Math.max(latDiff, lngDiff)
 
   let zoom = 10

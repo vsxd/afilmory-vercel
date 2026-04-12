@@ -103,6 +103,7 @@ export const ClusterMarker = ({
           className="w-80 overflow-hidden border-white/20 bg-white/95 p-0 backdrop-blur-[120px] dark:bg-black/95"
           side="top"
           align="center"
+          portal={false}
           sideOffset={8}
         >
           <div className="p-4">

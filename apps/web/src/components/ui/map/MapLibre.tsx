@@ -91,6 +91,36 @@ export const Maplibre = ({
   // Clustered markers
   const clusteredMarkers = useMemo(() => clusterMarkers(markers, currentZoom), [markers, currentZoom])
 
+  const handleClusterClick = useCallback(
+    (longitude: number, latitude: number) => {
+      if (onClusterClick) {
+        onClusterClick(longitude, latitude)
+        return
+      }
+
+      const nextZoom = Math.min(currentZoom + 2, 18)
+      const map = mapRef?.current?.getMap?.()
+
+      if (map) {
+        map.flyTo({
+          center: [longitude, latitude],
+          zoom: nextZoom,
+          duration: 500,
+        })
+        return
+      }
+
+      setViewState((currentViewState) => ({
+        ...currentViewState,
+        longitude,
+        latitude,
+        zoom: nextZoom,
+      }))
+      setCurrentZoom(nextZoom)
+    },
+    [currentZoom, mapRef, onClusterClick],
+  )
+
   // 计算合适的缩放级别
   const calculateZoomLevel = useCallback((latDiff: number, lngDiff: number) => {
     const maxDiff = Math.max(latDiff, lngDiff)
@@ -171,7 +201,7 @@ export const Maplibre = ({
       if (!bounds) return
 
       const latDiff = bounds.maxLat - bounds.minLat
-      const lngDiff = bounds.maxLng - bounds.minLng
+      const lngDiff = bounds.longitudeSpan
       // 为备用方案也增加一些缓冲，降低一级缩放
       const zoom = Math.max(calculateZoomLevel(latDiff, lngDiff) - 1, 2)
 
@@ -240,7 +270,7 @@ export const Maplibre = ({
                 pointCount={clusterPoint.properties.point_count || 0}
                 representativeMarker={clusterPoint.properties.marker}
                 clusteredPhotos={clusterPoint.properties.clusteredPhotos}
-                onClusterClick={onClusterClick}
+                onClusterClick={handleClusterClick}
               />
             )
           } else {

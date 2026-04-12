@@ -1,11 +1,14 @@
 import { GlassButton, HoverCard, HoverCardContent, HoverCardTrigger, LazyImage } from '@afilmory/ui'
 import { m } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 import { Marker } from 'react-map-gl/maplibre'
 import { Link } from 'react-router'
 
 import type { PhotoMarkerPinProps } from './types'
 
 export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }: PhotoMarkerPinProps) => {
+  const { i18n } = useTranslation()
+
   const handleClick = () => {
     onClick?.(marker)
   }
@@ -83,6 +86,7 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
           }`}
           side="top"
           align="center"
+          portal={false}
           sideOffset={8}
           // 当选中时阻止点击外部关闭
           onPointerDownOutside={isSelected ? (e) => e.preventDefault() : undefined}
@@ -114,7 +118,7 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
             <div className="space-y-3 p-4">
               {/* Title with link */}
               <Link
-                to={`/${marker.photo.id}`}
+                to={`/photos/${marker.photo.id}`}
                 target="_blank"
                 className="group/link hover:text-blue flex items-center gap-2 transition-colors"
               >
@@ -133,7 +137,7 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
                   <div className="text-text-secondary flex items-center gap-2 text-xs">
                     <i className="i-mingcute-calendar-line text-sm" />
                     <span>
-                      {new Date(marker.photo.exif.DateTimeOriginal).toLocaleDateString('zh-CN', {
+                      {new Date(marker.photo.exif.DateTimeOriginal).toLocaleDateString(i18n.language, {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',

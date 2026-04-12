@@ -9,16 +9,20 @@ const HoverCard = HoverCardPrimitive.Root
 
 const HoverCardTrigger = HoverCardPrimitive.Trigger
 
+type HoverCardContentProps = React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Content> & {
+  portal?: boolean
+  ref?: React.RefObject<React.ElementRef<typeof HoverCardPrimitive.Content> | null>
+}
+
 const HoverCardContent = ({
   ref,
   className,
   align = 'center',
+  portal = true,
   sideOffset = 4,
   ...props
-}: React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Content> & {
-  ref?: React.RefObject<React.ElementRef<typeof HoverCardPrimitive.Content> | null>
-}) => (
-  <HoverCardPrimitive.Portal>
+}: HoverCardContentProps) => {
+  const content = (
     <HoverCardPrimitive.Content
       ref={ref}
       align={align}
@@ -61,8 +65,14 @@ const HoverCardContent = ({
         <div className="relative">{props.children}</div>
       </m.div>
     </HoverCardPrimitive.Content>
-  </HoverCardPrimitive.Portal>
-)
+  )
+
+  if (!portal) {
+    return content
+  }
+
+  return <HoverCardPrimitive.Portal>{content}</HoverCardPrimitive.Portal>
+}
 HoverCardContent.displayName = HoverCardPrimitive.Content.displayName
 
 export { HoverCard, HoverCardContent, HoverCardTrigger }

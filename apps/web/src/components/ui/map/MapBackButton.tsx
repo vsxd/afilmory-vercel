@@ -1,15 +1,30 @@
 import { GlassButton } from '@afilmory/ui'
 import { startTransition } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 
 export const MapBackButton = () => {
   const { t } = useTranslation()
+  const location = useLocation()
   const navigate = useNavigate()
 
   const handleBack = () => {
     startTransition(() => {
-      navigate('/')
+      if (window.history.length > 1) {
+        navigate(-1)
+        return
+      }
+
+      const fallbackSearchParams = new URLSearchParams(location.search)
+      fallbackSearchParams.delete('photoId')
+
+      navigate(
+        {
+          pathname: '/',
+          search: fallbackSearchParams.toString() ? `?${fallbackSearchParams.toString()}` : '',
+        },
+        { replace: true },
+      )
     })
   }
 
