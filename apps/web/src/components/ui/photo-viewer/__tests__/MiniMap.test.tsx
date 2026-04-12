@@ -41,6 +41,12 @@ vi.mock('~/lib/map/style', () => ({
 describe('MiniMap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal(
+      'URL',
+      Object.assign(globalThis.URL ?? {}, {
+        createObjectURL: vi.fn(() => 'blob:mock-url'),
+      }),
+    )
   })
 
   it('renders when one coordinate is zero but the GPS pair is still valid', () => {
