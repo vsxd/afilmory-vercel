@@ -109,7 +109,10 @@ const resolveViewerPhotos = (
   sortOrder: 'asc' | 'desc',
   viewerSourceMode?: ViewerSourceMode | null,
 ) => {
-  const sourceMode = viewerSourceMode ?? resolveViewerSourceMode(photoId, filteredPhotos)
+  const sourceMode =
+    viewerSourceMode === 'filtered' && photoId && !filteredPhotos.some((photo) => photo.id === photoId)
+      ? 'all'
+      : (viewerSourceMode ?? resolveViewerSourceMode(photoId, filteredPhotos))
 
   return sourceMode === 'all' ? getAllPhotosForViewer(sortOrder) : filteredPhotos
 }
@@ -199,12 +202,13 @@ export const usePhotoViewer = (photoCount?: number) => {
 
   const goToIndex = useCallback(
     (index: number) => {
-      const maxPhotoCount = photoCount ?? getAllPhotos().length
+      const maxPhotoCount =
+        photoCount ?? (viewerSourceMode === 'all' ? getAllPhotos().length : getFilteredPhotos().length)
       if (index >= 0 && index < maxPhotoCount) {
         setCurrentIndex(index)
       }
     },
-    [photoCount, setCurrentIndex],
+    [photoCount, setCurrentIndex, viewerSourceMode],
   )
 
   return {
