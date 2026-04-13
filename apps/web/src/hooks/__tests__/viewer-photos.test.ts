@@ -174,4 +174,40 @@ describe('viewer photo resolution', () => {
       expect(result.current.viewer.viewerSourceMode).toBeNull()
     })
   })
+
+  it('falls back to all photos when a filtered viewer session loses the active photo', () => {
+    const { result: viewerResult } = renderHook(() => usePhotoViewer(), { wrapper })
+    const { result, rerender } = renderHook(({ photoId }) => useViewerPhotos(photoId), {
+      initialProps: { photoId: 'hidden-photo' as string | null },
+      wrapper,
+    })
+
+    act(() => {
+      viewerResult.current.openViewer(1, { sourceMode: 'filtered' })
+    })
+
+    jotaiStore.set(gallerySettingAtom, {
+      ...defaultGallerySetting,
+      selectedTags: ['keep'],
+    })
+
+    rerender({ photoId: 'hidden-photo' })
+    expect(result.current.map((photo) => photo.id)).toEqual(['visible-photo', 'hidden-photo'])
+  })
+
+  it('keeps goToIndex bounded by the filtered viewer count when no explicit photoCount is provided', () => {
+    jotaiStore.set(gallerySettingAtom, {
+      ...defaultGallerySetting,
+      selectedTags: ['keep'],
+    })
+
+    const { result } = renderHook(() => usePhotoViewer(), { wrapper })
+
+    act(() => {
+      result.current.openViewer(0, { sourceMode: 'filtered' })
+      result.current.goToIndex(1)
+    })
+
+    expect(result.current.currentIndex).toBe(0)
+  })
 })

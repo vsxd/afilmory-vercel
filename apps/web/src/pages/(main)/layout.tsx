@@ -102,7 +102,7 @@ const useStateRestoreFromUrl = () => {
 
 const useSyncStateToUrl = () => {
   const wasOpenRef = useRef(false)
-  const { selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode } =
+  const { selectedTags, selectedCameras, selectedLenses, selectedRatings, sortOrder, tagFilterMode } =
     useAtomValue(gallerySettingAtom)
   const [_, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -143,7 +143,20 @@ const useSyncStateToUrl = () => {
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [currentIndex, isOpen, location.pathname, location.search, navigate, photoId])
+  }, [
+    currentIndex,
+    isOpen,
+    location.pathname,
+    location.search,
+    navigate,
+    photoId,
+    selectedTags,
+    selectedCameras,
+    selectedLenses,
+    selectedRatings,
+    sortOrder,
+    tagFilterMode,
+  ])
 
   useEffect(() => {
     if (!isRestored) return
