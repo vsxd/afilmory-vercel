@@ -7,10 +7,12 @@ const MODULE_KEY = './pages/(main)/photos/[photoId]/index.tsx'
 describe('photo-page-prefetch', () => {
   afterEach(() => {
     document.body.innerHTML = ''
+    delete (window as Partial<Window>).requestIdleCallback
+    delete (window as Partial<Window>).cancelIdleCallback
     vi.useRealTimers()
   })
 
-  it('does not prefetch the photo page without navigation intent', () => {
+  it('prefetches the photo page after the startup warmup delay', () => {
     vi.useFakeTimers()
 
     const prefetchModule = vi.fn().mockResolvedValue()
@@ -21,6 +23,52 @@ describe('photo-page-prefetch', () => {
     vi.advanceTimersByTime(1000)
 
     expect(prefetchModule).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(500)
+
+    expect(prefetchModule).toHaveBeenCalledTimes(1)
+    cleanup()
+  })
+
+  it('cancels the startup warmup when cleaned up first', () => {
+    vi.useFakeTimers()
+
+    const prefetchModule = vi.fn().mockResolvedValue()
+    const cleanup = installPhotoPagePrefetch({ [MODULE_KEY]: prefetchModule })
+
+    cleanup()
+    vi.advanceTimersByTime(1500)
+
+    expect(prefetchModule).not.toHaveBeenCalled()
+  })
+
+  it('uses browser idle time when available for startup warmup', () => {
+    vi.useFakeTimers()
+
+    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
+      return window.setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 10 }), 1)
+    })
+    const cancelIdleCallback = vi.fn((handle: number) => window.clearTimeout(handle))
+    Object.defineProperty(window, 'requestIdleCallback', {
+      configurable: true,
+      value: requestIdleCallback,
+    })
+    Object.defineProperty(window, 'cancelIdleCallback', {
+      configurable: true,
+      value: cancelIdleCallback,
+    })
+
+    const prefetchModule = vi.fn().mockResolvedValue()
+    const cleanup = installPhotoPagePrefetch({ [MODULE_KEY]: prefetchModule })
+
+    vi.advanceTimersByTime(1500)
+
+    expect(requestIdleCallback).toHaveBeenCalledTimes(1)
+    expect(prefetchModule).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+
+    expect(prefetchModule).toHaveBeenCalledTimes(1)
     cleanup()
   })
 
@@ -40,7 +88,7 @@ describe('photo-page-prefetch', () => {
 
     expect(prefetchModule).toHaveBeenCalledTimes(1)
 
-    vi.advanceTimersByTime(100)
+    vi.advanceTimersByTime(1500)
     expect(prefetchModule).toHaveBeenCalledTimes(1)
     cleanup()
   })
