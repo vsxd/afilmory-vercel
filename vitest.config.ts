@@ -37,6 +37,17 @@ export default defineConfig({
         esbuild: {
           jsx: 'automatic',
         },
+        test: {
+          name: 'webgl-viewer',
+          root: './packages/webgl-viewer',
+          include: ['src/**/*.test.{ts,tsx}'],
+          environment: 'jsdom',
+        },
+      },
+      {
+        esbuild: {
+          jsx: 'automatic',
+        },
         resolve: {
           alias: [
             {

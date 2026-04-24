@@ -69,6 +69,19 @@ describe('LocalStorageProvider path safety', () => {
     }
   })
 
+  it('should block symlink directory escapes via getFile (returns null)', async () => {
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-outside-'))
+    await fs.writeFile(path.join(outsideDir, 'secret.jpg'), 'secret-data')
+    await fs.symlink(outsideDir, path.join(tmpDir, 'linked'), 'dir')
+
+    try {
+      const result = await provider.getFile('linked/secret.jpg')
+      expect(result).toBeNull()
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true })
+    }
+  })
+
   it('should handle subdirectory paths correctly', async () => {
     const subDir = path.join(tmpDir, 'sub')
     await fs.mkdir(subDir)
@@ -91,12 +104,49 @@ describe('LocalStorageProvider path safety', () => {
     )
   })
 
+  it('should reject symlink directory escapes via uploadFile', async () => {
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-outside-'))
+    await fs.symlink(outsideDir, path.join(tmpDir, 'linked'), 'dir')
+
+    try {
+      await expect(provider.uploadFile('linked/evil.txt', Buffer.from('malicious'))).rejects.toThrow('文件路径不安全')
+      await expect(fs.access(path.join(outsideDir, 'evil.txt'))).rejects.toThrow()
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true })
+    }
+  })
+
   it('should reject path traversal via deleteFile', async () => {
     await expect(provider.deleteFile('../../etc/passwd')).rejects.toThrow('文件路径不安全')
   })
 
   it('should reject sibling directory prefix collisions via deleteFile', async () => {
     await expect(provider.deleteFile(`../${path.basename(`${tmpDir}-evil`)}/passwd`)).rejects.toThrow('文件路径不安全')
+  })
+
+  it('should reject symlink directory escapes via deleteFile', async () => {
+    const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-outside-'))
+    const outsideFile = path.join(outsideDir, 'secret.txt')
+    await fs.writeFile(outsideFile, 'secret-data')
+    await fs.symlink(outsideDir, path.join(tmpDir, 'linked'), 'dir')
+
+    try {
+      await expect(provider.deleteFile('linked/secret.txt')).rejects.toThrow('文件路径不安全')
+      await expect(fs.readFile(outsideFile, 'utf-8')).resolves.toBe('secret-data')
+    } finally {
+      await fs.rm(outsideDir, { recursive: true, force: true })
+    }
+  })
+
+  it('should encode generated public URLs and avoid file URLs', () => {
+    const providerWithBaseUrl = new LocalStorageProvider({
+      provider: 'local',
+      basePath: tmpDir,
+      baseUrl: '/originals',
+    })
+
+    expect(providerWithBaseUrl.generatePublicUrl('family/2024 #1?.jpg')).toBe('/originals/family/2024%20%231%3F.jpg')
+    expect(() => provider.generatePublicUrl('sample.jpg')).toThrow('baseUrl 或 distPath 必须配置')
   })
 
   it('should throw when basePath is empty', () => {

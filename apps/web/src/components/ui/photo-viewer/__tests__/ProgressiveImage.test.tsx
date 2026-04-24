@@ -44,6 +44,13 @@ vi.mock('usehooks-ts', () => ({
   useMediaQuery: () => false,
 }))
 
+vi.mock('react-zoom-pan-pinch', () => {
+  return {
+    TransformWrapper: ({ children }: { children?: any }) => <div>{children}</div>,
+    TransformComponent: ({ children }: { children?: any }) => <div>{children}</div>,
+  }
+})
+
 vi.mock('~/atoms/context-menu', () => ({
   useShowContextMenu: () => vi.fn(),
 }))
@@ -78,5 +85,25 @@ describe('ProgressiveImage', () => {
     await waitFor(() => {
       expect(thumbnail.className).toContain('opacity-100')
     })
+  })
+
+  it('renders a DOM high-resolution image when WebGL is unavailable', async () => {
+    render(
+      <ProgressiveImage
+        src="https://example.com/photo.jpg"
+        thumbnailSrc={undefined}
+        alt="High resolution fallback"
+        isCurrentImage={true}
+        shouldRenderHighRes={true}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    )
+
+    const highResImage = await screen.findByAltText('High resolution fallback')
+
+    await waitFor(() => {
+      expect(highResImage.getAttribute('src')).toBe('blob:mock-image')
+    })
+    expect(screen.getByText('photo.webgl.unavailable')).toBeTruthy()
   })
 })

@@ -1,6 +1,3 @@
-import crypto from 'node:crypto'
-import path from 'node:path'
-
 import { compressUint8Array } from '@afilmory/data'
 import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
@@ -19,6 +16,7 @@ import { shouldProcessPhoto } from './cache-manager.js'
 import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
 import { getPhotoExecutionContext } from './execution-context.js'
 import { detectGainMap } from './gainmap-detector.js'
+import { createPhotoId } from './id.js'
 import { extractPhotoInfo } from './info-extractor.js'
 import { processLivePhoto } from './live-photo-handler.js'
 import { getGlobalLoggers } from './logger-adapter.js'
@@ -125,21 +123,18 @@ export async function processImageWithSharp(imageBuffer: Buffer, photoKey: strin
  * @param s3Key S3 键
  * @returns 带摘要后缀的 ID
  */
-async function generatePhotoId(s3Key: string): Promise<string> {
+function generatePhotoId(s3Key: string, existingItem?: PhotoManifestItem): string {
   const { builder } = getPhotoExecutionContext()
-  const {
-    system: {
-      processing: { digestSuffixLength },
-    },
-  } = builder.getConfig()
-  if (!digestSuffixLength || digestSuffixLength <= 0) {
-    return path.basename(s3Key, path.extname(s3Key))
+  const digestSuffixLength = builder.getConfig().system.processing.digestSuffixLength ?? 0
+
+  if (existingItem?.id && digestSuffixLength <= 0 && !builder.hasPhotoIdCollision(s3Key)) {
+    return existingItem.id
   }
 
-  const baseName = path.basename(s3Key, path.extname(s3Key))
-  const sha256 = crypto.createHash('sha256').update(s3Key).digest('hex')
-  const digestSuffix = sha256.slice(0, digestSuffixLength)
-  return `${baseName}_${digestSuffix}`
+  return createPhotoId(s3Key, {
+    digestSuffixLength,
+    forceDigest: builder.hasPhotoIdCollision(s3Key),
+  })
 }
 
 /**
@@ -153,7 +148,7 @@ export async function executePhotoProcessingPipeline(
   const { storageManager } = getPhotoExecutionContext()
   const loggers = getGlobalLoggers()
   // Generate the actual photo ID with digest suffix
-  const photoId = await generatePhotoId(photoKey)
+  const photoId = generatePhotoId(photoKey, existingItem)
 
   try {
     // 1. 预处理图片
@@ -223,6 +218,7 @@ export async function executePhotoProcessingPipeline(
       s3Key: photoKey,
       lastModified: obj.LastModified?.toISOString() || new Date().toISOString(),
       size: obj.Size || 0,
+      etag: obj.ETag,
       exif: exifData,
       toneAnalysis,
       location: existingItem?.location ?? null,
@@ -272,7 +268,7 @@ export async function processPhotoWithPipeline(
   const { builder } = getPhotoExecutionContext()
   const loggers = getGlobalLoggers()
 
-  const photoId = await generatePhotoId(photoKey)
+  const photoId = generatePhotoId(photoKey, existingItem)
 
   await builder.emitPluginEvent(runtime.runState, 'beforePhotoProcess', {
     options: runtime.builderOptions,

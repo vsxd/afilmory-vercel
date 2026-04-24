@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { handleDeletedPhotos, loadExistingManifest } from '../manifest/manager.js'
+import { handleDeletedPhotos, loadExistingManifest, needsUpdate } from '../manifest/manager.js'
 import { setBuilderOutputSettings } from '../output-paths.js'
 import type { PhotoManifestItem } from '../types/photo.js'
 
@@ -97,5 +97,33 @@ describe('loadExistingManifest', () => {
 
     await expect(loadExistingManifest()).rejects.toThrow(/解析 manifest 失败/)
     await expect(fs.readFile(manifestPath, 'utf-8')).resolves.toBe('{ invalid json')
+  })
+})
+
+describe('needsUpdate', () => {
+  it('detects same-timestamp content changes by size and etag', () => {
+    const existing = {
+      ...createPhotoManifestItem('photo'),
+      lastModified: '2024-01-01T00:00:00.000Z',
+      size: 1,
+      etag: 'old',
+    }
+
+    expect(
+      needsUpdate(existing, {
+        Key: 'photo.jpg',
+        LastModified: new Date('2024-01-01T00:00:00.000Z'),
+        Size: 2,
+        ETag: 'old',
+      }),
+    ).toBe(true)
+    expect(
+      needsUpdate(existing, {
+        Key: 'photo.jpg',
+        LastModified: new Date('2024-01-01T00:00:00.000Z'),
+        Size: 1,
+        ETag: 'new',
+      }),
+    ).toBe(true)
   })
 })

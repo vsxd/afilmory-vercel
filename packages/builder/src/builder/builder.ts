@@ -1,10 +1,9 @@
-import path from 'node:path'
-
 import { thumbnailExists } from '../image/thumbnail.js'
 import { logger } from '../logger/index.js'
 import { handleDeletedPhotos, loadExistingManifest, needsUpdate, saveManifest } from '../manifest/manager.js'
 import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
 import { setBuilderOutputSettings } from '../output-paths.js'
+import { createPhotoId, findPhotoIdCollisionKeys } from '../photo/id.js'
 import type { PhotoProcessorOptions } from '../photo/processor.js'
 import { processPhoto } from '../photo/processor.js'
 import type { PluginRunState } from '../plugins/manager.js'
@@ -69,6 +68,7 @@ export class AfilmoryBuilder {
   private config: BuilderConfig
   private pluginManager: PluginManager
   private readonly pluginReferences: BuilderPluginConfigEntry[]
+  private photoIdCollisionKeys = new Set<string>()
 
   constructor(config: BuilderConfig) {
     this.config = config
@@ -154,6 +154,12 @@ export class AfilmoryBuilder {
       // 列出存储中的所有图片文件
       const imageObjects = await storageManager.listImages()
       logger.main.info(`存储中找到 ${imageObjects.length} 张照片`)
+      this.setPhotoIdCollisionKeys(findPhotoIdCollisionKeys(imageObjects.map((obj) => obj.key)))
+      if (this.photoIdCollisionKeys.size > 0) {
+        logger.main.warn(
+          `检测到 ${this.photoIdCollisionKeys.size} 张跨目录同名照片，将为这些照片 ID 添加路径摘要后缀以避免冲突`,
+        )
+      }
 
       await this.emitPluginEvent(runState, 'afterImagesListed', {
         options,
@@ -318,6 +324,7 @@ export class AfilmoryBuilder {
               livePhotoMap,
               imageObjects: tasksToProcess,
               builderConfig: this.getConfig(),
+              photoIdCollisionKeys: Array.from(this.photoIdCollisionKeys),
             },
             onTaskCompleted: handleTaskCompleted,
           })
@@ -595,6 +602,27 @@ export class AfilmoryBuilder {
     return this.pluginManager.createRunState()
   }
 
+  setPhotoIdCollisionKeys(keys: Iterable<string>): void {
+    this.photoIdCollisionKeys = new Set(keys)
+  }
+
+  hasPhotoIdCollision(key: string): boolean {
+    return this.photoIdCollisionKeys.has(key)
+  }
+
+  getPhotoIdForKey(key: string, existingItem?: PhotoManifestItem): string {
+    const digestSuffixLength = this.config.system.processing.digestSuffixLength ?? 0
+
+    if (existingItem?.id && digestSuffixLength <= 0 && !this.hasPhotoIdCollision(key)) {
+      return existingItem.id
+    }
+
+    return createPhotoId(key, {
+      digestSuffixLength,
+      forceDigest: this.hasPhotoIdCollision(key),
+    })
+  }
+
   async emitPluginEvent<TEvent extends keyof BuilderPluginEventPayloads>(
     runState: PluginRunState,
     event: TEvent,
@@ -718,8 +746,8 @@ export class AfilmoryBuilder {
 
     for (const obj of imageObjects) {
       const { key } = obj
-      const photoId = path.basename(key, path.extname(key))
       const existingItem = existingManifestMap.get(key)
+      const photoId = this.getPhotoIdForKey(key, existingItem)
 
       // 新图片需要处理
       if (!existingItem) {

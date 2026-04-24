@@ -161,8 +161,8 @@ export const ProgressiveImage = ({
             showContextMenu(items, e)
           }}
         >
-          {/* LivePhoto/Motion Photo 或 HDR 模式使用 DOMImageViewer */}
-          {hasVideo || shouldUseHDR ? (
+          {/* LivePhoto/Motion Photo、HDR 或无 WebGL 时使用 DOMImageViewer */}
+          {hasVideo || shouldUseHDR || !canUseWebGL ? (
             <DOMImageViewer
               ref={domImageViewerRef}
               onZoomChange={onDOMTransformed}
@@ -187,26 +187,23 @@ export const ProgressiveImage = ({
               )}
             </DOMImageViewer>
           ) : (
-            /* 非 LivePhoto 模式使用 WebGLImageViewer */
-            canUseWebGL && (
-              <WebGLImageViewer
-                ref={webglImageViewerRef}
-                src={blobSrc}
-                className="absolute inset-0 h-full w-full"
-                width={width}
-                height={height}
-                initialScale={1}
-                minScale={minZoom}
-                maxScale={maxZoom}
-                limitToBounds={true}
-                centerOnInit={true}
-                smooth={true}
-                onZoomChange={onTransformed}
-                onLoadingStateChange={handleWebGLLoadingStateChange}
-                onImagePainted={handleHighResRendered}
-                debug={import.meta.env.DEV}
-              />
-            )
+            <WebGLImageViewer
+              ref={webglImageViewerRef}
+              src={blobSrc}
+              className="absolute inset-0 h-full w-full"
+              width={width}
+              height={height}
+              initialScale={1}
+              minScale={minZoom}
+              maxScale={maxZoom}
+              limitToBounds={true}
+              centerOnInit={true}
+              smooth={true}
+              onZoomChange={onTransformed}
+              onLoadingStateChange={handleWebGLLoadingStateChange}
+              onImagePainted={handleHighResRendered}
+              debug={import.meta.env.DEV}
+            />
           )}
         </div>
       )}
@@ -223,9 +220,9 @@ export const ProgressiveImage = ({
 
       {/* 备用图片（当 WebGL 不可用时） - 只在非错误状态时显示 */}
       {!canUseWebGL && !hasVideo && !shouldUseHDR && highResLoaded && blobSrc && isActiveImage && !error && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/20">
-          <i className="i-mingcute-warning-line mb-2 text-4xl" />
-          <span className="text-center text-sm text-white">{t('photo.webgl.unavailable')}</span>
+        <div className="pointer-events-none absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded bg-black/50 px-3 py-1.5 text-white">
+          <i className="i-mingcute-warning-line text-base" />
+          <span className="text-xs">{t('photo.webgl.unavailable')}</span>
         </div>
       )}
 

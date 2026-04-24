@@ -7,13 +7,23 @@ import { fileURLToPath } from 'node:url'
 
 import { $ } from 'execa'
 
-export const precheck = async () => {
+interface PrecheckOptions {
+  env?: NodeJS.ProcessEnv
+  runBuilder?: (env: NodeJS.ProcessEnv) => Promise<void>
+  workdir?: string
+}
+
+export const precheck = async (options: PrecheckOptions = {}) => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const workdir = path.resolve(__dirname, '../../..')
-  const shouldBuildManifest = process.env.SKIP_MANIFEST_BUILD !== 'true'
+  const workdir = options.workdir ?? path.resolve(__dirname, '../../..')
+  const env = options.env ?? process.env
+  const shouldBuildManifest = env.SKIP_MANIFEST_BUILD !== 'true'
   const requiredS3Vars = ['S3_BUCKET_NAME', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const
-  const missingS3Vars = requiredS3Vars.filter((key) => !process.env[key])
+  const missingS3Vars = requiredS3Vars.filter((key) => !env[key])
   const manifestPath = path.join(workdir, 'generated/photos-manifest.json')
+  const ensureExistingManifest = async () => {
+    await access(manifestPath)
+  }
 
   if (!shouldBuildManifest) {
     console.warn(
@@ -24,7 +34,7 @@ export const precheck = async () => {
 
   if (missingS3Vars.length > 0) {
     try {
-      await access(manifestPath)
+      await ensureExistingManifest()
       console.warn(
         `[precheck] Missing S3 env vars (${missingS3Vars.join(', ')}), using existing manifest instead of running builder.`,
       )
@@ -39,14 +49,34 @@ export const precheck = async () => {
 
   console.info('[precheck] Running builder CLI to refresh manifest from source...')
 
-  await $({
-    cwd: workdir,
-    env: {
-      ...process.env,
-      BUILDER_CONFIG_PATH: process.env.BUILDER_CONFIG_PATH || 'builder.config.ts',
-    },
-    stdio: 'inherit',
-  })`pnpm --filter @afilmory/builder cli`
+  const runBuilder =
+    options.runBuilder ??
+    ((builderEnv: NodeJS.ProcessEnv) =>
+      $({
+        cwd: workdir,
+        env: builderEnv,
+        stdio: 'inherit',
+      })`pnpm --filter @afilmory/builder cli`)
+
+  try {
+    await runBuilder({
+      ...env,
+      BUILDER_CONFIG_PATH: env.BUILDER_CONFIG_PATH || 'builder.config.ts',
+    })
+  } catch (error) {
+    try {
+      await ensureExistingManifest()
+    } catch {
+      throw error
+    }
+
+    console.warn(
+      `[precheck] Builder failed, using existing manifest at ${manifestPath}. ` +
+        `Set SKIP_MANIFEST_BUILD=true to make this explicit. Error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+    )
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

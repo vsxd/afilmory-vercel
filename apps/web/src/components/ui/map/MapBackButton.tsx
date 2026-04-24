@@ -10,13 +10,9 @@ export const MapBackButton = () => {
 
   const handleBack = () => {
     startTransition(() => {
-      if (window.history.length > 1) {
-        navigate(-1)
-        return
-      }
-
       const fallbackSearchParams = new URLSearchParams(location.search)
       fallbackSearchParams.delete('photoId')
+      fallbackSearchParams.delete('returnTo')
 
       navigate(
         {

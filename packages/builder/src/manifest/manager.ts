@@ -58,15 +58,19 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
   return manifest
 }
 
-// 检查照片是否需要更新（基于最后修改时间）
+// 检查照片是否需要更新（基于最后修改时间、大小和可用 ETag）
 export function needsUpdate(existingItem: PhotoManifestItem | undefined, s3Object: _Object): boolean {
   if (!existingItem) return true
   if (!s3Object.LastModified) return true
 
   const existingModified = new Date(existingItem.lastModified)
   const s3Modified = s3Object.LastModified
+  const modifiedChanged = s3Modified > existingModified
+  const sizeChanged =
+    typeof existingItem.size === 'number' && typeof s3Object.Size === 'number' && existingItem.size !== s3Object.Size
+  const etagChanged = Boolean(existingItem.etag && s3Object.ETag && existingItem.etag !== s3Object.ETag)
 
-  return s3Modified > existingModified
+  return modifiedChanged || sizeChanged || etagChanged
 }
 
 // 保存 manifest

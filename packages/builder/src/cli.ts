@@ -62,7 +62,7 @@ async function main() {
 
 远程仓库：
   如果启用了远程仓库 (repo.enable = true)，构建完成后会自动推送更新。
-  需要配置 repo.token 或设置 GIT_TOKEN 环境变量以提供推送权限。
+  需要配置 repo.token 或设置 REPO_TOKEN 环境变量以提供推送权限（GIT_TOKEN 仍作为兼容别名）。
   如果没有提供 token，将跳过推送步骤。
 `)
     return

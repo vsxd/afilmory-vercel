@@ -38,6 +38,7 @@ export interface PureMaplibreProps {
   style?: React.CSSProperties
   mapRef?: React.RefObject<any>
   autoFitBounds?: boolean
+  syncViewStateOnInitialViewStateChange?: boolean
 }
 
 export const Maplibre = ({
@@ -54,6 +55,7 @@ export const Maplibre = ({
   style = DEFAULT_STYLE,
   mapRef,
   autoFitBounds = true,
+  syncViewStateOnInitialViewStateChange = true,
 }: PureMaplibreProps) => {
   const [currentZoom, setCurrentZoom] = useState(initialViewState.zoom)
   const [viewState, setViewState] = useState(initialViewState)
@@ -80,13 +82,13 @@ export const Maplibre = ({
   }, [selectedMarkerId, onMarkerClick, markers])
 
   useEffect(() => {
-    if (autoFitBounds) {
+    if (autoFitBounds || !syncViewStateOnInitialViewStateChange) {
       return
     }
 
     setViewState(initialViewState)
     setCurrentZoom(initialViewState.zoom)
-  }, [initialViewState, autoFitBounds])
+  }, [initialViewState, autoFitBounds, syncViewStateOnInitialViewStateChange])
 
   // Clustered markers
   const clusteredMarkers = useMemo(() => clusterMarkers(markers, currentZoom), [markers, currentZoom])

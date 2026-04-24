@@ -12,6 +12,17 @@ const rootIgnores = globalIgnores([
   'apps/ssr/public/**',
   'apps/web/public/**',
   'packages/data/src/photos-manifest.json',
+  'packages/webgl-viewer/bump.config.js',
+  'packages/webgl-viewer/vite.config.js',
+  'packages/webgl-viewer/src/DebugInfo.js',
+  'packages/webgl-viewer/src/ImageViewerEngineBase.js',
+  'packages/webgl-viewer/src/WebGLImageViewer.js',
+  'packages/webgl-viewer/src/WebGLImageViewerEngine.js',
+  'packages/webgl-viewer/src/constants.js',
+  'packages/webgl-viewer/src/enum.js',
+  'packages/webgl-viewer/src/index.js',
+  'packages/webgl-viewer/src/interface.js',
+  'packages/webgl-viewer/src/shaders.js',
 ])
 
 const hyobanConfig = await defineConfig(

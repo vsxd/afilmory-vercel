@@ -9,6 +9,7 @@ import consola from 'consola'
 import { SUPPORTED_FORMATS } from '../../constants/index.js'
 import { logger } from '../../logger/index.js'
 import type { LocalConfig, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces'
+import { joinPublicUrl } from '../url.js'
 
 export interface ScanProgress {
   currentPath: string
@@ -76,7 +77,7 @@ export class LocalStorageProvider implements StorageProvider {
       this.logger.info(`读取本地文件：${key}`)
       const startTime = Date.now()
 
-      const filePath = this.resolveSafePath(key)
+      const filePath = this.resolveLexicallySafePath(key)
 
       // 检查文件是否存在
       try {
@@ -86,7 +87,8 @@ export class LocalStorageProvider implements StorageProvider {
         return null
       }
 
-      const buffer = await fs.readFile(filePath)
+      const safeFilePath = await this.resolveExistingSafePath(key)
+      const buffer = await fs.readFile(safeFilePath)
 
       const duration = Date.now() - startTime
       const sizeKB = Math.round(buffer.length / 1024)
@@ -132,7 +134,7 @@ export class LocalStorageProvider implements StorageProvider {
     return files
   }
 
-  private resolveSafePath(key: string): string {
+  private resolveLexicallySafePath(key: string): string {
     const filePath = path.join(this.basePath, key)
     const resolvedPath = path.resolve(filePath)
     const resolvedBasePath = path.resolve(this.basePath)
@@ -145,6 +147,72 @@ export class LocalStorageProvider implements StorageProvider {
     if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
       throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
     }
+
+    return resolvedPath
+  }
+
+  private async getRealBasePath(): Promise<string> {
+    return await fs.realpath(this.basePath)
+  }
+
+  private assertPathInsideBase(key: string, realBasePath: string, realTargetPath: string): void {
+    const relativePath = path.relative(realBasePath, realTargetPath)
+
+    if (relativePath === '' || relativePath === '.') {
+      throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
+    }
+
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
+    }
+  }
+
+  private async resolveExistingSafePath(key: string): Promise<string> {
+    const resolvedPath = this.resolveLexicallySafePath(key)
+    const [realBasePath, realTargetPath] = await Promise.all([this.getRealBasePath(), fs.realpath(resolvedPath)])
+
+    this.assertPathInsideBase(key, realBasePath, realTargetPath)
+    return realTargetPath
+  }
+
+  private async resolveWritableSafePath(key: string): Promise<string> {
+    const resolvedPath = this.resolveLexicallySafePath(key)
+    const resolvedBasePath = path.resolve(this.basePath)
+    const realBasePath = await this.getRealBasePath()
+    let existingAncestor = path.dirname(resolvedPath)
+
+    while (true) {
+      const relativeAncestor = path.relative(resolvedBasePath, existingAncestor)
+      if (relativeAncestor.startsWith('..') || path.isAbsolute(relativeAncestor)) {
+        throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
+      }
+
+      try {
+        const stat = await fs.lstat(existingAncestor)
+        if (stat.isSymbolicLink()) {
+          throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
+        }
+        break
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error
+        }
+
+        const parent = path.dirname(existingAncestor)
+        if (parent === existingAncestor) {
+          throw error
+        }
+        existingAncestor = parent
+      }
+    }
+
+    const realAncestorPath = await fs.realpath(existingAncestor)
+    this.assertPathInsideBase(key, realBasePath, realAncestorPath)
+
+    const targetDir = path.dirname(resolvedPath)
+    await fs.mkdir(targetDir, { recursive: true })
+    const realTargetDir = await fs.realpath(targetDir)
+    this.assertPathInsideBase(key, realBasePath, realTargetDir)
 
     return resolvedPath
   }
@@ -174,9 +242,16 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async deleteFile(key: string): Promise<void> {
-    const filePath = this.resolveSafePath(key)
+    const filePath = this.resolveLexicallySafePath(key)
 
     try {
+      try {
+        await this.resolveExistingSafePath(key)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error
+        }
+      }
       await fs.rm(filePath, { force: true })
       await this.removeDistFile(key)
       this.logger.success(`已删除本地文件：${key}`)
@@ -187,11 +262,9 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async uploadFile(key: string, data: Buffer, _options?: StorageUploadOptions): Promise<StorageObject> {
-    const filePath = this.resolveSafePath(key)
+    const filePath = await this.resolveWritableSafePath(key)
 
     try {
-      const dir = path.dirname(filePath)
-      await fs.mkdir(dir, { recursive: true })
       await fs.writeFile(filePath, data)
       await this.syncDistFile(key, filePath)
 
@@ -268,11 +341,14 @@ export class LocalStorageProvider implements StorageProvider {
   generatePublicUrl(key: string): string {
     if (this.config.baseUrl) {
       // 如果配置了基础 URL，生成完整的 HTTP URL
-      return `${this.config.baseUrl.replace(/\/$/, '')}/${key}`
-    } else {
-      // 否则返回文件系统路径（用于开发环境）
-      return `file://${path.join(this.basePath, key)}`
+      return joinPublicUrl(this.config.baseUrl, key)
     }
+
+    if (this.distPath) {
+      return joinPublicUrl(`/${path.basename(this.distPath)}`, key)
+    }
+
+    throw new Error('LocalStorageProvider: baseUrl 或 distPath 必须配置，否则无法生成静态站点可访问的公共 URL')
   }
 
   detectLivePhotos(allObjects: StorageObject[]): Map<string, StorageObject> {

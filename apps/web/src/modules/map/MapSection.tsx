@@ -165,6 +165,7 @@ const MapSectionContent = () => {
           markers={markers}
           initialViewState={initialViewState}
           autoFitBounds={isInitialLoad && latitude === null && longitude === null}
+          syncViewStateOnInitialViewStateChange={Boolean(photoId)}
           selectedMarkerId={photoId}
           onMarkerClick={handleMarkerClick}
           className="h-full w-full"

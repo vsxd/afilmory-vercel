@@ -97,4 +97,13 @@ describe('S3StorageProvider.getFile', () => {
     ])
     expect(send).toHaveBeenCalledTimes(2)
   })
+
+  it('encodes object keys when generating public URLs', () => {
+    const provider = new S3StorageProvider({
+      ...config,
+      customDomain: 'https://cdn.example.com/',
+    })
+
+    expect(provider.generatePublicUrl('family/2024 #1?.jpg')).toBe('https://cdn.example.com/family/2024%20%231%3F.jpg')
+  })
 })

@@ -9,6 +9,7 @@ import { createS3Client } from '../../s3/client.js'
 import { backoffDelay, sleep } from '../../utils/backoff.js'
 import { Semaphore } from '../../utils/semaphore.js'
 import type { ProgressCallback, S3Config, StorageObject, StorageProvider, StorageUploadOptions } from '../interfaces'
+import { encodeStorageKeyForUrl, joinPublicUrl } from '../url.js'
 
 // 将 AWS S3 对象转换为通用存储对象
 function convertS3ObjectToStorageObject(s3Object: _Object): StorageObject {
@@ -202,8 +203,7 @@ export class S3StorageProvider implements StorageProvider {
   generatePublicUrl(key: string): string {
     // 如果设置了自定义域名，直接使用自定义域名
     if (this.config.customDomain) {
-      const customDomain = this.config.customDomain.replace(/\/$/, '') // 移除末尾的斜杠
-      return `${customDomain}/${key}`
+      return joinPublicUrl(this.config.customDomain, key)
     }
 
     // 如果使用自定义端点，构建相应的 URL
@@ -211,12 +211,12 @@ export class S3StorageProvider implements StorageProvider {
 
     if (!endpoint) {
       // 默认 AWS S3 端点
-      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${key}`
+      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${encodeStorageKeyForUrl(key)}`
     }
 
     // 检查是否是标准 AWS S3 端点
     if (endpoint.includes('amazonaws.com')) {
-      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${key}`
+      return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${encodeStorageKeyForUrl(key)}`
     }
 
     const baseUrl = endpoint.replace(/\/$/, '') // 移除末尾的斜杠
@@ -229,10 +229,10 @@ export class S3StorageProvider implements StorageProvider {
       // 将 bucket 插入到 'https://` 之后，region 之前
       const prefix = baseUrl.slice(0, protocolEndIndex + 2) // 包括 'https://'
       const suffix = baseUrl.slice(protocolEndIndex + 2) // 剩余部分
-      return `${prefix}${this.config.bucket}.${suffix}/${key}`
+      return `${prefix}${this.config.bucket}.${suffix}/${encodeStorageKeyForUrl(key)}`
     }
     // 对于自定义端点（如 MinIO 等）
-    return `${baseUrl}/${this.config.bucket}/${key}`
+    return `${baseUrl}/${this.config.bucket}/${encodeStorageKeyForUrl(key)}`
   }
 
   detectLivePhotos(allObjects: StorageObject[]): Map<string, StorageObject> {

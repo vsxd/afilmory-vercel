@@ -1,5 +1,4 @@
 const PHOTO_PAGE_MODULE_KEY = './pages/(main)/photos/[photoId]/index.tsx'
-const PHOTO_PAGE_PREFETCH_DELAY_MS = 100
 
 type PhotoPagePrefetchModules = Record<string, (() => Promise<unknown>) | undefined>
 
@@ -23,17 +22,11 @@ export function installPhotoPagePrefetch(
   const loadPhotoPageModule: () => Promise<unknown> = loadPhotoPageModuleCandidate
 
   let isPrefetched = false
-  let timeoutId: number | null = browserWindow.setTimeout(prefetchPhotoPage, PHOTO_PAGE_PREFETCH_DELAY_MS)
 
   function cleanup(): void {
     browserWindow.removeEventListener('pointerover', handleIntent, true)
     browserWindow.removeEventListener('pointerdown', handleIntent, true)
     browserWindow.removeEventListener('focusin', handleIntent, true)
-
-    if (timeoutId !== null) {
-      browserWindow.clearTimeout(timeoutId)
-      timeoutId = null
-    }
   }
 
   function prefetchPhotoPage(): void {

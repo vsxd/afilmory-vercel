@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Maplibre } from '../MapLibre'
@@ -11,15 +11,24 @@ let clusterMarkersMock: ReturnType<typeof vi.fn>
 vi.mock('react-map-gl/maplibre', async () => {
   const React = await import('react')
 
-  const MockMap = ({ ref, longitude, latitude, zoom, onLoad, children }: React.ComponentProps<'div'> & {
-      longitude: number
-      latitude: number
-      zoom: number
-      onLoad?: () => void
-    } & { ref?: React.RefObject<{
+  const MockMap = ({
+    ref,
+    longitude,
+    latitude,
+    zoom,
+    onLoad,
+    children,
+  }: React.ComponentProps<'div'> & {
+    longitude: number
+    latitude: number
+    zoom: number
+    onLoad?: () => void
+  } & {
+    ref?: React.RefObject<{
       getMap: () => { setProjection: (...args: unknown[]) => void; fitBounds: (...args: unknown[]) => void }
       getContainer: () => { offsetWidth: number; offsetHeight: number }
-    } | null | null> }) => {
+    } | null | null>
+  }) => {
     if (ref && typeof ref === 'object') {
       ref.current = {
         getMap: () => ({
@@ -94,6 +103,7 @@ describe('Maplibre', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    cleanup()
   })
 
   it('syncs the rendered view state when initialViewState changes and autoFitBounds is disabled', () => {
@@ -112,6 +122,34 @@ describe('Maplibre', () => {
     expect(screen.getByTestId('map').dataset.longitude).toBe('121.5')
     expect(screen.getByTestId('map').dataset.latitude).toBe('31.2')
     expect(screen.getByTestId('map').dataset.zoom).toBe('9')
+  })
+
+  it('can preserve the current view state when initialViewState changes after selection is cleared', () => {
+    const { rerender } = render(
+      <Maplibre
+        initialViewState={{ longitude: 120, latitude: 30, zoom: 5 }}
+        autoFitBounds={false}
+        syncViewStateOnInitialViewStateChange={false}
+        markers={[]}
+      />,
+    )
+
+    expect(screen.getByTestId('map').dataset.longitude).toBe('120')
+    expect(screen.getByTestId('map').dataset.latitude).toBe('30')
+    expect(screen.getByTestId('map').dataset.zoom).toBe('5')
+
+    rerender(
+      <Maplibre
+        initialViewState={{ longitude: 0, latitude: 0, zoom: 2 }}
+        autoFitBounds={false}
+        syncViewStateOnInitialViewStateChange={false}
+        markers={[]}
+      />,
+    )
+
+    expect(screen.getByTestId('map').dataset.longitude).toBe('120')
+    expect(screen.getByTestId('map').dataset.latitude).toBe('30')
+    expect(screen.getByTestId('map').dataset.zoom).toBe('5')
   })
 
   it('zooms into a cluster when no external cluster handler is provided', () => {

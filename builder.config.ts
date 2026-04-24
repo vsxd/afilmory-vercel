@@ -18,6 +18,9 @@ const missingS3Vars = Object.entries(requiredS3Vars)
   .filter(([, value]) => !value)
   .map(([key]) => key)
 
+const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || ''
+const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || ''
+
 if (missingS3Vars.length > 0) {
   throw new Error(`Missing required S3 environment variables: ${missingS3Vars.join(', ')}`)
 }
@@ -44,9 +47,9 @@ export default defineBuilderConfig(() => ({
 
   // 远程仓库缓存 - 根据环境变量自动启用
   repo: {
-    enable: !!(env.REPO_URL && env.REPO_TOKEN),
-    url: env.REPO_URL || '',
-    token: env.REPO_TOKEN || '',
+    enable: !!(repoUrl && repoToken),
+    url: repoUrl,
+    token: repoToken,
   },
 
   // 使用 S3 存储

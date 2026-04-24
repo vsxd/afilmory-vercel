@@ -1047,9 +1047,9 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   public destroy() {
     // 清理事件监听器
     window.removeEventListener('resize', this.boundResizeCanvas)
+    window.removeEventListener('mousemove', this.boundHandleMouseMove)
+    window.removeEventListener('mouseup', this.boundHandleMouseUp)
     this.canvas.removeEventListener('mousedown', this.boundHandleMouseDown)
-    this.canvas.removeEventListener('mousemove', this.boundHandleMouseMove)
-    this.canvas.removeEventListener('mouseup', this.boundHandleMouseUp)
     this.canvas.removeEventListener('wheel', this.boundHandleWheel)
     this.canvas.removeEventListener('dblclick', this.boundHandleDoubleClick)
     this.canvas.removeEventListener('touchstart', this.boundHandleTouchStart)
@@ -1175,8 +1175,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   // 事件处理
   private setupEventListeners() {
     this.canvas.addEventListener('mousedown', this.boundHandleMouseDown)
-    this.canvas.addEventListener('mousemove', this.boundHandleMouseMove)
-    this.canvas.addEventListener('mouseup', this.boundHandleMouseUp)
     this.canvas.addEventListener('wheel', this.boundHandleWheel)
     this.canvas.addEventListener('dblclick', this.boundHandleDoubleClick)
     this.canvas.addEventListener('touchstart', this.boundHandleTouchStart)
@@ -1194,6 +1192,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.isDragging = true
     this.lastMouseX = e.clientX
     this.lastMouseY = e.clientY
+    window.addEventListener('mousemove', this.boundHandleMouseMove)
+    window.addEventListener('mouseup', this.boundHandleMouseUp)
   }
 
   private handleMouseMove(e: MouseEvent) {
@@ -1214,6 +1214,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   private handleMouseUp() {
     this.isDragging = false
+    window.removeEventListener('mousemove', this.boundHandleMouseMove)
+    window.removeEventListener('mouseup', this.boundHandleMouseUp)
   }
 
   private handleWheel(e: WheelEvent) {

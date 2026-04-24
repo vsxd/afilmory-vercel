@@ -23,6 +23,7 @@ interface SharedData {
   livePhotoMap: Map<string, StorageObject>
   imageObjects: StorageObject[]
   builderConfig: BuilderConfig
+  photoIdCollisionKeys?: string[]
 }
 
 // Worker 进程处理逻辑
@@ -52,6 +53,7 @@ export async function runAsWorker() {
     existingManifestMap = sharedData.existingManifestMap
     livePhotoMap = sharedData.livePhotoMap
     builder = new AfilmoryBuilder(sharedData.builderConfig)
+    builder.setPhotoIdCollisionKeys(sharedData.photoIdCollisionKeys ?? [])
     await builder.ensurePluginsReady()
     pluginRunState = builder.createPluginRunState()
 

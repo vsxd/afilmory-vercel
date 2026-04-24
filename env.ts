@@ -19,6 +19,8 @@ export const env = createEnv({
     // 远程仓库缓存配置（可选）
     REPO_URL: z.string().optional(),
     REPO_TOKEN: z.string().optional(),
+    BUILDER_REPO_URL: z.string().optional(),
+    GIT_TOKEN: z.string().optional(),
 
     // 站点基本配置(可选,如果不设置则使用 site.config.ts 中的默认值)
     SITE_NAME: z.string().optional(),

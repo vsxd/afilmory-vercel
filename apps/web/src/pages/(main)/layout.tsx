@@ -51,42 +51,40 @@ export const Component = () => {
 }
 
 let isRestored = false
-const useStateRestoreFromUrl = () => {
-  const triggerOnceRef = useRef(false)
+let pendingUrlRestoreSearch: string | null = null
 
+const getSearchList = (searchParams: URLSearchParams, key: string) =>
+  (searchParams.get(key) ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+const useStateRestoreFromUrl = () => {
   const { openViewer } = usePhotoViewer()
   const { photoId } = useParams()
   const setGallerySetting = useSetAtom(gallerySettingAtom)
 
-  const [searchParams] = useSearchParams()
+  const location = useLocation()
   useEffect(() => {
-    if (triggerOnceRef.current) return
-    triggerOnceRef.current = true
     isRestored = true
+    pendingUrlRestoreSearch = location.search
 
     // 恢复筛选设置
-    const tagsFromSearchParams = searchParams.get('tags')?.split(',')
-    const camerasFromSearchParams = searchParams.get('cameras')?.split(',')
-    const lensesFromSearchParams = searchParams.get('lenses')?.split(',')
+    const searchParams = new URLSearchParams(location.search)
+    const tagsFromSearchParams = getSearchList(searchParams, 'tags')
+    const camerasFromSearchParams = getSearchList(searchParams, 'cameras')
+    const lensesFromSearchParams = getSearchList(searchParams, 'lenses')
     const ratingsFromSearchParams = searchParams.get('rating') ? Number(searchParams.get('rating')) : null
     const tagModeFromSearchParams = searchParams.get('tag_mode') as 'union' | 'intersection' | null
 
-    if (
-      tagsFromSearchParams ||
-      camerasFromSearchParams ||
-      lensesFromSearchParams ||
-      ratingsFromSearchParams !== null ||
-      tagModeFromSearchParams
-    ) {
-      setGallerySetting((prev) => ({
-        ...prev,
-        selectedTags: tagsFromSearchParams || prev.selectedTags,
-        selectedCameras: camerasFromSearchParams || prev.selectedCameras,
-        selectedLenses: lensesFromSearchParams || prev.selectedLenses,
-        selectedRatings: ratingsFromSearchParams ?? prev.selectedRatings,
-        tagFilterMode: tagModeFromSearchParams || prev.tagFilterMode,
-      }))
-    }
+    setGallerySetting((prev) => ({
+      ...prev,
+      selectedTags: tagsFromSearchParams,
+      selectedCameras: camerasFromSearchParams,
+      selectedLenses: lensesFromSearchParams,
+      selectedRatings: ratingsFromSearchParams,
+      tagFilterMode: tagModeFromSearchParams === 'intersection' ? 'intersection' : 'union',
+    }))
 
     // 如果 URL 中有 photoId，打开查看器
     // 找到对应的照片索引，确保 currentIndex 和 URL 保持一致
@@ -97,7 +95,7 @@ const useStateRestoreFromUrl = () => {
         openViewer(index, { sourceMode: getViewerSourceMode(photoId) })
       }
     }
-  }, [openViewer, photoId, searchParams, setGallerySetting])
+  }, [location.search, openViewer, photoId, setGallerySetting])
 }
 
 const useSyncStateToUrl = () => {
@@ -182,6 +180,13 @@ const useSyncStateToUrl = () => {
         currentRating === rating &&
         currentTagMode === tagMode
       ) {
+        if (pendingUrlRestoreSearch === location.search) {
+          pendingUrlRestoreSearch = null
+        }
+        return search
+      }
+
+      if (pendingUrlRestoreSearch === location.search) {
         return search
       }
 
@@ -224,5 +229,5 @@ const useSyncStateToUrl = () => {
 
       return newer
     })
-  }, [selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode, setSearchParams])
+  }, [location.search, selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode, setSearchParams])
 }

@@ -10,7 +10,7 @@ describe('photo-page-prefetch', () => {
     vi.useRealTimers()
   })
 
-  it('prefetches the photo page shortly after startup', () => {
+  it('does not prefetch the photo page without navigation intent', () => {
     vi.useFakeTimers()
 
     const prefetchModule = vi.fn().mockResolvedValue()
@@ -18,9 +18,9 @@ describe('photo-page-prefetch', () => {
 
     expect(prefetchModule).not.toHaveBeenCalled()
 
-    vi.advanceTimersByTime(100)
+    vi.advanceTimersByTime(1000)
 
-    expect(prefetchModule).toHaveBeenCalledTimes(1)
+    expect(prefetchModule).not.toHaveBeenCalled()
     cleanup()
   })
 

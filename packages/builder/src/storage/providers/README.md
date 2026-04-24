@@ -160,7 +160,7 @@ GitHub 存储提供商会处理以下错误：
 const localConfig: StorageConfig = {
   provider: 'local',
   basePath: './photos', // 本地照片存储路径（相对或绝对路径）
-  baseUrl: 'http://localhost:3000/photos', // 可选：用于生成公共 URL
+  baseUrl: 'http://localhost:3000/photos', // 用于生成公共 URL；未设置时需配置 distPath
   /**
    * 可选：将 basePath 下的文件复制到发布目录，用于静态托管
    * - 支持绝对/相对路径（相对路径相对于项目根目录解析）
@@ -178,6 +178,7 @@ const localConfig: StorageConfig = {
 
 - **相对路径**: 相对于项目根目录，如 `./photos`、`../images`
 - **绝对路径**: 完整的文件系统路径，如 `/home/user/photos`、`C:\\Photos`
+- **公共 URL**: `baseUrl` 会按路径片段编码对象 key；未配置 `baseUrl` 时必须配置 `distPath`，否则 manifest 不会写入不可访问的 `file://` URL。
 - **distPath 解析**: 若配置了 `distPath`，同样支持相对/绝对路径；相对路径将以项目根目录为基准进行解析。
 
 ### 使用示例

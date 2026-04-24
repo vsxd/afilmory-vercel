@@ -21,6 +21,7 @@ export interface ClusterPoolOptions<T> {
     livePhotoMap: Map<string, any>
     imageObjects: any[]
     builderConfig: BuilderConfig
+    photoIdCollisionKeys?: string[]
   }
   onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void
 }

@@ -43,6 +43,7 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   style,
   handlers,
   autoFitBounds,
+  syncViewStateOnInitialViewStateChange,
 }) => {
   const mapRef = React.useRef<MapRef>(null)
 
@@ -110,6 +111,7 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
       style={style}
       mapRef={mapRef}
       autoFitBounds={autoFitBounds}
+      syncViewStateOnInitialViewStateChange={syncViewStateOnInitialViewStateChange}
     />
   )
 }

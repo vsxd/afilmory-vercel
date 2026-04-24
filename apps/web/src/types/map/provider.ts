@@ -41,6 +41,7 @@ export interface BaseMapProps {
   showGeocoder?: boolean
   handlers?: MapHandlers
   autoFitBounds?: boolean
+  syncViewStateOnInitialViewStateChange?: boolean
 }
 
 /**
