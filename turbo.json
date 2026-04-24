@@ -37,6 +37,7 @@
       "cache": true
     },
     "@afilmory/web#build": {
+      "dependsOn": ["^build"],
       "env": [
         "AFILMORY_EMBED_MANIFEST",
         "AUTHOR_AVATAR",

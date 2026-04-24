@@ -174,6 +174,14 @@ export const useScaleIndicator = (
 ) => {
   const scaleIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (scaleIndicatorTimeoutRef.current) {
+        clearTimeout(scaleIndicatorTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleScaleChange = useCallback(
     (scale: number, isZoomed: boolean) => {
       // 更新缩放倍率并显示提示

@@ -12,7 +12,6 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "skipDefaultLibCheck": true,
     "noImplicitAny": false,
     "noEmit": true,
     "jsx": "preserve",

@@ -38,12 +38,14 @@ export const GalleryThumbnail: FC<{
     const scrollContainer = scrollContainerRef.current
     if (scrollContainer) {
       setScrollContainerWidth(scrollContainer.clientWidth)
-      const handleResize = () => {
-        setScrollContainerWidth(scrollContainer.clientWidth)
-      }
-      scrollContainer.addEventListener('resize', handleResize)
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setScrollContainerWidth(entry.contentRect.width)
+        }
+      })
+      observer.observe(scrollContainer)
       return () => {
-        scrollContainer.removeEventListener('resize', handleResize)
+        observer.disconnect()
       }
     }
   }, [])
