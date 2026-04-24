@@ -35,19 +35,16 @@ vi.mock('motion/react', async () => {
 })
 
 vi.mock('react-i18next', () => ({
-  // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-prefix, @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks -- mocking an external hook export.
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }))
 
 vi.mock('usehooks-ts', () => ({
-  // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-prefix, @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks -- mocking an external hook export.
   useMediaQuery: () => false,
 }))
 
 vi.mock('~/atoms/context-menu', () => ({
-  // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-prefix, @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks -- mocking an external hook export.
   useShowContextMenu: () => vi.fn(),
 }))
 

@@ -31,7 +31,6 @@ vi.mock('~/lib/image-loader-manager', () => {
 })
 
 vi.mock('react-i18next', () => ({
-  // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-prefix, @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks -- mocking an external hook export.
   useTranslation: () => ({
     t: (key: string) => key,
   }),
@@ -54,7 +53,7 @@ vi.mock('motion/react', async () => {
 
   return {
     m: { video: MotionVideo },
-    // eslint-disable-next-line @eslint-react/hooks-extra/no-unnecessary-use-prefix, @eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks -- mocking an external hook export.
+
     useAnimationControls: () => ({
       start: (...args: unknown[]) => animationStartMock(...args),
       set: (...args: unknown[]) => animationSetMock(...args),

@@ -114,6 +114,16 @@ const hyobanConfig = await defineConfig(
     },
   },
 
+  // Test files: relax some rules for mock functions
+  {
+    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    rules: {
+      '@eslint-react/dom/no-missing-button-type': 'off',
+      '@eslint-react/hooks-extra/no-unnecessary-use-prefix': 'off',
+      '@eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks': 'off',
+    },
+  },
+
   // Redundant but harmless: keep a local ignore in case this block is used standalone somewhere
   globalIgnores(['apps/ssr/src/index.html.ts', 'apps/ssr/public/**', 'apps/web/public/**', 'packages/data/src/photos-manifest.json']),
 )
