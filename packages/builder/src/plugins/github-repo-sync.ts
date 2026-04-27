@@ -50,6 +50,7 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
         logger.main.info('🔄 同步远程仓库...')
 
         try {
+          await assertAssetsGitDirIsSafe(assetsGitDir, { enforceInsideWebAppDir: true })
           if (!existsSync(assetsGitDir)) {
             logger.main.info('📥 克隆远程仓库...')
             await $({
@@ -133,6 +134,37 @@ interface DirectorySnapshot {
   path: string
 }
 
+async function assertAssetsGitDirIsSafe(
+  assetsGitDir: string,
+  options: { enforceInsideWebAppDir?: boolean } = {},
+): Promise<void> {
+  const realWebAppDir = await fs.realpath(webAppDir)
+
+  try {
+    const stat = await fs.lstat(assetsGitDir)
+    if (stat.isSymbolicLink()) {
+      throw new Error(`assets-git 目录不能是符号链接：${assetsGitDir}`)
+    }
+
+    if (!stat.isDirectory()) {
+      throw new Error(`assets-git 路径必须是目录：${assetsGitDir}`)
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return
+    }
+    throw error
+  }
+
+  if (options.enforceInsideWebAppDir) {
+    const realAssetsGitDir = await fs.realpath(assetsGitDir)
+    const relativePath = path.relative(realWebAppDir, realAssetsGitDir)
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      throw new Error(`assets-git 目录必须位于 web 应用目录内：${assetsGitDir}`)
+    }
+  }
+}
+
 async function createInitialManifestContent(): Promise<string> {
   const { CURRENT_MANIFEST_VERSION } = await import('../manifest/version.js')
 
@@ -181,6 +213,8 @@ async function snapshotDirectory(sourceDir: string): Promise<DirectorySnapshot |
 }
 
 export async function prepareRepositoryLayout({ assetsGitDir, logger }: PrepareRepositoryLayoutOptions): Promise<void> {
+  await assertAssetsGitDirIsSafe(assetsGitDir)
+
   const { manifestPath, thumbnailsDir } = getBuilderOutputSettings()
   const thumbnailsSourceDir = path.resolve(assetsGitDir, 'thumbnails')
   const manifestSourcePath = path.resolve(assetsGitDir, 'photos-manifest.json')

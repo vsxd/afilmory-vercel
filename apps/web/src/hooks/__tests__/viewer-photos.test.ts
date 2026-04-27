@@ -1,8 +1,8 @@
 import type { AfilmoryManifest, PhotoManifestItem } from '@afilmory/data'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { Provider } from 'jotai'
 import * as React from 'react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { GallerySetting } from '~/atoms/app'
 import { gallerySettingAtom } from '~/atoms/app'
@@ -79,6 +79,11 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(Provider, { store: jotaiStore }, children)
 
 describe('viewer photo resolution', () => {
+  afterEach(() => {
+    cleanup()
+    document.body.style.overflow = ''
+  })
+
   beforeEach(() => {
     initializePhotoLoader(manifest)
     jotaiStore.set(gallerySettingAtom, defaultGallerySetting)
@@ -209,5 +214,42 @@ describe('viewer photo resolution', () => {
     })
 
     expect(result.current.currentIndex).toBe(0)
+  })
+
+  it('restores the previous body overflow when the viewer closes or unmounts', async () => {
+    document.body.style.overflow = 'clip'
+
+    const { result, unmount } = renderHook(() => usePhotoViewer(), { wrapper })
+
+    act(() => {
+      result.current.openViewer(0)
+    })
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('hidden')
+    })
+
+    act(() => {
+      result.current.closeViewer()
+    })
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('clip')
+    })
+
+    act(() => {
+      result.current.openViewer(0)
+    })
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('hidden')
+    })
+
+    unmount()
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('clip')
+    })
+    document.body.style.overflow = ''
   })
 })

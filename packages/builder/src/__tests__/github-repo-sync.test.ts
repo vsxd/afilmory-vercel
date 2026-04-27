@@ -5,7 +5,7 @@ import path from 'node:path'
 import { execa } from 'execa'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { logger,setConsoleForwarding } from '../logger/index.js'
+import { logger, setConsoleForwarding } from '../logger/index.js'
 import { CURRENT_MANIFEST_VERSION } from '../manifest/version.js'
 import { setBuilderOutputSettings } from '../output-paths.js'
 import {
@@ -129,6 +129,40 @@ describe('GitHub repo sync layout recovery', () => {
     const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf-8'))
     expect(manifest.data).toHaveLength(1)
     await expect(fs.readFile(path.join(thumbnailsDir, 'photo.jpg'), 'utf-8')).resolves.toBe('thumb')
+  })
+
+  it('preserves readable thumbnails when only the repo manifest target is missing', async () => {
+    await seedRepoAssets(assetsGitDir)
+    await prepareRepositoryLayout({ assetsGitDir, logger })
+
+    await fs.rm(path.join(assetsGitDir, 'photos-manifest.json'), { force: true })
+    await restoreLocalOutputLayout({ logger })
+
+    const manifestStat = await fs.lstat(manifestPath)
+    const thumbnailsStat = await fs.lstat(thumbnailsDir)
+    expect(manifestStat.isSymbolicLink()).toBe(false)
+    expect(thumbnailsStat.isSymbolicLink()).toBe(false)
+
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf-8'))
+    expect(manifest).toEqual({
+      version: CURRENT_MANIFEST_VERSION,
+      data: [],
+      cameras: [],
+      lenses: [],
+    })
+    await expect(fs.readFile(path.join(thumbnailsDir, 'photo.jpg'), 'utf-8')).resolves.toBe('thumb')
+  })
+
+  it('rejects a symlinked assets-git directory before linking build outputs', async () => {
+    const externalDir = await fs.mkdtemp(path.join(os.tmpdir(), 'afilmory-assets-external-'))
+    await seedRepoAssets(externalDir)
+    await fs.symlink(externalDir, assetsGitDir, 'dir')
+
+    try {
+      await expect(prepareRepositoryLayout({ assetsGitDir, logger })).rejects.toThrow('assets-git 目录不能是符号链接')
+    } finally {
+      await fs.rm(externalDir, { force: true, recursive: true })
+    }
   })
 })
 

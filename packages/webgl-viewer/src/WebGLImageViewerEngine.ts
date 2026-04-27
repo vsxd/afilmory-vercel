@@ -66,6 +66,9 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   // 动画状态
   private isAnimating = false
+  private isDestroyed = false
+  private animationFrameId: number | null = null
+  private tileUpdateTimeoutId: ReturnType<typeof setTimeout> | null = null
   private animationStartTime = 0
   private animationDuration = 300
   private startScale = 1
@@ -360,6 +363,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private handleWorkerMessage(e: MessageEvent) {
+    if (this.isDestroyed) return
+
     const { type, payload } = e.data
 
     if (type === 'image-loaded') {
@@ -465,6 +470,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   async loadImage(url: string, preknownWidth?: number, preknownHeight?: number) {
+    if (this.isDestroyed) {
+      throw new Error('WebGL image viewer has been destroyed')
+    }
+
     this.hasNotifiedImagePainted = false
     this.originalImageSrc = url
     this.isLoadingTexture = true
@@ -584,7 +593,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private animate() {
-    if (!this.isAnimating) return
+    if (this.isDestroyed || !this.isAnimating) return
 
     const now = performance.now()
     const elapsed = now - this.animationStartTime
@@ -599,7 +608,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.notifyZoomChange()
 
     if (progress < 1) {
-      requestAnimationFrame(() => this.animate())
+      this.animationFrameId = requestAnimationFrame(() => {
+        this.animationFrameId = null
+        this.animate()
+      })
     } else {
       this.isAnimating = false
       this.animationStartLOD = -1
@@ -766,6 +778,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private async updateTileCache(): Promise<void> {
+    if (this.isDestroyed) return
+
     const visibleTiles = this.calculateVisibleTiles()
     const newVisibleTiles = new Set<TileKey>()
 
@@ -835,6 +849,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private processPendingTileRequests(): void {
+    if (this.isDestroyed) return
+
     if (!this.worker || !this.textureWorkerInitialized) {
       return
     }
@@ -894,6 +910,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   // 修改渲染方法以支持瓦片渲染
   private render() {
+    if (this.isDestroyed) return
+
     const { gl } = this
 
     if (!this.positionBuffer || !this.texCoordBuffer) {
@@ -949,7 +967,12 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     if (!this.isAnimating && performance.now() - this.lastTileUpdateTime > 100) {
       // 100ms 防抖
       this.lastTileUpdateTime = performance.now()
-      setTimeout(() => this.updateTileCache(), 0)
+      if (this.tileUpdateTimeoutId === null) {
+        this.tileUpdateTimeoutId = setTimeout(() => {
+          this.tileUpdateTimeoutId = null
+          void this.updateTileCache()
+        }, 0)
+      }
     }
   }
 
@@ -1045,6 +1068,22 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   public destroy() {
+    if (this.isDestroyed) return
+
+    this.isDestroyed = true
+    this.isAnimating = false
+    this.animationStartLOD = -1
+
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+
+    if (this.tileUpdateTimeoutId !== null) {
+      clearTimeout(this.tileUpdateTimeoutId)
+      this.tileUpdateTimeoutId = null
+    }
+
     // 清理事件监听器
     window.removeEventListener('resize', this.boundResizeCanvas)
     window.removeEventListener('mousemove', this.boundHandleMouseMove)

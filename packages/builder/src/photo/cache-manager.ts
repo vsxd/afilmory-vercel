@@ -1,4 +1,5 @@
 import { thumbnailExists } from '../image/thumbnail.js'
+import { needsUpdate } from '../manifest/manager.js'
 import type { PhotoManifestItem } from '../types/photo.js'
 import type { PhotoProcessorOptions } from './processor.js'
 
@@ -19,7 +20,7 @@ export interface CacheableData {
 export async function shouldProcessPhoto(
   photoId: string,
   existingItem: PhotoManifestItem | undefined,
-  obj: { LastModified?: Date; ETag?: string },
+  obj: { Key?: string; LastModified?: Date; Size?: number; ETag?: string },
   options: PhotoProcessorOptions,
 ): Promise<{ shouldProcess: boolean; reason: string }> {
   // 强制模式下总是处理
@@ -32,8 +33,14 @@ export async function shouldProcessPhoto(
     return { shouldProcess: true, reason: '新照片' }
   }
 
-  // 检查文件是否更新
-  const fileNeedsUpdate = existingItem.lastModified !== obj.LastModified?.toISOString()
+  // Keep this predicate in sync with task filtering so same-timestamp
+  // size/etag changes do not enter the worker and then get skipped.
+  const fileNeedsUpdate = needsUpdate(existingItem, {
+    Key: obj.Key,
+    LastModified: obj.LastModified,
+    Size: obj.Size,
+    ETag: obj.ETag,
+  })
 
   if (fileNeedsUpdate || options.isForceManifest) {
     return {

@@ -7,7 +7,7 @@ import {
   DialogTrigger,
   ScrollArea,
 } from '@afilmory/ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -91,12 +91,25 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
   const [isOpen, setIsOpen] = useState(false)
   const [rawExifData, setRawExifData] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const activeRequestRef = useRef<AbortController | null>(null)
+  const currentPhotoIdRef = useRef(currentPhoto.id)
+
+  currentPhotoIdRef.current = currentPhoto.id
 
   useEffect(() => {
+    activeRequestRef.current?.abort()
+    activeRequestRef.current = null
     setIsOpen(false)
     setRawExifData(null)
     setIsLoading(false)
   }, [currentPhoto.id])
+
+  useEffect(() => {
+    return () => {
+      activeRequestRef.current?.abort()
+      activeRequestRef.current = null
+    }
+  }, [])
 
   const handleOpenModal = async () => {
     if (rawExifData) {
@@ -105,17 +118,30 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
     }
 
     setIsLoading(true)
+    activeRequestRef.current?.abort()
+    const requestController = new AbortController()
+    activeRequestRef.current = requestController
+    const requestPhotoId = currentPhoto.id
+
     try {
-      const response = await fetch(currentPhoto.originalUrl)
+      const response = await fetch(currentPhoto.originalUrl, {
+        signal: requestController.signal,
+      })
       if (!response.ok) {
         throw new Error(`Failed to fetch original image: ${response.status}`)
       }
       const blob = await response.blob()
       const data = await ExifToolManager.parse(blob, currentPhoto.s3Key)
+      if (requestController.signal.aborted || currentPhotoIdRef.current !== requestPhotoId) {
+        return
+      }
 
       setRawExifData(data || null)
       setIsOpen(true)
     } catch (error) {
+      if (requestController.signal.aborted || currentPhotoIdRef.current !== requestPhotoId) {
+        return
+      }
       console.error('Failed to parse EXIF data:', error)
       const fallbackData = serializeManifestExifData(currentPhoto.exif)
 
@@ -130,7 +156,12 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({ currentPhoto }) =>
         )
       }
     } finally {
-      setIsLoading(false)
+      if (activeRequestRef.current === requestController) {
+        activeRequestRef.current = null
+      }
+      if (!requestController.signal.aborted && currentPhotoIdRef.current === requestPhotoId) {
+        setIsLoading(false)
+      }
     }
   }
 

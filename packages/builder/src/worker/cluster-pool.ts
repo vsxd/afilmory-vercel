@@ -10,6 +10,8 @@ import { logger } from '../logger/index.js'
 import type { BuilderConfig } from '../types/config.js'
 import type { TaskCompletedPayload } from './pool.js'
 
+const WORKER_SHUTDOWN_GRACE_MS = 5_000
+
 export interface ClusterPoolOptions<T> {
   concurrency: number
   totalTasks: number
@@ -516,7 +518,7 @@ export class ClusterPool<T> extends EventEmitter {
           const timeout = setTimeout(() => {
             worker.kill('SIGKILL')
             resolve()
-          }, 0)
+          }, WORKER_SHUTDOWN_GRACE_MS)
 
           worker.on('exit', () => {
             clearTimeout(timeout)
@@ -524,7 +526,11 @@ export class ClusterPool<T> extends EventEmitter {
           })
 
           // 发送关闭信号
-          worker.send({ type: 'shutdown' })
+          if (worker.isConnected()) {
+            worker.send({ type: 'shutdown' })
+          } else {
+            worker.kill('SIGTERM')
+          }
         }),
       )
     }

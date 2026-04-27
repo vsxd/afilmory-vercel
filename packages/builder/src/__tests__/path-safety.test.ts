@@ -138,15 +138,44 @@ describe('LocalStorageProvider path safety', () => {
     }
   })
 
-  it('should encode generated public URLs and avoid file URLs', () => {
+  it('should encode generated public URLs and avoid file URLs', async () => {
     const providerWithBaseUrl = new LocalStorageProvider({
       provider: 'local',
       basePath: tmpDir,
       baseUrl: '/originals',
     })
 
-    expect(providerWithBaseUrl.generatePublicUrl('family/2024 #1?.jpg')).toBe('/originals/family/2024%20%231%3F.jpg')
-    expect(() => provider.generatePublicUrl('sample.jpg')).toThrow('baseUrl 或 distPath 必须配置')
+    await expect(providerWithBaseUrl.generatePublicUrl('family/2024 #1?.jpg')).resolves.toBe(
+      '/originals/family/2024%20%231%3F.jpg',
+    )
+    await expect(provider.generatePublicUrl('sample.jpg')).rejects.toThrow('baseUrl 或 distPath 必须配置')
+  })
+
+  it('should mirror uploads and deletes into distPath before generating public URLs', async () => {
+    const distPath = path.join(tmpDir, '..', `${path.basename(tmpDir)}-dist`)
+    const providerWithDist = new LocalStorageProvider({
+      provider: 'local',
+      basePath: tmpDir,
+      distPath,
+    })
+    const data = Buffer.from('published-image')
+
+    try {
+      await providerWithDist.uploadFile('nested/pic.jpg', data)
+
+      await expect(fs.readFile(path.join(tmpDir, 'nested/pic.jpg'))).resolves.toEqual(data)
+      await expect(fs.readFile(path.join(distPath, 'nested/pic.jpg'))).resolves.toEqual(data)
+      await expect(providerWithDist.generatePublicUrl('nested/pic.jpg')).resolves.toBe(
+        `/${path.basename(distPath)}/nested/pic.jpg`,
+      )
+
+      await providerWithDist.deleteFile('nested/pic.jpg')
+
+      await expect(fs.access(path.join(tmpDir, 'nested/pic.jpg'))).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(fs.access(path.join(distPath, 'nested/pic.jpg'))).rejects.toMatchObject({ code: 'ENOENT' })
+    } finally {
+      await fs.rm(distPath, { recursive: true, force: true })
+    }
   })
 
   it('should throw when basePath is empty', () => {

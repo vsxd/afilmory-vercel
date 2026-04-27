@@ -1,5 +1,5 @@
 import { atom, useAtom, useAtomValue } from 'jotai'
-import { use, useCallback, useMemo } from 'react'
+import { use, useCallback, useEffect, useMemo } from 'react'
 
 import { gallerySettingAtom } from '~/atoms/app'
 import { photoLoader } from '~/data-runtime/photo-loader'
@@ -11,6 +11,8 @@ const openAtom = atom(false)
 const currentIndexAtom = atom(0)
 const triggerElementAtom = atom<HTMLElement | null>(null)
 const viewerSourceModeAtom = atom<ViewerSourceMode | null>(null)
+let bodyScrollLockCount = 0
+let bodyOverflowBeforeLock: string | null = null
 
 type ViewerSourceMode = 'filtered' | 'all'
 
@@ -180,14 +182,32 @@ export const usePhotoViewer = (photoCount?: number) => {
   const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom)
   const [viewerSourceMode, setViewerSourceMode] = useAtom(viewerSourceModeAtom)
 
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    if (bodyScrollLockCount === 0) {
+      bodyOverflowBeforeLock = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+    }
+    bodyScrollLockCount += 1
+
+    return () => {
+      bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1)
+      if (bodyScrollLockCount === 0) {
+        document.body.style.overflow = bodyOverflowBeforeLock ?? ''
+        bodyOverflowBeforeLock = null
+      }
+    }
+  }, [isOpen])
+
   const openViewer = useCallback(
     (index: number, options?: { element?: HTMLElement | null; sourceMode?: ViewerSourceMode }) => {
       setCurrentIndex(index)
       setTriggerElement(options?.element || null)
       setViewerSourceMode(options?.sourceMode ?? null)
       setIsOpen(true)
-      // 防止背景滚动
-      document.body.style.overflow = 'hidden'
     },
     [setCurrentIndex, setIsOpen, setTriggerElement, setViewerSourceMode],
   )
@@ -196,8 +216,6 @@ export const usePhotoViewer = (photoCount?: number) => {
     setIsOpen(false)
     setTriggerElement(null)
     setViewerSourceMode(null)
-    // 恢复背景滚动
-    document.body.style.overflow = ''
   }, [setIsOpen, setTriggerElement, setViewerSourceMode])
 
   const goToIndex = useCallback(

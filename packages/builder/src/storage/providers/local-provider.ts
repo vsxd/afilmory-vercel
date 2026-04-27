@@ -23,6 +23,8 @@ export class LocalStorageProvider implements StorageProvider {
   private config: LocalConfig
   private basePath: string
   private distPath?: string
+  private distInitialization: Promise<void> | null = null
+  private distInitializationError: unknown = null
   private scanProgress: ScanProgress = {
     currentPath: '',
     filesScanned: 0,
@@ -68,7 +70,9 @@ export class LocalStorageProvider implements StorageProvider {
         const projectRoot = path.resolve(__dirname, '../../../../../')
         this.distPath = path.resolve(projectRoot, config.distPath)
       }
-      copyToDist(this.basePath, this.distPath)
+      this.distInitialization = copyToDist(this.basePath, this.distPath).catch((error: unknown) => {
+        this.distInitializationError = error
+      })
     }
   }
 
@@ -155,10 +159,18 @@ export class LocalStorageProvider implements StorageProvider {
     return await fs.realpath(this.basePath)
   }
 
-  private assertPathInsideBase(key: string, realBasePath: string, realTargetPath: string): void {
+  private assertPathInsideBase(
+    key: string,
+    realBasePath: string,
+    realTargetPath: string,
+    options: { allowBase?: boolean } = {},
+  ): void {
     const relativePath = path.relative(realBasePath, realTargetPath)
 
     if (relativePath === '' || relativePath === '.') {
+      if (options.allowBase) {
+        return
+      }
       throw new Error(`LocalStorageProvider: 文件路径不安全：${key}`)
     }
 
@@ -207,12 +219,12 @@ export class LocalStorageProvider implements StorageProvider {
     }
 
     const realAncestorPath = await fs.realpath(existingAncestor)
-    this.assertPathInsideBase(key, realBasePath, realAncestorPath)
+    this.assertPathInsideBase(key, realBasePath, realAncestorPath, { allowBase: true })
 
     const targetDir = path.dirname(resolvedPath)
     await fs.mkdir(targetDir, { recursive: true })
     const realTargetDir = await fs.realpath(targetDir)
-    this.assertPathInsideBase(key, realBasePath, realTargetDir)
+    this.assertPathInsideBase(key, realBasePath, realTargetDir, { allowBase: true })
 
     return resolvedPath
   }
@@ -222,6 +234,7 @@ export class LocalStorageProvider implements StorageProvider {
       return
     }
 
+    await this.ensureDistInitialized()
     const distFilePath = path.join(this.distPath, key)
     const distDir = path.dirname(distFilePath)
     await fs.mkdir(distDir, { recursive: true })
@@ -233,6 +246,7 @@ export class LocalStorageProvider implements StorageProvider {
       return
     }
 
+    await this.ensureDistInitialized()
     const distFilePath = path.join(this.distPath, key)
     try {
       await fs.rm(distFilePath, { force: true })
@@ -338,7 +352,20 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
-  generatePublicUrl(key: string): string {
+  private async ensureDistInitialized(): Promise<void> {
+    if (!this.distInitialization) {
+      return
+    }
+
+    await this.distInitialization
+    if (this.distInitializationError) {
+      throw this.distInitializationError
+    }
+  }
+
+  async generatePublicUrl(key: string): Promise<string> {
+    await this.ensureDistInitialized()
+
     if (this.config.baseUrl) {
       // 如果配置了基础 URL，生成完整的 HTTP URL
       return joinPublicUrl(this.config.baseUrl, key)
@@ -441,5 +468,6 @@ async function copyToDist(fromPath: string, distPath: string): Promise<void> {
     logger.main.log(`LocalStorageProvider: 已复制文件到发布目录： ${fromPath} -> ${distPath}`)
   } catch (error) {
     logger.main.error(`LocalStorageProvider: basePath: ${fromPath}, distPath: ${distPath}, 错误: ${error}`)
+    throw error
   }
 }

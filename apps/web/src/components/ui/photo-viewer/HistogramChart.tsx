@@ -190,6 +190,7 @@ export const HistogramChart: FC<{
   const { t } = useTranslation()
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError(false)
 
@@ -198,6 +199,8 @@ export const HistogramChart: FC<{
     img.src = thumbnailUrl
 
     img.onload = () => {
+      if (cancelled) return
+
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
       if (!ctx) {
@@ -229,8 +232,17 @@ export const HistogramChart: FC<{
     }
 
     img.onerror = () => {
+      if (cancelled) return
+
       setError(true)
       setLoading(false)
+    }
+
+    return () => {
+      cancelled = true
+      img.onload = null
+      img.onerror = null
+      img.src = ''
     }
   }, [thumbnailUrl])
 

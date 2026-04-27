@@ -8,7 +8,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Swiper as SwiperType } from 'swiper'
-import { Keyboard, Navigation, Virtual } from 'swiper/modules'
+import { Navigation, Virtual } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
 import { useExifPanel } from '~/hooks/useExifPanel'
@@ -265,15 +265,11 @@ export const PhotoViewer = ({
                   <LoadingIndicator ref={loadingIndicatorRef} />
                   {/* Swiper 容器 */}
                   <Swiper
-                    modules={[Navigation, Keyboard, Virtual]}
+                    modules={[Navigation, Virtual]}
                     spaceBetween={0}
                     slidesPerView={1}
                     initialSlide={currentIndex}
                     virtual
-                    keyboard={{
-                      enabled: true,
-                      onlyInViewport: true,
-                    }}
                     onSwiper={(swiper) => {
                       swiperRef.current = swiper
                       // 初始化时确保触摸滑动是启用的

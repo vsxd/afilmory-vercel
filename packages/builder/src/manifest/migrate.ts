@@ -100,16 +100,6 @@ const MIGRATION_STEPS: MigrationStep[] = [
   },
 ]
 
-function noOpBumpVersion(raw: any, target: ManifestVersion): AfilmoryManifest {
-  return {
-    ...raw,
-    version: target,
-    data: Array.isArray(raw?.data) ? raw.data : [],
-    cameras: Array.isArray(raw?.cameras) ? raw.cameras : [],
-    lenses: Array.isArray(raw?.lenses) ? raw.lenses : [],
-  }
-}
-
 export function migrateManifest(
   raw: AfilmoryManifest,
   target: ManifestVersion = CURRENT_MANIFEST_VERSION,
@@ -118,22 +108,18 @@ export function migrateManifest(
   let working = raw
 
   // Iterate through chain-of-executors until reaching target.
-  // If no matching step is found for the current version, fallback to a no-op bump.
   const guard = new Set<string>()
 
   while (current !== target) {
     const guardKey = `${String(current)}->${String(target)}`
     if (guard.has(guardKey)) {
-      logger.main.warn('⚠️ 检测到潜在迁移循环，使用占位升级直接跳转到目标版本')
-      return noOpBumpVersion(working, target)
+      throw new Error(`检测到 manifest 迁移循环：${guardKey}`)
     }
     guard.add(guardKey)
 
     const step = MIGRATION_STEPS.find((s) => s.from === current)
     if (!step) {
-      // No concrete step for this source version; do a simple version bump once.
-      logger.main.info(`🔄 迁移占位：${String(current)} -> ${target}（无匹配步骤，直接提升版本）`)
-      return noOpBumpVersion(working, target)
+      throw new Error(`不支持的 manifest 版本：${String(current)}，无法迁移到 ${target}`)
     }
 
     const ctx: MigrationContext = { from: step.from, to: step.to }
