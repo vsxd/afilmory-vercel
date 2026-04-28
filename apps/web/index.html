@@ -17,6 +17,12 @@
     <style>
       html {
         font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+        background: #0a0a0a;
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        background: #0a0a0a;
       }
     </style>
     <script id="config">
@@ -30,6 +36,9 @@
       <!-- Splash Screen - 现代简洁设计 -->
       <div
         id="splash-screen"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading"
         style="
           position: fixed;
           top: 0;
@@ -99,7 +108,7 @@
               style="
                 font-size: 1.75rem;
                 font-weight: 600;
-                letter-spacing: -0.025em;
+                letter-spacing: 0;
                 color: rgba(255, 255, 255, 0.85);
                 margin: 0;
                 animation: titleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
@@ -113,7 +122,7 @@
                 font-size: 0.875rem;
                 margin: 0;
                 font-weight: 400;
-                letter-spacing: 0.01em;
+                letter-spacing: 0;
                 animation: subtitleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
               "
             >
