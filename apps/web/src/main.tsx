@@ -7,12 +7,10 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 
 import { BootstrapError } from './components/common/BootstrapError'
-import { BootstrapSplash } from './components/common/BootstrapSplash'
+import { BootstrapReady } from './components/common/BootstrapReady'
 import { loadManifestRuntime } from './data-runtime/manifest-runtime'
 import { initializePhotoLoader } from './data-runtime/photo-loader'
 import { router } from './router'
-
-const BOOT_SPLASH_MIN_VISIBLE_MS = import.meta.env.PROD ? 350 : 0
 
 const rootElement = document.querySelector<HTMLElement>('#root')
 if (!rootElement) {
@@ -29,47 +27,13 @@ function getRoot(): Root {
 
 function renderApp(node: ReactNode) {
   startTransition(() => {
-    getRoot().render(node)
+    getRoot().render(<BootstrapReady>{node}</BootstrapReady>)
   })
-}
-
-function renderBootstrapSplash() {
-  getRoot().render(<BootstrapSplash />)
-}
-
-function getCurrentTime() {
-  return globalThis.performance?.now() ?? Date.now()
-}
-
-function waitForNextPaint(): Promise<void> {
-  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
-    return Promise.resolve()
-  }
-
-  return new Promise((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => resolve())
-    })
-  })
-}
-
-async function waitForBootstrapSplash(renderedAt: number) {
-  await waitForNextPaint()
-
-  const remainingMs = BOOT_SPLASH_MIN_VISIBLE_MS - (getCurrentTime() - renderedAt)
-  if (remainingMs <= 0) {
-    return
-  }
-
-  await new Promise((resolve) => window.setTimeout(resolve, remainingMs))
 }
 
 async function bootstrap() {
-  const splashRenderedAt = getCurrentTime()
-  renderBootstrapSplash()
-
   try {
-    const startupTasks: Promise<unknown>[] = [loadManifestRuntime(), waitForBootstrapSplash(splashRenderedAt)]
+    const startupTasks: Promise<unknown>[] = [loadManifestRuntime()]
 
     if (import.meta.env.DEV) {
       startupTasks.push(

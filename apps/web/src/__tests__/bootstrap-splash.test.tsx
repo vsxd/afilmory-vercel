@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import type { AfilmoryManifest } from '@afilmory/data'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -29,14 +32,15 @@ describe('bootstrap splash', () => {
     document.body.innerHTML = ''
   })
 
-  it('renders an accessible loading state', async () => {
-    const { BootstrapSplash } = await import('../components/common/BootstrapSplash')
+  it('keeps the static loading state outside the React root', () => {
+    const html = readFileSync(path.join(process.cwd(), 'apps/web/index.html'), 'utf-8')
+    const splashIndex = html.indexOf('id="splash-screen"')
+    const rootIndex = html.indexOf('id="root"')
 
-    render(<BootstrapSplash />)
-
-    expect(screen.getByRole('status', { name: 'Loading' })).not.toBeNull()
-    expect(screen.getByText('Test Lens')).not.toBeNull()
-    expect(screen.getByText('Loading test photos')).not.toBeNull()
+    expect(splashIndex).toBeGreaterThan(-1)
+    expect(rootIndex).toBeGreaterThan(-1)
+    expect(splashIndex).toBeLessThan(rootIndex)
+    expect(html).toContain("rel='stylesheet'")
   })
 
   it('keeps splash visible while the manifest bootstrap is still pending', async () => {
@@ -59,7 +63,8 @@ describe('bootstrap splash', () => {
       RouterProvider: () => <div data-testid="router-app">Gallery ready</div>,
     }))
 
-    document.body.innerHTML = '<div id="root"><div id="splash-screen">Static splash</div></div>'
+    document.body.innerHTML =
+      '<div id="splash-screen" role="status" aria-label="Loading">Static splash</div><div id="root"></div>'
 
     let importPromise!: Promise<unknown>
     await act(async () => {
@@ -67,7 +72,7 @@ describe('bootstrap splash', () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
-    expect(await screen.findByTestId('bootstrap-splash')).not.toBeNull()
+    expect(screen.getByRole('status', { name: 'Loading' })).not.toBeNull()
     expect(screen.queryByTestId('router-app')).toBeNull()
     expect(initializePhotoLoader).not.toHaveBeenCalled()
 
@@ -80,6 +85,8 @@ describe('bootstrap splash', () => {
     await waitFor(() => {
       expect(screen.getByTestId('router-app')).not.toBeNull()
     })
-    expect(screen.queryByTestId('bootstrap-splash')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull()
+    })
   })
 })
