@@ -11,6 +11,57 @@
     <meta name="apple-mobile-web-app-title" content="<%= title %>" />
 
     <title><%= title %></title>
+    <script id="startup-metrics">
+      ;(() => {
+        const storageKey = 'afilmory:startup-metrics:v1'
+        const marks = []
+        const now = () => performance.now()
+        const record = (name, detail) => {
+          const mark = { name, time: now() }
+          if (detail) mark.detail = detail
+          marks.push(mark)
+          try {
+            performance.mark(`afilmory:${name}`)
+          } catch {}
+        }
+        const snapshot = (reason = 'snapshot') => ({
+          reason,
+          url: location.href,
+          navigationStart: performance.timeOrigin,
+          collectedAt: Date.now(),
+          marks: [...marks],
+        })
+        const flush = (reason = 'flush') => {
+          const payload = snapshot(reason)
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(payload))
+          } catch {}
+          let debugEnabled = location.search.includes('debug_startup=1')
+          try {
+            debugEnabled ||= localStorage.getItem('afilmory:startup-debug') === '1'
+          } catch {}
+          if (debugEnabled) {
+            console.table(payload.marks.map((mark) => ({ name: mark.name, ms: Math.round(mark.time) })))
+          }
+          return payload
+        }
+
+        window.__AFILMORY_STARTUP__ = { marks, mark: record, flush, snapshot }
+        record('html-head')
+
+        try {
+          const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+              record(entry.name, { startTime: entry.startTime })
+            }
+          })
+          observer.observe({ type: 'paint', buffered: true })
+        } catch {}
+
+        document.addEventListener('DOMContentLoaded', () => record('dom-content-loaded'), { once: true })
+        window.addEventListener('load', () => record('window-load'), { once: true })
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -89,8 +140,6 @@
             box-shadow:
               0 0 0 1px rgba(255, 255, 255, 0.1),
               0 4px 16px rgba(0, 0, 0, 0.4);
-            animation: logoFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-            backdrop-filter: blur(10px);
           "
         >
           <!-- 相机图标 -->
@@ -120,7 +169,6 @@
               letter-spacing: 0;
               color: rgba(255, 255, 255, 0.85);
               margin: 0;
-              animation: titleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
             "
           >
             <%= title %>
@@ -132,7 +180,6 @@
               margin: 0;
               font-weight: 400;
               letter-spacing: 0;
-              animation: subtitleFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
             "
           >
             <%= description %>
@@ -140,7 +187,7 @@
         </div>
 
         <!-- 加载动画 -->
-        <div style="margin-top: 1rem; animation: loaderFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both">
+        <div style="margin-top: 1rem">
           <!-- 点状加载器 -->
           <div style="display: flex; gap: 0.5rem; align-items: center">
             <div
@@ -179,50 +226,6 @@
         #splash-screen[data-state='hidden'] {
           opacity: 0;
           pointer-events: none;
-        }
-
-        @keyframes logoFade {
-          0% {
-            opacity: 0;
-            transform: translateY(-10px) scale(0.9);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        @keyframes titleFade {
-          0% {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes subtitleFade {
-          0% {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes loaderFade {
-          0% {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
         }
 
         @keyframes dotPulse {

@@ -19,6 +19,7 @@ import {
   markGalleryThumbnailLoaded,
 } from '~/lib/gallery-thumbnail-cache'
 import { getImageFormat } from '~/lib/image-utils'
+import { flushStartupMetrics, markStartupOnce } from '~/lib/startup-metrics'
 import type { PhotoManifest } from '~/types/photo'
 
 export const MasonryPhotoItem = memo(
@@ -51,6 +52,9 @@ export const MasonryPhotoItem = memo(
 
     const handleImageLoad = () => {
       markGalleryThumbnailLoaded(thumbnailCacheKey)
+      if (markStartupOnce('first-thumbnail-loaded', { photoId: data.id })) {
+        flushStartupMetrics('first-thumbnail-loaded')
+      }
       setImageLoaded(true)
     }
 

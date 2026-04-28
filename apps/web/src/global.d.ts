@@ -37,6 +37,16 @@ declare global {
     __MANIFEST_URL__?: string
     __MANIFEST_PROMISE__?: Promise<unknown>
     __SITE_CONFIG__?: Partial<SiteConfig>
+    __AFILMORY_STARTUP__?: {
+      marks: Array<{
+        name: string
+        time: number
+        detail?: Record<string, unknown>
+      }>
+      mark: (name: string, detail?: Record<string, unknown>) => void
+      flush: (reason?: string) => unknown
+      snapshot: (reason?: string) => unknown
+    }
   }
 }
 

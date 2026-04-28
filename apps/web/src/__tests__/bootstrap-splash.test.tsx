@@ -40,7 +40,12 @@ describe('bootstrap splash', () => {
     expect(splashIndex).toBeGreaterThan(-1)
     expect(rootIndex).toBeGreaterThan(-1)
     expect(splashIndex).toBeLessThan(rootIndex)
+    expect(html).toContain('afilmory:startup-metrics:v1')
     expect(html).toContain("rel='stylesheet'")
+    expect(html).not.toContain('logoFade')
+    expect(html).not.toContain('titleFade')
+    expect(html).not.toContain('subtitleFade')
+    expect(html).not.toContain('loaderFade')
   })
 
   it('keeps splash visible while the manifest bootstrap is still pending', async () => {
@@ -49,6 +54,8 @@ describe('bootstrap splash', () => {
       resolveManifest = resolve
     })
     const initializePhotoLoader = vi.fn()
+    const markStartup = vi.fn()
+    const flushStartupMetrics = vi.fn()
 
     vi.doMock('../data-runtime/manifest-runtime', () => ({
       loadManifestRuntime: vi.fn(() => manifestPromise),
@@ -63,6 +70,12 @@ describe('bootstrap splash', () => {
       RouterProvider: () => <div data-testid="router-app">Gallery ready</div>,
     }))
 
+    window.__AFILMORY_STARTUP__ = {
+      marks: [],
+      mark: markStartup,
+      flush: flushStartupMetrics,
+      snapshot: vi.fn(),
+    }
     document.body.innerHTML =
       '<div id="splash-screen" role="status" aria-label="Loading">Static splash</div><div id="root"></div>'
 
@@ -75,6 +88,9 @@ describe('bootstrap splash', () => {
     expect(screen.getByRole('status', { name: 'Loading' })).not.toBeNull()
     expect(screen.queryByTestId('router-app')).toBeNull()
     expect(initializePhotoLoader).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(markStartup).toHaveBeenCalledWith('manifest-start', undefined)
+    })
 
     await act(async () => {
       resolveManifest(manifest)
@@ -88,5 +104,11 @@ describe('bootstrap splash', () => {
     await waitFor(() => {
       expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull()
     })
+    expect(markStartup).toHaveBeenCalledWith('manifest-ready', { photos: 0 })
+    expect(markStartup).toHaveBeenCalledWith('photo-loader-ready', undefined)
+    expect(markStartup).toHaveBeenCalledWith('react-render-start', undefined)
+    expect(markStartup).toHaveBeenCalledWith('app-commit', undefined)
+    expect(markStartup).toHaveBeenCalledWith('splash-removed', { via: 'timeout' })
+    expect(flushStartupMetrics).toHaveBeenCalledWith('splash-removed')
   })
 })

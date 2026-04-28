@@ -10,7 +10,16 @@ import { BootstrapError } from './components/common/BootstrapError'
 import { BootstrapReady } from './components/common/BootstrapReady'
 import { loadManifestRuntime } from './data-runtime/manifest-runtime'
 import { initializePhotoLoader } from './data-runtime/photo-loader'
+import { markStartup } from './lib/startup-metrics'
 import { router } from './router'
+
+if (import.meta.env.DEV) {
+  void import('./lib/dev-service-worker-cleanup').then(({ cleanupStaleDevServiceWorker }) =>
+    cleanupStaleDevServiceWorker(),
+  )
+}
+
+markStartup('main-module-ready')
 
 const rootElement = document.querySelector<HTMLElement>('#root')
 if (!rootElement) {
@@ -33,6 +42,7 @@ function renderApp(node: ReactNode) {
 
 async function bootstrap() {
   try {
+    markStartup('manifest-start')
     const startupTasks: Promise<unknown>[] = [loadManifestRuntime()]
 
     if (import.meta.env.DEV) {
@@ -44,7 +54,14 @@ async function bootstrap() {
     }
 
     const [manifest] = await Promise.all(startupTasks)
+    markStartup('manifest-ready', {
+      photos: Array.isArray((manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).data)
+        ? (manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).data.length
+        : undefined,
+    })
     initializePhotoLoader(manifest as Awaited<ReturnType<typeof loadManifestRuntime>>)
+    markStartup('photo-loader-ready')
+    markStartup('react-render-start')
     renderApp(<RouterProvider router={router} />)
   } catch (error) {
     console.error('[bootstrap] Failed to initialize application:', error)
