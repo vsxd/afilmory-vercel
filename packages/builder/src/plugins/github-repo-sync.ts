@@ -13,6 +13,18 @@ const RUN_SHARED_ASSETS_DIR = 'assetsGitDir'
 const RUN_SHARED_SYNC_ENABLED = 'repoSyncEnabled'
 const GIT_ASKPASS_SCRIPT = fileURLToPath(new URL('git-askpass.js', import.meta.url))
 const GIT_HTTP_USERNAME = 'x-access-token'
+const GIT_ENV_ALLOWLIST = [
+  'HOME',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'PATH',
+  'SSL_CERT_DIR',
+  'SSL_CERT_FILE',
+  'TMP',
+  'TMPDIR',
+  'XDG_CONFIG_HOME',
+] as const
 
 export interface GitHubRepoSyncPluginOptions {
   autoPush?: boolean
@@ -55,13 +67,17 @@ export default function githubRepoSyncPlugin(options: GitHubRepoSyncPluginOption
             logger.main.info('📥 克隆远程仓库...')
             await $({
               cwd: webAppDir,
-              env: gitEnv,
+              ...getGitAuthenticationExecaOptions(gitEnv),
               stdio: 'inherit',
             })`git clone ${repo.url} assets-git`
           } else {
             logger.main.info('🔄 拉取远程仓库更新...')
             try {
-              await $({ cwd: assetsGitDir, env: gitEnv, stdio: 'inherit' })`git pull --rebase`
+              await $({
+                cwd: assetsGitDir,
+                ...getGitAuthenticationExecaOptions(gitEnv),
+                stdio: 'inherit',
+              })`git pull --rebase`
             } catch (pullError) {
               logger.main.warn('⚠️ git pull 失败，保留现有 assets-git 目录并降级为本地构建输出')
               throw pullError
@@ -308,7 +324,11 @@ async function pushUpdatesToRemoteRepo({ assetsGitDir, logger, repoConfig }: Pus
     cwd: assetsGitDir,
     stdio: 'inherit',
   })`git commit -m ${commitMessage}`
-  await $({ cwd: assetsGitDir, env: gitEnv, stdio: 'inherit' })`git push origin HEAD`
+  await $({
+    cwd: assetsGitDir,
+    ...getGitAuthenticationExecaOptions(gitEnv),
+    stdio: 'inherit',
+  })`git push origin HEAD`
 
   logger.main.success('✅ 成功推送更新到远程仓库')
 }
@@ -349,12 +369,23 @@ export function buildGitAuthenticationEnv(url: string, token?: string): NodeJS.P
   }
 
   return {
-    ...process.env,
+    ...pickGitBaseEnv(process.env),
     AFILMORY_GIT_PASSWORD: token,
     AFILMORY_GIT_USERNAME: GIT_HTTP_USERNAME,
     GIT_ASKPASS: GIT_ASKPASS_SCRIPT,
     GIT_TERMINAL_PROMPT: '0',
   }
+}
+
+function getGitAuthenticationExecaOptions(env: NodeJS.ProcessEnv | undefined): {
+  env?: NodeJS.ProcessEnv
+  extendEnv?: boolean
+} {
+  return env ? { env, extendEnv: false } : {}
+}
+
+function pickGitBaseEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(GIT_ENV_ALLOWLIST.flatMap((key) => (env[key] ? [[key, env[key]]] : [])))
 }
 
 export const plugin = githubRepoSyncPlugin

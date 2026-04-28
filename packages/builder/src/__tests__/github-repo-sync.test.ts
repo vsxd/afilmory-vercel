@@ -29,6 +29,25 @@ describe('GitHub repo sync auth', () => {
     expect(password.stdout).toBe('github_pat_test')
   })
 
+  it('should not forward unrelated process environment variables', () => {
+    const previousSecret = process.env.S3_SECRET_ACCESS_KEY
+    process.env.S3_SECRET_ACCESS_KEY = 'secret-that-should-not-reach-git'
+
+    try {
+      const env = buildGitAuthenticationEnv('https://github.com/vsxd/afilmory-metadata-cache.git', 'github_pat_test')
+
+      expect(env?.S3_SECRET_ACCESS_KEY).toBeUndefined()
+      expect(env?.AFILMORY_GIT_PASSWORD).toBe('github_pat_test')
+      expect(env?.GIT_TERMINAL_PROMPT).toBe('0')
+    } finally {
+      if (previousSecret === undefined) {
+        delete process.env.S3_SECRET_ACCESS_KEY
+      } else {
+        process.env.S3_SECRET_ACCESS_KEY = previousSecret
+      }
+    }
+  })
+
   it('should skip askpass auth when the url is not a GitHub HTTPS repository', () => {
     expect(buildGitAuthenticationEnv('ssh://git@github.com/vsxd/afilmory-metadata-cache.git', 'github_pat_test')).toBe(
       undefined,

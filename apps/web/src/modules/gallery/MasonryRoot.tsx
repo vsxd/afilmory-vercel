@@ -167,7 +167,7 @@ export const MasonryRoot = () => {
           columnGutter={4}
           rowGutter={4}
           itemHeightEstimate={400}
-          itemKey={useCallback((data, _index) => {
+          itemKey={useCallback((data: MasonryItemType, _index: number) => {
             if (data instanceof MasonryHeaderItem) {
               return 'header'
             }
