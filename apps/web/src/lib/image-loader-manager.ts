@@ -226,6 +226,8 @@ export class ImageLoaderManager {
         const xhr = new XMLHttpRequest()
         xhr.open('GET', src)
         xhr.responseType = 'blob'
+        // Set high priority for high-res images via HTTP/2 Priority header
+        xhr.setRequestHeader('Priority', 'u=0, i')
         this.currentXHR = xhr
 
         xhr.onload = async () => {
