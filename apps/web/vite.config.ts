@@ -65,15 +65,24 @@ const staticWebBuildPlugins: PluginOption[] = [
     },
     workbox: {
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
-      globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,json}'],
+      // 优化预缓存策略：只缓存关键资源
+      globPatterns: [
+        '**/*.{js,css,html}', // 核心资源
+        '**/favicon*.{ico,png}', // 网站图标
+        '**/android-chrome-*.png', // PWA 图标
+        '**/apple-touch-icon.png', // iOS 图标
+      ],
       globIgnores: [
-        '**/*.{jpg,jpeg}',
-        '**/vendor/heic-*.js',
-        '**/vendor/exiftool-*.js',
-        '**/assets/maplibre-gl-*.js',
-        '**/og-image-*.png',
-      ], // 忽略大图片文件、按需 codec、原始 EXIF 解析器、重型地图依赖和历史 OG 图
+        '**/*.{jpg,jpeg}', // 大图片不预缓存
+        '**/vendor/heic-*.js', // 按需加载的 HEIC 解码器
+        '**/vendor/exiftool-*.js', // 按需加载的 EXIF 解析器
+        '**/assets/maplibre-gl-*.js', // 地图库按需加载
+        '**/assets/map-*.js', // 地图相关代码按需加载
+        '**/og-image-*.png', // OG 图片不需要预缓存
+        '**/*.map', // Source maps 不需要缓存
+      ],
       runtimeCaching: [
+        // 字体缓存策略
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
           handler: 'CacheFirst',
@@ -81,7 +90,7 @@ const staticWebBuildPlugins: PluginOption[] = [
             cacheName: 'google-fonts-cache',
             expiration: {
               maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+              maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
             },
           },
         },
@@ -92,18 +101,37 @@ const staticWebBuildPlugins: PluginOption[] = [
             cacheName: 'gstatic-fonts-cache',
             expiration: {
               maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+              maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
             },
           },
         },
+        // 图片缓存策略：使用 StaleWhileRevalidate 提升体验
         {
-          urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/,
-          handler: 'CacheFirst',
+          urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif)$/,
+          handler: 'StaleWhileRevalidate',
           options: {
             cacheName: 'images-cache',
             expiration: {
-              maxEntries: 100,
-              maxAgeSeconds: 60 * 60 * 24 * 30, // <== 30 days
+              maxEntries: 150, // 增加缓存条目
+              maxAgeSeconds: 60 * 60 * 24 * 30, // 30 天
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+        // S3 图片缓存策略（针对静态博客的图片存储）
+        {
+          urlPattern: /^https?:\/\/.*\.(s3|amazonaws|cloudfront|cdn)\..*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 's3-images-cache',
+            expiration: {
+              maxEntries: 200,
+              maxAgeSeconds: 60 * 60 * 24 * 90, // 90 天，S3 图片很少变化
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
             },
           },
         },
@@ -257,12 +285,14 @@ export default defineConfig(async ({ command }) => {
           // 手动分块策略
           manualChunks: (id: string) => {
             // 将 node_modules 中的大型库单独分块
-            if (id.includes('node_modules') && // WebGL 查看器单独分块
-              id.includes('@afilmory/webgl-viewer')) {
-                return 'webgl-viewer'
-              }
-              // 地图相关库已在 createDependencyChunksPlugin 中处理
-              // 其他 vendor 代码由 createDependencyChunksPlugin 处理
+            if (
+              id.includes('node_modules') && // WebGL 查看器单独分块
+              id.includes('@afilmory/webgl-viewer')
+            ) {
+              return 'webgl-viewer'
+            }
+            // 地图相关库已在 createDependencyChunksPlugin 中处理
+            // 其他 vendor 代码由 createDependencyChunksPlugin 处理
           },
         },
       },
