@@ -43,3 +43,4 @@ packages/webgl-viewer/src/shaders.js
 .specstory
 .vscode
 .omx/
+.DS_Store

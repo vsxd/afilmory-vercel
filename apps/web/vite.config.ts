@@ -211,6 +211,8 @@ export default defineConfig(async ({ command }) => {
             'usehooks-ts',
           ],
         },
+        // 地图库单独分块，因为体积较大且不是所有用户都会使用
+        { name: 'map', patterns: ['maplibre-gl', 'react-map-gl'] },
         { name: 'heic', patterns: ['heic-to'] },
         {
           name: 'file-type',
@@ -237,6 +239,33 @@ export default defineConfig(async ({ command }) => {
     ],
     server: {
       port: 1924, // 1924 年首款 35mm 相机问世
+    },
+    build: {
+      // 优化构建性能
+      target: 'es2020',
+      cssTarget: 'safari16.4',
+      // 启用 CSS 代码分割
+      cssCodeSplit: true,
+      // 优化 chunk 大小警告阈值
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          // 优化资源命名，便于缓存
+          assetFileNames: 'assets/[name].[hash][extname]',
+          chunkFileNames: 'assets/[name].[hash].js',
+          entryFileNames: 'assets/[name].[hash].js',
+          // 手动分块策略
+          manualChunks: (id: string) => {
+            // 将 node_modules 中的大型库单独分块
+            if (id.includes('node_modules') && // WebGL 查看器单独分块
+              id.includes('@afilmory/webgl-viewer')) {
+                return 'webgl-viewer'
+              }
+              // 地图相关库已在 createDependencyChunksPlugin 中处理
+              // 其他 vendor 代码由 createDependencyChunksPlugin 处理
+          },
+        },
+      },
     },
     css: {
       lightningcss: {

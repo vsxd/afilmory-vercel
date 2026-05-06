@@ -33,7 +33,7 @@
         "SOCIAL_RSS",
         "SOCIAL_TWITTER"
       ],
-      "outputs": ["dist/**"],
+      "outputs": ["dist/**", ".next/**", "build/**"],
       "cache": true
     },
     "@afilmory/web#build": {
@@ -70,19 +70,30 @@
       "outputs": ["dist/**"],
       "cache": true
     },
+    "@afilmory/builder#build": {
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "@afilmory/webgl-viewer#build": {
+      "outputs": ["dist/**"],
+      "cache": true
+    },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
+      "outputs": [],
       "cache": true
     },
     "type-check": {
       "dependsOn": ["^type-check"],
+      "outputs": [],
       "cache": true
     },
     "test": {
       "dependsOn": ["^test"],
+      "outputs": ["coverage/**"],
       "cache": true
     }
   }
