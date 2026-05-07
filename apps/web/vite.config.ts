@@ -68,6 +68,7 @@ const staticWebBuildPlugins: PluginOption[] = [
       // 优化预缓存策略：只缓存关键资源
       globPatterns: [
         '**/*.{js,css,html}', // 核心资源
+        '**/assets/photos-manifest.*.json', // 默认外置 manifest 是启动关键数据
         '**/favicon*.{ico,png}', // 网站图标
         '**/android-chrome-*.png', // PWA 图标
         '**/apple-touch-icon.png', // iOS 图标
@@ -78,6 +79,8 @@ const staticWebBuildPlugins: PluginOption[] = [
         '**/vendor/exiftool-*.js', // 按需加载的 EXIF 解析器
         '**/assets/maplibre-gl-*.js', // 地图库按需加载
         '**/assets/map-*.js', // 地图相关代码按需加载
+        '**/vendor/map-*.js', // 地图库独立 vendor chunk 按需加载
+        '**/assets/vendor/map*.css', // 地图库样式按需加载
         '**/og-image-*.png', // OG 图片不需要预缓存
         '**/*.map', // Source maps 不需要缓存
       ],
@@ -269,8 +272,6 @@ export default defineConfig(async ({ command }) => {
       port: 1924, // 1924 年首款 35mm 相机问世
     },
     build: {
-      // 优化构建性能
-      target: 'es2020',
       cssTarget: 'safari16.4',
       // 启用 CSS 代码分割
       cssCodeSplit: true,
