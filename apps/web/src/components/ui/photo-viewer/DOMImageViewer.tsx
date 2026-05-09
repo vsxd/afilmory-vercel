@@ -11,6 +11,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   onZoomChange,
   minZoom,
   maxZoom,
+  fitScale = 1,
   src,
   alt,
   highResLoaded,
@@ -20,6 +21,11 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   const transformRef = useRef<ReactZoomPanPinchRef>(null)
   // 兼容外部 ref
   const activeRef = ref || transformRef
+  const safeFitScale = Math.min(Math.max(fitScale, 0.1), 1)
+  const fittedContentStyle = {
+    width: `${safeFitScale * 100}%`,
+    height: `${safeFitScale * 100}%`,
+  }
 
   // 监听缩放变化
   const onTransformed = useCallback(
@@ -31,7 +37,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
       if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
         const containerWidth = wrapper?.clientWidth || 1
         const containerHeight = wrapper?.clientHeight || 1
-        const fit = Math.min(containerWidth / img.naturalWidth, containerHeight / img.naturalHeight)
+        const fit = Math.min(containerWidth / img.naturalWidth, containerHeight / img.naturalHeight) * safeFitScale
         const actualScale = state.scale * fit
         const isZoomed = Math.abs(actualScale - fit) > 0.01
         onZoomChange?.(isZoomed, actualScale)
@@ -40,7 +46,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         onZoomChange?.(isZoomed, state.scale)
       }
     },
-    [onZoomChange],
+    [onZoomChange, safeFitScale],
   )
 
   useEffect(() => {
@@ -64,7 +70,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
       const pointerY = event.clientY - containerRect.top
       const containerWidth = wrapper.clientWidth || 1
       const containerHeight = wrapper.clientHeight || 1
-      const fit = Math.min(containerWidth / img.naturalWidth, containerHeight / img.naturalHeight)
+      const fit = Math.min(containerWidth / img.naturalWidth, containerHeight / img.naturalHeight) * safeFitScale
       const scale0 = instance.transformState.scale
       const x0 = instance.transformState.positionX
       const y0 = instance.transformState.positionY
@@ -82,7 +88,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         activeRef.current?.setTransform(0, 0, 1, 200, 'easeInOutCubic')
       }
     },
-    [activeRef],
+    [activeRef, safeFitScale],
   )
 
   return (
@@ -120,19 +126,21 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
           wrapperClass="!w-full !h-full !absolute !inset-0"
           contentClass="!w-full !h-full flex items-center justify-center"
         >
-          <img
-            src={src || undefined}
-            alt={alt}
-            className={clsxm(
-              'absolute inset-0 w-full h-full object-contain',
-              highResLoaded ? 'opacity-100' : 'opacity-0',
-            )}
-            draggable={false}
-            loading="eager"
-            decoding="async"
-            onLoad={onLoad}
-          />
-          {children}
+          <div className="relative h-full w-full" style={fittedContentStyle}>
+            <img
+              src={src || undefined}
+              alt={alt}
+              className={clsxm(
+                'absolute inset-0 h-full w-full object-contain',
+                highResLoaded ? 'opacity-100' : 'opacity-0',
+              )}
+              draggable={false}
+              loading="eager"
+              decoding="async"
+              onLoad={onLoad}
+            />
+            {children}
+          </div>
         </TransformComponent>
       </TransformWrapper>
     </div>

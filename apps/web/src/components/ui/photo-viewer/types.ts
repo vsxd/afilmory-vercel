@@ -74,6 +74,7 @@ export interface DOMImageViewerProps {
   onZoomChange?: (isZoomed: boolean, scale: number) => any
   minZoom: number
   maxZoom: number
+  fitScale?: number
   src: string
   alt: string
   highResLoaded: boolean

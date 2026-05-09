@@ -1195,7 +1195,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     if (this.onZoomChange) {
       const originalScale = this.scale
       const fitToScreenScale = this.getFitToScreenScale()
-      const relativeScale = this.scale / fitToScreenScale
+      const configuredFitScale = fitToScreenScale * this.config.initialScale
+      const relativeScale = this.scale / configuredFitScale
       this.onZoomChange(originalScale, relativeScale)
     }
   }
@@ -1387,13 +1388,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
     if (this.config.doubleClick.mode === 'toggle') {
       const fitToScreenScale = this.getFitToScreenScale()
+      const configuredFitScale = fitToScreenScale * this.config.initialScale
       const absoluteMinScale = fitToScreenScale * this.config.minScale
       const originalSizeScale = 1
       const userMaxScale = fitToScreenScale * this.config.maxScale
       const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale)
 
       if (this.isOriginalSize) {
-        const targetScale = Math.max(absoluteMinScale, Math.min(effectiveMaxScale, fitToScreenScale))
+        const targetScale = Math.max(absoluteMinScale, Math.min(effectiveMaxScale, configuredFitScale))
         const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale
         const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale
         const targetTranslateX = x - this.canvasWidth / 2 - zoomX * targetScale

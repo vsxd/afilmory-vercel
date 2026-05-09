@@ -104,6 +104,8 @@ describe('ProgressiveImage', () => {
     await waitFor(() => {
       expect(highResImage.getAttribute('src')).toBe('blob:mock-image')
     })
+    expect(highResImage.parentElement?.style.width).toBe('90%')
+    expect(highResImage.parentElement?.style.height).toBe('90%')
     expect(screen.getByText('photo.webgl.unavailable')).toBeTruthy()
   })
 })

@@ -24,6 +24,15 @@ import { LivePhotoBadge } from './LivePhotoBadge'
 import { LivePhotoVideo } from './LivePhotoVideo'
 import type { ProgressiveImageProps, WebGLImageViewerRef } from './types'
 
+const PHOTO_VIEWER_FIT_SCALE = 0.9
+const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
+  top: '50%',
+  left: '50%',
+  width: `${PHOTO_VIEWER_FIT_SCALE * 100}%`,
+  height: `${PHOTO_VIEWER_FIT_SCALE * 100}%`,
+  transform: 'translate(-50%, -50%)',
+}
+
 export const ProgressiveImage = ({
   src,
   thumbnailSrc,
@@ -60,6 +69,7 @@ export const ProgressiveImage = ({
   } = state
 
   const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes)
+  const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE)
 
   // 判断是否有视频内容（Live Photo 或 Motion Photo）
   const hasVideo = Boolean(videoSource && videoSource.type !== 'none')
@@ -143,9 +153,10 @@ export const ProgressiveImage = ({
           key={thumbnailSrc}
           alt={alt}
           className={clsxm(
-            'pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-300',
+            'pointer-events-none absolute object-contain transition-opacity duration-300',
             isThumbnailLoaded ? 'opacity-100' : 'opacity-0',
           )}
+          style={PHOTO_VIEWER_FIT_IMAGE_STYLE}
           loading="eager"
           decoding="async"
           onLoad={handleThumbnailLoad}
@@ -168,6 +179,7 @@ export const ProgressiveImage = ({
               onZoomChange={onDOMTransformed}
               minZoom={minZoom}
               maxZoom={maxZoom}
+              fitScale={PHOTO_VIEWER_FIT_SCALE}
               src={blobSrc}
               alt={alt}
               highResLoaded={highResLoaded}
@@ -193,8 +205,8 @@ export const ProgressiveImage = ({
               className="absolute inset-0 h-full w-full"
               width={width}
               height={height}
-              initialScale={1}
-              minScale={minZoom}
+              initialScale={PHOTO_VIEWER_FIT_SCALE}
+              minScale={webGLMinZoom}
               maxScale={maxZoom}
               limitToBounds={true}
               centerOnInit={true}

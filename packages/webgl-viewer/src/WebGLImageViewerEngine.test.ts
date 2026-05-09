@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { WebGLImageViewerProps } from './interface'
 import { WebGLImageViewerEngine } from './WebGLImageViewerEngine'
 
 class ResizeObserverMock {
@@ -79,7 +80,10 @@ function createWebGLMock(): WebGLRenderingContext {
   } as unknown as WebGLRenderingContext
 }
 
-function createEngine(canvas: HTMLCanvasElement): WebGLImageViewerEngine {
+function createEngine(
+  canvas: HTMLCanvasElement,
+  overrides: Partial<Required<WebGLImageViewerProps>> = {},
+): WebGLImageViewerEngine {
   return new WebGLImageViewerEngine(canvas, {
     src: 'blob:photo',
     className: '',
@@ -102,6 +106,7 @@ function createEngine(canvas: HTMLCanvasElement): WebGLImageViewerEngine {
     onLoadingStateChange: () => {},
     onImagePainted: () => {},
     debug: false,
+    ...overrides,
   })
 }
 
@@ -171,5 +176,40 @@ describe('WebGLImageViewerEngine lifecycle', () => {
     const frame = pendingFrame as FrameRequestCallback
     frame(16)
     expect(gl.drawArrays).not.toHaveBeenCalled()
+  })
+
+  it('treats the configured initial scale as the fitted zoom baseline', () => {
+    const onZoomChange = vi.fn()
+    const canvas = document.createElement('canvas')
+    const gl = createWebGLMock()
+    vi.spyOn(canvas, 'getContext').mockReturnValue(gl)
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    })
+
+    const engine = createEngine(canvas, {
+      initialScale: 0.9,
+      minScale: 0.9,
+      onZoomChange,
+    })
+
+    void engine.loadImage('blob:photo', 100, 100)
+
+    expect(engine.getScale()).toBeCloseTo(0.9)
+
+    engine.zoomAt(50, 50, 1.1)
+
+    expect(engine.getScale()).toBeCloseTo(0.99)
+    const lastZoomChange = onZoomChange.mock.calls.at(-1)
+    expect(lastZoomChange?.[0]).toBeCloseTo(0.99)
+    expect(lastZoomChange?.[1]).toBeCloseTo(1.1)
   })
 })
