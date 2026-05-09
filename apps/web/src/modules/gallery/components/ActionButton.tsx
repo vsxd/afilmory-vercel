@@ -27,13 +27,13 @@ export const ActionButton = ({
     <Button
       variant="ghost"
       size="sm"
-      className="relative h-10 w-10 rounded-full border-0 bg-gray-100 transition-all duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary relative h-10 w-10 rounded-full border transition-all duration-200"
       title={title}
       onClick={onClick}
       ref={ref}
       {...props}
     >
-      <i className={clsxm(icon, 'text-base text-gray-600 dark:text-gray-300')} />
+      <i className={clsxm(icon, 'text-text-secondary text-base')} />
       {badge && (
         <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-white shadow-sm">
           {badge}
@@ -101,8 +101,8 @@ export const MobileActionButton = ({
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" />
-          <Drawer.Content className="fixed right-0 bottom-0 left-0 z-50 flex flex-col rounded-t-2xl border-t border-zinc-200 bg-white/80 p-4 backdrop-blur-xl dark:border-zinc-800 dark:bg-black/80">
-            <div className="mx-auto mb-4 h-1.5 w-12 flex-shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+          <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex flex-col rounded-t-2xl border-t p-4 shadow-2xl backdrop-blur-[120px]">
+            <div className="bg-fill-tertiary mx-auto mb-4 h-1.5 w-12 flex-shrink-0 rounded-full" />
             {children}
           </Drawer.Content>
         </Drawer.Portal>

@@ -34,6 +34,7 @@ interface CommandPaletteProps {
 const allTags = photoLoader.getAllTags()
 const allCameras = photoLoader.getAllCameras()
 const allLenses = photoLoader.getAllLenses()
+const allPhotos = photoLoader.getPhotos()
 
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { t } = useTranslation()
@@ -45,6 +46,14 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  const activeFilterCount =
+    gallerySetting.selectedTags.length +
+    gallerySetting.selectedCameras.length +
+    gallerySetting.selectedLenses.length +
+    (gallerySetting.selectedRatings !== null ? 1 : 0)
+
+  const hasFilters = activeFilterCount > 0
 
   const updateTagFilterMode = useCallback(
     (mode: 'union' | 'intersection') => {
@@ -68,6 +77,63 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       tagFilterMode: 'union',
     }))
   }, [setGallerySetting])
+
+  const activeFilterChips = useMemo(
+    () => [
+      ...gallerySetting.selectedTags.map((tag) => ({
+        id: `tag-${tag}`,
+        label: tag,
+        icon: 'i-mingcute-tag-line',
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedTags: prev.selectedTags.filter((selectedTag) => selectedTag !== tag),
+          })),
+      })),
+      ...gallerySetting.selectedCameras.map((camera) => ({
+        id: `camera-${camera}`,
+        label: camera,
+        icon: 'i-mingcute-camera-line',
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedCameras: prev.selectedCameras.filter((selectedCamera) => selectedCamera !== camera),
+          })),
+      })),
+      ...gallerySetting.selectedLenses.map((lens) => ({
+        id: `lens-${lens}`,
+        label: lens,
+        icon: 'i-mingcute-camera-2-line',
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedLenses: prev.selectedLenses.filter((selectedLens) => selectedLens !== lens),
+          })),
+      })),
+      ...(gallerySetting.selectedRatings !== null
+        ? [
+            {
+              id: `rating-${gallerySetting.selectedRatings}`,
+              label: t('action.rating.filter-above', { rating: gallerySetting.selectedRatings }),
+              icon: 'i-mingcute-star-line',
+              onRemove: () =>
+                setGallerySetting((prev) => ({
+                  ...prev,
+                  selectedRatings: null,
+                })),
+            },
+          ]
+        : []),
+    ],
+    [
+      gallerySetting.selectedCameras,
+      gallerySetting.selectedLenses,
+      gallerySetting.selectedRatings,
+      gallerySetting.selectedTags,
+      setGallerySetting,
+      t,
+    ],
+  )
 
   // Reset state when opened
   useEffect(() => {
@@ -199,19 +265,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       })
     }
 
-    // Clear all filters
-    const hasFilters =
-      gallerySetting.selectedTags.length > 0 ||
-      gallerySetting.selectedCameras.length > 0 ||
-      gallerySetting.selectedLenses.length > 0 ||
-      gallerySetting.selectedRatings !== null
-
     if (hasFilters) {
       cmds.push({
         id: 'clear-filters',
         type: 'action',
         title: t('action.search.clear'),
-        subtitle: 'Clear all active filters',
+        subtitle: t('action.search.clear-filters-subtitle'),
         icon: 'i-mingcute-close-line',
         action: () => {
           setGallerySetting((prev) => ({
@@ -229,7 +288,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
     // Photo search results
     if (query.trim()) {
-      const photos = searchPhotos(photoLoader.getPhotos(), query)
+      const photos = searchPhotos(allPhotos, query)
       photos.slice(0, 10).forEach((photo) => {
         const locationTokens = getLocationTokens(photo.location)
         const locationSubtitle = locationTokens.join(', ')
@@ -237,8 +296,14 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           id: `photo-${photo.id}`,
           type: 'photo',
           title: photo.title || photo.id,
-          subtitle: photo.description || locationSubtitle || `${photo.exif?.Model || 'Photo'}`,
-          icon: <img src={photo.thumbnailUrl} alt={photo.title || 'Photo'} className="h-6 w-6 rounded object-cover" />,
+          subtitle: photo.description || locationSubtitle || `${photo.exif?.Model || t('action.search.photo')}`,
+          icon: (
+            <img
+              src={photo.thumbnailUrl}
+              alt={t('action.search.photo-thumbnail', { title: photo.title || photo.id })}
+              className="h-10 w-10 rounded-xl object-cover"
+            />
+          ),
           action: () => {
             const viewerPhotos = getViewerPhotos(photo.id)
             const photoIndex = viewerPhotos.findIndex((p) => p.id === photo.id)
@@ -256,7 +321,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     }
 
     return cmds
-  }, [t, gallerySetting, query, navigate, onClose, setGallerySetting, openViewer, updateTagFilterMode])
+  }, [t, gallerySetting, query, navigate, onClose, setGallerySetting, openViewer, updateTagFilterMode, hasFilters])
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
@@ -292,6 +357,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (filteredCommands.length === 0) return
+
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault()
@@ -330,17 +397,19 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   if (!isOpen) return null
 
+  const resultSummary = query.trim()
+    ? t('action.search.command-count', { count: filteredCommands.length })
+    : t('action.search.showing-filters', { count: filteredCommands.length })
+
   return (
-    <div className="fixed inset-0 z-9999 flex items-end justify-center lg:items-start lg:pt-[15vh]" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center lg:items-start lg:pt-[12vh]" onClick={onClose}>
       {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-xl transition-all duration-200" />
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-2xl transition-all duration-200" />
 
       {/* Command Palette Panel */}
       <div
-        className="animate-in fade-in slide-in-from-bottom-4 border-accent/20 lg:slide-in-from-top-4 relative w-full max-w-2xl overflow-hidden rounded-2xl rounded-b-none border backdrop-blur-2xl duration-200 lg:rounded-2xl!"
+        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary lg:slide-in-from-top-4 relative flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl rounded-b-none border shadow-2xl backdrop-blur-[120px] duration-200 lg:max-h-[72vh] lg:rounded-2xl!"
         style={{
-          backgroundImage:
-            'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
           boxShadow:
             '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
         }}
@@ -355,49 +424,101 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           }}
         />
         {/* Search Input */}
-        <div className="border-accent/20 relative flex items-center gap-3 border-b px-4 py-4">
-          <i className="i-mingcute-search-line text-text-tertiary shrink-0 text-xl" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('action.search.placeholder')}
-            className="text-text placeholder-text-tertiary flex-1 bg-transparent text-base outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleReset}
-            className="glassmorphic-btn border-accent/20 text-text-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all duration-200"
-          >
-            <i className="i-mingcute-refresh-1-line text-sm" />
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="glassmorphic-btn border-accent/20 text-text-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-all duration-200"
-          >
-            <i className="i-mingcute-close-line text-sm" />
-            Close
-          </button>
+        <div className="border-fill-secondary relative border-b px-4 py-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="bg-accent/10 ring-accent/20 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset">
+              <i className="i-mingcute-search-line text-accent text-lg" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-text text-base leading-tight font-semibold tracking-tight">
+                {t('action.search.unified.title')}
+              </h2>
+              <p className="text-text-secondary mt-1 text-xs">
+                {t('action.search.indexed-photos', { count: allPhotos.length })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-200"
+              aria-label={t('action.search.reset')}
+              title={t('action.search.reset')}
+            >
+              <i className="i-mingcute-refresh-1-line text-base" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-200"
+              aria-label={t('common.close')}
+              title={t('common.close')}
+            >
+              <i className="i-mingcute-close-line text-base" />
+            </button>
+          </div>
+
+          <div className="bg-fill-vibrant-quinary border-fill-tertiary flex h-12 items-center gap-3 rounded-xl border px-3">
+            <i className="i-mingcute-search-line text-text-tertiary shrink-0 text-lg" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('action.search.placeholder')}
+              aria-label={t('action.search.placeholder')}
+              className="text-text placeholder-text-tertiary h-full min-w-0 flex-1 bg-transparent text-base outline-none"
+            />
+          </div>
         </div>
 
-        <div className="border-accent/20 bg-accent/3 text-text-secondary relative flex items-center justify-between gap-3 border-b px-4 py-2 text-xs">
+        {hasFilters && (
+          <div className="border-fill-secondary relative border-b px-4 py-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="text-text-secondary flex items-center gap-2 text-xs font-medium">
+                <i className="i-mingcute-filter-3-line text-sm" />
+                <span>{t('action.search.active-filters', { count: activeFilterCount })}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-text-secondary hover:text-accent text-xs font-medium transition-colors"
+              >
+                {t('action.search.clear')}
+              </button>
+            </div>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {activeFilterChips.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={chip.onRemove}
+                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ring-inset"
+                  title={chip.label}
+                >
+                  <i className={clsxm(chip.icon, 'shrink-0 text-sm')} />
+                  <span className="truncate">{chip.label}</span>
+                  <i className="i-mingcute-close-line shrink-0 text-sm" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="border-fill-secondary bg-fill-vibrant-quinary/60 text-text-secondary relative flex items-center justify-between gap-3 border-b px-4 py-3 text-xs">
           <div className="flex items-center gap-2">
             <i className="i-mingcute-filter-3-line text-sm" />
             <span>{t('action.tag.match.label')}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="bg-fill-secondary/70 border-fill-tertiary flex rounded-full border p-0.5">
             <button
               type="button"
               onClick={() => updateTagFilterMode('union')}
               className={clsxm(
                 'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
                 gallerySetting.tagFilterMode === 'union'
-                  ? 'bg-accent text-white'
-                  : 'glassmorphic-btn text-text-secondary',
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text',
               )}
             >
               {t('action.tag.match.any')}
@@ -408,8 +529,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               className={clsxm(
                 'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
                 gallerySetting.tagFilterMode === 'intersection'
-                  ? 'bg-accent text-white'
-                  : 'glassmorphic-btn text-text-secondary',
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text',
               )}
             >
               {t('action.tag.match.all')}
@@ -418,7 +539,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Commands List */}
-        <div ref={listRef} className="max-h-[60vh] overflow-y-auto overscroll-contain py-2">
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2">
           {filteredCommands.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <i className="i-mingcute-search-line text-text-quaternary mb-3 text-4xl" />
@@ -439,8 +560,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 {/* Icon */}
                 <div
                   className={clsxm(
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg transition-all duration-200',
-                    cmd.active ? 'bg-accent/10 text-accent' : 'bg-background/95 text-text-secondary',
+                    'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg transition-all duration-200',
+                    cmd.active ? 'bg-accent/10 text-accent' : 'bg-fill-vibrant-quinary text-text-secondary',
                   )}
                   style={
                     cmd.active
@@ -456,7 +577,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 {/* Content */}
                 <div className="flex-1 overflow-hidden">
                   <div className="flex items-center gap-2">
-                    <span className="text-text truncate text-sm font-medium">{cmd.title}</span>
+                    <span className="text-text min-w-0 truncate text-sm font-medium">{cmd.title}</span>
                     {cmd.badge !== undefined && (
                       <span className="bg-fill-tertiary text-text-secondary rounded-full px-2 py-0.5 text-xs">
                         {cmd.badge}
@@ -476,19 +597,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Footer */}
-        <div className="border-accent/20 relative border-t px-4 py-2">
+        <div className="border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-4 py-3">
           <div className="text-text-secondary flex items-center justify-between text-xs">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <kbd className="border-accent/20 bg-accent/5 rounded border px-1.5 py-0.5 font-mono">↑↓</kbd>
-                Navigate
-              </span>
-              <span className="flex items-center gap-1">
-                <kbd className="border-accent/20 bg-accent/5 rounded border px-1.5 py-0.5 font-mono">↵</kbd>
-                Select
-              </span>
-            </div>
-            {filteredCommands.length > 0 && <span>{filteredCommands.length} results</span>}
+            <span>{resultSummary}</span>
+            {hasFilters && <span>{t('action.search.active-count', { count: activeFilterCount })}</span>}
           </div>
         </div>
       </div>

@@ -111,18 +111,15 @@ export const Slider = ({
         onPointerDown={handlePointerDown}
       >
         {/* 背景轨道 */}
-        <div
-          ref={trackRef}
-          className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full bg-neutral-200 dark:bg-neutral-700"
-        >
+        <div ref={trackRef} className="bg-fill-secondary absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full">
           {/* 自动档区域指示 */}
-          <div className="absolute top-0 left-0 h-full w-[12%] rounded-l-full bg-green-100 dark:bg-green-900/50" />
+          <div className="bg-fill-tertiary absolute top-0 left-0 h-full w-[12%] rounded-l-full" />
 
           {/* 激活区域 */}
           <div
             className={clsxm(
               'absolute top-0 h-full rounded-full transition-all duration-150 max-w-full',
-              value === 'auto' ? 'bg-green-500' : 'bg-accent',
+              value === 'auto' ? 'bg-accent/70' : 'bg-accent',
             )}
             style={{
               width: `${Math.max(position, 5)}%`,
@@ -136,7 +133,7 @@ export const Slider = ({
           className={clsxm(
             'absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-lg transition-all duration-150',
             isDragging ? 'scale-110' : 'hover:scale-105',
-            value === 'auto' ? 'bg-green-500' : 'bg-accent',
+            value === 'auto' ? 'bg-accent/80' : 'bg-accent',
             disabled && 'cursor-not-allowed',
           )}
           style={{
@@ -147,7 +144,7 @@ export const Slider = ({
         {/* 数值刻度 */}
         <div className="text-text-secondary absolute top-full mt-1 flex w-full text-xs">
           <div className="w-[15%] text-left">
-            <span className={clsxm('transition-colors', value === 'auto' && 'font-medium text-green-500')}>
+            <span className={clsxm('transition-colors', value === 'auto' && 'text-accent font-medium')}>
               {finalAutoLabel}
             </span>
           </div>

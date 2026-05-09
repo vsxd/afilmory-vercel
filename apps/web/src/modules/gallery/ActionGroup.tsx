@@ -33,12 +33,12 @@ export const ActionGroup = () => {
         onClick={() => {
           setCommandPaletteOpen(true)
         }}
-        className="relative h-10 min-w-10 rounded-full border-0 bg-gray-100 px-3 transition-all duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+        className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary relative h-10 min-w-10 rounded-full border px-3 transition-all duration-200"
         title={t('action.search.unified.title')}
       >
-        <i className="i-mingcute-search-line text-base text-gray-600 dark:text-gray-300" />
+        <i className="i-mingcute-search-line text-text-secondary text-base" />
         {filterCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-medium text-white">
+          <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-white shadow-sm">
             {filterCount}
           </span>
         )}
@@ -49,10 +49,10 @@ export const ActionGroup = () => {
         variant="ghost"
         size="sm"
         onClick={() => navigate('/explore')}
-        className="h-10 w-10 rounded-full border-0 bg-gray-100 transition-all duration-200 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+        className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary h-10 w-10 rounded-full border transition-all duration-200"
         title={t('action.map.explore')}
       >
-        <i className="i-mingcute-map-pin-line text-base text-gray-600 dark:text-gray-300" />
+        <i className="i-mingcute-map-pin-line text-text-secondary text-base" />
       </Button>
 
       {/* 视图设置按钮（合并排序和列数） */}
@@ -60,6 +60,7 @@ export const ActionGroup = () => {
         icon="i-mingcute-layout-grid-line"
         title={t('action.view.title')}
         badge={hasViewCustomization ? '●' : undefined}
+        contentClassName="bg-material-thick border-fill-tertiary w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border p-0 shadow-2xl backdrop-blur-[120px]"
       >
         <ViewPanel />
       </ResponsiveActionButton>

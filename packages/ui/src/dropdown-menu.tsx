@@ -55,15 +55,9 @@ const DropdownMenuContent = ({
         ref={ref}
         sideOffset={sideOffset}
         className={clsxm(
-          'backdrop-blur-2xl text-text z-60 min-w-32 overflow-hidden rounded-xl p-1 relative border border-accent/20',
+          'bg-material-thick border-fill-tertiary text-text z-60 relative min-w-32 overflow-hidden rounded-2xl border p-1 shadow-2xl backdrop-blur-[120px]',
           className,
         )}
-        style={{
-          backgroundImage:
-            'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
-          boxShadow:
-            '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
-        }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
