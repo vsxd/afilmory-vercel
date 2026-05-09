@@ -426,6 +426,9 @@ afilmory/
 │   ├── webgl-viewer/          # 🖼️ WebGL viewer
 │   ├── data/                  # 📊 Shared types and manifest parsing
 │   └── ui/                    # 🎨 Shared UI primitives and hooks
+├── docs/
+│   ├── assets/                # 🖼️ README images
+│   └── rss-exif-extension.md  # 📡 RSS EXIF extension spec
 ├── generated/                 # 📄 Generated manifest output
 ├── site.config.ts             # ⚙️ Site defaults
 ├── site.config.build.ts       # ⚙️ Build-time config injection
@@ -516,4 +519,3 @@ See [LICENSE](LICENSE) for details.
 <p align="center">
   <sub>If this project helps you, please consider giving it a ⭐️ on GitHub!</sub>
 </p>
-

@@ -424,6 +424,9 @@ afilmory/
 │   ├── webgl-viewer/          # 🖼️ WebGL 查看器
 │   ├── data/                  # 📊 共享类型与 manifest 解析
 │   └── ui/                    # 🎨 共享 UI 基元与 hooks
+├── docs/
+│   ├── assets/                # 🖼️ README 图片
+│   └── rss-exif-extension.md  # 📡 RSS EXIF 扩展规范
 ├── generated/                 # 📄 构建生成的 manifest 输出
 ├── site.config.ts             # ⚙️ 站点默认配置
 ├── site.config.build.ts       # ⚙️ 构建时配置注入
@@ -513,4 +516,3 @@ export const siteConfig: SiteConfig = {
 <p align="center">
   <sub>如果这个项目对你有帮助，请给个 ⭐️ Star 支持一下！</sub>
 </p>
-

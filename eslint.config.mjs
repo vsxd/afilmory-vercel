@@ -11,7 +11,6 @@ const rootIgnores = globalIgnores([
   'apps/ssr/src/index.html.ts',
   'apps/ssr/public/**',
   'apps/web/public/**',
-  'packages/data/src/photos-manifest.json',
   'packages/webgl-viewer/bump.config.js',
   'packages/webgl-viewer/vite.config.js',
   'packages/webgl-viewer/src/DebugInfo.js',
@@ -136,7 +135,7 @@ const hyobanConfig = await defineConfig(
   },
 
   // Redundant but harmless: keep a local ignore in case this block is used standalone somewhere
-  globalIgnores(['apps/ssr/src/index.html.ts', 'apps/ssr/public/**', 'apps/web/public/**', 'packages/data/src/photos-manifest.json']),
+  globalIgnores(['apps/ssr/src/index.html.ts', 'apps/ssr/public/**', 'apps/web/public/**']),
 )
 
 export default [
