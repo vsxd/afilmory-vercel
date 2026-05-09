@@ -10,13 +10,15 @@
     "url": "https://github.com/vsxd/afilmory-vercel"
   },
   "scripts": {
+    "audit:prod": "pnpm audit --registry=https://registry.npmjs.org --prod --audit-level=high",
     "build": "pnpm exec tsx apps/web/scripts/precheck.ts && pnpm build:packages && pnpm build:web",
     "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
     "build:packages": "pnpm --filter @afilmory/builder build && pnpm --filter @afilmory/webgl-viewer build",
     "build:web": "pnpm exec turbo run build --filter=@afilmory/web",
     "dev": "pnpm --filter @afilmory/web dev",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "lint": "eslint --fix",
+    "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/root",
+    "lint:fix": "eslint . --fix",
     "prepare": "simple-git-hooks",
     "preview": "pnpm --filter @afilmory/web serve",
     "test": "pnpm exec turbo run test",

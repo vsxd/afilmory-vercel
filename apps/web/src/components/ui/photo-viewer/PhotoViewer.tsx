@@ -31,6 +31,19 @@ const viewerToolbarButtonClassName =
 const viewerNavButtonClassName =
   'bg-material-medium absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,opacity,transform] duration-200 group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40'
 
+const isEditableKeyboardTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false
+
+  if (target.isContentEditable) return true
+
+  const tagName = target.tagName.toLowerCase()
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
+const hasNestedKeyboardOverlay = (): boolean => {
+  return document.querySelector('[data-photo-viewer-nested-overlay]') !== null
+}
+
 interface PhotoViewerProps {
   photos: PhotoManifest[]
   currentIndex: number
@@ -124,11 +137,35 @@ export const PhotoViewer = ({
     setCurrentBlobSrc(blobSrc)
   }, [])
 
+  const handleSwiperReady = useCallback(
+    (swiper: SwiperType) => {
+      swiperRef.current = swiper
+      // 初始化时确保触摸滑动是启用的
+      swiper.allowTouchMove = !isImageZoomed
+    },
+    [isImageZoomed],
+  )
+
+  const handleSlideChange = useCallback(
+    (swiper: SwiperType) => {
+      onIndexChange(swiper.activeIndex)
+    },
+    [onIndexChange],
+  )
+
   // 键盘导航
   useEffect(() => {
     if (!isOpen) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || isEditableKeyboardTarget(event.target)) {
+        return
+      }
+
+      if (hasNestedKeyboardOverlay()) {
+        return
+      }
+
       switch (event.key) {
         case 'ArrowLeft': {
           event.preventDefault()
@@ -152,7 +189,7 @@ export const PhotoViewer = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, handlePrevious, handleNext, onClose, showExifPanel])
+  }, [isOpen, handlePrevious, handleNext, onClose])
 
   if (!currentPhoto) return null
 
@@ -282,14 +319,8 @@ export const PhotoViewer = ({
                     slidesPerView={1}
                     initialSlide={currentIndex}
                     virtual
-                    onSwiper={(swiper) => {
-                      swiperRef.current = swiper
-                      // 初始化时确保触摸滑动是启用的
-                      swiper.allowTouchMove = !isImageZoomed
-                    }}
-                    onSlideChange={(swiper) => {
-                      onIndexChange(swiper.activeIndex)
-                    }}
+                    onSwiper={handleSwiperReady}
+                    onSlideChange={handleSlideChange}
                     className="h-full w-full"
                     style={{ touchAction: isMobile ? 'pan-x' : 'pan-y' }}
                   >

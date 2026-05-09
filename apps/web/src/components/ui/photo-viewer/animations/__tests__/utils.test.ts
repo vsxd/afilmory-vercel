@@ -9,7 +9,7 @@ describe('photo viewer transition utilities', () => {
     document.documentElement.style.fontSize = ''
   })
 
-  it('matches the viewer fit baseline so entry thumbnails do not snap smaller after the transition', () => {
+  it('keeps entry thumbnails aligned with the viewer fit baseline after the transition', () => {
     document.documentElement.style.fontSize = '16px'
 
     const viewportRect = new DOMRect(0, 0, 1600, 1000)

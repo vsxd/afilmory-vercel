@@ -39,6 +39,9 @@ function isAbortLikeError(error: unknown): boolean {
 export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
+  const embedPhotoId = encodeURIComponent(photo.id)
+  const embedWidth = Number.isFinite(photo.width) && photo.width > 0 ? photo.width : 1
+  const embedHeight = Number.isFinite(photo.height) && photo.height > 0 ? photo.height : 1
 
   // 社交媒体分享选项
   const socialOptions: SocialShareOption[] = [
@@ -210,6 +213,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
               asChild
             >
               <m.div
+                data-photo-viewer-nested-overlay=""
                 initial={{ opacity: 0, scale: 0.95, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -291,8 +295,8 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                           className="text-text-secondary font-mono text-xs break-all whitespace-pre select-all"
                         >
                           {`<iframe
-  src="${siteConfig.url.replace(/\/$/, '')}/share/iframe?id=${photo.id}"
-  style="width: 100%; aspect-ratio: ${photo.width} / ${photo.height}"
+  src="${siteConfig.url.replace(/\/$/, '')}/share/iframe?id=${embedPhotoId}"
+  style="width: 100%; aspect-ratio: ${embedWidth} / ${embedHeight}"
   allowTransparency
   sandbox="allow-scripts allow-same-origin allow-popups"
 />`}

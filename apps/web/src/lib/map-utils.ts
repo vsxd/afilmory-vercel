@@ -5,6 +5,10 @@ import { GPSDirection } from '~/types/map'
 
 const KM_PER_LATITUDE_DEGREE = 111.32
 
+const isGpsAltitudeBelowSeaLevel = (ref: PickedExif['GPSAltitudeRef'] | string | null | undefined): boolean => {
+  return ref === 1 || ref === 'Below Sea Level'
+}
+
 export function normalizeLongitude(longitude: number): number {
   const normalized = ((((longitude + 180) % 360) + 360) % 360) - 180
 
@@ -67,7 +71,7 @@ export function convertExifGPSToDecimal(exif: PickedExif | null): {
 
     if (exif.GPSAltitude && typeof exif.GPSAltitude === 'number') {
       altitude = exif.GPSAltitude
-      altitudeRef = exif.GPSAltitudeRef === 'Below Sea Level' ? 'Below Sea Level' : 'Above Sea Level'
+      altitudeRef = isGpsAltitudeBelowSeaLevel(exif.GPSAltitudeRef) ? 'Below Sea Level' : 'Above Sea Level'
 
       // Apply altitude reference
       if (altitudeRef === 'Below Sea Level') {

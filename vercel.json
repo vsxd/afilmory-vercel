@@ -1,7 +1,7 @@
 {
   "buildCommand": "sh scripts/build-static.sh",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
   "rewrites": [
     {

@@ -34,7 +34,7 @@ export const ExifPanel: FC<{
 }> = ({ currentPhoto, exifData, onClose, visible = true }) => {
   const { t } = useTranslation()
   const isMobile = useMobile()
-  const formattedExifData = formatExifData(exifData)
+  const formattedExifData = useMemo(() => formatExifData(exifData), [exifData])
 
   // Compute decimal GPS coordinates from raw EXIF data
   const gpsData = useMemo(() => convertExifGPSToDecimal(exifData), [exifData])

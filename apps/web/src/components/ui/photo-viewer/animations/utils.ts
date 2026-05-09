@@ -3,7 +3,7 @@ import type { PhotoManifest } from '~/types/photo'
 import type { AnimationFrameRect } from './types'
 
 export const DESKTOP_EXIF_PANEL_WIDTH_REM = 20
-export const PHOTO_VIEWER_FIT_SCALE = 0.9
+export const PHOTO_VIEWER_FIT_SCALE = 1
 
 const THUMBNAIL_SIZE = {
   mobile: 48,

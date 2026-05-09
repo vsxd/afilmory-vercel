@@ -165,6 +165,56 @@ const processFujiRecipe = (recipe: FujiRecipe): any => {
   return processed
 }
 
+const normalizeTimeOffset = (offset: string | null | undefined): string | null => {
+  const trimmed = offset?.trim()
+  if (!trimmed) return null
+  if (trimmed === 'Z') return trimmed
+
+  const match = /^([+-])(\d{2}):?(\d{2})$/.exec(trimmed)
+  if (!match) return null
+
+  return `${match[1]}${match[2]}:${match[3]}`
+}
+
+const parseExifDateTime = (value: string | null | undefined, offset?: string | null): Date | null => {
+  const trimmed = value?.trim()
+  if (!trimmed) return null
+
+  const exifMatch = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\s*(Z|[+-]\d{2}:?\d{2}))?$/.exec(trimmed)
+
+  if (exifMatch) {
+    const [, year, month, day, hour, minute, second, inlineOffset] = exifMatch
+    const normalizedOffset = normalizeTimeOffset(inlineOffset || offset)
+    const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}${normalizedOffset ?? ''}`)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const parsedDate = new Date(trimmed)
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+}
+
+const formatGpsCoordinate = (
+  value: string | number | null | undefined,
+  ref: string | null | undefined,
+): string | null => {
+  if (value === null || value === undefined || value === '') return null
+
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return ref ? `${value}° ${ref}` : `${value}°`
+  }
+
+  const direction = ref === 'S' || ref === 'South' || ref === 'W' || ref === 'West' ? -1 : 1
+  const signedValue = direction === -1 && numericValue > 0 ? -numericValue : numericValue
+  const formattedValue = Number.isInteger(signedValue) ? String(signedValue) : String(Number(signedValue.toFixed(6)))
+
+  return ref ? `${formattedValue}° ${ref}` : `${formattedValue}°`
+}
+
+const isGpsAltitudeBelowSeaLevel = (ref: PickedExif['GPSAltitudeRef'] | string | null | undefined): boolean => {
+  return ref === 1 || ref === 'Below Sea Level'
+}
+
 export const formatExifData = (exif: PickedExif | null) => {
   if (!exif) return null
 
@@ -220,13 +270,13 @@ export const formatExifData = (exif: PickedExif | null) => {
 
   // 拍摄时间
   const dateTime: string | null = (() => {
-    return formatDateTime(new Date(exif.DateTimeOriginal || ''))
+    return formatDateTime(parseExifDateTime(exif.DateTimeOriginal, exif.OffsetTimeOriginal || exif.OffsetTime))
   })()
 
   // 数字化时间
   const dateTimeDigitized: string | null = (() => {
     if (!exif.DateTimeDigitized) return null
-    return formatDateTime(new Date(exif.DateTimeDigitized))
+    return formatDateTime(parseExifDateTime(exif.DateTimeDigitized, exif.OffsetTimeDigitized || exif.OffsetTime))
   })()
 
   // 时间偏移
@@ -282,13 +332,13 @@ export const formatExifData = (exif: PickedExif | null) => {
   // 色彩空间 - with translation
   const colorSpace = translateColorSpace(exif.ColorSpace || null)
 
-  const GPSAltitudeIsAboveSeaLevel = exif.GPSAltitudeRef === 'Above Sea Level'
+  const GPSAltitudeIsAboveSeaLevel = !isGpsAltitudeBelowSeaLevel(exif.GPSAltitudeRef)
 
   // GPS 信息
   const gpsInfo = {
     altitude: exif.GPSAltitude ? `${GPSAltitudeIsAboveSeaLevel ? '' : '-'}${exif.GPSAltitude}` : null,
-    latitude: exif.GPSLatitude ? `${exif.GPSLatitude}° ${exif.GPSLatitudeRef}` : null,
-    longitude: exif.GPSLongitude ? `${exif.GPSLongitude}° ${exif.GPSLongitudeRef}` : null,
+    latitude: formatGpsCoordinate(exif.GPSLatitude, exif.GPSLatitudeRef),
+    longitude: formatGpsCoordinate(exif.GPSLongitude, exif.GPSLongitudeRef),
   }
 
   const exposureProgram = translateExposureProgram(exif.ExposureProgram || null)

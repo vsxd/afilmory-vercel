@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": false,
+      "groupName": "npm minor and patch updates"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["sharp", "exiftool-vendored", "heic-to", "heic-convert", "@aws-sdk/**"],
+      "labels": ["dependencies", "photo-pipeline"]
+    }
+  ]
+}
