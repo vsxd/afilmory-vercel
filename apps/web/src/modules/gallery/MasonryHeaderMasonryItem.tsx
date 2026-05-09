@@ -8,6 +8,7 @@ import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { photoLoader } from '~/data-runtime/photo-loader'
 import { useContextPhotos } from '~/hooks/usePhotoViewer'
+import { MageLens } from '~/icons'
 import { convertExifGPSToDecimal } from '~/lib/map-utils'
 import type { PhotoManifest } from '~/types/photo'
 
@@ -100,14 +101,17 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
       ...gallerySetting.selectedTags.map((tag) => ({
         id: `tag-${tag}`,
         label: tag,
+        icon: null,
       })),
       ...gallerySetting.selectedCameras.map((camera) => ({
         id: `camera-${camera}`,
         label: camera,
+        icon: 'camera' as const,
       })),
       ...gallerySetting.selectedLenses.map((lens) => ({
         id: `lens-${lens}`,
         label: lens,
+        icon: 'lens' as const,
       })),
       ...(gallerySetting.selectedTags.length > 1
         ? [
@@ -115,6 +119,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               id: `tag-mode-${gallerySetting.tagFilterMode}`,
               label:
                 gallerySetting.tagFilterMode === 'intersection' ? t('action.tag.match.all') : t('action.tag.match.any'),
+              icon: null,
             },
           ]
         : []),
@@ -207,12 +212,19 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         <ActionGroup />
       </div>
 
-      <div className="border-fill-secondary border-t px-6 pt-4 pb-5">
+      <div
+        className={clsxm(
+          'border-fill-secondary border-t px-6',
+          hasFilters ? 'pt-4 pb-5' : 'pt-3 pb-3.5 sm:pt-3.5 sm:pb-4',
+        )}
+      >
         {hasFilters ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-text-secondary text-xs font-medium">{t('gallery.library.filters.title')}</span>
-              <span className="text-text text-xs font-medium tabular-nums">
+              <span className="text-text-secondary text-[10px] leading-none font-medium sm:text-xs">
+                {t('gallery.library.filters.title')}
+              </span>
+              <span className="text-text-secondary text-[10px] leading-none font-medium tabular-nums sm:text-xs">
                 {t('gallery.library.filters.subtitle', { count: visiblePhotoCount })}
               </span>
             </div>
@@ -221,10 +233,14 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               {filterChips.map((chip) => (
                 <span
                   key={chip.id}
-                  className="bg-fill-secondary/50 text-text-secondary max-w-full min-w-0 truncate rounded-full px-2.5 py-1 text-[11px] leading-5"
+                  className="bg-fill-secondary/50 text-text-secondary inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] leading-4 sm:px-2.5 sm:py-1 sm:text-[11px] sm:leading-5"
                   title={chip.label}
                 >
-                  {chip.label}
+                  {chip.icon === 'camera' && (
+                    <i className="i-mingcute-camera-line shrink-0 text-[11px] sm:text-xs" aria-hidden="true" />
+                  )}
+                  {chip.icon === 'lens' && <MageLens className="shrink-0 text-[11px] sm:text-xs" aria-hidden="true" />}
+                  <span className="min-w-0 truncate">{chip.label}</span>
                 </span>
               ))}
             </div>
@@ -232,9 +248,11 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         ) : (
           <div className="divide-fill-secondary grid grid-cols-4 divide-x text-center">
             {libraryStats.map((stat) => (
-              <div key={stat.id} className="min-w-0 px-2.5 first:pl-0 last:pr-0">
-                <span className="text-text block text-base leading-none font-semibold tabular-nums">{stat.value}</span>
-                <span className="text-text-tertiary mt-1.5 block truncate text-[10px] leading-none font-medium">
+              <div key={stat.id} className="min-w-0 px-2 first:pl-0 last:pr-0 sm:px-2.5">
+                <span className="text-text block text-xs leading-none font-medium tabular-nums sm:text-sm">
+                  {stat.value}
+                </span>
+                <span className="text-text-tertiary mt-1 block truncate text-[8px] leading-none font-medium sm:text-[9px]">
                   {stat.label}
                 </span>
               </div>
