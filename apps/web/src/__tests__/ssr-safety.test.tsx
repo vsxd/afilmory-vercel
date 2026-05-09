@@ -25,7 +25,6 @@ vi.mock('jotai', async (importOriginal) => {
       selectedTags: [],
       selectedCameras: [],
       selectedLenses: [],
-      selectedRatings: null,
       tagFilterMode: 'union',
     }),
     useSetAtom: () => vi.fn(),

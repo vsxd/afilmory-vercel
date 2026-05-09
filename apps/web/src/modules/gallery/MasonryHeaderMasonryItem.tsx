@@ -43,8 +43,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
     gallerySetting.selectedCameras.length > 0 ||
-    gallerySetting.selectedLenses.length > 0 ||
-    gallerySetting.selectedRatings !== null
+    gallerySetting.selectedLenses.length > 0
 
   const libraryStats = useMemo(() => {
     const photos = photoLoader.getPhotos()
@@ -101,14 +100,6 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         id: `lens-${lens}`,
         label: lens,
       })),
-      ...(gallerySetting.selectedRatings !== null
-        ? [
-            {
-              id: `rating-${gallerySetting.selectedRatings}`,
-              label: t('gallery.library.filters.rating', { rating: gallerySetting.selectedRatings }),
-            },
-          ]
-        : []),
       ...(gallerySetting.selectedTags.length > 1
         ? [
             {
@@ -122,7 +113,6 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
     [
       gallerySetting.selectedCameras,
       gallerySetting.selectedLenses,
-      gallerySetting.selectedRatings,
       gallerySetting.selectedTags,
       gallerySetting.tagFilterMode,
       t,

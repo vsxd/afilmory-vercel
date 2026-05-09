@@ -112,7 +112,6 @@ const pickKeys: Array<keyof Tags | (string & {})> = [
   'ScaleFactor35efl',
   'ShutterSpeed',
   'LightValue',
-  'Rating',
   // GPS
   'GPSAltitude',
   'GPSCoordinates',

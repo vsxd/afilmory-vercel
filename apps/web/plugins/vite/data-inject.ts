@@ -16,10 +16,45 @@ function resolveEmbedPreference(command: 'serve' | 'build'): boolean {
   return command === 'serve'
 }
 
+function stripLegacyRatingFromPhoto(photo: unknown): unknown {
+  if (!photo || typeof photo !== 'object') {
+    return photo
+  }
+
+  const {exif} = (photo as { exif?: unknown })
+  if (!exif || typeof exif !== 'object' || !('Rating' in exif)) {
+    return photo
+  }
+
+  const nextExif = { ...(exif as Record<string, unknown>) }
+  delete nextExif.Rating
+
+  return {
+    ...(photo as Record<string, unknown>),
+    exif: nextExif,
+  }
+}
+
+function stripLegacyRatingFromManifest(input: unknown): unknown {
+  if (!input || typeof input !== 'object') {
+    return input
+  }
+
+  const manifest = input as { data?: unknown }
+  if (!Array.isArray(manifest.data)) {
+    return input
+  }
+
+  return {
+    ...(input as Record<string, unknown>),
+    data: manifest.data.map(stripLegacyRatingFromPhoto),
+  }
+}
+
 function getManifestContent(command: 'serve' | 'build'): string {
   try {
     const content = readFileSync(MANIFEST_PATH, 'utf-8')
-    return content
+    return JSON.stringify(stripLegacyRatingFromManifest(JSON.parse(content)))
   } catch (error) {
     if (command === 'build') {
       throw new Error(

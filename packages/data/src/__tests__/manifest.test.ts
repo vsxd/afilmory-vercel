@@ -91,5 +91,25 @@ describe('manifest', () => {
       const currentManifest = parseManifest({ version: CURRENT_MANIFEST_VERSION, data: [] })
       expect(currentManifest.version).toBe(CURRENT_MANIFEST_VERSION)
     })
+
+    it('should strip legacy rating metadata from photo exif', () => {
+      const input = {
+        version: CURRENT_MANIFEST_VERSION,
+        data: [
+          {
+            id: 'photo-1',
+            exif: {
+              Make: 'Sony',
+              Rating: 5,
+            },
+          },
+        ],
+      }
+
+      const result = parseManifest(input)
+
+      expect(result.data[0]?.exif).toEqual({ Make: 'Sony' })
+      expect(input.data[0]?.exif).toHaveProperty('Rating', 5)
+    })
   })
 })

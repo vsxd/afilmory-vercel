@@ -19,10 +19,7 @@ export const ActionGroup = () => {
 
   // 计算过滤器数量
   const filterCount =
-    gallerySetting.selectedTags.length +
-    gallerySetting.selectedCameras.length +
-    gallerySetting.selectedLenses.length +
-    (gallerySetting.selectedRatings !== null ? 1 : 0)
+    gallerySetting.selectedTags.length + gallerySetting.selectedCameras.length + gallerySetting.selectedLenses.length
 
   return (
     <div className="flex items-center justify-center gap-3">

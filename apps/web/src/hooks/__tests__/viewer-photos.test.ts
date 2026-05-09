@@ -22,7 +22,6 @@ const defaultGallerySetting: GallerySetting = {
   selectedTags: [],
   selectedCameras: [],
   selectedLenses: [],
-  selectedRatings: null,
   tagFilterMode: 'union',
   columns: 'auto',
 }

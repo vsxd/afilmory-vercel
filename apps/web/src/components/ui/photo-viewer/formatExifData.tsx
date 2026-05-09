@@ -282,9 +282,6 @@ export const formatExifData = (exif: PickedExif | null) => {
   // 色彩空间 - with translation
   const colorSpace = translateColorSpace(exif.ColorSpace || null)
 
-  // 评分
-  const rating = exif.Rating
-
   const GPSAltitudeIsAboveSeaLevel = exif.GPSAltitudeRef === 'Above Sea Level'
 
   // GPS 信息
@@ -353,7 +350,6 @@ export const formatExifData = (exif: PickedExif | null) => {
 
     fujiRecipe: exif.FujiRecipe ? processFujiRecipe(exif.FujiRecipe) : null,
     exposureProgram,
-    rating,
   }
 }
 

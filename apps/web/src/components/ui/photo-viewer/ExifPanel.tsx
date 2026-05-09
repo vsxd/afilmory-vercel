@@ -117,10 +117,6 @@ export const ExifPanel: FC<{
               {formattedExifData?.colorSpace && (
                 <Row label={t('exif.color.space')} value={formattedExifData.colorSpace} />
               )}
-              {formattedExifData?.rating && formattedExifData.rating > 0 ? (
-                <Row label={t('exif.rating')} value={'★'.repeat(formattedExifData.rating)} />
-              ) : null}
-
               {formattedExifData?.dateTime && <Row label={t('exif.capture.time')} value={formattedExifData.dateTime} />}
 
               {formattedExifData?.zone && <Row label={t('exif.time.zone')} value={formattedExifData.zone} />}

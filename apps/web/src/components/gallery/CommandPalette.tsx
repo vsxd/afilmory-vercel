@@ -48,10 +48,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const listRef = useRef<HTMLDivElement>(null)
 
   const activeFilterCount =
-    gallerySetting.selectedTags.length +
-    gallerySetting.selectedCameras.length +
-    gallerySetting.selectedLenses.length +
-    (gallerySetting.selectedRatings !== null ? 1 : 0)
+    gallerySetting.selectedTags.length + gallerySetting.selectedCameras.length + gallerySetting.selectedLenses.length
 
   const hasFilters = activeFilterCount > 0
 
@@ -73,7 +70,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       selectedTags: [],
       selectedCameras: [],
       selectedLenses: [],
-      selectedRatings: null,
       tagFilterMode: 'union',
     }))
   }, [setGallerySetting])
@@ -110,29 +106,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             selectedLenses: prev.selectedLenses.filter((selectedLens) => selectedLens !== lens),
           })),
       })),
-      ...(gallerySetting.selectedRatings !== null
-        ? [
-            {
-              id: `rating-${gallerySetting.selectedRatings}`,
-              label: t('action.rating.filter-above', { rating: gallerySetting.selectedRatings }),
-              icon: 'i-mingcute-star-line',
-              onRemove: () =>
-                setGallerySetting((prev) => ({
-                  ...prev,
-                  selectedRatings: null,
-                })),
-            },
-          ]
-        : []),
     ],
-    [
-      gallerySetting.selectedCameras,
-      gallerySetting.selectedLenses,
-      gallerySetting.selectedRatings,
-      gallerySetting.selectedTags,
-      setGallerySetting,
-      t,
-    ],
+    [gallerySetting.selectedCameras, gallerySetting.selectedLenses, gallerySetting.selectedTags, setGallerySetting],
   )
 
   // Reset state when opened
@@ -245,26 +220,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       })
     }
 
-    // Filter commands - Ratings
-    for (let rating = 1; rating <= 5; rating++) {
-      const isActive = gallerySetting.selectedRatings === rating
-      cmds.push({
-        id: `rating-${rating}`,
-        type: 'filter',
-        title: t('action.rating.filter-above', { rating }),
-        subtitle: t('action.rating.filter'),
-        icon: 'i-mingcute-star-line',
-        active: isActive,
-        action: () => {
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedRatings: isActive ? null : rating,
-          }))
-        },
-        keywords: ['rating', 'filter', 'star', rating.toString()],
-      })
-    }
-
     if (hasFilters) {
       cmds.push({
         id: 'clear-filters',
@@ -278,7 +233,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             selectedTags: [],
             selectedCameras: [],
             selectedLenses: [],
-            selectedRatings: null,
             tagFilterMode: 'union',
           }))
         },

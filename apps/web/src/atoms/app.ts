@@ -9,7 +9,6 @@ export interface GallerySetting {
   selectedTags: string[]
   selectedCameras: string[]
   selectedLenses: string[]
-  selectedRatings: number | null
   tagFilterMode: 'union' | 'intersection'
   columns: number | 'auto'
 }
@@ -20,7 +19,6 @@ export const gallerySettingAtom = atom<GallerySetting>({
   selectedTags: [],
   selectedCameras: [],
   selectedLenses: [],
-  selectedRatings: null,
   tagFilterMode: 'union',
   columns: 'auto',
 })

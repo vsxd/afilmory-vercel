@@ -201,9 +201,6 @@ export interface PickedExif {
   MPImageType?: Tags['MPImageType']
   UniformResourceName?: string
 
-  // 评分
-  Rating?: number
-
   // Motion Photo (XMP) related fields
   MotionPhoto?: Tags['MotionPhoto']
   MotionPhotoVersion?: Tags['MotionPhotoVersion']

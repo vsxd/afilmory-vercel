@@ -225,7 +225,6 @@ export const exifCategories = {
     'Composite Image',
     'PrintIM Version',
     'Artist',
-    'Rating',
     'User Comment',
   ],
 } as const

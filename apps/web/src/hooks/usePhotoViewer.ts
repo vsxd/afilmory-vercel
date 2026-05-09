@@ -31,7 +31,6 @@ const filterAndSortPhotos = (
   selectedTags: string[],
   selectedCameras: string[],
   selectedLenses: string[],
-  selectedRatings: number | null,
   sortOrder: 'asc' | 'desc',
   tagFilterMode: 'union' | 'intersection' = 'union',
 ) => {
@@ -40,7 +39,7 @@ const filterAndSortPhotos = (
   // 后续调用时也能获取到正确的数据
   const data = photoLoader.getPhotos()
 
-  // 根据 tags、cameras、lenses 和 ratings 筛选
+  // 根据 tags、cameras 和 lenses 筛选
   let filteredPhotos = data
 
   // Tags 筛选：根据模式进行并集或交集筛选
@@ -73,14 +72,6 @@ const filterAndSortPhotos = (
       const lensMake = photo.exif.LensMake?.trim()
       const lensDisplayName = lensMake ? `${lensMake} ${lensModel}` : lensModel
       return selectedLenses.includes(lensDisplayName)
-    })
-  }
-
-  // Ratings 筛选：照片的评分必须大于等于选中的最小阈值
-  if (selectedRatings !== null) {
-    filteredPhotos = filteredPhotos.filter((photo) => {
-      if (!photo.exif?.Rating) return false
-      return photo.exif.Rating >= selectedRatings
     })
   }
 
@@ -127,7 +118,6 @@ export const getFilteredPhotos = () => {
     currentGallerySetting.selectedTags,
     currentGallerySetting.selectedCameras,
     currentGallerySetting.selectedLenses,
-    currentGallerySetting.selectedRatings,
     currentGallerySetting.sortOrder,
     currentGallerySetting.tagFilterMode,
   )
@@ -146,12 +136,11 @@ export const getViewerSourceMode = (photoId?: string | null) => {
 }
 
 export const usePhotos = () => {
-  const { sortOrder, selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode } =
-    useAtomValue(gallerySettingAtom)
+  const { sortOrder, selectedTags, selectedCameras, selectedLenses, tagFilterMode } = useAtomValue(gallerySettingAtom)
 
   const masonryItems = useMemo(() => {
-    return filterAndSortPhotos(selectedTags, selectedCameras, selectedLenses, selectedRatings, sortOrder, tagFilterMode)
-  }, [sortOrder, selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode])
+    return filterAndSortPhotos(selectedTags, selectedCameras, selectedLenses, sortOrder, tagFilterMode)
+  }, [sortOrder, selectedTags, selectedCameras, selectedLenses, tagFilterMode])
 
   return masonryItems
 }

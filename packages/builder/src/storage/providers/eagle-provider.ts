@@ -47,7 +47,6 @@ export interface EagleImageMetadata {
   url: string
   annotation: string
   modificationTime: number
-  star?: number
   height: number
   width: number
   noThumbnail: boolean

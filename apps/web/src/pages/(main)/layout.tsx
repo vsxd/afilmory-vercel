@@ -74,7 +74,6 @@ const useStateRestoreFromUrl = () => {
     const tagsFromSearchParams = getSearchList(searchParams, 'tags')
     const camerasFromSearchParams = getSearchList(searchParams, 'cameras')
     const lensesFromSearchParams = getSearchList(searchParams, 'lenses')
-    const ratingsFromSearchParams = searchParams.get('rating') ? Number(searchParams.get('rating')) : null
     const tagModeFromSearchParams = searchParams.get('tag_mode') as 'union' | 'intersection' | null
 
     setGallerySetting((prev) => ({
@@ -82,7 +81,6 @@ const useStateRestoreFromUrl = () => {
       selectedTags: tagsFromSearchParams,
       selectedCameras: camerasFromSearchParams,
       selectedLenses: lensesFromSearchParams,
-      selectedRatings: ratingsFromSearchParams,
       tagFilterMode: tagModeFromSearchParams === 'intersection' ? 'intersection' : 'union',
     }))
 
@@ -100,8 +98,7 @@ const useStateRestoreFromUrl = () => {
 
 const useSyncStateToUrl = () => {
   const wasOpenRef = useRef(false)
-  const { selectedTags, selectedCameras, selectedLenses, selectedRatings, sortOrder, tagFilterMode } =
-    useAtomValue(gallerySettingAtom)
+  const { selectedTags, selectedCameras, selectedLenses, sortOrder, tagFilterMode } = useAtomValue(gallerySettingAtom)
   const [_, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -151,7 +148,6 @@ const useSyncStateToUrl = () => {
     selectedTags,
     selectedCameras,
     selectedLenses,
-    selectedRatings,
     sortOrder,
     tagFilterMode,
   ])
@@ -162,14 +158,13 @@ const useSyncStateToUrl = () => {
     const tags = selectedTags.join(',')
     const cameras = selectedCameras.join(',')
     const lenses = selectedLenses.join(',')
-    const rating = selectedRatings?.toString() ?? ''
     const tagMode = tagFilterMode === 'union' ? '' : tagFilterMode
 
     setSearchParams((search) => {
       const currentTags = search.get('tags')
       const currentCameras = search.get('cameras')
       const currentLenses = search.get('lenses')
-      const currentRating = search.get('rating')
+      const hasLegacyRating = search.has('rating')
       const currentTagMode = search.get('tag_mode')
 
       // Check if anything has changed
@@ -177,7 +172,7 @@ const useSyncStateToUrl = () => {
         currentTags === tags &&
         currentCameras === cameras &&
         currentLenses === lenses &&
-        currentRating === rating &&
+        !hasLegacyRating &&
         currentTagMode === tagMode
       ) {
         if (pendingUrlRestoreSearch === location.search) {
@@ -186,7 +181,7 @@ const useSyncStateToUrl = () => {
         return search
       }
 
-      if (pendingUrlRestoreSearch === location.search) {
+      if (pendingUrlRestoreSearch === location.search && !hasLegacyRating) {
         return search
       }
 
@@ -213,12 +208,8 @@ const useSyncStateToUrl = () => {
         newer.delete('lenses')
       }
 
-      // Update rating
-      if (rating) {
-        newer.set('rating', rating)
-      } else {
-        newer.delete('rating')
-      }
+      // Remove legacy rating filters; the static gallery does not support starring.
+      newer.delete('rating')
 
       // Update tag filter mode
       if (tagMode) {
@@ -229,5 +220,5 @@ const useSyncStateToUrl = () => {
 
       return newer
     })
-  }, [location.search, selectedTags, selectedCameras, selectedLenses, selectedRatings, tagFilterMode, setSearchParams])
+  }, [location.search, selectedTags, selectedCameras, selectedLenses, tagFilterMode, setSearchParams])
 }
