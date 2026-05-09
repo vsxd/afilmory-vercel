@@ -10,6 +10,7 @@ import { useShowContextMenu } from '~/atoms/context-menu'
 import { canUseWebGL } from '~/lib/feature'
 
 import { SlidingNumber } from '../number/SlidingNumber'
+import { PHOTO_VIEWER_FIT_SCALE } from './animations/utils'
 import { DOMImageViewer } from './DOMImageViewer'
 import { HDRBadge } from './HDRBadge'
 import {
@@ -24,7 +25,6 @@ import { LivePhotoBadge } from './LivePhotoBadge'
 import { LivePhotoVideo } from './LivePhotoVideo'
 import type { ProgressiveImageProps, WebGLImageViewerRef } from './types'
 
-const PHOTO_VIEWER_FIT_SCALE = 0.9
 const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
   top: '50%',
   left: '50%',

@@ -3,6 +3,7 @@ import type { PhotoManifest } from '~/types/photo'
 import type { AnimationFrameRect } from './types'
 
 export const DESKTOP_EXIF_PANEL_WIDTH_REM = 20
+export const PHOTO_VIEWER_FIT_SCALE = 0.9
 
 const THUMBNAIL_SIZE = {
   mobile: 48,
@@ -76,6 +77,9 @@ export const computeViewerImageFrame = (
     displayHeight = contentHeight
     displayWidth = contentHeight * photoAspect
   }
+
+  displayWidth *= PHOTO_VIEWER_FIT_SCALE
+  displayHeight *= PHOTO_VIEWER_FIT_SCALE
 
   const left = viewportLeft + (contentWidth - displayWidth) / 2
   const top = viewportTop + (contentHeight - displayHeight) / 2
