@@ -111,5 +111,35 @@ describe('manifest', () => {
       expect(result.data[0]?.exif).toEqual({ Make: 'Sony' })
       expect(input.data[0]?.exif).toHaveProperty('Rating', 5)
     })
+
+    it('should preserve malformed photo entries while stripping supported legacy exif fields', () => {
+      const input = {
+        version: CURRENT_MANIFEST_VERSION,
+        data: [
+          null,
+          'not-a-photo',
+          {
+            id: 'photo-1',
+            exif: {
+              Make: 'Sony',
+              Rating: 5,
+            },
+          },
+        ],
+      }
+
+      const result = parseManifest(input)
+
+      expect(result.data).toEqual([
+        null,
+        'not-a-photo',
+        {
+          id: 'photo-1',
+          exif: {
+            Make: 'Sony',
+          },
+        },
+      ])
+    })
   })
 })
