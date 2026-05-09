@@ -38,7 +38,7 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
     >
-      <div className="bg-material-thick border-fill-tertiary rounded-2xl border shadow-2xl backdrop-blur-[120px]">
+      <div className="bg-material-thick border-fill-tertiary rounded-2xl border shadow-xl backdrop-blur-2xl">
         {/* Header Section */}
         <div className="p-5">
           <m.div
@@ -61,8 +61,9 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary relative -top-2 -mb-2 flex size-8 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-all duration-200 ring-inset"
+                  className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary focus-visible:ring-accent/45 relative -top-2 -mb-2 flex size-10 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-[background-color,box-shadow,color,transform] duration-200 ring-inset focus-visible:ring-2"
                   aria-label={t(isExpanded ? 'explore.panel.toggle.collapse' : 'explore.panel.toggle.expand')}
+                  title={t(isExpanded ? 'explore.panel.toggle.collapse' : 'explore.panel.toggle.expand')}
                 >
                   <m.i
                     className="i-mingcute-down-line text-text-secondary text-base"
@@ -141,7 +142,7 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
               </div>
 
               {/* Coverage area calculation */}
-              <div className="bg-gray/5 mt-4 rounded-xl p-3">
+              <div className="bg-fill-vibrant-quinary border-fill-tertiary mt-4 rounded-xl border p-3">
                 <div className="text-text-secondary flex items-center gap-2 text-xs">
                   <i className="i-mingcute-grid-line" />
                   <span className="font-medium">{t('explore.coverage.approx', { area: areaLabel })}</span>

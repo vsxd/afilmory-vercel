@@ -27,7 +27,8 @@ export const ActionButton = ({
     <Button
       variant="ghost"
       size="sm"
-      className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary relative h-10 w-10 rounded-full border transition-all duration-200"
+      className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-10 w-10 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+      aria-label={title}
       title={title}
       onClick={onClick}
       ref={ref}
@@ -100,8 +101,8 @@ export const MobileActionButton = ({
       <ActionButton icon={icon} title={title} badge={badge} onClick={() => onOpenChange(!open)} />
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" />
-          <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex flex-col rounded-t-2xl border-t p-4 shadow-2xl backdrop-blur-[120px]">
+          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm" />
+          <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex flex-col rounded-t-2xl border-t p-4 shadow-xl backdrop-blur-2xl">
             <div className="bg-fill-tertiary mx-auto mb-4 h-1.5 w-12 flex-shrink-0 rounded-full" />
             {children}
           </Drawer.Content>

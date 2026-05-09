@@ -404,11 +404,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center lg:items-start lg:pt-[12vh]" onClick={onClose}>
       {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-2xl transition-all duration-200" />
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-xl transition-all duration-200" />
 
       {/* Command Palette Panel */}
       <div
-        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary lg:slide-in-from-top-4 relative flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl rounded-b-none border shadow-2xl backdrop-blur-[120px] duration-200 lg:max-h-[72vh] lg:rounded-2xl!"
+        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary lg:slide-in-from-top-4 relative flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl rounded-b-none border shadow-xl backdrop-blur-2xl duration-200 lg:max-h-[72vh] lg:rounded-2xl!"
         style={{
           boxShadow:
             '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
@@ -440,7 +440,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={handleReset}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-200"
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-10 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
               aria-label={t('action.search.reset')}
               title={t('action.search.reset')}
             >
@@ -449,7 +449,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={onClose}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent flex size-9 shrink-0 items-center justify-center rounded-full border transition-all duration-200"
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-10 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
               aria-label={t('common.close')}
               title={t('common.close')}
             >
@@ -457,7 +457,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             </button>
           </div>
 
-          <div className="bg-fill-vibrant-quinary border-fill-tertiary flex h-12 items-center gap-3 rounded-xl border px-3">
+          <div className="bg-fill-vibrant-quinary border-fill-tertiary focus-within:border-accent/50 focus-within:bg-fill-secondary/70 focus-within:ring-accent/20 flex h-12 items-center gap-3 rounded-xl border px-3 transition-[background-color,border-color,box-shadow] duration-200 focus-within:ring-2">
             <i className="i-mingcute-search-line text-text-tertiary shrink-0 text-lg" />
             <input
               ref={inputRef}
@@ -482,7 +482,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-text-secondary hover:text-accent text-xs font-medium transition-colors"
+                className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2"
               >
                 {t('action.search.clear')}
               </button>
@@ -493,7 +493,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                   key={chip.id}
                   type="button"
                   onClick={chip.onRemove}
-                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ring-inset"
+                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 focus-visible:ring-accent/45 flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ring-inset focus-visible:ring-2"
+                  aria-label={`${t('action.search.clear')} ${chip.label}`}
                   title={chip.label}
                 >
                   <i className={clsxm(chip.icon, 'shrink-0 text-sm')} />
@@ -515,11 +516,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               type="button"
               onClick={() => updateTagFilterMode('union')}
               className={clsxm(
-                'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
+                'focus-visible:ring-accent/45 rounded-full px-3 py-1 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset',
                 gallerySetting.tagFilterMode === 'union'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text',
               )}
+              aria-pressed={gallerySetting.tagFilterMode === 'union'}
             >
               {t('action.tag.match.any')}
             </button>
@@ -527,11 +529,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               type="button"
               onClick={() => updateTagFilterMode('intersection')}
               className={clsxm(
-                'rounded-full px-3 py-1 text-xs font-medium transition-all duration-200',
+                'focus-visible:ring-accent/45 rounded-full px-3 py-1 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset',
                 gallerySetting.tagFilterMode === 'intersection'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text',
               )}
+              aria-pressed={gallerySetting.tagFilterMode === 'intersection'}
             >
               {t('action.tag.match.all')}
             </button>
@@ -553,7 +556,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 onClick={cmd.action}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsxm(
-                  'command-item group flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200',
+                  'command-item focus-visible:ring-accent/35 group flex w-full items-center gap-3 px-4 py-3 text-left transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset',
                   selectedIndex === index && 'selected',
                 )}
               >

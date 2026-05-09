@@ -4,6 +4,12 @@ import { useMap } from 'react-map-gl/maplibre'
 
 import type { MapControlsProps } from './types'
 
+const controlShellClassName =
+  'bg-material-thick border-fill-tertiary overflow-hidden rounded-xl border shadow-xl backdrop-blur-2xl'
+
+const controlButtonClassName =
+  'group hover:bg-fill-secondary active:bg-fill-tertiary focus-visible:ring-accent/45 focus-visible:ring-offset-background flex h-12 w-12 items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0'
+
 export const MapControls = ({ onGeolocate }: MapControlsProps) => {
   const { current: map } = useMap()
   const { t } = useTranslation()
@@ -62,12 +68,13 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
       transition={{ duration: 0.4, delay: 0.2 }}
     >
       {/* Control Group Container */}
-      <div className="bg-material-thick border-fill-tertiary flex flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-[120px]">
+      <div className={`${controlShellClassName} flex flex-col`}>
         {/* Zoom In */}
         <button
           type="button"
           onClick={handleZoomIn}
-          className="group hover:bg-fill-secondary active:bg-fill-tertiary flex h-12 w-12 items-center justify-center transition-colors"
+          className={controlButtonClassName}
+          aria-label={t('explore.controls.zoom.in')}
           title={t('explore.controls.zoom.in')}
         >
           <i className="i-mingcute-add-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
@@ -80,7 +87,8 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
         <button
           type="button"
           onClick={handleZoomOut}
-          className="group hover:bg-fill-secondary active:bg-fill-tertiary flex h-12 w-12 items-center justify-center transition-colors"
+          className={controlButtonClassName}
+          aria-label={t('explore.controls.zoom.out')}
           title={t('explore.controls.zoom.out')}
         >
           <i className="i-mingcute-minimize-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
@@ -88,11 +96,12 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
       </div>
 
       {/* Compass Button */}
-      <div className="bg-material-thick border-fill-tertiary overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-[120px]">
+      <div className={controlShellClassName}>
         <button
           type="button"
           onClick={handleCompass}
-          className="group hover:bg-fill-secondary active:bg-fill-tertiary flex h-12 w-12 items-center justify-center transition-colors"
+          className={controlButtonClassName}
+          aria-label={t('explore.controls.compass')}
           title={t('explore.controls.compass')}
         >
           <i className="i-mingcute-navigation-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
@@ -100,11 +109,12 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
       </div>
 
       {/* Geolocate Button */}
-      <div className="bg-material-thick border-fill-tertiary overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-[120px]">
+      <div className={controlShellClassName}>
         <button
           type="button"
           onClick={handleGeolocate}
-          className="group hover:bg-fill-secondary active:bg-fill-tertiary flex h-12 w-12 items-center justify-center transition-colors"
+          className={controlButtonClassName}
+          aria-label={t('explore.controls.locate')}
           title={t('explore.controls.locate')}
         >
           <i className="i-mingcute-location-fill text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />

@@ -90,10 +90,11 @@ export const ExifPanel: FC<{
             <button
               type="button"
               aria-label={t('common.close', { defaultValue: 'Close' })}
-              className="glassmorphic-btn border-accent/20 flex size-6 items-center justify-center rounded-full border text-white/70 duration-200 hover:text-white"
+              title={t('common.close', { defaultValue: 'Close' })}
+              className="glassmorphic-btn border-accent/20 focus-visible:ring-accent/45 flex size-10 items-center justify-center rounded-full border text-white/70 transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:text-white focus-visible:ring-2 focus-visible:ring-inset"
               onClick={onClose}
             >
-              <i className="i-mingcute-close-line text-sm" />
+              <i className="i-mingcute-close-line text-base" />
             </button>
           )}
         </div>
@@ -188,7 +189,7 @@ export const ExifPanel: FC<{
                         window.open(`/?tags=${tag}`, '_blank', 'noopener,noreferrer')
                       }}
                       key={tag}
-                      className="glassmorphic-btn border-accent/20 bg-accent/10 inline-flex cursor-pointer items-center rounded-full border px-2 py-1 text-xs text-white/90 backdrop-blur-sm"
+                      className="glassmorphic-btn border-accent/20 bg-accent/10 focus-visible:ring-accent/45 inline-flex cursor-pointer items-center rounded-full border px-2 py-1 text-xs text-white/90 backdrop-blur-sm focus-visible:ring-2"
                     >
                       {tag}
                     </MotionButtonBase>

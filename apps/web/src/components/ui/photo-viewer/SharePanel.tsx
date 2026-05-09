@@ -248,7 +248,8 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       <button
                         key={option.id}
                         type="button"
-                        className="group flex flex-col items-center gap-2"
+                        className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background flex flex-col items-center gap-2 rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2"
+                        aria-label={option.label}
                         onClick={() => handleSocialShare(option.url)}
                       >
                         <div
@@ -299,10 +300,12 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       </div>
                       <button
                         type="button"
-                        className="glassmorphic-btn border-accent/20 bg-accent/5 absolute top-2 right-2 flex size-7 items-center justify-center rounded-md border backdrop-blur-3xl transition-all duration-200"
+                        className="glassmorphic-btn border-accent/20 bg-accent/5 focus-visible:ring-accent/45 absolute top-2 right-2 flex size-9 items-center justify-center rounded-lg border backdrop-blur-2xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+                        aria-label={t('photo.share.copy.embed')}
+                        title={t('photo.share.copy.embed')}
                         onClick={handleCopyEmbedCode}
                       >
-                        <i className="i-mingcute-copy-line size-3.5" />
+                        <i className="i-mingcute-copy-line size-4" />
                       </button>
                     </div>
                   </div>
@@ -322,7 +325,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                         <button
                           key={option.id}
                           type="button"
-                          className="glassmorphic-btn group relative flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 outline-none select-none"
+                          className="glassmorphic-btn focus-visible:ring-accent/45 group relative flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm transition-[background-color,box-shadow,color,transform] duration-200 outline-none select-none focus-visible:ring-2"
                           onClick={() => option.action()}
                         >
                           <div className="flex items-center gap-2">

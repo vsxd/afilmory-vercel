@@ -9,7 +9,7 @@ import { buildPhotoDetailSearch } from '~/lib/return-to'
 import type { PhotoMarkerPinProps } from './types'
 
 export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }: PhotoMarkerPinProps) => {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   const returnTo = `${location.pathname}${location.search}`
 
@@ -22,6 +22,13 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
     onClose?.()
   }
 
+  const handleMarkerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      handleClick()
+    }
+  }
+
   return (
     <Marker key={marker.id} longitude={marker.longitude} latitude={marker.latitude}>
       <HoverCard
@@ -31,7 +38,7 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
       >
         <HoverCardTrigger asChild>
           <m.div
-            className="group relative cursor-pointer"
+            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -42,6 +49,10 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={handleClick}
+            onKeyDown={handleMarkerKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label={marker.photo.title || marker.photo.id}
           >
             {/* Selection ring - 只有选中时显示 */}
             {isSelected && <div className="bg-blue/30 absolute inset-0 -m-2 animate-pulse rounded-full" />}
@@ -85,9 +96,7 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
         </HoverCardTrigger>
 
         <HoverCardContent
-          className={`w-80 overflow-hidden border-white/20 bg-white/95 p-0 backdrop-blur-[120px] dark:bg-black/95 ${
-            isSelected ? 'shadow-2xl' : ''
-          }`}
+          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden border-white/20 bg-white/95 p-0 shadow-xl backdrop-blur-2xl dark:bg-black/95"
           side="top"
           align="center"
           portal={false}
@@ -99,7 +108,12 @@ export const PhotoMarkerPin = ({ marker, isSelected = false, onClick, onClose }:
           <div className="relative">
             {/* 选中时显示关闭按钮 */}
             {isSelected && (
-              <GlassButton className="absolute top-3 right-3 z-10 size-8" onClick={handleClose}>
+              <GlassButton
+                className="absolute top-3 right-3 z-10 size-10"
+                onClick={handleClose}
+                aria-label={t('common.close')}
+                title={t('common.close')}
+              >
                 <i className="i-mingcute-close-line text-lg" />
               </GlassButton>
             )}

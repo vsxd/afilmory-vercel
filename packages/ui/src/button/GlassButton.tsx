@@ -16,6 +16,7 @@ export const GlassButton: FC<HTMLMotionProps<'button'> & PropsWithChildren> = (p
         'bg-black/20 text-white backdrop-blur-md',
         // Border and shadow for depth
         'border border-white/10 shadow-lg shadow-black/25',
+        'focus-visible:ring-accent/45 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40',
 
         // Text size
         'text-lg',

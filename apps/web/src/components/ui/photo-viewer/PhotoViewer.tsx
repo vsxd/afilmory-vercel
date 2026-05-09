@@ -3,7 +3,7 @@ import './PhotoViewer.css'
 import 'swiper/css'
 import 'swiper/css/navigation'
 
-import { Spring, Thumbhash } from '@afilmory/ui'
+import { clsxm, Spring, Thumbhash } from '@afilmory/ui'
 import { AnimatePresence, m } from 'motion/react'
 import { Fragment, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +24,12 @@ import type { LoadingIndicatorRef } from './LoadingIndicator'
 import { LoadingIndicator } from './LoadingIndicator'
 import { ProgressiveImage } from './ProgressiveImage'
 import { SharePanel } from './SharePanel'
+
+const viewerToolbarButtonClassName =
+  'bg-material-ultra-thick pointer-events-auto flex size-10 items-center justify-center rounded-full text-white shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-black/40 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40'
+
+const viewerNavButtonClassName =
+  'bg-material-medium absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,opacity,transform] duration-200 group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40'
 
 interface PhotoViewerProps {
   photos: PhotoManifest[]
@@ -190,7 +196,7 @@ export const PhotoViewer = ({
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label="Photo viewer"
+            aria-label={t('photo.viewer.label')}
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
               touchAction: isMobile ? 'manipulation' : 'none',
@@ -222,9 +228,13 @@ export const PhotoViewer = ({
                       {isMobile && (
                         <button
                           type="button"
-                          aria-label="Photo information"
+                          aria-label={t('photo.viewer.info')}
                           aria-pressed={showExifPanel}
-                          className={`bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40 ${showExifPanel ? 'bg-accent' : ''}`}
+                          title={t('photo.viewer.info')}
+                          className={clsxm(
+                            viewerToolbarButtonClassName,
+                            showExifPanel && 'bg-accent hover:bg-accent/90',
+                          )}
                           onClick={toggleExifPanel}
                         >
                           <i className="i-mingcute-information-line" />
@@ -241,7 +251,8 @@ export const PhotoViewer = ({
                         trigger={
                           <button
                             type="button"
-                            className="bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40"
+                            className={viewerToolbarButtonClassName}
+                            aria-label={t('photo.share.title')}
                             title={t('photo.share.title')}
                           >
                             <i className="i-mingcute-share-2-line" />
@@ -252,8 +263,9 @@ export const PhotoViewer = ({
                       {/* 关闭按钮 */}
                       <button
                         type="button"
-                        aria-label="Close"
-                        className="bg-material-ultra-thick pointer-events-auto flex size-8 items-center justify-center rounded-full text-white backdrop-blur-2xl duration-200 hover:bg-black/40"
+                        aria-label={t('common.close')}
+                        title={t('common.close')}
+                        className={viewerToolbarButtonClassName}
                         onClick={onClose}
                       >
                         <i className="i-mingcute-close-line" />
@@ -344,8 +356,9 @@ export const PhotoViewer = ({
                       {canGoPrevious && (
                         <button
                           type="button"
-                          aria-label="Previous photo"
-                          className={`bg-material-medium absolute top-1/2 left-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
+                          aria-label={t('photo.viewer.previous')}
+                          title={t('photo.viewer.previous')}
+                          className={`${viewerNavButtonClassName} left-4`}
                           onClick={handlePrevious}
                         >
                           <i className={`i-mingcute-left-line text-xl`} />
@@ -355,8 +368,9 @@ export const PhotoViewer = ({
                       {canGoNext && (
                         <button
                           type="button"
-                          aria-label="Next photo"
-                          className={`bg-material-medium absolute top-1/2 right-4 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 backdrop-blur-sm duration-200 group-hover:opacity-100 hover:bg-black/40`}
+                          aria-label={t('photo.viewer.next')}
+                          title={t('photo.viewer.next')}
+                          className={`${viewerNavButtonClassName} right-4`}
                           onClick={handleNext}
                         >
                           <i className={`i-mingcute-right-line text-xl`} />

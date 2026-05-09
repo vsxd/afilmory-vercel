@@ -1,5 +1,6 @@
 import { HoverCard, HoverCardContent, HoverCardTrigger, LazyImage } from '@afilmory/ui'
 import { m } from 'motion/react'
+import { useTranslation } from 'react-i18next'
 import { Marker } from 'react-map-gl/maplibre'
 
 import { ClusterPhotoGrid } from '../ClusterPhotoGrid'
@@ -15,14 +16,21 @@ export const ClusterMarker = ({
   clusteredPhotos = DEFAULT_CLUSTERED_PHOTOS,
   onClusterClick,
 }: ClusterMarkerProps) => {
+  const { t } = useTranslation()
   const size = Math.min(64, Math.max(40, 32 + Math.log(pointCount) * 8))
+  const handleClusterKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClusterClick?.(longitude, latitude)
+    }
+  }
 
   return (
     <Marker longitude={longitude} latitude={latitude}>
       <HoverCard openDelay={300} closeDelay={150}>
         <HoverCardTrigger asChild>
           <m.div
-            className="group relative cursor-pointer"
+            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -33,6 +41,10 @@ export const ClusterMarker = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onClusterClick?.(longitude, latitude)}
+            onKeyDown={handleClusterKeyDown}
+            role="button"
+            tabIndex={0}
+            aria-label={t('explore.found.locations', { count: pointCount })}
           >
             {/* Subtle pulse ring for attention */}
             <div
@@ -100,7 +112,7 @@ export const ClusterMarker = ({
         </HoverCardTrigger>
 
         <HoverCardContent
-          className="w-80 overflow-hidden border-white/20 bg-white/95 p-0 backdrop-blur-[120px] dark:bg-black/95"
+          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden border-white/20 bg-white/95 p-0 shadow-xl backdrop-blur-2xl dark:bg-black/95"
           side="top"
           align="center"
           portal={false}

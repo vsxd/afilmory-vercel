@@ -24,7 +24,7 @@ const GlassButton = (props: React.ComponentProps<typeof Button>) => (
   <Button
     {...props}
     className={clsxm(
-      'rounded-full border-white/20 !bg-black/70 p-3 shadow-2xl backdrop-blur-2xl',
+      'rounded-full border-white/20 !bg-black/70 p-3 shadow-xl backdrop-blur-2xl',
       'h-14 w-14 border',
       'bg-gradient-to-br from-white/20 to-white/0',
       'transition-colors duration-300 hover:border-white/30 hover:bg-black/10',
@@ -121,6 +121,7 @@ export const FloatingActionButton = ({
               <m.div key={action.id} custom={i} variants={itemVariants} className="absolute bottom-0">
                 <GlassButton
                   title={t(action.title)}
+                  aria-label={t(action.title)}
                   onClick={() => {
                     onActionClick?.(action.id)
                     // setIsOpen(false)
@@ -131,7 +132,12 @@ export const FloatingActionButton = ({
               </m.div>
             ))}
 
-            <GlassButton onClick={() => setIsOpen(!isOpen)} className="relative z-10">
+            <GlassButton
+              onClick={() => setIsOpen(!isOpen)}
+              className="relative z-10"
+              aria-label={t(isOpen ? 'common.close' : 'action.view.settings')}
+              title={t(isOpen ? 'common.close' : 'action.view.settings')}
+            >
               <AnimatePresence initial={false} mode="wait">
                 <m.i
                   key={isOpen ? 'close' : 'settings'}

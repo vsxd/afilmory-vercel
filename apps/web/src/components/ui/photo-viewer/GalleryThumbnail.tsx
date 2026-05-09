@@ -2,6 +2,7 @@ import { clsxm, Spring, Thumbhash } from '@afilmory/ui'
 import { m } from 'motion/react'
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useMobile } from '~/hooks/useMobile'
 import { nextFrame } from '~/lib/dom'
@@ -29,6 +30,7 @@ export const GalleryThumbnail: FC<{
   visible?: boolean
 }> = ({ currentIndex, photos, onIndexChange, visible = true }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
 
   const isMobile = useMobile()
 
@@ -155,10 +157,10 @@ export const GalleryThumbnail: FC<{
               type="button"
               key={photo.id}
               className={clsxm(
-                'contain-intrinsic-size relative shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+                'contain-intrinsic-size focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2',
                 index === currentIndex
-                  ? 'scale-110 border-accent shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_20%,transparent)]'
-                  : 'grayscale-50 border-accent/20 hover:border-accent hover:grayscale-0',
+                  ? 'border-accent opacity-100 shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] ring-2 ring-accent/40'
+                  : 'grayscale-50 border-white/15 opacity-75 hover:border-accent/70 hover:opacity-100 hover:grayscale-0',
               )}
               style={
                 isMobile
@@ -171,10 +173,17 @@ export const GalleryThumbnail: FC<{
                       height: thumbnailSize.desktop,
                     }
               }
+              aria-current={index === currentIndex ? 'true' : undefined}
+              aria-label={t('photo.thumbnail.open', { title: photo.title || photo.id })}
+              title={photo.title || photo.id}
               onClick={() => onIndexChange(index)}
             >
               {photo.thumbHash && <Thumbhash thumbHash={photo.thumbHash} className="size-fill absolute inset-0" />}
-              <img src={photo.thumbnailUrl} alt={photo.title} className="absolute inset-0 h-full w-full object-cover" />
+              <img
+                src={photo.thumbnailUrl}
+                alt={photo.title || photo.id}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
             </button>
           )
         })}

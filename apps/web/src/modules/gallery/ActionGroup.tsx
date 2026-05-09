@@ -33,7 +33,8 @@ export const ActionGroup = () => {
         onClick={() => {
           setCommandPaletteOpen(true)
         }}
-        className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary relative h-10 min-w-10 rounded-full border px-3 transition-all duration-200"
+        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-10 min-w-10 rounded-full border px-3 shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+        aria-label={t('action.search.unified.title')}
         title={t('action.search.unified.title')}
       >
         <i className="i-mingcute-search-line text-text-secondary text-base" />
@@ -49,7 +50,8 @@ export const ActionGroup = () => {
         variant="ghost"
         size="sm"
         onClick={() => navigate('/explore')}
-        className="bg-material-thin border-fill-tertiary hover:bg-fill-secondary h-10 w-10 rounded-full border transition-all duration-200"
+        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background h-10 w-10 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+        aria-label={t('action.map.explore')}
         title={t('action.map.explore')}
       >
         <i className="i-mingcute-map-pin-line text-text-secondary text-base" />
@@ -60,7 +62,7 @@ export const ActionGroup = () => {
         icon="i-mingcute-layout-grid-line"
         title={t('action.view.title')}
         badge={hasViewCustomization ? '●' : undefined}
-        contentClassName="bg-material-thick border-fill-tertiary w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border p-0 shadow-2xl backdrop-blur-[120px]"
+        contentClassName="bg-material-thick border-fill-tertiary w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border p-0 shadow-xl backdrop-blur-2xl"
       >
         <ViewPanel />
       </ResponsiveActionButton>

@@ -288,7 +288,7 @@ const FloatingActionBar = ({ showFloatingActions }: { showFloatingActions: boole
           exit="initial"
           transition={Spring.presets.snappy}
           className={clsxm(
-            'border-material-opaque rounded-xl border bg-black/60 p-3 shadow-2xl backdrop-blur-[70px]',
+            'border-material-opaque rounded-xl border bg-black/60 p-3 shadow-xl backdrop-blur-2xl',
             isMobile
               ? 'rounded-t-none rounded-br-none -translate-y-px'
               : 'fixed top-4 right-4 z-50 lg:top-6 lg:right-6',

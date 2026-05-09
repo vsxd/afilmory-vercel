@@ -83,7 +83,7 @@ export const DateRangeIndicator = memo(({ dateRange, location, isVisible, classN
           exit={variants.initial}
           transition={Spring.presets.snappy}
           className={clsxm(
-            'border-material-opaque lg:rounded-xl border bg-black/60 p-4 shadow-2xl backdrop-blur-[70px]',
+            'border-material-opaque lg:rounded-xl border bg-black/60 p-4 shadow-xl backdrop-blur-2xl',
             `fixed left-4 z-50 top-4 lg:top-6 lg:left-6`,
             className,
           )}
