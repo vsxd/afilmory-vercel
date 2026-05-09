@@ -34,11 +34,20 @@ const getPhotoLocationKey = (photo: PhotoManifest) => {
   return `${gpsData.latitude.toFixed(4)},${gpsData.longitude.toFixed(4)}`
 }
 
+const getGitHubUrl = (github: string | undefined) => {
+  const value = github?.trim()
+  if (!value) return null
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith('github.com/')) return `https://${value}`
+  return `https://github.com/${value.replace(/^@/, '')}`
+}
+
 export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.CSSProperties; className?: string }) => {
   const { t } = useTranslation()
   const gallerySetting = useAtomValue(gallerySettingAtom)
   const visiblePhotos = useContextPhotos()
   const visiblePhotoCount = visiblePhotos.length
+  const githubUrl = getGitHubUrl(siteConfig.social?.github)
 
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
@@ -154,9 +163,9 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
 
         {siteConfig.social && (
           <div className="flex items-center justify-center gap-2">
-            {siteConfig.social.github && (
+            {githubUrl && (
               <a
-                href={`https://github.com/${siteConfig.social.github}`}
+                href={githubUrl}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-8 items-center justify-center rounded-full transition-colors"
