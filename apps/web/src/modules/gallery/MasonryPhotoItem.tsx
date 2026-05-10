@@ -1,9 +1,12 @@
 import { Thumbhash } from '@afilmory/ui'
 import clsx from 'clsx'
+import { useAtomValue } from 'jotai'
 import { m } from 'motion/react'
 import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate } from 'react-router'
 
+import { gallerySettingAtom } from '~/atoms/app'
 import { useLivePhotoHandler } from '~/hooks/useLivePhotoHandler'
 import { useContextPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import {
@@ -13,6 +16,7 @@ import {
   TablerAperture,
 } from '~/icons'
 import { isMobileDevice } from '~/lib/device-viewport'
+import { buildGalleryFilterSearch } from '~/lib/gallery-filter-url'
 import {
   getGalleryThumbnailCacheKey,
   hasLoadedGalleryThumbnail,
@@ -23,10 +27,13 @@ import { flushStartupMetrics, markStartupOnce } from '~/lib/startup-metrics'
 import type { PhotoManifest } from '~/types/photo'
 
 export const MasonryPhotoItem = memo(
-  ({ data, width, index: _ }: { data: PhotoManifest; width: number; index: number }) => {
+  ({ data, width, index }: { data: PhotoManifest; width: number; index: number }) => {
     const photos = useContextPhotos()
-    const photoViewer = usePhotoViewer()
+    const gallerySetting = useAtomValue(gallerySettingAtom)
+    const { openViewer } = usePhotoViewer()
     const { t } = useTranslation()
+    const location = useLocation()
+    const navigate = useNavigate()
     const [imageLoaded, setImageLoaded] = useState(false)
     const [imageError, setImageError] = useState(false)
 
@@ -62,15 +69,20 @@ export const MasonryPhotoItem = memo(
       setImageError(true)
     }
 
-    const handleClick = () => {
-      const photoIndex = photos.findIndex((photo) => photo.id === data.id)
+    const handleClick = useCallback(() => {
+      const photoIndex = photos[index]?.id === data.id ? index : photos.findIndex((photo) => photo.id === data.id)
       if (photoIndex !== -1) {
         const triggerEl =
           imageRef.current?.parentElement instanceof HTMLElement ? imageRef.current.parentElement : imageRef.current
 
-        photoViewer.openViewer(photoIndex, { element: triggerEl ?? undefined, sourceMode: 'filtered' })
+        openViewer(photoIndex, {
+          element: triggerEl ?? undefined,
+          sourceMode: 'filtered',
+          sourcePhotoIds: photos.map((photo) => photo.id),
+        })
       }
-    }
+      navigate({ pathname: `/photos/${data.id}`, search: buildGalleryFilterSearch(location.search, gallerySetting) })
+    }, [data.id, gallerySetting, index, location.search, navigate, openViewer, photos])
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -79,8 +91,7 @@ export const MasonryPhotoItem = memo(
           handleClick()
         }
       },
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [photos, data.id],
+      [handleClick],
     )
 
     // 计算基于宽度的高度

@@ -1,14 +1,14 @@
 import { clsxm } from '@afilmory/ui'
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import { useAtomValue } from 'jotai'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { photoLoader } from '~/data-runtime/photo-loader'
 import { useContextPhotos } from '~/hooks/usePhotoViewer'
-import { MageLens } from '~/icons'
+import { MageLens, TablerAperture } from '~/icons'
 import { convertExifGPSToDecimal } from '~/lib/map-utils'
 import type { PhotoManifest } from '~/types/photo'
 
@@ -49,6 +49,8 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
   const visiblePhotos = useContextPhotos()
   const visiblePhotoCount = visiblePhotos.length
   const githubUrl = getGitHubUrl(siteConfig.social?.github)
+  const statsGridRef = useRef<HTMLDivElement>(null)
+  const [statsGridDensity, setStatsGridDensity] = useState<'normal' | 'compact' | 'tight'>('normal')
 
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
@@ -77,21 +79,25 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         id: 'photos',
         value: photos.length,
         label: t('gallery.library.stats.photos'),
+        icon: 'i-mingcute-pic-fill',
       },
       {
         id: 'cameras',
         value: cameraSet.size,
         label: t('gallery.library.stats.cameras'),
+        icon: 'i-mingcute-camera-fill',
       },
       {
         id: 'lenses',
         value: lensSet.size,
         label: t('gallery.library.stats.lenses'),
+        icon: 'aperture',
       },
       {
         id: 'locations',
         value: locationSet.size,
         label: t('gallery.library.stats.locations'),
+        icon: 'i-mingcute-map-pin-fill',
       },
     ]
   }, [t])
@@ -132,6 +138,36 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
       t,
     ],
   )
+
+  useEffect(() => {
+    const element = statsGridRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+
+    const updateLayout = (width: number) => {
+      if (width < 210) {
+        setStatsGridDensity('tight')
+        return
+      }
+
+      if (width < 280) {
+        setStatsGridDensity('compact')
+        return
+      }
+
+      setStatsGridDensity('normal')
+    }
+
+    updateLayout(element.clientWidth)
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) updateLayout(entry.contentRect.width)
+    })
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [hasFilters])
+
+  const isCompactStatsGrid = statsGridDensity !== 'normal'
 
   return (
     <div
@@ -212,14 +248,9 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         <ActionGroup />
       </div>
 
-      <div
-        className={clsxm(
-          'border-fill-secondary border-t px-6',
-          hasFilters ? 'pt-4 pb-5' : 'pt-3 pb-3.5 sm:pt-3.5 sm:pb-4',
-        )}
-      >
+      <div className="border-fill-secondary border-t px-4 pt-3 pb-3.5 sm:px-5 sm:pt-3.5 sm:pb-4">
         {hasFilters ? (
-          <div className="space-y-2.5 sm:space-y-3">
+          <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-text-secondary text-[10px] leading-none font-medium sm:text-xs">
                 {t('gallery.library.filters.title')}
@@ -229,7 +260,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {filterChips.map((chip) => (
                 <span
                   key={chip.id}
@@ -246,15 +277,66 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
             </div>
           </div>
         ) : (
-          <div className="divide-fill-secondary grid grid-cols-4 divide-x text-center">
+          <div ref={statsGridRef} className="divide-fill-secondary grid grid-cols-4 divide-x">
             {libraryStats.map((stat) => (
-              <div key={stat.id} className="min-w-0 px-2 first:pl-0 last:pr-0 sm:px-2.5">
-                <span className="text-text block text-xs leading-none font-medium tabular-nums sm:text-sm">
-                  {stat.value}
-                </span>
-                <span className="text-text-tertiary mt-1 block truncate text-[8px] leading-none font-medium sm:text-[9px]">
-                  {stat.label}
-                </span>
+              <div
+                key={stat.id}
+                className={clsxm(
+                  'flex min-w-0 justify-center first:pl-0 last:pr-0',
+                  statsGridDensity === 'tight' ? 'px-0' : isCompactStatsGrid ? 'px-0.5' : 'px-1.5 sm:px-2',
+                )}
+              >
+                <div
+                  className={clsxm(
+                    'inline-flex min-w-max flex-col items-center justify-center text-center',
+                    statsGridDensity === 'normal' && 'gap-1',
+                    statsGridDensity === 'compact' && 'gap-0.5',
+                    statsGridDensity === 'tight' && 'gap-0.5',
+                  )}
+                  title={`${stat.label}: ${stat.value}`}
+                  role="group"
+                  aria-label={`${stat.label}: ${stat.value}`}
+                >
+                  <span
+                    className={clsxm(
+                      'text-text-secondary flex shrink-0 items-center justify-center',
+                      statsGridDensity === 'normal' && 'size-6',
+                      statsGridDensity === 'compact' && 'size-[22px]',
+                      statsGridDensity === 'tight' && 'size-5',
+                    )}
+                  >
+                    {stat.icon === 'aperture' ? (
+                      <TablerAperture
+                        className={clsxm(
+                          statsGridDensity === 'normal' && 'text-[23px]',
+                          statsGridDensity === 'compact' && 'text-[21px]',
+                          statsGridDensity === 'tight' && 'text-[19px]',
+                        )}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <i
+                        className={clsxm(
+                          stat.icon,
+                          statsGridDensity === 'normal' && 'text-[23px]',
+                          statsGridDensity === 'compact' && 'text-[21px]',
+                          statsGridDensity === 'tight' && 'text-[19px]',
+                        )}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </span>
+                  <span
+                    className={clsxm(
+                      'text-text block shrink-0 whitespace-nowrap leading-none font-semibold tabular-nums',
+                      statsGridDensity === 'normal' && 'text-base',
+                      statsGridDensity === 'compact' && 'text-[15px]',
+                      statsGridDensity === 'tight' && 'text-sm',
+                    )}
+                  >
+                    {stat.value}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

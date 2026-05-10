@@ -10,6 +10,7 @@ import { photoLoader } from '~/data-runtime/photo-loader'
 import { fuzzyMatch, getLocationTokens, searchPhotos } from '~/hooks/useCommandSearch'
 import { getViewerPhotos, getViewerSourceMode, usePhotoViewer } from '~/hooks/usePhotoViewer'
 import { MageLens } from '~/icons'
+import { buildGalleryFilterSearch } from '~/lib/gallery-filter-url'
 
 // Command types
 type CommandType = 'search' | 'filter' | 'action' | 'photo'
@@ -262,8 +263,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             const viewerPhotos = getViewerPhotos(photo.id)
             const photoIndex = viewerPhotos.findIndex((p) => p.id === photo.id)
             if (photoIndex !== -1) {
-              openViewer(photoIndex, { sourceMode: getViewerSourceMode(photo.id) })
-              navigate(`/photos/${photo.id}`)
+              openViewer(photoIndex, {
+                sourceMode: getViewerSourceMode(photo.id),
+                sourcePhotoIds: viewerPhotos.map((viewerPhoto) => viewerPhoto.id),
+              })
+              navigate({ pathname: `/photos/${photo.id}`, search: buildGalleryFilterSearch('', gallerySetting) })
               onClose()
             }
           },

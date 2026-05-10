@@ -11,6 +11,7 @@ const openAtom = atom(false)
 const currentIndexAtom = atom(0)
 const triggerElementAtom = atom<HTMLElement | null>(null)
 const viewerSourceModeAtom = atom<ViewerSourceMode | null>(null)
+const viewerSourcePhotoIdsAtom = atom<string[] | null>(null)
 let bodyScrollLockCount = 0
 let bodyOverflowBeforeLock: string | null = null
 
@@ -85,6 +86,14 @@ const getAllPhotosForViewer = (sortOrder: 'asc' | 'desc') => {
   return sortPhotos(getAllPhotos(), sortOrder)
 }
 
+const getPhotosByIds = (photoIds: string[]) => {
+  const photoMap = new Map(getAllPhotos().map((photo) => [photo.id, photo]))
+  return photoIds.flatMap((photoId) => {
+    const photo = photoMap.get(photoId)
+    return photo ? [photo] : []
+  })
+}
+
 const resolveViewerSourceMode = (
   photoId: string | null | undefined,
   filteredPhotos: ReturnType<typeof getFilteredPhotos>,
@@ -101,7 +110,15 @@ const resolveViewerPhotos = (
   filteredPhotos: ReturnType<typeof getFilteredPhotos>,
   sortOrder: 'asc' | 'desc',
   viewerSourceMode?: ViewerSourceMode | null,
+  viewerSourcePhotoIds?: string[] | null,
 ) => {
+  if (viewerSourcePhotoIds?.length) {
+    const sourcePhotos = getPhotosByIds(viewerSourcePhotoIds)
+    if (!photoId || sourcePhotos.some((photo) => photo.id === photoId)) {
+      return sourcePhotos
+    }
+  }
+
   const sourceMode =
     viewerSourceMode === 'filtered' && photoId && !filteredPhotos.some((photo) => photo.id === photoId)
       ? 'all'
@@ -127,8 +144,9 @@ export const getViewerPhotos = (photoId?: string | null) => {
   const { sortOrder } = jotaiStore.get(gallerySettingAtom)
   const filteredPhotos = getFilteredPhotos()
   const viewerSourceMode = jotaiStore.get(openAtom) ? jotaiStore.get(viewerSourceModeAtom) : null
+  const viewerSourcePhotoIds = jotaiStore.get(openAtom) ? jotaiStore.get(viewerSourcePhotoIdsAtom) : null
 
-  return resolveViewerPhotos(photoId, filteredPhotos, sortOrder, viewerSourceMode)
+  return resolveViewerPhotos(photoId, filteredPhotos, sortOrder, viewerSourceMode, viewerSourcePhotoIds)
 }
 
 export const getViewerSourceMode = (photoId?: string | null) => {
@@ -149,11 +167,19 @@ export const useViewerPhotos = (photoId?: string | null) => {
   const { sortOrder } = useAtomValue(gallerySettingAtom)
   const isOpen = useAtomValue(openAtom)
   const viewerSourceMode = useAtomValue(viewerSourceModeAtom)
+  const viewerSourcePhotoIds = useAtomValue(viewerSourcePhotoIdsAtom)
   const filteredPhotos = usePhotos()
 
   return useMemo(
-    () => resolveViewerPhotos(photoId, filteredPhotos, sortOrder, isOpen ? viewerSourceMode : null),
-    [filteredPhotos, isOpen, photoId, sortOrder, viewerSourceMode],
+    () =>
+      resolveViewerPhotos(
+        photoId,
+        filteredPhotos,
+        sortOrder,
+        isOpen ? viewerSourceMode : null,
+        isOpen ? viewerSourcePhotoIds : null,
+      ),
+    [filteredPhotos, isOpen, photoId, sortOrder, viewerSourceMode, viewerSourcePhotoIds],
   )
 }
 
@@ -170,6 +196,7 @@ export const usePhotoViewer = (photoCount?: number) => {
   const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom)
   const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom)
   const [viewerSourceMode, setViewerSourceMode] = useAtom(viewerSourceModeAtom)
+  const [viewerSourcePhotoIds, setViewerSourcePhotoIds] = useAtom(viewerSourcePhotoIdsAtom)
 
   useEffect(() => {
     if (!isOpen) {
@@ -192,30 +219,36 @@ export const usePhotoViewer = (photoCount?: number) => {
   }, [isOpen])
 
   const openViewer = useCallback(
-    (index: number, options?: { element?: HTMLElement | null; sourceMode?: ViewerSourceMode }) => {
+    (
+      index: number,
+      options?: { element?: HTMLElement | null; sourceMode?: ViewerSourceMode; sourcePhotoIds?: string[] | null },
+    ) => {
       setCurrentIndex(index)
       setTriggerElement(options?.element || null)
       setViewerSourceMode(options?.sourceMode ?? null)
+      setViewerSourcePhotoIds(options?.sourcePhotoIds ?? null)
       setIsOpen(true)
     },
-    [setCurrentIndex, setIsOpen, setTriggerElement, setViewerSourceMode],
+    [setCurrentIndex, setIsOpen, setTriggerElement, setViewerSourceMode, setViewerSourcePhotoIds],
   )
 
   const closeViewer = useCallback(() => {
     setIsOpen(false)
     setTriggerElement(null)
     setViewerSourceMode(null)
-  }, [setIsOpen, setTriggerElement, setViewerSourceMode])
+    setViewerSourcePhotoIds(null)
+  }, [setIsOpen, setTriggerElement, setViewerSourceMode, setViewerSourcePhotoIds])
 
   const goToIndex = useCallback(
     (index: number) => {
       const maxPhotoCount =
-        photoCount ?? (viewerSourceMode === 'all' ? getAllPhotos().length : getFilteredPhotos().length)
+        (photoCount ?? viewerSourcePhotoIds?.length) ||
+        (viewerSourceMode === 'all' ? getAllPhotos().length : getFilteredPhotos().length)
       if (index >= 0 && index < maxPhotoCount) {
         setCurrentIndex(index)
       }
     },
-    [photoCount, setCurrentIndex, viewerSourceMode],
+    [photoCount, setCurrentIndex, viewerSourceMode, viewerSourcePhotoIds],
   )
 
   return {
@@ -223,6 +256,7 @@ export const usePhotoViewer = (photoCount?: number) => {
     currentIndex,
     triggerElement,
     viewerSourceMode,
+    viewerSourcePhotoIds,
     openViewer,
     closeViewer,
 

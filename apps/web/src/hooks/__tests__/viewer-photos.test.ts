@@ -215,6 +215,28 @@ describe('viewer photo resolution', () => {
     expect(result.current.currentIndex).toBe(0)
   })
 
+  it('keeps a filtered viewer session on its opened photo ids even if filters momentarily clear', () => {
+    jotaiStore.set(gallerySettingAtom, {
+      ...defaultGallerySetting,
+      selectedTags: ['keep'],
+    })
+
+    const { result, rerender } = renderHook(({ photoId }) => useViewerPhotos(photoId), {
+      initialProps: { photoId: 'visible-photo' as string | null },
+      wrapper,
+    })
+    const { result: viewerResult } = renderHook(() => usePhotoViewer(), { wrapper })
+
+    act(() => {
+      viewerResult.current.openViewer(0, { sourceMode: 'filtered', sourcePhotoIds: ['visible-photo'] })
+    })
+
+    jotaiStore.set(gallerySettingAtom, defaultGallerySetting)
+    rerender({ photoId: 'visible-photo' })
+
+    expect(result.current.map((photo) => photo.id)).toEqual(['visible-photo'])
+  })
+
   it('restores the previous body overflow when the viewer closes or unmounts', async () => {
     document.body.style.overflow = 'clip'
 

@@ -1,12 +1,15 @@
 import { ScrollArea, ScrollElementContext } from '@afilmory/ui'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useAtomValue } from 'jotai'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 
+import type { GallerySetting } from '~/atoms/app'
 import { gallerySettingAtom } from '~/atoms/app'
 import { siteConfig } from '~/config'
 import { useMobile } from '~/hooks/useMobile'
 import { getViewerPhotos, getViewerSourceMode, usePhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { getGalleryFiltersFromSearch } from '~/lib/gallery-filter-url'
+import { jotaiStore } from '~/lib/jotai'
 import { getSafeReturnTo, syncPhotoDetailSearch } from '~/lib/return-to'
 import { MasonryRoot } from '~/modules/gallery/MasonryRoot'
 import { PhotosProvider } from '~/providers/photos-provider'
@@ -52,37 +55,35 @@ export const Component = () => {
 
 let isRestored = false
 let pendingUrlRestoreSearch: string | null = null
-
-const getSearchList = (searchParams: URLSearchParams, key: string) =>
-  (searchParams.get(key) ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean)
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+const restoreGalleryFilters = (
+  filters: Pick<GallerySetting, 'selectedTags' | 'selectedCameras' | 'selectedLenses' | 'tagFilterMode'>,
+) => {
+  jotaiStore.set(gallerySettingAtom, (prev) => ({
+    ...prev,
+    ...filters,
+  }))
+}
 
 const useStateRestoreFromUrl = () => {
-  const { openViewer } = usePhotoViewer()
+  const { currentIndex, goToIndex, isOpen, openViewer } = usePhotoViewer()
   const { photoId } = useParams()
-  const setGallerySetting = useSetAtom(gallerySettingAtom)
+  const viewerStateRef = useRef({ currentIndex, goToIndex, isOpen, openViewer })
 
   const location = useLocation()
+
   useEffect(() => {
+    viewerStateRef.current = { currentIndex, goToIndex, isOpen, openViewer }
+  }, [currentIndex, goToIndex, isOpen, openViewer])
+
+  useBrowserLayoutEffect(() => {
     isRestored = true
     pendingUrlRestoreSearch = location.search
 
     // 恢复筛选设置
-    const searchParams = new URLSearchParams(location.search)
-    const tagsFromSearchParams = getSearchList(searchParams, 'tags')
-    const camerasFromSearchParams = getSearchList(searchParams, 'cameras')
-    const lensesFromSearchParams = getSearchList(searchParams, 'lenses')
-    const tagModeFromSearchParams = searchParams.get('tag_mode') as 'union' | 'intersection' | null
+    const galleryFilters = getGalleryFiltersFromSearch(location.search)
 
-    setGallerySetting((prev) => ({
-      ...prev,
-      selectedTags: tagsFromSearchParams,
-      selectedCameras: camerasFromSearchParams,
-      selectedLenses: lensesFromSearchParams,
-      tagFilterMode: tagModeFromSearchParams === 'intersection' ? 'intersection' : 'union',
-    }))
+    restoreGalleryFilters(galleryFilters)
 
     // 如果 URL 中有 photoId，打开查看器
     // 找到对应的照片索引，确保 currentIndex 和 URL 保持一致
@@ -90,14 +91,25 @@ const useStateRestoreFromUrl = () => {
       const photos = getViewerPhotos(photoId)
       const index = photos.findIndex((photo) => photo.id === photoId)
       if (index !== -1) {
-        openViewer(index, { sourceMode: getViewerSourceMode(photoId) })
+        const viewerState = viewerStateRef.current
+        if (viewerState.isOpen) {
+          if (viewerState.currentIndex !== index) {
+            viewerState.goToIndex(index)
+          }
+        } else {
+          viewerState.openViewer(index, {
+            sourceMode: getViewerSourceMode(photoId),
+            sourcePhotoIds: photos.map((photo) => photo.id),
+          })
+        }
       }
     }
-  }, [location.search, openViewer, photoId, setGallerySetting])
+  }, [location.search, photoId])
 }
 
 const useSyncStateToUrl = () => {
   const wasOpenRef = useRef(false)
+  const closeReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { selectedTags, selectedCameras, selectedLenses, sortOrder, tagFilterMode } = useAtomValue(gallerySettingAtom)
   const [_, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -106,13 +118,25 @@ const useSyncStateToUrl = () => {
   const { photoId } = useParams()
   const { isOpen, currentIndex } = usePhotoViewer()
 
+  useEffect(
+    () => () => {
+      if (closeReturnTimerRef.current) {
+        clearTimeout(closeReturnTimerRef.current)
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
     if (!isRestored) return
 
-    const isExplorePath = location.pathname === '/explore'
     const isPhotoDetailPath = /^\/photos\/[^/]+$/.test(location.pathname)
 
     if (isOpen) {
+      if (closeReturnTimerRef.current) {
+        clearTimeout(closeReturnTimerRef.current)
+        closeReturnTimerRef.current = null
+      }
       wasOpenRef.current = true
       const photos = getViewerPhotos(photoId)
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
@@ -131,12 +155,21 @@ const useSyncStateToUrl = () => {
     const justClosedViewer = wasOpenRef.current
     wasOpenRef.current = false
 
-    if (justClosedViewer && isPhotoDetailPath && !isExplorePath) {
+    if (justClosedViewer && isPhotoDetailPath) {
       const returnTo = getSafeReturnTo(location.search)
-      const timer = setTimeout(() => {
-        navigate(returnTo || '/', { replace: true })
+      const gallerySearchParams = new URLSearchParams(location.search)
+      gallerySearchParams.delete('returnTo')
+      const gallerySearch = gallerySearchParams.toString()
+      const returnTarget = returnTo || { pathname: '/', search: gallerySearch ? `?${gallerySearch}` : '' }
+      const returnGalleryFilters = getGalleryFiltersFromSearch(gallerySearchParams)
+
+      closeReturnTimerRef.current = setTimeout(() => {
+        closeReturnTimerRef.current = null
+        if (!returnTo) {
+          restoreGalleryFilters(returnGalleryFilters)
+        }
+        navigate(returnTarget, { replace: true })
       }, 500)
-      return () => clearTimeout(timer)
     }
   }, [
     currentIndex,
@@ -154,6 +187,7 @@ const useSyncStateToUrl = () => {
 
   useEffect(() => {
     if (!isRestored) return
+    if (!isOpen && /^\/photos\/[^/]+$/.test(location.pathname)) return
 
     const tags = selectedTags.join(',')
     const cameras = selectedCameras.join(',')
@@ -220,5 +254,14 @@ const useSyncStateToUrl = () => {
 
       return newer
     })
-  }, [location.search, selectedTags, selectedCameras, selectedLenses, tagFilterMode, setSearchParams])
+  }, [
+    isOpen,
+    location.pathname,
+    location.search,
+    selectedTags,
+    selectedCameras,
+    selectedLenses,
+    tagFilterMode,
+    setSearchParams,
+  ])
 }

@@ -42,6 +42,21 @@ const COLUMN_WIDTH_CONFIG = {
   },
 }
 
+const getPhotoSetKey = (photos: PhotoManifest[]) => {
+  let hash = 2166136261
+
+  for (const photo of photos) {
+    for (const char of photo.id) {
+      hash ^= char.codePointAt(0) ?? 0
+      hash = Math.imul(hash, 16777619)
+    }
+    hash ^= 31
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return `${photos.length}:${hash >>> 0}:${photos[0]?.id ?? ''}:${photos.at(-1)?.id ?? ''}`
+}
+
 export const MasonryRoot = () => {
   const { columns } = useAtomValue(gallerySettingAtom)
   const hasAnimatedRef = useRef(false)
@@ -50,6 +65,7 @@ export const MasonryRoot = () => {
 
   const photos = useContextPhotos()
   const masonryRef = useRef<MasonryRef>(null)
+  const photosKey = useMemo(() => getPhotoSetKey(photos), [photos])
 
   const { dateRange, handleRender } = useVisiblePhotosDateRange(photos)
   const scrollElement = useScrollViewElement()
@@ -150,6 +166,7 @@ export const MasonryRoot = () => {
       <div className="p-1 **:select-none! lg:px-0 lg:pb-0">
         {isMobile && <MasonryHeaderMasonryItem className="mb-1" />}
         <Masonry<MasonryItemType>
+          key={`${isMobile ? 'mobile' : 'desktop'}:${photosKey}`}
           ref={masonryRef}
           items={useMemo(() => (isMobile ? photos : [MasonryHeaderItem.default, ...photos]), [photos, isMobile])}
           render={useCallback(
