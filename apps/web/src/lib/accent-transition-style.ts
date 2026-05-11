@@ -7,22 +7,24 @@ export const applyAccentTransitionStyle = (durationMs = 100) => {
     return () => {}
   }
 
-  const style = document.createElement('style')
-  style.dataset.afilmoryAccentTransition = 'true'
-  style.textContent = `
+  let style = getAccentTransitionStyle()
+  if (!style) {
+    style = document.createElement('style')
+    style.dataset.afilmoryAccentTransition = 'true'
+    style.textContent = `
     * {
       transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
     }
   `
-
-  document.head.append(style)
+    document.head.append(style)
+  }
 
   const timeoutId = setTimeout(() => {
-    style.remove()
+    style?.remove()
   }, durationMs)
 
   return () => {
     clearTimeout(timeoutId)
-    style.remove()
+    style?.remove()
   }
 }

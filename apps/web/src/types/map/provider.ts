@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import type { MapBounds, MapViewState, PhotoMarker } from './index'
+import type { MapBounds, MapViewState, PhotoMarker } from './core'
 
 /**
  * Generic map provider interface
