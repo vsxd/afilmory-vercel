@@ -36,6 +36,7 @@ vi.mock('react-router', () => ({
   isRouteErrorResponse: () => false,
   useLocation: () => ({ pathname: '/', search: '', hash: '', state: null, key: 'root' }),
   useNavigate: () => vi.fn(),
+  useNavigationType: () => 'POP',
   useParams: () => ({}),
   useRouteError: () => new Error('Failed to fetch dynamically imported module: /assets/chunk.js'),
   useSearchParams: () => [new URLSearchParams(), vi.fn()],

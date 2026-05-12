@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import type { HTMLAttributes, PropsWithChildren } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -103,6 +103,7 @@ describe('MasonryPhotoItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    window.router = { navigate }
     contextPhotos = [photo]
     gallerySetting = {
       selectedTags: [],
@@ -139,6 +140,48 @@ describe('MasonryPhotoItem', () => {
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/photos/photo-1',
       search: '?cameras=SONY+ILCE-7C',
+    })
+  })
+
+  it('falls back to route hook navigation before the window router is installed', () => {
+    delete window.router
+
+    const { getByRole } = render(<MasonryPhotoItem data={photo} width={300} index={0} />)
+
+    fireEvent.click(getByRole('button', { name: 'A7C01202' }))
+
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: '/photos/photo-1',
+      search: '?cameras=SONY+ILCE-7C',
+    })
+  })
+
+  it('waits for async route navigation before opening the viewer', async () => {
+    let resolveNavigation!: () => void
+    navigate.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveNavigation = resolve
+      }),
+    )
+
+    const { getByRole } = render(<MasonryPhotoItem data={photo} width={300} index={0} />)
+
+    fireEvent.click(getByRole('button', { name: 'A7C01202' }))
+
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: '/photos/photo-1',
+      search: '?cameras=SONY+ILCE-7C',
+    })
+    expect(openViewer).not.toHaveBeenCalled()
+
+    resolveNavigation()
+
+    await waitFor(() => {
+      expect(openViewer).toHaveBeenCalledWith(0, {
+        element: expect.any(HTMLElement),
+        sourceMode: 'filtered',
+        sourcePhotoIds: ['photo-1'],
+      })
     })
   })
 })

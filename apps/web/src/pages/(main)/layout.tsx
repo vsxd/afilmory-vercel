@@ -1,7 +1,7 @@
 import { ScrollArea, ScrollElementContext } from '@afilmory/ui'
 import { useAtomValue } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Outlet, useLocation, useNavigate, useNavigationType, useParams, useSearchParams } from 'react-router'
 
 import type { GallerySetting } from '~/atoms/app'
 import { gallerySettingAtom } from '~/atoms/app'
@@ -111,12 +111,13 @@ const useSyncStateToUrl = () => {
   const wasOpenRef = useRef(false)
   const closeReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { selectedTags, selectedCameras, selectedLenses, sortOrder, tagFilterMode } = useAtomValue(gallerySettingAtom)
-  const [_, setSearchParams] = useSearchParams()
+  const [, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
 
   const location = useLocation()
   const { photoId } = useParams()
-  const { isOpen, currentIndex } = usePhotoViewer()
+  const { closeViewer, isOpen, currentIndex } = usePhotoViewer()
 
   useEffect(
     () => () => {
@@ -133,6 +134,11 @@ const useSyncStateToUrl = () => {
     const isPhotoDetailPath = /^\/photos\/[^/]+$/.test(location.pathname)
 
     if (isOpen) {
+      if (!isPhotoDetailPath && navigationType === 'POP' && wasOpenRef.current) {
+        closeViewer()
+        return
+      }
+
       if (closeReturnTimerRef.current) {
         clearTimeout(closeReturnTimerRef.current)
         closeReturnTimerRef.current = null
@@ -172,11 +178,13 @@ const useSyncStateToUrl = () => {
       }, 500)
     }
   }, [
+    closeViewer,
     currentIndex,
     isOpen,
     location.pathname,
     location.search,
     navigate,
+    navigationType,
     photoId,
     selectedTags,
     selectedCameras,
@@ -189,71 +197,73 @@ const useSyncStateToUrl = () => {
     if (!isRestored) return
     if (!isOpen && /^\/photos\/[^/]+$/.test(location.pathname)) return
 
+    const searchParams = new URLSearchParams(location.search)
     const tags = selectedTags.join(',')
     const cameras = selectedCameras.join(',')
     const lenses = selectedLenses.join(',')
     const tagMode = tagFilterMode === 'union' ? '' : tagFilterMode
 
-    setSearchParams((search) => {
-      const currentTags = search.get('tags')
-      const currentCameras = search.get('cameras')
-      const currentLenses = search.get('lenses')
-      const hasLegacyRating = search.has('rating')
-      const currentTagMode = search.get('tag_mode')
+    const currentTags = searchParams.get('tags')
+    const currentCameras = searchParams.get('cameras')
+    const currentLenses = searchParams.get('lenses')
+    const hasLegacyRating = searchParams.has('rating')
+    const currentTagMode = searchParams.get('tag_mode')
 
-      // Check if anything has changed
-      if (
-        currentTags === tags &&
-        currentCameras === cameras &&
-        currentLenses === lenses &&
-        !hasLegacyRating &&
-        currentTagMode === tagMode
-      ) {
-        if (pendingUrlRestoreSearch === location.search) {
-          pendingUrlRestoreSearch = null
-        }
-        return search
+    if (
+      currentTags === tags &&
+      currentCameras === cameras &&
+      currentLenses === lenses &&
+      !hasLegacyRating &&
+      currentTagMode === tagMode
+    ) {
+      if (pendingUrlRestoreSearch === location.search) {
+        pendingUrlRestoreSearch = null
       }
+      return
+    }
 
-      if (pendingUrlRestoreSearch === location.search && !hasLegacyRating) {
-        return search
-      }
+    if (pendingUrlRestoreSearch === location.search && !hasLegacyRating) {
+      return
+    }
 
-      const newer = new URLSearchParams(search)
+    const newer = new URLSearchParams(searchParams)
 
-      // Update tags
-      if (tags) {
-        newer.set('tags', tags)
-      } else {
-        newer.delete('tags')
-      }
+    // Update tags
+    if (tags) {
+      newer.set('tags', tags)
+    } else {
+      newer.delete('tags')
+    }
 
-      // Update cameras
-      if (cameras) {
-        newer.set('cameras', cameras)
-      } else {
-        newer.delete('cameras')
-      }
+    // Update cameras
+    if (cameras) {
+      newer.set('cameras', cameras)
+    } else {
+      newer.delete('cameras')
+    }
 
-      // Update lenses
-      if (lenses) {
-        newer.set('lenses', lenses)
-      } else {
-        newer.delete('lenses')
-      }
+    // Update lenses
+    if (lenses) {
+      newer.set('lenses', lenses)
+    } else {
+      newer.delete('lenses')
+    }
 
-      // Remove legacy rating filters; the static gallery does not support starring.
-      newer.delete('rating')
+    // Remove legacy rating filters; the static gallery does not support starring.
+    newer.delete('rating')
 
-      // Update tag filter mode
-      if (tagMode) {
-        newer.set('tag_mode', tagMode)
-      } else {
-        newer.delete('tag_mode')
-      }
+    // Update tag filter mode
+    if (tagMode) {
+      newer.set('tag_mode', tagMode)
+    } else {
+      newer.delete('tag_mode')
+    }
 
-      return newer
-    })
+    if (newer.toString() === searchParams.toString()) {
+      return
+    }
+
+    setSearchParams(newer)
   }, [
     isOpen,
     location.pathname,
