@@ -56,15 +56,27 @@ describe("bootstrap splash", () => {
     const manifestPromise = new Promise<AfilmoryManifest>((resolve) => {
       resolveManifest = resolve;
     });
+    let resolveCriticalRoutes!: () => void;
+    const criticalRoutesPromise = new Promise<void>((resolve) => {
+      resolveCriticalRoutes = resolve;
+    });
     const initializePhotoLoader = vi.fn();
     const markStartup = vi.fn();
     const flushStartupMetrics = vi.fn();
+    const cleanupCriticalRoutePreloads = vi.fn();
+    const installCriticalRoutePreloads = vi.fn(() => ({
+      cleanup: cleanupCriticalRoutePreloads,
+      ready: criticalRoutesPromise,
+    }));
 
     vi.doMock("../data-runtime/manifest-runtime", () => ({
       loadManifestRuntime: vi.fn(() => manifestPromise),
     }));
     vi.doMock("../data-runtime/photo-loader", () => ({
       initializePhotoLoader,
+    }));
+    vi.doMock("../lib/critical-route-preload", () => ({
+      installCriticalRoutePreloads,
     }));
     vi.doMock("../router", () => ({
       router: {},
@@ -97,6 +109,14 @@ describe("bootstrap splash", () => {
 
     await act(async () => {
       resolveManifest(manifest);
+      await Promise.resolve();
+    });
+
+    expect(initializePhotoLoader).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("router-app")).toBeNull();
+
+    await act(async () => {
+      resolveCriticalRoutes();
       await importPromise;
     });
 
@@ -108,6 +128,14 @@ describe("bootstrap splash", () => {
       expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
     });
     expect(markStartup).toHaveBeenCalledWith("manifest-ready", { photos: 0 });
+    expect(markStartup).toHaveBeenCalledWith(
+      "critical-routes-start",
+      undefined,
+    );
+    expect(markStartup).toHaveBeenCalledWith(
+      "critical-routes-ready",
+      undefined,
+    );
     expect(markStartup).toHaveBeenCalledWith("photo-loader-ready", undefined);
     expect(markStartup).toHaveBeenCalledWith("react-render-start", undefined);
     expect(markStartup).toHaveBeenCalledWith("app-commit", undefined);

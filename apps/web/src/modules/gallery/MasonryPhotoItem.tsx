@@ -48,7 +48,7 @@ export const MasonryPhotoItem = memo(
     const { openViewer } = usePhotoViewer();
     const { t } = useTranslation();
     const location = useLocation();
-    const navigate = useNavigate();
+    const routeNavigate = useNavigate();
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
 
@@ -93,7 +93,11 @@ export const MasonryPhotoItem = memo(
         photos[index]?.id === data.id
           ? index
           : photos.findIndex((photo) => photo.id === data.id);
-      if (photoIndex !== -1) {
+      const openPhotoViewer = () => {
+        if (photoIndex === -1) {
+          return;
+        }
+
         const triggerEl =
           imageRef.current?.parentElement instanceof HTMLElement
             ? imageRef.current.parentElement
@@ -104,19 +108,31 @@ export const MasonryPhotoItem = memo(
           sourceMode: "filtered",
           sourcePhotoIds: photos.map((photo) => photo.id),
         });
-      }
-      navigate({
+      };
+
+      const navigateToPhoto =
+        typeof window !== "undefined"
+          ? (window.router?.navigate ?? routeNavigate)
+          : routeNavigate;
+      const navigationResult = navigateToPhoto({
         pathname: `/photos/${data.id}`,
         search: buildGalleryFilterSearch(location.search, gallerySetting),
-      });
+      }) as void | PromiseLike<void>;
+
+      if (navigationResult && typeof navigationResult.then === "function") {
+        void navigationResult.then(openPhotoViewer, openPhotoViewer);
+        return;
+      }
+
+      openPhotoViewer();
     }, [
       data.id,
       gallerySetting,
       index,
       location.search,
-      navigate,
       openViewer,
       photos,
+      routeNavigate,
     ]);
 
     const handleKeyDown = useCallback(

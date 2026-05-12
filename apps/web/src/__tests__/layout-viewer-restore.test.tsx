@@ -12,6 +12,7 @@ const visiblePhoto = { id: "visible-photo" };
 const hiddenPhoto = { id: "hidden-photo" };
 
 const openViewer = vi.fn();
+const closeViewer = vi.fn();
 const goToIndex = vi.fn();
 const changedGoToIndex = vi.fn();
 const getViewerPhotos = vi.fn();
@@ -19,6 +20,7 @@ const getViewerSourceMode = vi.fn();
 const navigate = vi.fn();
 const setSearchParams = vi.fn();
 let currentGoToIndex = goToIndex;
+let navigationTypeState: "POP" | "PUSH" | "REPLACE" = "PUSH";
 
 let gallerySetting = {
   selectedTags: ["keep"],
@@ -68,6 +70,7 @@ vi.mock("react-router", () => ({
   Outlet: () => null,
   useLocation: () => locationState,
   useNavigate: () => navigate,
+  useNavigationType: () => navigationTypeState,
   useParams: () => paramsState,
   useSearchParams: () => [
     new URLSearchParams(locationState.search),
@@ -90,6 +93,7 @@ vi.mock("~/hooks/usePhotoViewer", () => ({
   getViewerSourceMode: (...args: unknown[]) => getViewerSourceMode(...args),
   usePhotoViewer: () => ({
     ...viewerState,
+    closeViewer,
     goToIndex: currentGoToIndex,
     openViewer,
   }),
@@ -112,6 +116,7 @@ describe("main layout viewer URL restore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentGoToIndex = goToIndex;
+    navigationTypeState = "PUSH";
     gallerySetting = {
       selectedTags: ["keep"],
       selectedCameras: [],
@@ -144,6 +149,7 @@ describe("main layout viewer URL restore", () => {
     expect(openViewer).not.toHaveBeenCalled();
     expect(getViewerSourceMode).not.toHaveBeenCalled();
     expect(goToIndex).not.toHaveBeenCalled();
+    expect(setSearchParams).not.toHaveBeenCalled();
   });
 
   it("does not reopen the viewer while a detail route is closing", async () => {
@@ -214,6 +220,42 @@ describe("main layout viewer URL restore", () => {
         { replace: true },
       );
     });
+  });
+
+  it("closes the viewer instead of re-pushing the detail route when browser back returns to the gallery", async () => {
+    viewerState = {
+      currentIndex: 0,
+      isOpen: true,
+    };
+    paramsState = {
+      photoId: "visible-photo",
+    };
+    locationState = {
+      pathname: "/photos/visible-photo",
+      search: "",
+    };
+    getViewerPhotos.mockReturnValue([visiblePhoto]);
+
+    const { rerender } = render(<Component />);
+
+    await waitFor(() => {
+      expect(getViewerPhotos).toHaveBeenCalledWith("visible-photo");
+    });
+
+    vi.clearAllMocks();
+    navigationTypeState = "POP";
+    paramsState = {};
+    locationState = {
+      pathname: "/",
+      search: "",
+    };
+
+    rerender(<Component />);
+
+    await waitFor(() => {
+      expect(closeViewer).toHaveBeenCalledTimes(1);
+    });
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("returns to the filtered gallery URL after closing a photo detail route", async () => {

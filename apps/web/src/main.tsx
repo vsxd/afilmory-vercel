@@ -10,8 +10,15 @@ import { BootstrapError } from "./components/common/BootstrapError";
 import { BootstrapReady } from "./components/common/BootstrapReady";
 import { loadManifestRuntime } from "./data-runtime/manifest-runtime";
 import { initializePhotoLoader } from "./data-runtime/photo-loader";
+import { installCriticalRoutePreloads } from "./lib/critical-route-preload";
 import { markStartup } from "./lib/startup-metrics";
 import { router } from "./router";
+
+declare global {
+  interface Window {
+    __AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__?: () => void;
+  }
+}
 
 if (import.meta.env.DEV) {
   void import("./lib/dev-service-worker-cleanup").then(
@@ -40,10 +47,28 @@ function renderApp(node: ReactNode) {
   });
 }
 
+const criticalRoutePreloadModules = import.meta.glob([
+  "./pages/(main)/layout.tsx",
+  "./pages/(main)/photos/[photoId]/index.tsx",
+]);
+
 async function bootstrap() {
   try {
     markStartup("manifest-start");
-    const startupTasks: Promise<unknown>[] = [loadManifestRuntime()];
+    markStartup("critical-routes-start");
+    window.__AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__?.();
+    const criticalRoutePreload = installCriticalRoutePreloads(
+      criticalRoutePreloadModules,
+    );
+    window.__AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__ =
+      criticalRoutePreload.cleanup;
+    const criticalRoutesReady = criticalRoutePreload.ready.then(() => {
+      markStartup("critical-routes-ready");
+    });
+    const startupTasks: Promise<unknown>[] = [
+      loadManifestRuntime(),
+      criticalRoutesReady,
+    ];
 
     if (import.meta.env.DEV) {
       startupTasks.push(
