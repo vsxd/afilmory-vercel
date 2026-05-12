@@ -52,6 +52,7 @@ export class PluginManager {
         try {
           await initHook({
             builder,
+            services: builder.services,
             config: builder.getConfig(),
             logger,
             registerStorageProvider: builder.registerStorageProvider.bind(builder),
@@ -90,6 +91,7 @@ export class PluginManager {
 
       const context: BuilderPluginHookContext<TEvent> = {
         builder,
+        services: builder.services,
         config: builder.getConfig(),
         logger,
         registerStorageProvider: builder.registerStorageProvider.bind(builder),

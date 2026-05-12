@@ -1,5 +1,6 @@
 import type { AfilmoryBuilder } from '../builder/builder.js'
 import type { PhotoProcessingContext, PhotoProcessorOptions } from '../core/contracts/photo-processing.js'
+import type { BuilderServices } from '../core/contracts/services.js'
 import type { Logger } from '../logger/index.js'
 import type { StorageObject } from '../storage/interfaces.js'
 import type { BuilderConfig } from '../types/config.js'
@@ -15,9 +16,12 @@ export type {
 export { isPluginESMImporter } from '../core/contracts/plugin-ref.js'
 
 export interface BuilderPluginInitContext {
+  /** @deprecated Use `services` instead. Will be removed in Step 9. */
   builder: AfilmoryBuilder
+  services: BuilderServices
   config: BuilderConfig
   logger: Logger
+  /** @deprecated Use `services.storage.registerProvider` instead. */
   registerStorageProvider: AfilmoryBuilder['registerStorageProvider']
   /**
    * Options provided in the configuration for this plugin.
@@ -124,10 +128,13 @@ export interface BuilderPluginEventPayloads {
 export type BuilderPluginEvent = keyof BuilderPluginEventPayloads
 
 export interface BuilderPluginHookContext<TEvent extends BuilderPluginEvent> {
+  /** @deprecated Use `services` instead. Will be removed in Step 9. */
   builder: AfilmoryBuilder
+  services: BuilderServices
   config: BuilderConfig
   logger: Logger
   options: BuilderOptions
+  /** @deprecated Use `services.storage.registerProvider` instead. */
   registerStorageProvider: AfilmoryBuilder['registerStorageProvider']
   /**
    * Name of the plugin handling the current hook.
