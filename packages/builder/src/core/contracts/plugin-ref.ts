@@ -1,4 +1,11 @@
 /**
+ * Per-build mutable state shared across hooks of the same plugin.
+ * Defined here (not in plugins/manager.ts) so contracts that reference
+ * the plugin runtime do not need to import the manager.
+ */
+export type PluginRunState = Map<string, Map<string, unknown>>
+
+/**
  * Minimal plugin reference types used by `BuilderConfig.plugins`. The full
  * hook context structure is intentionally NOT modeled here — config typing
  * does not need it. Plugin authors rely on the richer `BuilderPlugin` type

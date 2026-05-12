@@ -143,7 +143,8 @@ async function ensurePhotoContext<T>(builder: AfilmoryBuilder, logger: Logger, f
 
     return await runWithPhotoExecutionContext(
       {
-        builder,
+        services: builder.services,
+        emitPluginEvent: (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
         storageManager,
         storageConfig,
         normalizeStorageKey,
@@ -281,7 +282,8 @@ export default function geocodingPlugin(options: GeocodingPluginOptions = {}): B
 
         await runWithPhotoExecutionContext(
           {
-            builder,
+            services: builder.services,
+            emitPluginEvent: (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
             storageManager,
             storageConfig,
             normalizeStorageKey,

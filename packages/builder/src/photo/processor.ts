@@ -54,7 +54,8 @@ export async function processPhoto(
 
   return await runWithPhotoExecutionContext(
     {
-      builder,
+      services: builder.services,
+      emitPluginEvent: (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
       storageManager,
       storageConfig,
       normalizeStorageKey: createStorageKeyNormalizer(storageConfig),

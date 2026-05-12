@@ -1,4 +1,5 @@
 import type { AfilmoryBuilder } from '../builder/builder.js'
+import type { PluginRunState } from '../core/contracts/plugin-ref.js'
 import { logger } from '../logger/index.js'
 import { loadPlugins } from './loader.js'
 import type {
@@ -8,7 +9,7 @@ import type {
   BuilderPluginHookContext,
 } from './types.js'
 
-export type PluginRunState = Map<string, Map<string, unknown>>
+export type { PluginRunState } from '../core/contracts/plugin-ref.js'
 
 export class PluginManager {
   private readonly entries: BuilderPluginConfigEntry[]
