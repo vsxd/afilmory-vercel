@@ -1,7 +1,7 @@
+import type { PhotoProcessorOptions } from '../core/contracts/photo-processing.js'
 import { thumbnailExists } from '../image/thumbnail.js'
 import { needsUpdate } from '../manifest/manager.js'
 import type { PhotoManifestItem } from '../types/photo.js'
-import type { PhotoProcessorOptions } from './processor.js'
 
 export interface CacheableData {
   thumbnail?: {

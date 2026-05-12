@@ -1,5 +1,6 @@
-import type { AfilmoryBuilder } from '../builder/builder.js'
+import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
 import type { PluginRunState } from '../core/contracts/plugin-ref.js'
+import type { BuilderServices } from '../core/contracts/services.js'
 import { logger } from '../logger/index.js'
 import { loadPlugins } from './loader.js'
 import type {
@@ -30,7 +31,7 @@ export class PluginManager {
     return new Map()
   }
 
-  async ensureLoaded(builder: AfilmoryBuilder): Promise<void> {
+  async ensureLoaded(services: BuilderServices): Promise<void> {
     if (this.plugins.length > 0 || this.loadPromise) {
       await this.loadPromise
       return
@@ -52,8 +53,8 @@ export class PluginManager {
 
         try {
           await initHook({
-            services: builder.services,
-            config: builder.getConfig(),
+            services,
+            config: services.config,
             logger,
             pluginOptions: plugin.pluginOptions,
           })
@@ -68,7 +69,8 @@ export class PluginManager {
   }
 
   async emit<TEvent extends BuilderPluginEvent>(
-    builder: AfilmoryBuilder,
+    services: BuilderServices,
+    emitPluginEvent: EmitPluginEventFn,
     runState: PluginRunState,
     event: TEvent,
     payload: BuilderPluginEventPayloads[TEvent],
@@ -89,9 +91,9 @@ export class PluginManager {
       }
 
       const context: BuilderPluginHookContext<TEvent> = {
-        services: builder.services,
-        emitPluginEvent: (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
-        config: builder.getConfig(),
+        services,
+        emitPluginEvent,
+        config: services.config,
         logger,
         options: payload.options,
         pluginName: plugin.name,

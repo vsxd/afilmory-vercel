@@ -353,7 +353,8 @@ export class AfilmoryBuilder {
               existingManifestMap,
               legacyLivePhotoMap,
               processorOptions,
-              this,
+              this.services,
+              (runState, event, payload) => this.emitPluginEvent(runState, event, payload),
               {
                 runState,
                 builderOptions: options,
@@ -616,11 +617,17 @@ export class AfilmoryBuilder {
     event: TEvent,
     payload: BuilderPluginEventPayloads[TEvent],
   ): Promise<void> {
-    await this.pluginManager.emit(this, runState, event, payload)
+    await this.pluginManager.emit(
+      this.services,
+      (rs, ev, pl) => this.emitPluginEvent(rs, ev, pl),
+      runState,
+      event,
+      payload,
+    )
   }
 
   async ensurePluginsReady(): Promise<void> {
-    await this.pluginManager.ensureLoaded(this)
+    await this.pluginManager.ensureLoaded(this.services)
   }
 
   private resolvePluginReferences(): BuilderPluginConfigEntry[] {
