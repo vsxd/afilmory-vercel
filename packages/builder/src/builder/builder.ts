@@ -18,50 +18,19 @@ import type { StorageConfig } from '../storage/index.js'
 import { StorageFactory, StorageManager } from '../storage/index.js'
 import type { BuilderConfig, UserBuilderSettings } from '../types/config.js'
 import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
+import type { BuilderOptions, BuilderResult } from '../types/options.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { ClusterPool } from '../worker/cluster-pool.js'
 import type { TaskCompletedPayload } from '../worker/pool.js'
 import { WorkerPool } from '../worker/pool.js'
 
-export interface BuilderOptions {
-  isForceMode: boolean
-  isForceManifest: boolean
-  isForceThumbnails: boolean
-  concurrencyLimit?: number // 可选，如果未提供则使用配置文件中的默认值
-  progressListener?: BuildProgressListener
-}
-
-export interface BuilderResult {
-  hasUpdates: boolean
-  newCount: number
-  processedCount: number
-  skippedCount: number
-  deletedCount: number
-  totalPhotos: number
-}
-
-export interface BuildProgressStartPayload {
-  total: number
-  mode: 'worker' | 'cluster'
-  concurrency: number
-}
-
-export interface BuildProgressSnapshot {
-  total: number
-  completed: number
-  newCount: number
-  processedCount: number
-  skippedCount: number
-  failedCount: number
-  currentKey?: string
-}
-
-export interface BuildProgressListener {
-  onStart?: (payload: BuildProgressStartPayload) => void
-  onProgress?: (snapshot: BuildProgressSnapshot) => void
-  onComplete?: (summary: BuildProgressSnapshot) => void
-  onError?: (error: unknown) => void
-}
+export type {
+  BuilderOptions,
+  BuilderResult,
+  BuildProgressListener,
+  BuildProgressSnapshot,
+  BuildProgressStartPayload,
+} from '../types/options.js'
 
 export class AfilmoryBuilder {
   private storageManager: StorageManager | null = null
