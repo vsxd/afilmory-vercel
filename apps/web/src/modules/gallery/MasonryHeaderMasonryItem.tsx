@@ -167,8 +167,6 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
     return () => observer.disconnect()
   }, [hasFilters])
 
-  const isCompactStatsGrid = statsGridDensity !== 'normal'
-
   return (
     <div
       className={clsxm(
@@ -248,7 +246,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         <ActionGroup />
       </div>
 
-      <div className="border-fill-secondary border-t px-4 pt-3 pb-3.5 sm:px-5 sm:pt-3.5 sm:pb-4">
+      <div className="border-fill-secondary border-t px-4 py-2 sm:px-5 sm:py-2.5">
         {hasFilters ? (
           <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
@@ -283,13 +281,15 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                 key={stat.id}
                 className={clsxm(
                   'flex min-w-0 justify-center first:pl-0 last:pr-0',
-                  statsGridDensity === 'tight' ? 'px-0' : isCompactStatsGrid ? 'px-0.5' : 'px-1.5 sm:px-2',
+                  statsGridDensity === 'tight' && 'px-0',
+                  statsGridDensity === 'compact' && 'px-0.5',
+                  statsGridDensity === 'normal' && 'px-1.5 sm:px-2',
                 )}
               >
                 <div
                   className={clsxm(
                     'inline-flex min-w-max flex-col items-center justify-center text-center',
-                    statsGridDensity === 'normal' && 'gap-1',
+                    statsGridDensity === 'normal' && 'gap-0.5',
                     statsGridDensity === 'compact' && 'gap-0.5',
                     statsGridDensity === 'tight' && 'gap-0.5',
                   )}
@@ -300,17 +300,17 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                   <span
                     className={clsxm(
                       'text-text-secondary flex shrink-0 items-center justify-center',
-                      statsGridDensity === 'normal' && 'size-6',
-                      statsGridDensity === 'compact' && 'size-[22px]',
-                      statsGridDensity === 'tight' && 'size-5',
+                      statsGridDensity === 'normal' && 'h-4 w-5',
+                      statsGridDensity === 'compact' && 'h-4 w-5',
+                      statsGridDensity === 'tight' && 'h-3.5 w-4',
                     )}
                   >
                     {stat.icon === 'aperture' ? (
                       <TablerAperture
                         className={clsxm(
-                          statsGridDensity === 'normal' && 'text-[23px]',
-                          statsGridDensity === 'compact' && 'text-[21px]',
-                          statsGridDensity === 'tight' && 'text-[19px]',
+                          statsGridDensity === 'normal' && 'text-[16px]',
+                          statsGridDensity === 'compact' && 'text-[15px]',
+                          statsGridDensity === 'tight' && 'text-sm',
                         )}
                         aria-hidden="true"
                       />
@@ -318,9 +318,9 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                       <i
                         className={clsxm(
                           stat.icon,
-                          statsGridDensity === 'normal' && 'text-[23px]',
-                          statsGridDensity === 'compact' && 'text-[21px]',
-                          statsGridDensity === 'tight' && 'text-[19px]',
+                          statsGridDensity === 'normal' && 'text-[16px]',
+                          statsGridDensity === 'compact' && 'text-[15px]',
+                          statsGridDensity === 'tight' && 'text-sm',
                         )}
                         aria-hidden="true"
                       />
@@ -328,10 +328,10 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                   </span>
                   <span
                     className={clsxm(
-                      'text-text block shrink-0 whitespace-nowrap leading-none font-semibold tabular-nums',
-                      statsGridDensity === 'normal' && 'text-base',
-                      statsGridDensity === 'compact' && 'text-[15px]',
-                      statsGridDensity === 'tight' && 'text-sm',
+                      'text-text-secondary block shrink-0 whitespace-nowrap leading-none font-medium tabular-nums',
+                      statsGridDensity === 'normal' && 'text-[15px]',
+                      statsGridDensity === 'compact' && 'text-sm',
+                      statsGridDensity === 'tight' && 'text-[13px]',
                     )}
                   >
                     {stat.value}
