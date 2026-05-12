@@ -52,11 +52,9 @@ export class PluginManager {
 
         try {
           await initHook({
-            builder,
             services: builder.services,
             config: builder.getConfig(),
             logger,
-            registerStorageProvider: builder.registerStorageProvider.bind(builder),
             pluginOptions: plugin.pluginOptions,
           })
         } catch (error) {
@@ -91,11 +89,10 @@ export class PluginManager {
       }
 
       const context: BuilderPluginHookContext<TEvent> = {
-        builder,
         services: builder.services,
+        emitPluginEvent: (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
         config: builder.getConfig(),
         logger,
-        registerStorageProvider: builder.registerStorageProvider.bind(builder),
         options: payload.options,
         pluginName: plugin.name,
         pluginOptions: plugin.pluginOptions,

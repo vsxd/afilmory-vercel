@@ -1,4 +1,4 @@
-import type { AfilmoryBuilder } from '../builder/builder.js'
+import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
 import type { BuilderPluginEvent, BuilderPluginEventPayloads } from '../core/contracts/plugin-events.js'
 import type { BuilderServices } from '../core/contracts/services.js'
 import type { Logger } from '../logger/index.js'
@@ -14,35 +14,24 @@ export type {
 export { isPluginESMImporter } from '../core/contracts/plugin-ref.js'
 
 export interface BuilderPluginInitContext {
-  /** @deprecated Use `services` instead. Will be removed in Step 9. */
-  builder: AfilmoryBuilder
   services: BuilderServices
   config: BuilderConfig
   logger: Logger
-  /** @deprecated Use `services.storage.registerProvider` instead. */
-  registerStorageProvider: AfilmoryBuilder['registerStorageProvider']
-  /**
-   * Options provided in the configuration for this plugin.
-   */
   pluginOptions: unknown
 }
 
 export interface BuilderPluginHookContext<TEvent extends BuilderPluginEvent> {
-  /** @deprecated Use `services` instead. Will be removed in Step 9. */
-  builder: AfilmoryBuilder
   services: BuilderServices
+  /**
+   * Emit a plugin event from within a hook. Useful for plugins that need
+   * to construct a photo execution context manually (e.g. for batch
+   * reprocessing flows that run outside the main pipeline).
+   */
+  emitPluginEvent: EmitPluginEventFn
   config: BuilderConfig
   logger: Logger
   options: BuilderOptions
-  /** @deprecated Use `services.storage.registerProvider` instead. */
-  registerStorageProvider: AfilmoryBuilder['registerStorageProvider']
-  /**
-   * Name of the plugin handling the current hook.
-   */
   pluginName: string
-  /**
-   * Options associated with the plugin, if any.
-   */
   pluginOptions: unknown
   /**
    * A mutable map scoped to the current build run, allowing plugins

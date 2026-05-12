@@ -91,8 +91,8 @@ export default function thumbnailStoragePlugin(options: ThumbnailStoragePluginOp
     name: PLUGIN_NAME,
     [THUMBNAIL_PLUGIN_SYMBOL]: true,
     hooks: {
-      onInit: ({ builder, config, logger }) => {
-        const fallbackStorage = config.user?.storage ?? builder.getStorageConfig()
+      onInit: ({ services, config, logger }) => {
+        const fallbackStorage = config.user?.storage ?? services.storage.getConfig()
         const storageConfig = (options.storageConfig ?? fallbackStorage) as StorageConfig
         const directory = normalizeDirectory(options.directory)
         const contentType = options.contentType ?? DEFAULT_CONTENT_TYPE
@@ -124,12 +124,12 @@ export default function thumbnailStoragePlugin(options: ThumbnailStoragePluginOp
         }
 
         if (!options.storageConfig) {
-          builder.getStorageManager().addExcludePrefix(remotePrefix)
+          services.storage.getManager().addExcludePrefix(remotePrefix)
         } else {
           externalStorageManager = new StorageManager(uploadableConfig)
         }
       },
-      afterPhotoProcess: async ({ builder, payload, runShared, logger }) => {
+      afterPhotoProcess: async ({ services, payload, runShared, logger }) => {
         if (!resolved) {
           logger.main.warn('Thumbnail storage plugin is not initialized correctly. Skipping upload.')
           return
@@ -145,7 +145,7 @@ export default function thumbnailStoragePlugin(options: ThumbnailStoragePluginOp
           return
         }
 
-        const storageManager = resolved.useDefaultStorage ? builder.getStorageManager() : externalStorageManager
+        const storageManager = resolved.useDefaultStorage ? services.storage.getManager() : externalStorageManager
 
         if (!storageManager) {
           logger.main.warn('Thumbnail storage plugin could not resolve storage manager. Skipping upload.')
