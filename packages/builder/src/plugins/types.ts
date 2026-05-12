@@ -7,12 +7,12 @@ import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.j
 import type { BuilderOptions, BuilderResult } from '../types/options.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 
-export type BuilderPluginESMImporter = () => Promise<{
-  default: (() => BuilderPlugin | Promise<BuilderPlugin>) | BuilderPlugin
-}>
-export type BuilderPluginReference = string | BuilderPluginESMImporter
-
-export type BuilderPluginConfigEntry = BuilderPluginReference | BuilderPlugin
+export type {
+  BuilderPluginConfigEntry,
+  BuilderPluginESMImporter,
+  BuilderPluginReference,
+} from '../core/contracts/plugin-ref.js'
+export { isPluginESMImporter } from '../core/contracts/plugin-ref.js'
 
 export interface BuilderPluginInitContext {
   builder: AfilmoryBuilder
@@ -167,7 +167,3 @@ export type BuilderPluginFactory =
   | BuilderPlugin
   | (() => BuilderPlugin | Promise<BuilderPlugin>)
   | ((options: unknown) => BuilderPlugin | Promise<BuilderPlugin>)
-
-export function isPluginESMImporter(value: BuilderPluginConfigEntry): value is BuilderPluginESMImporter {
-  return typeof value === 'function' && value.length === 0
-}
