@@ -19,6 +19,7 @@ import {
 } from "~/hooks/usePhotoViewer";
 import { MageLens } from "~/icons";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 
 // Command types
 type CommandType = "search" | "filter" | "action" | "photo";
@@ -311,7 +312,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 ),
               });
               navigate({
-                pathname: `/photos/${photo.id}`,
+                pathname: buildPhotoDetailPathname(photo.id),
                 search: buildGalleryFilterSearch("", gallerySetting),
               });
               onClose();

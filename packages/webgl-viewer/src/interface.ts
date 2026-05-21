@@ -53,6 +53,7 @@ export interface WebGLImageViewerProps {
     quality?: "high" | "medium" | "low" | "unknown",
   ) => void;
   onImagePainted?: () => void;
+  onError?: (error: unknown) => void;
   debug?: boolean;
 }
 export interface WebGLImageViewerRef {

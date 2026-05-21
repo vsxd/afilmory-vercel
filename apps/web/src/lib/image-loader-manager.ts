@@ -216,6 +216,11 @@ export class ImageLoaderManager {
     callbacks: LoadingCallbacks = {},
   ): Promise<ImageLoadResult> {
     const { onProgress, onError, onLoadingStateUpdate } = callbacks;
+    const cachedRegularImage = this.getCachedRegularImage(src, callbacks);
+
+    if (cachedRegularImage) {
+      return cachedRegularImage;
+    }
 
     // Show loading indicator
     onLoadingStateUpdate?.({
@@ -468,24 +473,16 @@ export class ImageLoaderManager {
     callbacks: LoadingCallbacks,
   ): ImageLoadResult {
     const { onLoadingStateUpdate } = callbacks;
+    const cachedRegularImage = this.getCachedRegularImage(
+      originalUrl,
+      callbacks,
+    );
 
-    // 生成缓存键
-    const cacheKey = generateRegularImageCacheKey(originalUrl); // 使用原始 URL
-
-    // 检查缓存
-    const cachedResult = regularImageCache.get(cacheKey);
-    if (cachedResult) {
-      debugLog("Using cached regular image result", cachedResult);
-
-      // Hide loading indicator
-      onLoadingStateUpdate?.({
-        isVisible: false,
-      });
-
-      return {
-        blobSrc: cachedResult.blobSrc,
-      };
+    if (cachedRegularImage) {
+      return cachedRegularImage;
     }
+
+    const cacheKey = generateRegularImageCacheKey(originalUrl);
 
     // 普通图片格式
     const url = URL.createObjectURL(blob);
@@ -509,6 +506,28 @@ export class ImageLoaderManager {
 
     return {
       blobSrc: url,
+    };
+  }
+
+  private getCachedRegularImage(
+    originalUrl: string,
+    callbacks: LoadingCallbacks,
+  ): ImageLoadResult | null {
+    const { onLoadingStateUpdate } = callbacks;
+    const cacheKey = generateRegularImageCacheKey(originalUrl);
+    const cachedResult = regularImageCache.get(cacheKey);
+
+    if (!cachedResult) {
+      return null;
+    }
+
+    debugLog("Using cached regular image result", cachedResult);
+    onLoadingStateUpdate?.({
+      isVisible: false,
+    });
+
+    return {
+      blobSrc: cachedResult.blobSrc,
     };
   }
 

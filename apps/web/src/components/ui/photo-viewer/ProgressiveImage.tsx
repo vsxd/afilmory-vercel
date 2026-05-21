@@ -1,7 +1,7 @@
 import { clsxm } from "@afilmory/ui";
 import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 import { AnimatePresence, m } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { useMediaQuery } from "usehooks-ts";
@@ -57,6 +57,7 @@ export const ProgressiveImage = ({
 
   // State management
   const [state, setState] = useProgressiveImageState();
+  const [useDomFallback, setUseDomFallback] = useState(false);
   const {
     blobSrc,
     highResLoaded,
@@ -79,6 +80,9 @@ export const ProgressiveImage = ({
   const webglImageViewerRef = useRef<WebGLImageViewerRef | null>(null);
   const domImageViewerRef = useRef<ReactZoomPanPinchRef>(null);
   const livePhotoRef = useRef<any>(null);
+  const fallbackSourceRef = useRef(src);
+  const useDomFallbackRef = useRef(useDomFallback);
+  useDomFallbackRef.current = useDomFallback;
 
   // Hooks
   const imageLoaderManagerRef = useImageLoader(
@@ -143,6 +147,26 @@ export const ProgressiveImage = ({
   // Only use HDR if the browser supports it and the image is HDR
   const shouldUseHDR = isHDR && isHDRSupported;
 
+  useEffect(() => {
+    if (fallbackSourceRef.current === src) return;
+
+    fallbackSourceRef.current = src;
+    if (!useDomFallbackRef.current) return;
+
+    setUseDomFallback(false);
+  }, [src]);
+
+  const handleWebGLError = useCallback(() => {
+    setUseDomFallback(true);
+    loadingIndicatorRef.current?.updateLoadingState({
+      isVisible: false,
+      isWebGLLoading: false,
+    });
+  }, [loadingIndicatorRef]);
+
+  const shouldUseDomImageViewer =
+    hasVideo || shouldUseHDR || !canUseWebGL || useDomFallback;
+
   return (
     <div
       className={clsxm("relative overflow-hidden", className)}
@@ -180,7 +204,7 @@ export const ProgressiveImage = ({
           }}
         >
           {/* LivePhoto/Motion Photo、HDR 或无 WebGL 时使用 DOMImageViewer */}
-          {hasVideo || shouldUseHDR || !canUseWebGL ? (
+          {shouldUseDomImageViewer ? (
             <DOMImageViewer
               ref={domImageViewerRef}
               onZoomChange={onDOMTransformed}
@@ -221,6 +245,7 @@ export const ProgressiveImage = ({
               onZoomChange={onTransformed}
               onLoadingStateChange={handleWebGLLoadingStateChange}
               onImagePainted={handleHighResRendered}
+              onError={handleWebGLError}
               debug={import.meta.env.DEV}
             />
           )}

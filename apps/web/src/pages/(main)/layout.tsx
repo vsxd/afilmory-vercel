@@ -22,6 +22,7 @@ import {
 } from "~/hooks/usePhotoViewer";
 import { getGalleryFiltersFromSearch } from "~/lib/gallery-filter-url";
 import { jotaiStore } from "~/lib/jotai";
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { getSafeReturnTo, syncPhotoDetailSearch } from "~/lib/return-to";
 import { MasonryRoot } from "~/modules/gallery/MasonryRoot";
 import { PhotosProvider } from "~/providers/photos-provider";
@@ -185,7 +186,7 @@ const useSyncStateToUrl = () => {
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
       if (currentIndex >= 0 && currentIndex < photos.length) {
         const targetPhotoId = photos[currentIndex].id;
-        const targetPathname = `/photos/${targetPhotoId}`;
+        const targetPathname = buildPhotoDetailPathname(targetPhotoId);
         const targetSearch = syncPhotoDetailSearch(
           location.search,
           targetPhotoId,

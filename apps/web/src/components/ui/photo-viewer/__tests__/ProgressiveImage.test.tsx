@@ -1,16 +1,34 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ProgressiveImage } from "../ProgressiveImage";
+
+const hoisted = vi.hoisted(() => ({
+  canUseWebGL: false,
+  failWebGL: false,
+}));
 
 vi.mock("@afilmory/ui", () => ({
   clsxm: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),
 }));
 
-vi.mock("@afilmory/webgl-viewer", () => ({
-  WebGLImageViewer: () => null,
-}));
+vi.mock("@afilmory/webgl-viewer", async () => {
+  const React = await import("react");
+
+  return {
+    WebGLImageViewer: ({ onError }: { onError?: (error: unknown) => void }) => {
+      React.useEffect(() => {
+        if (hoisted.failWebGL) {
+          onError?.(new Error("WebGL unavailable"));
+        }
+      }, [onError]);
+
+      return <canvas data-testid="webgl-viewer" />;
+    },
+  };
+});
 
 vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
@@ -24,15 +42,13 @@ vi.mock("~/lib/image-loader-manager", () => {
   return { ImageLoaderManager: MockImageLoaderManager };
 });
 
-vi.mock("motion/react", async () => {
-  const React = await import("react");
-
+vi.mock("motion/react", () => {
   return {
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => (
+    AnimatePresence: ({ children }: { children?: ReactNode }) => (
       <>{children}</>
     ),
     m: {
-      div: ({ children, ...props }: React.ComponentProps<"div">) => (
+      div: ({ children, ...props }: ComponentProps<"div">) => (
         <div {...props}>{children}</div>
       ),
     },
@@ -65,11 +81,15 @@ vi.mock("~/atoms/context-menu", () => ({
 }));
 
 vi.mock("~/lib/feature", () => ({
-  canUseWebGL: false,
+  get canUseWebGL() {
+    return hoisted.canUseWebGL;
+  },
 }));
 
 describe("ProgressiveImage", () => {
   afterEach(() => {
+    hoisted.canUseWebGL = false;
+    hoisted.failWebGL = false;
     vi.restoreAllMocks();
     cleanup();
   });
@@ -120,5 +140,27 @@ describe("ProgressiveImage", () => {
     expect(highResImage.parentElement?.style.width).toBe("100%");
     expect(highResImage.parentElement?.style.height).toBe("100%");
     expect(screen.getByText("photo.webgl.unavailable")).toBeTruthy();
+  });
+
+  it("falls back to the DOM viewer when WebGL reports a runtime failure", async () => {
+    hoisted.canUseWebGL = true;
+    hoisted.failWebGL = true;
+
+    render(
+      <ProgressiveImage
+        src="https://example.com/photo.jpg"
+        thumbnailSrc={undefined}
+        alt="WebGL runtime fallback"
+        isCurrentImage={true}
+        shouldRenderHighRes={true}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    );
+
+    const fallbackImage = await screen.findByAltText("WebGL runtime fallback");
+
+    await waitFor(() => {
+      expect(fallbackImage.getAttribute("src")).toBe("blob:mock-image");
+    });
   });
 });

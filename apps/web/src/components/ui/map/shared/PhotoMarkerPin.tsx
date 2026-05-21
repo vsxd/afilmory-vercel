@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
 import { Link, useLocation } from "react-router";
 
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { buildPhotoDetailSearch } from "~/lib/return-to";
 
 import type { PhotoMarkerPinProps } from "./types";
@@ -156,7 +157,7 @@ export const PhotoMarkerPin = ({
               {/* Title with link */}
               <Link
                 to={{
-                  pathname: `/photos/${marker.photo.id}`,
+                  pathname: buildPhotoDetailPathname(marker.photo.id),
                   search: buildPhotoDetailSearch(returnTo),
                 }}
                 className="group/link hover:text-blue flex items-center gap-2 transition-colors"

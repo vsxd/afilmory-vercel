@@ -10,6 +10,7 @@ import { extractExifData } from "../image/exif.js";
 import { calculateHistogramAndAnalyzeTone } from "../image/histogram.js";
 import {
   generateThumbnailAndBlurhash,
+  getThumbnailPublicUrl,
   thumbnailExists,
 } from "../image/thumbnail.js";
 import { getBuilderOutputSettings } from "../output-paths.js";
@@ -49,7 +50,7 @@ export async function processThumbnailAndBlurhash(
       const { thumbnailsDir } = getBuilderOutputSettings();
       const thumbnailPath = path.join(thumbnailsDir, `${photoId}.jpg`);
       const thumbnailBuffer = await fs.readFile(thumbnailPath);
-      const thumbnailUrl = `/thumbnails/${photoId}.jpg`;
+      const thumbnailUrl = getThumbnailPublicUrl(photoId);
 
       loggers.blurhash.info(`复用现有 blurhash: ${photoId}`);
       loggers.thumbnail.info(`复用现有缩略图：${photoId}`);

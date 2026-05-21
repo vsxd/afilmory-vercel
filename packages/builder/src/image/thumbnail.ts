@@ -17,9 +17,13 @@ function getThumbnailPaths(photoId: string) {
   const { thumbnailsDir } = getBuilderOutputSettings();
   const filename = `${photoId}.jpg`;
   const thumbnailPath = path.join(thumbnailsDir, filename);
-  const thumbnailUrl = `/thumbnails/${filename}`;
+  const thumbnailUrl = getThumbnailPublicUrl(photoId);
 
   return { thumbnailPath, thumbnailUrl };
+}
+
+export function getThumbnailPublicUrl(photoId: string): string {
+  return `/thumbnails/${encodeURIComponent(`${photoId}.jpg`)}`;
 }
 
 // 创建失败结果

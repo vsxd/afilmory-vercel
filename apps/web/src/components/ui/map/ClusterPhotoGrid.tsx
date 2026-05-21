@@ -3,6 +3,7 @@ import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router";
 
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { buildPhotoDetailSearch } from "~/lib/return-to";
 import type { PhotoMarker } from "~/types/map";
 
@@ -84,7 +85,7 @@ export const ClusterPhotoGrid = ({
           >
             <Link
               to={{
-                pathname: `/photos/${photoMarker.photo.id}`,
+                pathname: buildPhotoDetailPathname(photoMarker.photo.id),
                 search: buildPhotoDetailSearch(returnTo),
               }}
               onClick={(e) => {

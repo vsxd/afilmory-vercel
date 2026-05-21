@@ -105,6 +105,7 @@ function createEngine(
     onImageCopied: () => {},
     onLoadingStateChange: () => {},
     onImagePainted: () => {},
+    onError: () => {},
     debug: false,
     ...overrides,
   });

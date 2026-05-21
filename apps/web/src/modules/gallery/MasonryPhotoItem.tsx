@@ -30,6 +30,7 @@ import {
   markGalleryThumbnailLoaded,
 } from "~/lib/gallery-thumbnail-cache";
 import { getImageFormat } from "~/lib/image-utils";
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { flushStartupMetrics, markStartupOnce } from "~/lib/startup-metrics";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -115,7 +116,7 @@ export const MasonryPhotoItem = memo(
           ? (window.router?.navigate ?? routeNavigate)
           : routeNavigate;
       const navigationResult = navigateToPhoto({
-        pathname: `/photos/${data.id}`,
+        pathname: buildPhotoDetailPathname(data.id),
         search: buildGalleryFilterSearch(location.search, gallerySetting),
       }) as void | PromiseLike<void>;
 

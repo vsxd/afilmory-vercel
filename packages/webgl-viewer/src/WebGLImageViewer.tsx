@@ -51,6 +51,7 @@ export const WebGLImageViewer = ({
   onImageCopied,
   onLoadingStateChange,
   onImagePainted,
+  onError,
   debug = false,
   ...divProps
 }: WebGLImageViewerProps &
@@ -91,6 +92,7 @@ export const WebGLImageViewer = ({
       onImageCopied: onImageCopied || (() => {}),
       onLoadingStateChange: onLoadingStateChange || (() => {}),
       onImagePainted: onImagePainted || (() => {}),
+      onError: onError || (() => {}),
       debug: debug || false,
     }),
     [
@@ -114,6 +116,7 @@ export const WebGLImageViewer = ({
       onImageCopied,
       onLoadingStateChange,
       onImagePainted,
+      onError,
       debug,
     ],
   );
@@ -128,26 +131,34 @@ export const WebGLImageViewer = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const webGLImageViewerEngine = new WebGLImageViewerEngine(
-      canvasRef.current,
-      config,
-      debug ? setDebugInfo : undefined,
-    );
+    let webGLImageViewerEngine: WebGLImageViewerEngine | null = null;
+    let cancelled = false;
 
     try {
+      webGLImageViewerEngine = new WebGLImageViewerEngine(
+        canvasRef.current,
+        config,
+        debug ? setDebugInfo : undefined,
+      );
       // 如果提供了尺寸，传递给loadImage进行优化
       const preknownWidth = config.width > 0 ? config.width : undefined;
       const preknownHeight = config.height > 0 ? config.height : undefined;
       webGLImageViewerEngine
         .loadImage(src, preknownWidth, preknownHeight)
-        .catch(console.error);
+        .catch((error) => {
+          if (cancelled) return;
+          console.error("Failed to load WebGL image:", error);
+          config.onError(error);
+        });
       viewerRef.current = webGLImageViewerEngine;
       setTileOutlineEnabled(webGLImageViewerEngine.isTileOutlineEnabled());
     } catch (error) {
       console.error("Failed to initialize WebGL Image Viewer:", error);
+      config.onError(error);
     }
 
     return () => {
+      cancelled = true;
       webGLImageViewerEngine?.destroy();
       viewerRef.current = null;
     };
