@@ -64,6 +64,7 @@ export class HeicConverterStrategy implements ImageConverterStrategy {
 
       return {
         url: result.url,
+        blob: result.blob,
         convertedSize: result.convertedSize,
         format: result.format,
         originalSize: result.originalSize,
@@ -170,6 +171,7 @@ export async function convertHeicImage(
 
     const result: ConversionResult = {
       url,
+      blob: convertedBlob,
       originalSize: file.size,
       convertedSize: convertedBlob.size,
       format,

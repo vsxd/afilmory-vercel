@@ -5,11 +5,33 @@ export type GalleryFilterState = Pick<
   "selectedTags" | "selectedCameras" | "selectedLenses" | "tagFilterMode"
 >;
 
-const getSearchList = (searchParams: URLSearchParams, key: string) =>
-  (searchParams.get(key) ?? "")
+const getSearchList = (searchParams: URLSearchParams, key: string) => {
+  const values = searchParams.getAll(key);
+  if (values.length > 1) {
+    return values.map((value) => value.trim()).filter(Boolean);
+  }
+
+  return (values[0] ?? "")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+};
+
+const setSearchList = (
+  searchParams: URLSearchParams,
+  key: string,
+  values: string[],
+) => {
+  searchParams.delete(key);
+
+  for (const value of values) {
+    searchParams.append(key, value);
+  }
+
+  if (values.length === 1 && values[0].includes(",")) {
+    searchParams.append(key, "");
+  }
+};
 
 const toSearchParams = (search: string | URLSearchParams) =>
   typeof search === "string"
@@ -39,18 +61,9 @@ export const applyGalleryFiltersToSearch = (
   filters: GalleryFilterState,
 ): URLSearchParams => {
   const searchParams = toSearchParams(search);
-  const tags = filters.selectedTags.join(",");
-  const cameras = filters.selectedCameras.join(",");
-  const lenses = filters.selectedLenses.join(",");
-
-  if (tags) searchParams.set("tags", tags);
-  else searchParams.delete("tags");
-
-  if (cameras) searchParams.set("cameras", cameras);
-  else searchParams.delete("cameras");
-
-  if (lenses) searchParams.set("lenses", lenses);
-  else searchParams.delete("lenses");
+  setSearchList(searchParams, "tags", filters.selectedTags);
+  setSearchList(searchParams, "cameras", filters.selectedCameras);
+  setSearchList(searchParams, "lenses", filters.selectedLenses);
 
   if (filters.tagFilterMode === "intersection")
     searchParams.set("tag_mode", "intersection");
@@ -66,3 +79,11 @@ export const buildGalleryFilterSearch = (
   const nextSearch = applyGalleryFiltersToSearch(search, filters).toString();
   return nextSearch ? `?${nextSearch}` : "";
 };
+
+export const buildSingleTagFilterSearch = (tag: string): string =>
+  buildGalleryFilterSearch("", {
+    selectedTags: [tag],
+    selectedCameras: [],
+    selectedLenses: [],
+    tagFilterMode: "union",
+  });

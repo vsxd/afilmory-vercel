@@ -73,6 +73,7 @@ vi.mock("motion/react", async () => {
 
 function ImageLoaderHarness({ tick }: { tick: number }) {
   const [blobSrc, setBlobSrc] = useState<string | null>(null);
+  const [, setImageBlob] = useState<Blob | null>(null);
   const [highResLoaded, setHighResLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [, setIsHighResImageRendered] = useState(false);
@@ -91,6 +92,7 @@ function ImageLoaderHarness({ tick }: { tick: number }) {
     undefined,
     loadingIndicatorRef as never,
     setBlobSrc,
+    setImageBlob,
     setHighResLoaded,
     setError,
     setIsHighResImageRendered,
@@ -140,6 +142,7 @@ describe("photo viewer runtime lifecycle", () => {
 
     loadImageMock.mockResolvedValue({
       blobSrc: "blob:loaded-image",
+      blob: new Blob(["photo"], { type: "image/jpeg" }),
     });
 
     processVideoMock.mockImplementation(

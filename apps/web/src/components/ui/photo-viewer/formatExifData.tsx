@@ -7,6 +7,9 @@ import type { FC } from "react";
 import { i18nAtom } from "~/i18n";
 import { jotaiStore } from "~/lib/jotai";
 
+const hasExifValue = <T,>(value: T | null | undefined): value is T =>
+  value !== null && value !== undefined;
+
 // Helper function to clean up EXIF values by removing unnecessary characters
 const cleanExifValue = (value: string | null | undefined): string | null => {
   if (!value) return null;
@@ -40,7 +43,7 @@ const translateExifValue = (
   value: string | number | null,
   props?: Record<string, string | number>,
 ): string | null => {
-  if (!value) return null;
+  if (value === null || value === undefined) return null;
 
   const i18n = jotaiStore.get(i18nAtom);
   const translationKey = getTranslationKey(category, value);
@@ -191,7 +194,7 @@ const processFujiRecipe = (recipe: FujiRecipe): ProcessedFujiRecipe | null => {
         kelvin: recipe.ColorTemperature,
       });
     } else {
-      processed.WhiteBalance = translateFujiWhiteBalance("Auto");
+      processed.WhiteBalance = translateFujiWhiteBalance(recipe.WhiteBalance);
     }
   }
   if (recipe.WhiteBalanceFineTune) {
@@ -377,12 +380,12 @@ export const formatExifData = (exif: PickedExif | null) => {
   );
 
   // 曝光补偿
-  const exposureBias = exif.ExposureCompensation
+  const exposureBias = hasExifValue(exif.ExposureCompensation)
     ? `${exif.ExposureCompensation} EV`
     : null;
 
   // 亮度值
-  const brightnessValue = exif.BrightnessValue
+  const brightnessValue = hasExifValue(exif.BrightnessValue)
     ? `${exif.BrightnessValue.toFixed(1)} EV`
     : null;
 
@@ -390,7 +393,7 @@ export const formatExifData = (exif: PickedExif | null) => {
   const shutterSpeedValue = exif.ShutterSpeedValue;
 
   // 光圈值
-  const apertureValue = exif.ApertureValue
+  const apertureValue = hasExifValue(exif.ApertureValue)
     ? `${exif.ApertureValue.toFixed(1)} EV`
     : null;
 
@@ -398,18 +401,20 @@ export const formatExifData = (exif: PickedExif | null) => {
   const lightSource = translateLightSource(exif.LightSource || null);
 
   // 白平衡偏移/微调相关字段
-  const whiteBalanceBias = exif.WhiteBalanceBias || null;
-  const wbShiftAB = exif.WBShiftAB || null;
-  const wbShiftGM = exif.WBShiftGM || null;
+  const whiteBalanceBias = hasExifValue(exif.WhiteBalanceBias)
+    ? exif.WhiteBalanceBias
+    : null;
+  const wbShiftAB = hasExifValue(exif.WBShiftAB) ? exif.WBShiftAB : null;
+  const wbShiftGM = hasExifValue(exif.WBShiftGM) ? exif.WBShiftGM : null;
 
   // 感光方法
   const sensingMethod = translateSensingMethod(exif.SensingMethod || null);
 
   // 焦平面分辨率
-  const focalPlaneXResolution = exif.FocalPlaneXResolution
+  const focalPlaneXResolution = hasExifValue(exif.FocalPlaneXResolution)
     ? Math.round(exif.FocalPlaneXResolution)
     : null;
-  const focalPlaneYResolution = exif.FocalPlaneYResolution
+  const focalPlaneYResolution = hasExifValue(exif.FocalPlaneYResolution)
     ? Math.round(exif.FocalPlaneYResolution)
     : null;
 
@@ -422,7 +427,7 @@ export const formatExifData = (exif: PickedExif | null) => {
 
   // GPS 信息
   const gpsInfo = {
-    altitude: exif.GPSAltitude
+    altitude: hasExifValue(exif.GPSAltitude)
       ? `${GPSAltitudeIsAboveSeaLevel ? "" : "-"}${exif.GPSAltitude}`
       : null,
     latitude: formatGpsCoordinate(exif.GPSLatitude, exif.GPSLatitudeRef),

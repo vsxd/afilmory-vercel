@@ -3,6 +3,7 @@ import type { LoadingCallbacks } from "../image-loader-manager";
 // 转换结果接口
 export interface ConversionResult {
   url: string;
+  blob: Blob;
   convertedSize: number;
   format: string;
   originalSize: number;

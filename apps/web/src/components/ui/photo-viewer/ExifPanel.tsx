@@ -16,6 +16,7 @@ import {
   StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens,
   TablerAperture,
 } from "~/icons";
+import { buildSingleTagFilterSearch } from "~/lib/gallery-filter-url";
 import { getImageFormat } from "~/lib/image-utils";
 import { convertExifGPSToDecimal } from "~/lib/map-utils";
 
@@ -248,7 +249,7 @@ export const ExifPanel: FC<{
                       type="button"
                       onClick={() => {
                         window.open(
-                          `/?tags=${tag}`,
+                          `/${buildSingleTagFilterSearch(tag)}`,
                           "_blank",
                           "noopener,noreferrer",
                         );

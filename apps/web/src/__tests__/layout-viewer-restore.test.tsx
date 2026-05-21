@@ -97,6 +97,7 @@ vi.mock("~/hooks/usePhotoViewer", () => ({
     goToIndex: currentGoToIndex,
     openViewer,
   }),
+  usePhotoViewerBodyScrollLock: vi.fn(),
   usePhotos: () => [],
 }));
 

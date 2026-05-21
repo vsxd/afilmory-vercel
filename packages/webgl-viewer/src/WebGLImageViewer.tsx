@@ -32,6 +32,7 @@ import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
 export const WebGLImageViewer = ({
   ref,
   src,
+  sourceBlob,
   className = "",
   width,
   height,
@@ -67,6 +68,7 @@ export const WebGLImageViewer = ({
   const config: Required<WebGLImageViewerProps> = useMemo(
     () => ({
       src,
+      sourceBlob: sourceBlob ?? null,
       className,
       width: width || 0,
       height: height || 0,
@@ -97,6 +99,7 @@ export const WebGLImageViewer = ({
     }),
     [
       src,
+      sourceBlob,
       className,
       width,
       height,
@@ -144,7 +147,7 @@ export const WebGLImageViewer = ({
       const preknownWidth = config.width > 0 ? config.width : undefined;
       const preknownHeight = config.height > 0 ? config.height : undefined;
       webGLImageViewerEngine
-        .loadImage(src, preknownWidth, preknownHeight)
+        .loadImage(src, preknownWidth, preknownHeight, config.sourceBlob)
         .catch((error) => {
           if (cancelled) return;
           console.error("Failed to load WebGL image:", error);

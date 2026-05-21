@@ -512,6 +512,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     url: string,
     preknownWidth?: number,
     preknownHeight?: number,
+    sourceBlob?: Blob | null,
   ) {
     if (this.isDestroyed) {
       throw new Error("WebGL image viewer has been destroyed");
@@ -534,7 +535,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
       this.worker?.postMessage({
         type: "load-image",
-        payload: { url },
+        payload: { url, blob: sourceBlob ?? null },
       });
     });
   }

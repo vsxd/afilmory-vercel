@@ -98,6 +98,7 @@ describe("ImageLoaderManager", () => {
 
     await expect(resultPromise).resolves.toEqual({
       blobSrc: "blob:mock-image",
+      blob: xhr.response,
     });
   });
 
@@ -111,6 +112,7 @@ describe("ImageLoaderManager", () => {
     MockXMLHttpRequest.instances[0]?.onload?.();
     await expect(firstResultPromise).resolves.toEqual({
       blobSrc: "blob:mock-image",
+      blob: MockXMLHttpRequest.instances[0].response,
     });
 
     const secondManager = new ImageLoaderManager();
@@ -118,7 +120,10 @@ describe("ImageLoaderManager", () => {
       "https://img.misfork.com/afilmory/A7C02615.jpg",
     );
 
-    expect(secondResult).toEqual({ blobSrc: "blob:mock-image" });
+    expect(secondResult).toEqual({
+      blobSrc: "blob:mock-image",
+      blob: MockXMLHttpRequest.instances[0].response,
+    });
     expect(MockXMLHttpRequest.instances).toHaveLength(1);
   });
 });

@@ -23,10 +23,14 @@ self.onmessage = async (e) => {
 
   switch (type) {
     case "load-image": {
-      const { url } = payload;
+      const { url, blob: sourceBlob } = payload;
       try {
-        const response = await fetch(url, { mode: "cors" });
-        const blob = await response.blob();
+        const blob =
+          sourceBlob ??
+          (await (async () => {
+            const response = await fetch(url, { mode: "cors" });
+            return await response.blob();
+          })());
         originalImage = await createImageBitmap(blob);
 
         self.postMessage({ type: "init-done" });

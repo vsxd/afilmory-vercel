@@ -33,7 +33,10 @@ vi.mock("@afilmory/webgl-viewer", async () => {
 vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
     loadImage() {
-      return Promise.resolve({ blobSrc: "blob:mock-image" });
+      return Promise.resolve({
+        blobSrc: "blob:mock-image",
+        blob: new Blob(["photo"], { type: "image/jpeg" }),
+      });
     }
 
     cleanup() {}

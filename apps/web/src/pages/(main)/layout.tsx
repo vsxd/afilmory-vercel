@@ -19,8 +19,12 @@ import {
   getViewerSourceMode,
   usePhotos,
   usePhotoViewer,
+  usePhotoViewerBodyScrollLock,
 } from "~/hooks/usePhotoViewer";
-import { getGalleryFiltersFromSearch } from "~/lib/gallery-filter-url";
+import {
+  applyGalleryFiltersToSearch,
+  getGalleryFiltersFromSearch,
+} from "~/lib/gallery-filter-url";
 import { jotaiStore } from "~/lib/jotai";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { getSafeReturnTo, syncPhotoDetailSearch } from "~/lib/return-to";
@@ -28,6 +32,7 @@ import { MasonryRoot } from "~/modules/gallery/MasonryRoot";
 import { PhotosProvider } from "~/providers/photos-provider";
 
 export const Component = () => {
+  usePhotoViewerBodyScrollLock();
   useStateRestoreFromUrl();
   useSyncStateToUrl();
 
@@ -249,24 +254,18 @@ const useSyncStateToUrl = () => {
     if (!isOpen && /^\/photos\/[^/]+$/.test(location.pathname)) return;
 
     const searchParams = new URLSearchParams(location.search);
-    const tags = selectedTags.join(",");
-    const cameras = selectedCameras.join(",");
-    const lenses = selectedLenses.join(",");
-    const tagMode = tagFilterMode === "union" ? "" : tagFilterMode;
-
-    const currentTags = searchParams.get("tags");
-    const currentCameras = searchParams.get("cameras");
-    const currentLenses = searchParams.get("lenses");
     const hasLegacyRating = searchParams.has("rating");
-    const currentTagMode = searchParams.get("tag_mode");
+    const newer = applyGalleryFiltersToSearch(searchParams, {
+      selectedTags,
+      selectedCameras,
+      selectedLenses,
+      tagFilterMode,
+    });
 
-    if (
-      currentTags === tags &&
-      currentCameras === cameras &&
-      currentLenses === lenses &&
-      !hasLegacyRating &&
-      currentTagMode === tagMode
-    ) {
+    // Remove legacy rating filters; the static gallery does not support starring.
+    newer.delete("rating");
+
+    if (newer.toString() === searchParams.toString() && !hasLegacyRating) {
       if (pendingUrlRestoreSearch === location.search) {
         pendingUrlRestoreSearch = null;
       }
@@ -274,43 +273,6 @@ const useSyncStateToUrl = () => {
     }
 
     if (pendingUrlRestoreSearch === location.search && !hasLegacyRating) {
-      return;
-    }
-
-    const newer = new URLSearchParams(searchParams);
-
-    // Update tags
-    if (tags) {
-      newer.set("tags", tags);
-    } else {
-      newer.delete("tags");
-    }
-
-    // Update cameras
-    if (cameras) {
-      newer.set("cameras", cameras);
-    } else {
-      newer.delete("cameras");
-    }
-
-    // Update lenses
-    if (lenses) {
-      newer.set("lenses", lenses);
-    } else {
-      newer.delete("lenses");
-    }
-
-    // Remove legacy rating filters; the static gallery does not support starring.
-    newer.delete("rating");
-
-    // Update tag filter mode
-    if (tagMode) {
-      newer.set("tag_mode", tagMode);
-    } else {
-      newer.delete("tag_mode");
-    }
-
-    if (newer.toString() === searchParams.toString()) {
       return;
     }
 

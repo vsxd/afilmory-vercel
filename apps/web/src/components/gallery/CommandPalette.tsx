@@ -15,7 +15,7 @@ import {
 import {
   getViewerPhotos,
   getViewerSourceMode,
-  usePhotoViewer,
+  useOpenPhotoViewer,
 } from "~/hooks/usePhotoViewer";
 import { MageLens } from "~/icons";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
@@ -50,7 +50,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { t } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
   const navigate = useNavigate();
-  const { openViewer } = usePhotoViewer();
+  const openViewer = useOpenPhotoViewer();
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);

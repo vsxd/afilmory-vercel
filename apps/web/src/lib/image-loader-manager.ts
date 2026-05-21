@@ -28,6 +28,7 @@ export interface LoadingCallbacks {
 
 export interface ImageLoadResult {
   blobSrc: string;
+  blob: Blob;
   convertedUrl?: string;
 }
 
@@ -38,6 +39,7 @@ export interface VideoProcessResult {
 
 export interface ImageCacheResult {
   blobSrc: string;
+  blob: Blob;
   originalSize: number;
   format: string;
 }
@@ -437,6 +439,7 @@ export class ImageLoaderManager {
 
         return {
           blobSrc: conversionResult.url,
+          blob: conversionResult.blob,
           convertedUrl: conversionResult.url,
         };
       } else {
@@ -489,6 +492,7 @@ export class ImageLoaderManager {
 
     const result: ImageCacheResult = {
       blobSrc: url,
+      blob,
       originalSize: blob.size,
       format: blob.type,
     };
@@ -506,6 +510,7 @@ export class ImageLoaderManager {
 
     return {
       blobSrc: url,
+      blob,
     };
   }
 
@@ -528,6 +533,7 @@ export class ImageLoaderManager {
 
     return {
       blobSrc: cachedResult.blobSrc,
+      blob: cachedResult.blob,
     };
   }
 

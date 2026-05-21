@@ -38,12 +38,23 @@ describe("WebGLImageViewer", () => {
   });
 
   it("creates and disposes the viewer engine", () => {
+    const sourceBlob = new Blob(["photo"], { type: "image/jpeg" });
     const { unmount } = render(
-      <WebGLImageViewer src="blob:photo" width={100} height={80} />,
+      <WebGLImageViewer
+        src="blob:photo"
+        sourceBlob={sourceBlob}
+        width={100}
+        height={80}
+      />,
     );
 
     expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
-    expect(engineMocks.loadImage).toHaveBeenCalledWith("blob:photo", 100, 80);
+    expect(engineMocks.loadImage).toHaveBeenCalledWith(
+      "blob:photo",
+      100,
+      80,
+      sourceBlob,
+    );
 
     unmount();
 

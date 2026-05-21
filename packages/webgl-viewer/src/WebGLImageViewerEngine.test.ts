@@ -86,6 +86,7 @@ function createEngine(
 ): WebGLImageViewerEngine {
   return new WebGLImageViewerEngine(canvas, {
     src: "blob:photo",
+    sourceBlob: null,
     className: "",
     width: 100,
     height: 100,
@@ -214,5 +215,34 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     const lastZoomChange = onZoomChange.mock.calls.at(-1);
     expect(lastZoomChange?.[0]).toBeCloseTo(0.99);
     expect(lastZoomChange?.[1]).toBeCloseTo(1.1);
+  });
+
+  it("sends the decoded image blob to the texture worker when available", () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    const sourceBlob = new Blob(["photo"], { type: "image/jpeg" });
+    const engine = createEngine(canvas);
+
+    void engine.loadImage("blob:photo", 100, 100, sourceBlob);
+
+    const {worker} = (engine as unknown as { worker: WorkerMock | null });
+    expect(worker?.postMessage).toHaveBeenCalledWith({
+      type: "load-image",
+      payload: { url: "blob:photo", blob: sourceBlob },
+    });
+
+    engine.destroy();
   });
 });

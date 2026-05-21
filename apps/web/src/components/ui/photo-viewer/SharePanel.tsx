@@ -36,6 +36,19 @@ function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function canShareImageFiles(): boolean {
+  if (typeof navigator.canShare !== "function" || typeof File === "undefined") {
+    return false;
+  }
+
+  try {
+    const probeFile = new File([""], "photo.jpg", { type: "image/jpeg" });
+    return navigator.canShare({ files: [probeFile] });
+  } catch {
+    return false;
+  }
+}
+
 export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -92,9 +105,12 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
     };
 
     try {
-      if (navigator.canShare) {
+      if (canShareImageFiles()) {
         const imageUrl = blobSrc || photo.originalUrl;
         const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch shared image: ${response.status}`);
+        }
         const blob = await response.blob();
         const file = new File([blob], `${photo.title || "photo"}.jpg`, {
           type: blob.type || "image/jpeg",
@@ -172,7 +188,14 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
         .replace("{title}", shareTitle)
         .replace("{text}", shareText);
 
-      window.open(finalUrl, "_blank", "width=600,height=400");
+      const shareWindow = window.open(
+        finalUrl,
+        "_blank",
+        "width=600,height=400,noopener,noreferrer",
+      );
+      if (shareWindow) {
+        shareWindow.opener = null;
+      }
       setIsOpen(false);
     },
     [photo.title, t],

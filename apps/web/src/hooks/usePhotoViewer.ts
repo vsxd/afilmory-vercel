@@ -1,4 +1,4 @@
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { use, useCallback, useEffect, useMemo } from "react";
 
 import { gallerySettingAtom } from "~/atoms/app";
@@ -231,14 +231,8 @@ export const useContextPhotos = () => {
   return photos;
 };
 
-export const usePhotoViewer = (photoCount?: number) => {
-  const [isOpen, setIsOpen] = useAtom(openAtom);
-  const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom);
-  const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom);
-  const [viewerSourceMode, setViewerSourceMode] = useAtom(viewerSourceModeAtom);
-  const [viewerSourcePhotoIds, setViewerSourcePhotoIds] = useAtom(
-    viewerSourcePhotoIdsAtom,
-  );
+export const usePhotoViewerBodyScrollLock = () => {
+  const isOpen = useAtomValue(openAtom);
 
   useEffect(() => {
     if (!isOpen) {
@@ -259,8 +253,16 @@ export const usePhotoViewer = (photoCount?: number) => {
       }
     };
   }, [isOpen]);
+};
 
-  const openViewer = useCallback(
+export const useOpenPhotoViewer = () => {
+  const setIsOpen = useSetAtom(openAtom);
+  const setCurrentIndex = useSetAtom(currentIndexAtom);
+  const setTriggerElement = useSetAtom(triggerElementAtom);
+  const setViewerSourceMode = useSetAtom(viewerSourceModeAtom);
+  const setViewerSourcePhotoIds = useSetAtom(viewerSourcePhotoIdsAtom);
+
+  return useCallback(
     (
       index: number,
       options?: {
@@ -283,6 +285,17 @@ export const usePhotoViewer = (photoCount?: number) => {
       setViewerSourcePhotoIds,
     ],
   );
+};
+
+export const usePhotoViewer = (photoCount?: number) => {
+  const [isOpen, setIsOpen] = useAtom(openAtom);
+  const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom);
+  const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom);
+  const [viewerSourceMode, setViewerSourceMode] = useAtom(viewerSourceModeAtom);
+  const [viewerSourcePhotoIds, setViewerSourcePhotoIds] = useAtom(
+    viewerSourcePhotoIdsAtom,
+  );
+  const openViewer = useOpenPhotoViewer();
 
   const closeViewer = useCallback(() => {
     setIsOpen(false);

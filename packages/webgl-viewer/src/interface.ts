@@ -30,6 +30,7 @@ export interface VelocityAnimationConfig {
 }
 export interface WebGLImageViewerProps {
   src: string;
+  sourceBlob?: Blob | null;
   className?: string;
   width?: number; // 可选的预知图片宽度，用于优化加载
   height?: number; // 可选的预知图片高度，用于优化加载

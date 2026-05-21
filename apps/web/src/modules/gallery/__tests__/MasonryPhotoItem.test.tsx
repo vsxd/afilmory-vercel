@@ -81,6 +81,7 @@ vi.mock("~/hooks/useLivePhotoHandler", () => ({
 
 vi.mock("~/hooks/usePhotoViewer", () => ({
   useContextPhotos: () => contextPhotos,
+  useOpenPhotoViewer: () => openViewer,
   usePhotoViewer: () => ({
     openViewer,
   }),

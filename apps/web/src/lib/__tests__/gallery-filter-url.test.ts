@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGalleryFilterSearch,
+  buildSingleTagFilterSearch,
   getGalleryFiltersFromSearch,
 } from "~/lib/gallery-filter-url";
 
@@ -28,6 +29,37 @@ describe("gallery filter URL helpers", () => {
         tagFilterMode: "union",
       }),
     ).toBe("?photoId=A7C09524&cameras=SONY+ILCE-7C");
+  });
+
+  it("reads repeated filter params without splitting encoded commas", () => {
+    expect(
+      getGalleryFiltersFromSearch(
+        "?tags=street&tags=night%2Ccity&cameras=SONY+ILCE-7C",
+      ),
+    ).toEqual({
+      selectedTags: ["street", "night,city"],
+      selectedCameras: ["SONY ILCE-7C"],
+      selectedLenses: [],
+      tagFilterMode: "union",
+    });
+  });
+
+  it("builds a single tag search with reserved URL characters encoded", () => {
+    const search = buildSingleTagFilterSearch("night & city#1");
+
+    expect(search).toBe("?tags=night+%26+city%231");
+    expect(getGalleryFiltersFromSearch(search).selectedTags).toEqual([
+      "night & city#1",
+    ]);
+  });
+
+  it("builds a single comma tag search without parsing it as two tags", () => {
+    const search = buildSingleTagFilterSearch("night,city");
+
+    expect(search).toBe("?tags=night%2Ccity&tags=");
+    expect(getGalleryFiltersFromSearch(search).selectedTags).toEqual([
+      "night,city",
+    ]);
   });
 
   it("removes cleared filters from existing search params", () => {

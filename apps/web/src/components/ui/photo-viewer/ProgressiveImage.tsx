@@ -60,6 +60,7 @@ export const ProgressiveImage = ({
   const [useDomFallback, setUseDomFallback] = useState(false);
   const {
     blobSrc,
+    imageBlob,
     highResLoaded,
     error,
     isHighResImageRendered,
@@ -95,6 +96,7 @@ export const ProgressiveImage = ({
     onBlobSrcChange,
     loadingIndicatorRef,
     setState.setBlobSrc,
+    setState.setImageBlob,
     setState.setHighResLoaded,
     setState.setError,
     setState.setIsHighResImageRendered,
@@ -233,6 +235,7 @@ export const ProgressiveImage = ({
             <WebGLImageViewer
               ref={webglImageViewerRef}
               src={blobSrc}
+              sourceBlob={imageBlob}
               className="absolute inset-0 h-full w-full"
               width={width}
               height={height}

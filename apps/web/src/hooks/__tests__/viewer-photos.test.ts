@@ -11,7 +11,9 @@ import {
   getFilteredPhotos,
   getViewerPhotos,
   getViewerSourceMode,
+  useOpenPhotoViewer,
   usePhotoViewer,
+  usePhotoViewerBodyScrollLock,
   useViewerPhotos,
 } from "~/hooks/usePhotoViewer";
 import { jotaiStore } from "~/lib/jotai";
@@ -275,7 +277,13 @@ describe("viewer photo resolution", () => {
   it("restores the previous body overflow when the viewer closes or unmounts", async () => {
     document.body.style.overflow = "clip";
 
-    const { result, unmount } = renderHook(() => usePhotoViewer(), { wrapper });
+    const { result, unmount } = renderHook(
+      () => {
+        usePhotoViewerBodyScrollLock();
+        return usePhotoViewer();
+      },
+      { wrapper },
+    );
 
     act(() => {
       result.current.openViewer(0);
@@ -305,6 +313,46 @@ describe("viewer photo resolution", () => {
 
     await waitFor(() => {
       expect(document.body.style.overflow).toBe("clip");
+    });
+    document.body.style.overflow = "";
+  });
+
+  it("keeps body scroll locking outside action-only viewer consumers", async () => {
+    document.body.style.overflow = "clip";
+
+    const { result: openViewerResult } = renderHook(
+      () => useOpenPhotoViewer(),
+      {
+        wrapper,
+      },
+    );
+
+    act(() => {
+      openViewerResult.current(0);
+    });
+
+    expect(document.body.style.overflow).toBe("clip");
+
+    const { unmount: unmountScrollLock } = renderHook(
+      () => usePhotoViewerBodyScrollLock(),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe("hidden");
+    });
+
+    unmountScrollLock();
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe("clip");
+    });
+
+    const { result: viewerResult } = renderHook(() => usePhotoViewer(), {
+      wrapper,
+    });
+    act(() => {
+      viewerResult.current.closeViewer();
     });
     document.body.style.overflow = "";
   });

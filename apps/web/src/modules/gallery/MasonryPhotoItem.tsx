@@ -15,7 +15,7 @@ import { useLocation, useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import { useLivePhotoHandler } from "~/hooks/useLivePhotoHandler";
-import { useContextPhotos, usePhotoViewer } from "~/hooks/usePhotoViewer";
+import { useContextPhotos, useOpenPhotoViewer } from "~/hooks/usePhotoViewer";
 import {
   CarbonIsoOutline,
   MaterialSymbolsShutterSpeed,
@@ -46,7 +46,7 @@ export const MasonryPhotoItem = memo(
   }) => {
     const photos = useContextPhotos();
     const gallerySetting = useAtomValue(gallerySettingAtom);
-    const { openViewer } = usePhotoViewer();
+    const openViewer = useOpenPhotoViewer();
     const { t } = useTranslation();
     const location = useLocation();
     const routeNavigate = useNavigate();
