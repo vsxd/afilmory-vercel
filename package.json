@@ -14,15 +14,15 @@
     "build": "pnpm exec tsx apps/web/scripts/precheck.ts && pnpm build:packages && pnpm build:web",
     "build:manifest": "BUILDER_CONFIG_PATH=builder.config.ts pnpm --filter @afilmory/builder cli",
     "build:packages": "pnpm --filter @afilmory/builder build && pnpm --filter @afilmory/webgl-viewer build",
-    "build:web": "pnpm exec turbo run build --filter=@afilmory/web",
+    "build:web": "pnpm --filter @afilmory/web build",
     "dev": "pnpm --filter @afilmory/web dev",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,css,md}\" \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "lint": "eslint . --cache --cache-location node_modules/.cache/eslint/root",
     "lint:fix": "eslint . --fix",
     "prepare": "simple-git-hooks",
     "preview": "pnpm --filter @afilmory/web serve",
-    "test": "pnpm exec turbo run test",
-    "type-check": "pnpm exec turbo run type-check"
+    "test": "pnpm --filter @afilmory/data test && pnpm --filter @afilmory/ui test && pnpm --filter @afilmory/builder test && pnpm --filter @afilmory/webgl-viewer test && pnpm --filter @afilmory/web test",
+    "type-check": "pnpm --filter @afilmory/data type-check && pnpm --filter @afilmory/ui type-check && pnpm --filter @afilmory/builder type-check && pnpm --filter @afilmory/webgl-viewer type-check && pnpm --filter @afilmory/web type-check"
   },
   "devDependencies": {
     "@afilmory/builder": "workspace:*",
@@ -46,7 +46,6 @@
     "simple-git-hooks": "2.13.1",
     "tailwindcss": "catalog:",
     "tsx": "4.20.6",
-    "turbo": "^2.9.6",
     "typescript": "catalog:",
     "unplugin-ast": "0.15.3",
     "vite": "7.1.12",

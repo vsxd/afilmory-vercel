@@ -48,4 +48,4 @@ jobs:
           printf '%s\n' '{"version":"ci","data":[],"cameras":[],"lenses":[]}' > generated/photos-manifest.json
 
       - name: Build
-        run: pnpm exec turbo run build
+        run: SKIP_MANIFEST_BUILD=true pnpm build
