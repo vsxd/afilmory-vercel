@@ -120,7 +120,8 @@ export async function runAsWorker() {
         existingManifestMap,
         legacyLivePhotoMap,
         processorOptions,
-        builder,
+        builder.services,
+        (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
         {
           runState: pluginRunState,
           builderOptions,
@@ -208,7 +209,8 @@ export async function runAsWorker() {
               existingManifestMap,
               legacyLivePhotoMap,
               batchProcessorOptions,
-              builder,
+              builder.services,
+              (runState, event, payload) => builder.emitPluginEvent(runState, event, payload),
               {
                 runState: pluginRunState,
                 builderOptions: batchBuilderOptions,

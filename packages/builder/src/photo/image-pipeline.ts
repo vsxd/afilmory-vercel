@@ -2,15 +2,16 @@ import { compressUint8Array } from '@afilmory/data'
 import type { _Object } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 
-import type { BuilderOptions } from '../builder/builder.js'
+import type { PhotoProcessorOptions } from '../core/contracts/photo-processing.js'
+import type { PluginRunState } from '../core/contracts/plugin-ref.js'
 import {
   convertBmpToJpegSharpInstance,
   getImageMetadataWithSharp,
   isBitmap,
   preprocessImageBuffer,
 } from '../image/processor.js'
-import type { PluginRunState } from '../plugins/manager.js'
 import { THUMBNAIL_PLUGIN_DATA_KEY } from '../plugins/thumbnail-storage/shared.js'
+import type { BuilderOptions } from '../types/options.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { shouldProcessPhoto } from './cache-manager.js'
 import { processExifData, processThumbnailAndBlurhash, processToneAnalysis } from './data-processors.js'
@@ -21,7 +22,6 @@ import { extractPhotoInfo } from './info-extractor.js'
 import { processLivePhoto } from './live-photo-handler.js'
 import { getGlobalLoggers } from './logger-adapter.js'
 import { detectMotionPhoto } from './motion-photo-detector.js'
-import type { PhotoProcessorOptions } from './processor.js'
 
 export interface ProcessedImageData {
   sharpInstance: sharp.Sharp
@@ -124,16 +124,16 @@ export async function processImageWithSharp(imageBuffer: Buffer, photoKey: strin
  * @returns 带摘要后缀的 ID
  */
 function generatePhotoId(s3Key: string, existingItem?: PhotoManifestItem): string {
-  const { builder } = getPhotoExecutionContext()
-  const digestSuffixLength = builder.getConfig().system.processing.digestSuffixLength ?? 0
+  const { services } = getPhotoExecutionContext()
+  const digestSuffixLength = services.config.system.processing.digestSuffixLength ?? 0
 
-  if (existingItem?.id && digestSuffixLength <= 0 && !builder.hasPhotoIdCollision(s3Key)) {
+  if (existingItem?.id && digestSuffixLength <= 0 && !services.photoId.hasCollision(s3Key)) {
     return existingItem.id
   }
 
   return createPhotoId(s3Key, {
     digestSuffixLength,
-    forceDigest: builder.hasPhotoIdCollision(s3Key),
+    forceDigest: services.photoId.hasCollision(s3Key),
   })
 }
 
@@ -265,12 +265,12 @@ export async function processPhotoWithPipeline(
   pluginData: Record<string, unknown>
 }> {
   const { photoKey, existingItem, obj, options } = context
-  const { builder } = getPhotoExecutionContext()
+  const { emitPluginEvent } = getPhotoExecutionContext()
   const loggers = getGlobalLoggers()
 
   const photoId = generatePhotoId(photoKey, existingItem)
 
-  await builder.emitPluginEvent(runtime.runState, 'beforePhotoProcess', {
+  await emitPluginEvent(runtime.runState, 'beforePhotoProcess', {
     options: runtime.builderOptions,
     context,
   })
@@ -285,7 +285,7 @@ export async function processPhotoWithPipeline(
       type: 'skipped' as const,
       pluginData: context.pluginData,
     }
-    await builder.emitPluginEvent(runtime.runState, 'afterPhotoProcess', {
+    await emitPluginEvent(runtime.runState, 'afterPhotoProcess', {
       options: runtime.builderOptions,
       context,
       result,
@@ -310,7 +310,7 @@ export async function processPhotoWithPipeline(
       resultType = 'failed'
     }
   } catch (error) {
-    await builder.emitPluginEvent(runtime.runState, 'photoProcessError', {
+    await emitPluginEvent(runtime.runState, 'photoProcessError', {
       options: runtime.builderOptions,
       context,
       error,
@@ -326,7 +326,7 @@ export async function processPhotoWithPipeline(
     pluginData: context.pluginData,
   }
 
-  await builder.emitPluginEvent(runtime.runState, 'afterPhotoProcess', {
+  await emitPluginEvent(runtime.runState, 'afterPhotoProcess', {
     options: runtime.builderOptions,
     context,
     result,

@@ -1,4 +1,6 @@
-import type { AfilmoryBuilder } from '../builder/builder.js'
+import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
+import type { PluginRunState } from '../core/contracts/plugin-ref.js'
+import type { BuilderServices } from '../core/contracts/services.js'
 import { logger } from '../logger/index.js'
 import { loadPlugins } from './loader.js'
 import type {
@@ -8,7 +10,7 @@ import type {
   BuilderPluginHookContext,
 } from './types.js'
 
-export type PluginRunState = Map<string, Map<string, unknown>>
+export type { PluginRunState } from '../core/contracts/plugin-ref.js'
 
 export class PluginManager {
   private readonly entries: BuilderPluginConfigEntry[]
@@ -29,7 +31,7 @@ export class PluginManager {
     return new Map()
   }
 
-  async ensureLoaded(builder: AfilmoryBuilder): Promise<void> {
+  async ensureLoaded(services: BuilderServices): Promise<void> {
     if (this.plugins.length > 0 || this.loadPromise) {
       await this.loadPromise
       return
@@ -51,10 +53,9 @@ export class PluginManager {
 
         try {
           await initHook({
-            builder,
-            config: builder.getConfig(),
+            services,
+            config: services.config,
             logger,
-            registerStorageProvider: builder.registerStorageProvider.bind(builder),
             pluginOptions: plugin.pluginOptions,
           })
         } catch (error) {
@@ -68,7 +69,8 @@ export class PluginManager {
   }
 
   async emit<TEvent extends BuilderPluginEvent>(
-    builder: AfilmoryBuilder,
+    services: BuilderServices,
+    emitPluginEvent: EmitPluginEventFn,
     runState: PluginRunState,
     event: TEvent,
     payload: BuilderPluginEventPayloads[TEvent],
@@ -89,10 +91,10 @@ export class PluginManager {
       }
 
       const context: BuilderPluginHookContext<TEvent> = {
-        builder,
-        config: builder.getConfig(),
+        services,
+        emitPluginEvent,
+        config: services.config,
         logger,
-        registerStorageProvider: builder.registerStorageProvider.bind(builder),
         options: payload.options,
         pluginName: plugin.name,
         pluginOptions: plugin.pluginOptions,

@@ -2,16 +2,9 @@ import type { ConsolaInstance } from 'consola'
 
 import type { Logger, WorkerLogger } from '../logger/index.js'
 import { getPhotoExecutionContext } from './execution-context.js'
+import type { PhotoLogger, PhotoProcessingLoggers } from './logger-types.js'
 
-/**
- * 通用 Logger 接口
- */
-export interface PhotoLogger {
-  info: (message: string, ...args: any[]) => void
-  warn: (message: string, ...args: any[]) => void
-  error: (message: string, error?: any) => void
-  success: (message: string, ...args: any[]) => void
-}
+export type { PhotoLogger, PhotoProcessingLoggers } from './logger-types.js'
 
 /**
  * Logger 适配器基类
@@ -89,19 +82,6 @@ export class CompatibleLoggerAdapter implements PhotoLogger {
   get originalLogger(): ConsolaInstance {
     return this.logger
   }
-}
-
-/**
- * 照片处理专用的 Logger 集合
- */
-export interface PhotoProcessingLoggers {
-  image: CompatibleLoggerAdapter
-  s3: CompatibleLoggerAdapter
-  thumbnail: CompatibleLoggerAdapter
-  blurhash: CompatibleLoggerAdapter
-  exif: CompatibleLoggerAdapter
-  tone: CompatibleLoggerAdapter
-  location: CompatibleLoggerAdapter
 }
 
 /**

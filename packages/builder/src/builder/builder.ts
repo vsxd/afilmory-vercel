@@ -1,3 +1,5 @@
+import type { BuilderServices } from '../core/contracts/services.js'
+import { createBuilderServices } from '../core/services/index.js'
 import { thumbnailExists } from '../image/thumbnail.js'
 import { logger } from '../logger/index.js'
 import { handleDeletedPhotos, loadExistingManifest, needsUpdate, saveManifest } from '../manifest/manager.js'
@@ -18,50 +20,19 @@ import type { StorageConfig } from '../storage/index.js'
 import { StorageFactory, StorageManager } from '../storage/index.js'
 import type { BuilderConfig, UserBuilderSettings } from '../types/config.js'
 import type { AfilmoryManifest, CameraInfo, LensInfo } from '../types/manifest.js'
+import type { BuilderOptions, BuilderResult } from '../types/options.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { ClusterPool } from '../worker/cluster-pool.js'
 import type { TaskCompletedPayload } from '../worker/pool.js'
 import { WorkerPool } from '../worker/pool.js'
 
-export interface BuilderOptions {
-  isForceMode: boolean
-  isForceManifest: boolean
-  isForceThumbnails: boolean
-  concurrencyLimit?: number // 可选，如果未提供则使用配置文件中的默认值
-  progressListener?: BuildProgressListener
-}
-
-export interface BuilderResult {
-  hasUpdates: boolean
-  newCount: number
-  processedCount: number
-  skippedCount: number
-  deletedCount: number
-  totalPhotos: number
-}
-
-export interface BuildProgressStartPayload {
-  total: number
-  mode: 'worker' | 'cluster'
-  concurrency: number
-}
-
-export interface BuildProgressSnapshot {
-  total: number
-  completed: number
-  newCount: number
-  processedCount: number
-  skippedCount: number
-  failedCount: number
-  currentKey?: string
-}
-
-export interface BuildProgressListener {
-  onStart?: (payload: BuildProgressStartPayload) => void
-  onProgress?: (snapshot: BuildProgressSnapshot) => void
-  onComplete?: (summary: BuildProgressSnapshot) => void
-  onError?: (error: unknown) => void
-}
+export type {
+  BuilderOptions,
+  BuilderResult,
+  BuildProgressListener,
+  BuildProgressSnapshot,
+  BuildProgressStartPayload,
+} from '../types/options.js'
 
 export class AfilmoryBuilder {
   private storageManager: StorageManager | null = null
@@ -69,6 +40,7 @@ export class AfilmoryBuilder {
   private pluginManager: PluginManager
   private readonly pluginReferences: BuilderPluginConfigEntry[]
   private photoIdCollisionKeys = new Set<string>()
+  private readonly servicesInstance: BuilderServices
 
   constructor(config: BuilderConfig) {
     this.config = config
@@ -79,6 +51,22 @@ export class AfilmoryBuilder {
     this.pluginManager = new PluginManager(this.pluginReferences, {
       baseDir: process.cwd(),
     })
+
+    this.servicesInstance = createBuilderServices({
+      config: this.config,
+      logger,
+      getStorageConfig: () => this.getStorageConfig(),
+      getStorageManager: () => this.getStorageManager(),
+      registerStorageProvider: (name, factory) => this.registerStorageProvider(name, factory),
+      hasPhotoIdCollision: (key) => this.hasPhotoIdCollision(key),
+      getPhotoIdForKey: (key, existingItem) => this.getPhotoIdForKey(key, existingItem),
+      setPhotoIdCollisionKeys: (keys) => this.setPhotoIdCollisionKeys(keys),
+      getOutputSettings: () => this.config.output,
+    })
+  }
+
+  get services(): BuilderServices {
+    return this.servicesInstance
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {
@@ -365,7 +353,8 @@ export class AfilmoryBuilder {
               existingManifestMap,
               legacyLivePhotoMap,
               processorOptions,
-              this,
+              this.services,
+              (runState, event, payload) => this.emitPluginEvent(runState, event, payload),
               {
                 runState,
                 builderOptions: options,
@@ -628,11 +617,17 @@ export class AfilmoryBuilder {
     event: TEvent,
     payload: BuilderPluginEventPayloads[TEvent],
   ): Promise<void> {
-    await this.pluginManager.emit(this, runState, event, payload)
+    await this.pluginManager.emit(
+      this.services,
+      (rs, ev, pl) => this.emitPluginEvent(rs, ev, pl),
+      runState,
+      event,
+      payload,
+    )
   }
 
   async ensurePluginsReady(): Promise<void> {
-    await this.pluginManager.ensureLoaded(this)
+    await this.pluginManager.ensureLoaded(this.services)
   }
 
   private resolvePluginReferences(): BuilderPluginConfigEntry[] {

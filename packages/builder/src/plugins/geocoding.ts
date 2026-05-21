@@ -1,4 +1,5 @@
-import type { AfilmoryBuilder } from '../builder/builder.js'
+import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
+import type { BuilderServices } from '../core/contracts/services.js'
 import type { Logger } from '../logger/index.js'
 import {
   createStorageKeyNormalizer,
@@ -131,19 +132,25 @@ function ensureProvider(
   return provider
 }
 
-async function ensurePhotoContext<T>(builder: AfilmoryBuilder, logger: Logger, fn: () => Promise<T>): Promise<T> {
+async function ensurePhotoContext<T>(
+  services: BuilderServices,
+  emitPluginEvent: EmitPluginEventFn,
+  logger: Logger,
+  fn: () => Promise<T>,
+): Promise<T> {
   try {
     getPhotoExecutionContext()
     return await fn()
   } catch {
-    const storageConfig = builder.getStorageConfig()
-    const storageManager = builder.getStorageManager()
+    const storageConfig = services.storage.getConfig()
+    const storageManager = services.storage.getManager()
     const normalizeStorageKey = createStorageKeyNormalizer(storageConfig)
     const loggers = createPhotoProcessingLoggers(0, logger)
 
     return await runWithPhotoExecutionContext(
       {
-        builder,
+        services,
+        emitPluginEvent,
         storageManager,
         storageConfig,
         normalizeStorageKey,
@@ -229,7 +236,7 @@ export default function geocodingPlugin(options: GeocodingPluginOptions = {}): B
           language: normalizedOptions.language,
         }
       },
-      afterPhotoProcess: async ({ builder, payload, runShared, logger }) => {
+      afterPhotoProcess: async ({ services, emitPluginEvent, payload, runShared, logger }) => {
         if (!settings) return
 
         const { item } = payload.result
@@ -246,7 +253,7 @@ export default function geocodingPlugin(options: GeocodingPluginOptions = {}): B
 
         const currentSettings = settings
 
-        await ensurePhotoContext(builder, logger, async () => {
+        await ensurePhotoContext(services, emitPluginEvent, logger, async () => {
           const state = getOrCreateState(runShared)
           const locationLogger = logger.main.withTag('LOCATION')
           const provider = ensureProvider(state, currentSettings, locationLogger)
@@ -261,7 +268,7 @@ export default function geocodingPlugin(options: GeocodingPluginOptions = {}): B
           await resolveLocationForItem(item, exif, state, currentSettings, provider, shouldOverwriteExisting)
         })
       },
-      afterProcessTasks: async ({ builder, payload, runShared, logger }) => {
+      afterProcessTasks: async ({ services, emitPluginEvent, payload, runShared, logger }) => {
         if (!settings || !normalizedOptions.enable) {
           return
         }
@@ -274,14 +281,15 @@ export default function geocodingPlugin(options: GeocodingPluginOptions = {}): B
           return
         }
 
-        const storageConfig = builder.getStorageConfig()
-        const storageManager = builder.getStorageManager()
+        const storageConfig = services.storage.getConfig()
+        const storageManager = services.storage.getManager()
         const normalizeStorageKey = createStorageKeyNormalizer(storageConfig)
         const loggers = createPhotoProcessingLoggers(0, logger)
 
         await runWithPhotoExecutionContext(
           {
-            builder,
+            services,
+            emitPluginEvent,
             storageManager,
             storageConfig,
             normalizeStorageKey,

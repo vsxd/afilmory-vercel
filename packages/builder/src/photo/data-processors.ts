@@ -5,13 +5,13 @@ import { decompressUint8Array } from '@afilmory/data'
 import type sharp from 'sharp'
 
 import { HEIC_FORMATS } from '../constants/index.js'
+import type { PhotoProcessorOptions } from '../core/contracts/photo-processing.js'
 import { extractExifData } from '../image/exif.js'
 import { calculateHistogramAndAnalyzeTone } from '../image/histogram.js'
 import { generateThumbnailAndBlurhash, thumbnailExists } from '../image/thumbnail.js'
 import { getBuilderOutputSettings } from '../output-paths.js'
 import type { PhotoManifestItem, PickedExif, ToneAnalysis } from '../types/photo.js'
 import { getGlobalLoggers } from './logger-adapter.js'
-import type { PhotoProcessorOptions } from './processor.js'
 
 export interface ThumbnailResult {
   thumbnailUrl: string

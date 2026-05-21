@@ -5,8 +5,10 @@ import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState 
 import type { ImageLoaderManager } from '~/lib/image-loader-manager'
 
 import type { LoadingIndicatorRef } from './LoadingIndicator'
-import type { VideoSource } from './types'
+import type { LivePhotoVideoHandle, VideoSource } from './types'
 import { getVideoSourceKey } from './types'
+
+export type { LivePhotoVideoHandle } from './types'
 
 function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -36,12 +38,6 @@ interface LivePhotoVideoProps {
   onPlayingChange?: (isPlaying: boolean) => void
   /** 是否自动播放一次 */
   shouldAutoPlayOnce?: boolean
-}
-
-export interface LivePhotoVideoHandle {
-  play: () => void
-  stop: () => void
-  getIsVideoLoaded: () => boolean
 }
 
 export const LivePhotoVideo = ({

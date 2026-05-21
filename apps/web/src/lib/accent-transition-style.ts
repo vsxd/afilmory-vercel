@@ -14,7 +14,6 @@ export const applyAccentTransitionStyle = (durationMs = 100) => {
       transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
     }
   `
-
   document.head.append(style)
 
   const timeoutId = setTimeout(() => {

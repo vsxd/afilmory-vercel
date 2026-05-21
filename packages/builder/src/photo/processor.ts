@@ -1,19 +1,21 @@
 import type { _Object } from '@aws-sdk/client-s3'
 
-import type { AfilmoryBuilder, BuilderOptions } from '../builder/builder.js'
+import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
+import type {
+  PhotoProcessingContext as PhotoProcessingContextType,
+  PhotoProcessorOptions as PhotoProcessorOptionsType,
+} from '../core/contracts/photo-processing.js'
+import type { PluginRunState } from '../core/contracts/plugin-ref.js'
+import type { BuilderServices } from '../core/contracts/services.js'
 import { logger } from '../logger/index.js'
-import type { PluginRunState } from '../plugins/manager.js'
+import type { BuilderOptions } from '../types/options.js'
 import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
 import { createStorageKeyNormalizer, runWithPhotoExecutionContext } from './execution-context.js'
-import type { PhotoProcessingContext } from './image-pipeline.js'
 import { processPhotoWithPipeline } from './image-pipeline.js'
 import { createPhotoProcessingLoggers } from './logger-adapter.js'
 
-export interface PhotoProcessorOptions {
-  isForceMode: boolean
-  isForceManifest: boolean
-  isForceThumbnails: boolean
-}
+export type PhotoProcessorOptions = PhotoProcessorOptionsType
+export type { PhotoProcessingContext } from '../core/contracts/photo-processing.js'
 
 // 处理单张照片
 export async function processPhoto(
@@ -24,7 +26,8 @@ export async function processPhoto(
   existingManifestMap: Map<string, PhotoManifestItem>,
   livePhotoMap: Map<string, _Object>,
   options: PhotoProcessorOptions,
-  builder: AfilmoryBuilder,
+  services: BuilderServices,
+  emitPluginEvent: EmitPluginEventFn,
   pluginRuntime: {
     runState: PluginRunState
     builderOptions: BuilderOptions
@@ -39,7 +42,7 @@ export async function processPhoto(
   const existingItem = existingManifestMap.get(key)
 
   // 构建处理上下文
-  const context: PhotoProcessingContext = {
+  const context: PhotoProcessingContextType = {
     photoKey: key,
     obj,
     existingItem,
@@ -48,13 +51,14 @@ export async function processPhoto(
     pluginData: {},
   }
 
-  const storageManager = builder.getStorageManager()
-  const storageConfig = builder.getStorageConfig()
+  const storageManager = services.storage.getManager()
+  const storageConfig = services.storage.getConfig()
   const photoLoggers = createPhotoProcessingLoggers(workerId, logger)
 
   return await runWithPhotoExecutionContext(
     {
-      builder,
+      services,
+      emitPluginEvent,
       storageManager,
       storageConfig,
       normalizeStorageKey: createStorageKeyNormalizer(storageConfig),

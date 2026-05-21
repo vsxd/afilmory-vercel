@@ -1,17 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
-import type { AfilmoryBuilder } from '../builder/builder.js'
-import type { StorageManager } from '../storage/index.js'
+import type { PhotoExecutionContext } from '../core/contracts/execution-context.js'
 import type { StorageConfig } from '../storage/interfaces.js'
-import type { PhotoProcessingLoggers } from './logger-adapter.js'
 
-export interface PhotoExecutionContext {
-  builder: AfilmoryBuilder
-  storageManager: StorageManager
-  storageConfig: StorageConfig
-  normalizeStorageKey: (key: string) => string
-  loggers?: PhotoProcessingLoggers
-}
+export type { EmitPluginEventFn, PhotoExecutionContext } from '../core/contracts/execution-context.js'
 
 const photoContextStorage = new AsyncLocalStorage<PhotoExecutionContext>()
 

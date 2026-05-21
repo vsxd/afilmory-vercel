@@ -8,9 +8,8 @@ import { MenuItemSeparator, MenuItemText } from '~/atoms/context-menu'
 import { isMobileDevice } from '~/lib/device-viewport'
 import { ImageLoaderManager } from '~/lib/image-loader-manager'
 
-import type { LivePhotoVideoHandle } from './LivePhotoVideo'
 import type { LoadingIndicatorRef } from './LoadingIndicator'
-import type { ProgressiveImageState } from './types'
+import type { LivePhotoVideoHandle, ProgressiveImageState } from './types'
 import { SHOW_SCALE_INDICATOR_DURATION } from './types'
 
 function isAbortLikeError(error: unknown): boolean {

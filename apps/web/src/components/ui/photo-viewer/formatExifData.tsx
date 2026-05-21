@@ -99,11 +99,19 @@ const processFujiRecipeValue = (value: string | null | undefined): string | null
   return cleanExifValue(value)
 }
 
+// The shape after processFujiRecipe runs: translated/cleaned string values
+// widen to `string | null`, while non-string fields (numbers, optional fields
+// that may be undefined) keep their original type.
+type WidenStringFields<T> = {
+  [K in keyof T]: [NonNullable<T[K]>] extends [string] ? string | null | Extract<T[K], undefined> : T[K]
+}
+type ProcessedFujiRecipe = WidenStringFields<FujiRecipe>
+
 // Process entire Fuji Recipe object
-const processFujiRecipe = (recipe: FujiRecipe): any => {
+const processFujiRecipe = (recipe: FujiRecipe): ProcessedFujiRecipe | null => {
   if (!recipe) return null
 
-  const processed = { ...recipe } as any
+  const processed: ProcessedFujiRecipe = { ...recipe }
 
   // Clean specific fields that commonly have unnecessary characters
   if (recipe.HighlightTone) {

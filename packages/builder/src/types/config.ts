@@ -1,4 +1,4 @@
-import type { BuilderPluginConfigEntry } from '../plugins/types.js'
+import type { BuilderPluginConfigEntry } from '../core/contracts/plugin-ref.js'
 import type { StorageConfig } from '../storage/interfaces.js'
 
 export interface BuilderRepoSettings {

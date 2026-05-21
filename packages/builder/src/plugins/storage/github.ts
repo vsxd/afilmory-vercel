@@ -12,8 +12,8 @@ export default function githubStoragePlugin(options: GitHubStoragePluginOptions 
   return {
     name: `afilmory:storage:${providerName}`,
     hooks: {
-      onInit: ({ registerStorageProvider }) => {
-        registerStorageProvider(providerName, (config) => {
+      onInit: ({ services }) => {
+        services.storage.registerProvider(providerName, (config) => {
           return new GitHubStorageProvider(config as GitHubConfig)
         })
       },
