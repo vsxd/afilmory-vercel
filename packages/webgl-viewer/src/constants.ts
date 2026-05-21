@@ -11,7 +11,7 @@ import type {
   PinchConfig,
   VelocityAnimationConfig,
   WheelConfig,
-} from './interface'
+} from "./interface";
 
 /**
  * 默认滚轮配置
@@ -20,7 +20,7 @@ export const defaultWheelConfig: WheelConfig = {
   step: 0.1,
   wheelDisabled: false,
   touchPadDisabled: false,
-}
+};
 
 /**
  * 默认手势缩放配置
@@ -28,7 +28,7 @@ export const defaultWheelConfig: WheelConfig = {
 export const defaultPinchConfig: PinchConfig = {
   step: 0.5,
   disabled: false,
-}
+};
 
 /**
  * 默认双击配置
@@ -36,9 +36,9 @@ export const defaultPinchConfig: PinchConfig = {
 export const defaultDoubleClickConfig: DoubleClickConfig = {
   step: 2,
   disabled: false,
-  mode: 'toggle',
+  mode: "toggle",
   animationTime: 200,
-}
+};
 
 /**
  * 默认平移配置
@@ -46,7 +46,7 @@ export const defaultDoubleClickConfig: DoubleClickConfig = {
 export const defaultPanningConfig: PanningConfig = {
   disabled: false,
   velocityDisabled: true,
-}
+};
 
 /**
  * 默认对齐动画配置
@@ -55,7 +55,7 @@ export const defaultAlignmentAnimation: AlignmentAnimationConfig = {
   sizeX: 0,
   sizeY: 0,
   velocityAlignmentTime: 0.2,
-}
+};
 
 /**
  * 默认速度动画配置
@@ -63,4 +63,4 @@ export const defaultAlignmentAnimation: AlignmentAnimationConfig = {
 export const defaultVelocityAnimation: VelocityAnimationConfig = {
   sensitivity: 1,
   animationTime: 0.2,
-}
+};

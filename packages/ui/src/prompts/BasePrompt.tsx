@@ -1,69 +1,83 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '../button/Button'
-import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../dialog'
-import { Modal } from '../modal'
-import type { ModalComponent, ModalComponentProps } from '../modal/types'
+import { Button } from "../button/Button";
+import {
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../dialog";
+import { Modal } from "../modal";
+import type { ModalComponent, ModalComponentProps } from "../modal/types";
 
-type PromptVariant = 'danger' | 'info'
+type PromptVariant = "danger" | "info";
 
 export type PromptOptions = {
-  title: string
-  description?: string
-  variant?: PromptVariant
-  onConfirmText?: string
-  onCancelText?: string
-  onConfirm?: () => void | Promise<void>
-  onCancel?: () => void | Promise<void>
-  content?: React.ReactNode
-}
+  title: string;
+  description?: string;
+  variant?: PromptVariant;
+  onConfirmText?: string;
+  onCancelText?: string;
+  onConfirm?: () => void | Promise<void>;
+  onCancel?: () => void | Promise<void>;
+  content?: React.ReactNode;
+};
 
 export const BasePrompt: ModalComponent<PromptOptions> = ({
   modalId,
   dismiss,
   title,
   description,
-  variant = 'info',
-  onConfirmText = 'Confirm',
-  onCancelText = 'Cancel',
+  variant = "info",
+  onConfirmText = "Confirm",
+  onCancelText = "Cancel",
   onConfirm,
   onCancel,
   content,
 }: ModalComponentProps & PromptOptions) => {
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false);
 
   const handleCancel = async () => {
     try {
-      await onCancel?.()
+      await onCancel?.();
     } finally {
-      dismiss()
+      dismiss();
     }
-  }
+  };
 
   const handleConfirm = async () => {
     try {
-      setSubmitting(true)
-      await onConfirm?.()
+      setSubmitting(true);
+      await onConfirm?.();
     } finally {
-      setSubmitting(false)
-      Modal.dismiss(modalId)
+      setSubmitting(false);
+      Modal.dismiss(modalId);
     }
-  }
+  };
 
   return (
     <div>
       <DialogHeader className="mb-2">
         <DialogTitle>{title}</DialogTitle>
-        {description ? <DialogDescription className="text-text-secondary">{description}</DialogDescription> : null}
+        {description ? (
+          <DialogDescription className="text-text-secondary">
+            {description}
+          </DialogDescription>
+        ) : null}
       </DialogHeader>
       {content && <div className="mt-4">{content}</div>}
       <DialogFooter className="mt-4">
-        <Button size="sm" variant="secondary" onClick={handleCancel} disabled={submitting}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={handleCancel}
+          disabled={submitting}
+        >
           {onCancelText}
         </Button>
         <Button
           size="sm"
-          variant={variant === 'danger' ? 'destructive' : 'primary'}
+          variant={variant === "danger" ? "destructive" : "primary"}
           onClick={handleConfirm}
           isLoading={submitting}
           loadingText={onConfirmText}
@@ -72,9 +86,9 @@ export const BasePrompt: ModalComponent<PromptOptions> = ({
         </Button>
       </DialogFooter>
     </div>
-  )
-}
+  );
+};
 
-BasePrompt.contentClassName = 'max-w-sm'
+BasePrompt.contentClassName = "max-w-sm";
 
-export type { PromptVariant }
+export type { PromptVariant };

@@ -1,27 +1,34 @@
-import type { SiteConfig } from '@config'
-import defaultSiteConfig from '@config'
-import { merge } from 'es-toolkit/compat'
+import type { SiteConfig } from "@config";
+import defaultSiteConfig from "@config";
+import { merge } from "es-toolkit/compat";
 
 const defaultInjectConfig = {
   useApi: false,
   useNext: false,
   useCloud: false,
-}
+};
 
-export const injectConfig = merge(defaultInjectConfig, __CONFIG__)
+export const injectConfig = merge(defaultInjectConfig, __CONFIG__);
 
 const getInjectedSiteConfig = (): Partial<SiteConfig> | undefined => {
-  if (typeof window !== 'undefined' && window.__SITE_CONFIG__) {
-    return window.__SITE_CONFIG__
+  if (typeof window !== "undefined" && window.__SITE_CONFIG__) {
+    return window.__SITE_CONFIG__;
   }
 
-  if (typeof globalThis !== 'undefined' && '__SITE_CONFIG__' in globalThis) {
-    return (globalThis as typeof globalThis & { __SITE_CONFIG__?: Partial<SiteConfig> }).__SITE_CONFIG__
+  if (typeof globalThis !== "undefined" && "__SITE_CONFIG__" in globalThis) {
+    return (
+      globalThis as typeof globalThis & {
+        __SITE_CONFIG__?: Partial<SiteConfig>;
+      }
+    ).__SITE_CONFIG__;
   }
 
-  return undefined
-}
+  return undefined;
+};
 
-const runtimeSiteConfig = getInjectedSiteConfig() ?? {}
+const runtimeSiteConfig = getInjectedSiteConfig() ?? {};
 
-export const siteConfig: SiteConfig = merge(defaultSiteConfig, runtimeSiteConfig)
+export const siteConfig: SiteConfig = merge(
+  defaultSiteConfig,
+  runtimeSiteConfig,
+);

@@ -1,9 +1,9 @@
-import { ScrollArea, Thumbhash } from '@afilmory/ui'
+import { ScrollArea, Thumbhash } from "@afilmory/ui";
 
-import { photoLoader } from '~/data-runtime/photo-loader'
+import { photoLoader } from "~/data-runtime/photo-loader";
 
 export const Component = () => {
-  const photos = photoLoader.getPhotos()
+  const photos = photoLoader.getPhotos();
 
   return (
     <ScrollArea rootClassName="h-screen">
@@ -32,5 +32,5 @@ export const Component = () => {
         ))}
       </div>
     </ScrollArea>
-  )
-}
+  );
+};

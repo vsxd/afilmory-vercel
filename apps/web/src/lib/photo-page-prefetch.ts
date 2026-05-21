@@ -1,24 +1,30 @@
-const PHOTO_PAGE_MODULE_KEY = './pages/(main)/photos/[photoId]/index.tsx'
-const STARTUP_PREFETCH_DELAY_MS = 1500
-const STARTUP_PREFETCH_IDLE_TIMEOUT_MS = 3000
+const PHOTO_PAGE_MODULE_KEY = "./pages/(main)/photos/[photoId]/index.tsx";
+const STARTUP_PREFETCH_DELAY_MS = 1500;
+const STARTUP_PREFETCH_IDLE_TIMEOUT_MS = 3000;
 
-type PhotoPagePrefetchModules = Record<string, (() => Promise<unknown>) | undefined>
+type PhotoPagePrefetchModules = Record<
+  string,
+  (() => Promise<unknown>) | undefined
+>;
 type PhotoPagePrefetchOptions = {
-  startupDelayMs?: number
-  startupIdleTimeoutMs?: number
-}
+  startupDelayMs?: number;
+  startupIdleTimeoutMs?: number;
+};
 type IdleWindow = Window & {
-  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
-  cancelIdleCallback?: (handle: number) => void
-}
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
 
 export function isPhotoPageIntentTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) {
-    return false
+    return false;
   }
 
-  const href = target.closest('a[href]')?.getAttribute('href')
-  return Boolean(href?.startsWith('/photos/'))
+  const href = target.closest("a[href]")?.getAttribute("href");
+  return Boolean(href?.startsWith("/photos/"));
 }
 
 export function installPhotoPagePrefetch(
@@ -26,79 +32,87 @@ export function installPhotoPagePrefetch(
   browserWindow: Window = window,
   options: PhotoPagePrefetchOptions = {},
 ): () => void {
-  const loadPhotoPageModuleCandidate = prefetchModules[PHOTO_PAGE_MODULE_KEY]
+  const loadPhotoPageModuleCandidate = prefetchModules[PHOTO_PAGE_MODULE_KEY];
   if (!loadPhotoPageModuleCandidate) {
-    return () => {}
+    return () => {};
   }
-  const loadPhotoPageModule: () => Promise<unknown> = loadPhotoPageModuleCandidate
+  const loadPhotoPageModule: () => Promise<unknown> =
+    loadPhotoPageModuleCandidate;
 
-  let isPrefetched = false
-  let startupDelayId: number | undefined
-  let idleCallbackId: number | undefined
+  let isPrefetched = false;
+  let startupDelayId: number | undefined;
+  let idleCallbackId: number | undefined;
 
   function clearStartupPrefetch(): void {
     if (startupDelayId !== undefined) {
-      browserWindow.clearTimeout(startupDelayId)
-      startupDelayId = undefined
+      browserWindow.clearTimeout(startupDelayId);
+      startupDelayId = undefined;
     }
 
     if (idleCallbackId !== undefined) {
-      ;(browserWindow as IdleWindow).cancelIdleCallback?.(idleCallbackId)
-      idleCallbackId = undefined
+      (browserWindow as IdleWindow).cancelIdleCallback?.(idleCallbackId);
+      idleCallbackId = undefined;
     }
   }
 
   function cleanup(): void {
-    clearStartupPrefetch()
-    browserWindow.removeEventListener('pointerover', handleIntent, true)
-    browserWindow.removeEventListener('pointerdown', handleIntent, true)
-    browserWindow.removeEventListener('focusin', handleIntent, true)
+    clearStartupPrefetch();
+    browserWindow.removeEventListener("pointerover", handleIntent, true);
+    browserWindow.removeEventListener("pointerdown", handleIntent, true);
+    browserWindow.removeEventListener("focusin", handleIntent, true);
   }
 
   function prefetchPhotoPage(): void {
     if (isPrefetched) {
-      return
+      return;
     }
 
-    isPrefetched = true
-    cleanup()
-    void loadPhotoPageModule()
+    isPrefetched = true;
+    cleanup();
+    void loadPhotoPageModule();
   }
 
   function scheduleStartupPrefetch(): void {
-    const startupDelayMs = options.startupDelayMs ?? STARTUP_PREFETCH_DELAY_MS
-    const startupIdleTimeoutMs = options.startupIdleTimeoutMs ?? STARTUP_PREFETCH_IDLE_TIMEOUT_MS
+    const startupDelayMs = options.startupDelayMs ?? STARTUP_PREFETCH_DELAY_MS;
+    const startupIdleTimeoutMs =
+      options.startupIdleTimeoutMs ?? STARTUP_PREFETCH_IDLE_TIMEOUT_MS;
 
     startupDelayId = browserWindow.setTimeout(() => {
-      startupDelayId = undefined
-      const idleWindow = browserWindow as IdleWindow
+      startupDelayId = undefined;
+      const idleWindow = browserWindow as IdleWindow;
       if (idleWindow.requestIdleCallback) {
         idleCallbackId = idleWindow.requestIdleCallback(
           () => {
-            idleCallbackId = undefined
-            prefetchPhotoPage()
+            idleCallbackId = undefined;
+            prefetchPhotoPage();
           },
           { timeout: startupIdleTimeoutMs },
-        )
-        return
+        );
+        return;
       }
 
-      prefetchPhotoPage()
-    }, startupDelayMs)
+      prefetchPhotoPage();
+    }, startupDelayMs);
   }
 
   function handleIntent(event: Event): void {
     if (!isPhotoPageIntentTarget(event.target)) {
-      return
+      return;
     }
 
-    prefetchPhotoPage()
+    prefetchPhotoPage();
   }
 
-  browserWindow.addEventListener('pointerover', handleIntent, { capture: true, passive: true })
-  browserWindow.addEventListener('pointerdown', handleIntent, { capture: true, passive: true })
-  browserWindow.addEventListener('focusin', handleIntent, true)
-  scheduleStartupPrefetch()
+  browserWindow.addEventListener("pointerover", handleIntent, {
+    capture: true,
+    passive: true,
+  });
+  browserWindow.addEventListener("pointerdown", handleIntent, {
+    capture: true,
+    passive: true,
+  });
+  browserWindow.addEventListener("focusin", handleIntent, true);
+  scheduleStartupPrefetch();
 
-  return cleanup
+  return cleanup;
 }

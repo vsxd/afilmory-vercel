@@ -1,18 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { WebGLImageViewerProps } from './interface'
-import { WebGLImageViewerEngine } from './WebGLImageViewerEngine'
+import type { WebGLImageViewerProps } from "./interface";
+import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
 
 class ResizeObserverMock {
-  observe = vi.fn()
-  disconnect = vi.fn()
+  observe = vi.fn();
+  disconnect = vi.fn();
 }
 
 class WorkerMock {
-  onmessage: ((event: MessageEvent) => void) | null = null
-  onerror: ((event: ErrorEvent) => void) | null = null
-  postMessage = vi.fn()
-  terminate = vi.fn()
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  postMessage = vi.fn();
+  terminate = vi.fn();
 }
 
 function createWebGLMock(): WebGLRenderingContext {
@@ -61,9 +61,9 @@ function createWebGLMock(): WebGLRenderingContext {
     enable: vi.fn(),
     enableVertexAttribArray: vi.fn(),
     getAttribLocation: vi.fn(() => 0),
-    getProgramInfoLog: vi.fn(() => ''),
+    getProgramInfoLog: vi.fn(() => ""),
     getProgramParameter: vi.fn(() => true),
-    getShaderInfoLog: vi.fn(() => ''),
+    getShaderInfoLog: vi.fn(() => ""),
     getShaderParameter: vi.fn(() => true),
     getUniformLocation: vi.fn(() => ({})),
     lineWidth: vi.fn(),
@@ -77,7 +77,7 @@ function createWebGLMock(): WebGLRenderingContext {
     useProgram: vi.fn(),
     vertexAttribPointer: vi.fn(),
     viewport: vi.fn(),
-  } as unknown as WebGLRenderingContext
+  } as unknown as WebGLRenderingContext;
 }
 
 function createEngine(
@@ -85,8 +85,8 @@ function createEngine(
   overrides: Partial<Required<WebGLImageViewerProps>> = {},
 ): WebGLImageViewerEngine {
   return new WebGLImageViewerEngine(canvas, {
-    src: 'blob:photo',
-    className: '',
+    src: "blob:photo",
+    className: "",
     width: 100,
     height: 100,
     initialScale: 1,
@@ -94,7 +94,7 @@ function createEngine(
     maxScale: 10,
     wheel: { step: 0.2 },
     pinch: { step: 5 },
-    doubleClick: { step: 0.7, mode: 'toggle', animationTime: 200 },
+    doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
     panning: {},
     limitToBounds: true,
     centerOnInit: true,
@@ -107,53 +107,55 @@ function createEngine(
     onImagePainted: () => {},
     debug: false,
     ...overrides,
-  })
+  });
 }
 
-describe('WebGLImageViewerEngine lifecycle', () => {
-  const originalResizeObserver = globalThis.ResizeObserver
-  const originalWorker = globalThis.Worker
-  const originalCreateObjectURL = URL.createObjectURL
-  const originalRevokeObjectURL = URL.revokeObjectURL
+describe("WebGLImageViewerEngine lifecycle", () => {
+  const originalResizeObserver = globalThis.ResizeObserver;
+  const originalWorker = globalThis.Worker;
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
 
   beforeEach(() => {
-    vi.stubGlobal('ResizeObserver', ResizeObserverMock)
-    vi.stubGlobal('Worker', WorkerMock)
-    Object.defineProperty(URL, 'createObjectURL', {
+    vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+    vi.stubGlobal("Worker", WorkerMock);
+    Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
-      value: vi.fn(() => 'blob:worker'),
-    })
-    Object.defineProperty(URL, 'revokeObjectURL', {
+      value: vi.fn(() => "blob:worker"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
       configurable: true,
       value: vi.fn(),
-    })
-  })
+    });
+  });
 
   afterEach(() => {
-    vi.restoreAllMocks()
-    globalThis.ResizeObserver = originalResizeObserver
-    globalThis.Worker = originalWorker
-    Object.defineProperty(URL, 'createObjectURL', {
+    vi.restoreAllMocks();
+    globalThis.ResizeObserver = originalResizeObserver;
+    globalThis.Worker = originalWorker;
+    Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: originalCreateObjectURL,
-    })
-    Object.defineProperty(URL, 'revokeObjectURL', {
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
       configurable: true,
       value: originalRevokeObjectURL,
-    })
-  })
+    });
+  });
 
-  it('ignores pending animation frames after destroy', () => {
-    let pendingFrame: FrameRequestCallback | undefined
-    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      pendingFrame = callback
-      return 42
-    })
-    vi.spyOn(performance, 'now').mockReturnValue(0)
-    const canvas = document.createElement('canvas')
-    const gl = createWebGLMock()
-    vi.spyOn(canvas, 'getContext').mockReturnValue(gl)
-    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+  it("ignores pending animation frames after destroy", () => {
+    let pendingFrame: FrameRequestCallback | undefined;
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        pendingFrame = callback;
+        return 42;
+      });
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
       top: 0,
@@ -163,27 +165,27 @@ describe('WebGLImageViewerEngine lifecycle', () => {
       width: 100,
       height: 100,
       toJSON: () => ({}),
-    })
+    });
 
-    const engine = createEngine(canvas)
-    void engine.loadImage('blob:photo', 100, 100)
-    engine.resetView()
-    engine.destroy()
+    const engine = createEngine(canvas);
+    void engine.loadImage("blob:photo", 100, 100);
+    engine.resetView();
+    engine.destroy();
 
-    expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1)
-    vi.mocked(gl.drawArrays).mockClear()
-    expect(pendingFrame).toBeDefined()
-    const frame = pendingFrame as FrameRequestCallback
-    frame(16)
-    expect(gl.drawArrays).not.toHaveBeenCalled()
-  })
+    expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
+    vi.mocked(gl.drawArrays).mockClear();
+    expect(pendingFrame).toBeDefined();
+    const frame = pendingFrame as FrameRequestCallback;
+    frame(16);
+    expect(gl.drawArrays).not.toHaveBeenCalled();
+  });
 
-  it('treats the configured initial scale as the fitted zoom baseline', () => {
-    const onZoomChange = vi.fn()
-    const canvas = document.createElement('canvas')
-    const gl = createWebGLMock()
-    vi.spyOn(canvas, 'getContext').mockReturnValue(gl)
-    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({
+  it("treats the configured initial scale as the fitted zoom baseline", () => {
+    const onZoomChange = vi.fn();
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
       x: 0,
       y: 0,
       top: 0,
@@ -193,23 +195,23 @@ describe('WebGLImageViewerEngine lifecycle', () => {
       width: 100,
       height: 100,
       toJSON: () => ({}),
-    })
+    });
 
     const engine = createEngine(canvas, {
       initialScale: 0.9,
       minScale: 0.9,
       onZoomChange,
-    })
+    });
 
-    void engine.loadImage('blob:photo', 100, 100)
+    void engine.loadImage("blob:photo", 100, 100);
 
-    expect(engine.getScale()).toBeCloseTo(0.9)
+    expect(engine.getScale()).toBeCloseTo(0.9);
 
-    engine.zoomAt(50, 50, 1.1)
+    engine.zoomAt(50, 50, 1.1);
 
-    expect(engine.getScale()).toBeCloseTo(0.99)
-    const lastZoomChange = onZoomChange.mock.calls.at(-1)
-    expect(lastZoomChange?.[0]).toBeCloseTo(0.99)
-    expect(lastZoomChange?.[1]).toBeCloseTo(1.1)
-  })
-})
+    expect(engine.getScale()).toBeCloseTo(0.99);
+    const lastZoomChange = onZoomChange.mock.calls.at(-1);
+    expect(lastZoomChange?.[0]).toBeCloseTo(0.99);
+    expect(lastZoomChange?.[1]).toBeCloseTo(1.1);
+  });
+});

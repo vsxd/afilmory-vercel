@@ -1,12 +1,13 @@
-import type { FC, HTMLAttributes } from 'react'
+import type { FC, HTMLAttributes } from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
-export interface FormHelperTextProps extends HTMLAttributes<HTMLParagraphElement> {
+export interface FormHelperTextProps
+  extends HTMLAttributes<HTMLParagraphElement> {
   /**
    * Helper text to display
    */
-  children?: string
+  children?: string;
 }
 
 /**
@@ -25,14 +26,21 @@ export interface FormHelperTextProps extends HTMLAttributes<HTMLParagraphElement
  * </FormHelperText>
  * ```
  */
-export const FormHelperText: FC<FormHelperTextProps> = ({ children, className, ...props }) => {
-  if (!children) return null
+export const FormHelperText: FC<FormHelperTextProps> = ({
+  children,
+  className,
+  ...props
+}) => {
+  if (!children) return null;
 
   return (
-    <p className={clsxm('mt-2 text-xs text-text-tertiary', className)} {...props}>
+    <p
+      className={clsxm("mt-2 text-xs text-text-tertiary", className)}
+      {...props}
+    >
       {children}
     </p>
-  )
-}
+  );
+};
 
-FormHelperText.displayName = 'FormHelperText'
+FormHelperText.displayName = "FormHelperText";

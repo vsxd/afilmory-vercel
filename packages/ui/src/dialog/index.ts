@@ -9,4 +9,4 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
-} from './dialog'
+} from "./dialog";

@@ -1,14 +1,14 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '..'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "..";
 
-describe('HoverCardContent', () => {
+describe("HoverCardContent", () => {
   afterEach(() => {
-    cleanup()
-  })
+    cleanup();
+  });
 
-  it('renders content inside the current tree when portal is disabled', () => {
+  it("renders content inside the current tree when portal is disabled", () => {
     render(
       <div data-testid="host">
         <HoverCard open>
@@ -18,15 +18,15 @@ describe('HoverCardContent', () => {
           <HoverCardContent portal={false}>inline content</HoverCardContent>
         </HoverCard>
       </div>,
-    )
+    );
 
-    const host = screen.getByTestId('host')
-    const content = screen.getByText('inline content')
+    const host = screen.getByTestId("host");
+    const content = screen.getByText("inline content");
 
-    expect(host.contains(content)).toBe(true)
-  })
+    expect(host.contains(content)).toBe(true);
+  });
 
-  it('renders content through a portal by default', () => {
+  it("renders content through a portal by default", () => {
     render(
       <div data-testid="host">
         <HoverCard open>
@@ -36,12 +36,12 @@ describe('HoverCardContent', () => {
           <HoverCardContent>portal content</HoverCardContent>
         </HoverCard>
       </div>,
-    )
+    );
 
-    const host = screen.getByTestId('host')
-    const content = screen.getByText('portal content')
+    const host = screen.getByTestId("host");
+    const content = screen.getByText("portal content");
 
-    expect(host.contains(content)).toBe(false)
-    expect(document.body.contains(content)).toBe(true)
-  })
-})
+    expect(host.contains(content)).toBe(false);
+    expect(document.body.contains(content)).toBe(true);
+  });
+});

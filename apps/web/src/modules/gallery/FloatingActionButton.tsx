@@ -1,56 +1,56 @@
-import { Button, clsxm, Spring } from '@afilmory/ui'
-import type en from '@locales/app/en.json'
-import { AnimatePresence, m, useAnimation } from 'motion/react'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Button, clsxm, Spring } from "@afilmory/ui";
+import type en from "@locales/app/en.json";
+import { AnimatePresence, m, useAnimation } from "motion/react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-type TranslationKeys = keyof typeof en
+type TranslationKeys = keyof typeof en;
 
 const actions: {
-  id: 'view'
-  icon: string
-  title: TranslationKeys
+  id: "view";
+  icon: string;
+  title: TranslationKeys;
 }[] = [
   {
-    id: 'view',
-    icon: 'i-mingcute-settings-3-line',
-    title: 'action.view.settings',
+    id: "view",
+    icon: "i-mingcute-settings-3-line",
+    title: "action.view.settings",
   },
-] as const
+] as const;
 
-export type ActionType = (typeof actions)[number]['id']
+export type ActionType = (typeof actions)[number]["id"];
 
 const GlassButton = (props: React.ComponentProps<typeof Button>) => (
   <Button
     {...props}
     className={clsxm(
-      'rounded-full border-white/20 !bg-black/70 p-3 shadow-xl backdrop-blur-2xl',
-      'h-14 w-14 border',
-      'bg-gradient-to-br from-white/20 to-white/0',
-      'transition-colors duration-300 hover:border-white/30 hover:bg-black/10',
+      "rounded-full border-white/20 !bg-black/70 p-3 shadow-xl backdrop-blur-2xl",
+      "h-14 w-14 border",
+      "bg-gradient-to-br from-white/20 to-white/0",
+      "transition-colors duration-300 hover:border-white/30 hover:bg-black/10",
       props.className,
     )}
   />
-)
+);
 
 export const FloatingActionButton = ({
   isVisible,
   onActionClick,
 }: {
-  isVisible: boolean
-  onActionClick?: (action: ActionType) => void
+  isVisible: boolean;
+  onActionClick?: (action: ActionType) => void;
 }) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const { t } = useTranslation()
-  const controls = useAnimation()
+  const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation();
+  const controls = useAnimation();
 
   useEffect(() => {
     if (isOpen) {
-      controls.start('visible')
+      controls.start("visible");
     } else {
-      controls.start('hidden')
+      controls.start("hidden");
     }
-  }, [isOpen, controls])
+  }, [isOpen, controls]);
 
   const staggerVariants = {
     visible: {
@@ -65,17 +65,17 @@ export const FloatingActionButton = ({
         staggerDirection: -1,
       },
     },
-  }
+  };
 
   const itemVariants = {
     visible: (i: number) => {
-      const angle = Math.PI / 2 + (i * Math.PI) / 2 / (actions.length - 1)
+      const angle = Math.PI / 2 + (i * Math.PI) / 2 / (actions.length - 1);
       return {
         opacity: 1,
         x: Math.cos(angle) * 90,
         y: -Math.sin(angle) * 90,
         transition: { ...Spring.presets.bouncy },
-      }
+      };
     },
     hidden: {
       opacity: 0,
@@ -83,7 +83,7 @@ export const FloatingActionButton = ({
       y: 0,
       transition: { ...Spring.presets.bouncy },
     },
-  }
+  };
 
   return (
     <AnimatePresence>
@@ -95,10 +95,19 @@ export const FloatingActionButton = ({
           exit={{ opacity: 0, scale: 0.8 }}
           transition={Spring.presets.snappy}
         >
-          <svg width="0" height="0" className="absolute" style={{ visibility: 'hidden' }}>
+          <svg
+            width="0"
+            height="0"
+            className="absolute"
+            style={{ visibility: "hidden" }}
+          >
             <defs>
               <filter id="goo">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+                <feGaussianBlur
+                  in="SourceGraphic"
+                  stdDeviation="8"
+                  result="blur"
+                />
                 <feColorMatrix
                   in="blur"
                   mode="matrix"
@@ -112,22 +121,27 @@ export const FloatingActionButton = ({
 
           <m.div
             className="relative flex flex-col items-center"
-            style={{ filter: 'url(#goo)' }}
+            style={{ filter: "url(#goo)" }}
             initial="hidden"
             animate={controls}
             variants={staggerVariants}
           >
             {actions.map((action, i) => (
-              <m.div key={action.id} custom={i} variants={itemVariants} className="absolute bottom-0">
+              <m.div
+                key={action.id}
+                custom={i}
+                variants={itemVariants}
+                className="absolute bottom-0"
+              >
                 <GlassButton
                   title={t(action.title)}
                   aria-label={t(action.title)}
                   onClick={() => {
-                    onActionClick?.(action.id)
+                    onActionClick?.(action.id);
                     // setIsOpen(false)
                   }}
                 >
-                  <i className={clsxm(action.icon, 'text-xl text-white')} />
+                  <i className={clsxm(action.icon, "text-xl text-white")} />
                 </GlassButton>
               </m.div>
             ))}
@@ -135,15 +149,17 @@ export const FloatingActionButton = ({
             <GlassButton
               onClick={() => setIsOpen(!isOpen)}
               className="relative z-10"
-              aria-label={t(isOpen ? 'common.close' : 'action.view.settings')}
-              title={t(isOpen ? 'common.close' : 'action.view.settings')}
+              aria-label={t(isOpen ? "common.close" : "action.view.settings")}
+              title={t(isOpen ? "common.close" : "action.view.settings")}
             >
               <AnimatePresence initial={false} mode="wait">
                 <m.i
-                  key={isOpen ? 'close' : 'settings'}
+                  key={isOpen ? "close" : "settings"}
                   className={clsxm(
-                    'absolute text-2xl text-white',
-                    isOpen ? 'i-mingcute-close-line' : 'i-mingcute-settings-3-line',
+                    "absolute text-2xl text-white",
+                    isOpen
+                      ? "i-mingcute-close-line"
+                      : "i-mingcute-settings-3-line",
                   )}
                   initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -156,5 +172,5 @@ export const FloatingActionButton = ({
         </m.div>
       )}
     </AnimatePresence>
-  )
-}
+  );
+};

@@ -1,5 +1,7 @@
-import { createContext } from 'react'
+import { createContext } from "react";
 
-import { getDocumentElement } from '../utils/dom'
+import { getDocumentElement } from "../utils/dom";
 
-export const ScrollElementContext = createContext<HTMLElement | null>(getDocumentElement())
+export const ScrollElementContext = createContext<HTMLElement | null>(
+  getDocumentElement(),
+);

@@ -1,12 +1,12 @@
-import type { HTMLMotionProps } from 'motion/react'
-import { m } from 'motion/react'
+import type { HTMLMotionProps } from "motion/react";
+import { m } from "motion/react";
 
 export const MotionButtonBase = ({
   ref,
   children,
   ...rest
-}: HTMLMotionProps<'button'> & {
-  ref?: React.RefObject<HTMLButtonElement>
+}: HTMLMotionProps<"button"> & {
+  ref?: React.RefObject<HTMLButtonElement>;
 }) => {
   return (
     <m.button
@@ -19,7 +19,7 @@ export const MotionButtonBase = ({
     >
       {children}
     </m.button>
-  )
-}
+  );
+};
 
-MotionButtonBase.displayName = 'MotionButtonBase'
+MotionButtonBase.displayName = "MotionButtonBase";

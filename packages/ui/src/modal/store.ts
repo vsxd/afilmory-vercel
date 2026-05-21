@@ -1,3 +1,3 @@
-import { createStore } from 'jotai'
+import { createStore } from "jotai";
 
-export const modalStore = createStore()
+export const modalStore = createStore();

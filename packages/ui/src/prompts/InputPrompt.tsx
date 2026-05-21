@@ -1,76 +1,85 @@
-import { useState } from 'react'
+import { useState } from "react";
 
-import { Button } from '../button/Button'
-import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../dialog'
-import { Input } from '../form/Input'
-import { Modal } from '../modal'
-import type { ModalComponent, ModalComponentProps } from '../modal/types'
+import { Button } from "../button/Button";
+import {
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../dialog";
+import { Input } from "../form/Input";
+import { Modal } from "../modal";
+import type { ModalComponent, ModalComponentProps } from "../modal/types";
 
-type InputPromptVariant = 'danger' | 'info'
+type InputPromptVariant = "danger" | "info";
 
 export type InputPromptOptions = {
-  title: string
-  description?: string
-  defaultValue?: string
-  placeholder?: string
-  variant?: InputPromptVariant
-  type?: 'password' | 'text'
-  onConfirmText?: string
-  onCancelText?: string
-  onConfirm?: (value: string) => void | Promise<void>
-  onCancel?: () => void | Promise<void>
-}
+  title: string;
+  description?: string;
+  defaultValue?: string;
+  placeholder?: string;
+  variant?: InputPromptVariant;
+  type?: "password" | "text";
+  onConfirmText?: string;
+  onCancelText?: string;
+  onConfirm?: (value: string) => void | Promise<void>;
+  onCancel?: () => void | Promise<void>;
+};
 
 export const InputPrompt: ModalComponent<InputPromptOptions> = ({
   modalId,
   dismiss,
   title,
   description,
-  defaultValue = '',
+  defaultValue = "",
   placeholder,
-  variant = 'info',
-  type = 'text',
-  onConfirmText = 'Confirm',
-  onCancelText = 'Cancel',
+  variant = "info",
+  type = "text",
+  onConfirmText = "Confirm",
+  onCancelText = "Cancel",
   onConfirm,
   onCancel,
 }: ModalComponentProps & InputPromptOptions) => {
-  const [inputValue, setInputValue] = useState(defaultValue)
-  const [submitting, setSubmitting] = useState(false)
+  const [inputValue, setInputValue] = useState(defaultValue);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleCancel = async () => {
     try {
-      await onCancel?.()
+      await onCancel?.();
     } finally {
-      dismiss()
+      dismiss();
     }
-  }
+  };
 
   const handleConfirm = async () => {
     try {
-      setSubmitting(true)
-      await onConfirm?.(inputValue)
+      setSubmitting(true);
+      await onConfirm?.(inputValue);
     } finally {
-      setSubmitting(false)
-      Modal.dismiss(modalId)
+      setSubmitting(false);
+      Modal.dismiss(modalId);
     }
-  }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleConfirm()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      handleCancel()
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleConfirm();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleCancel();
     }
-  }
+  };
 
   return (
     <div>
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
-        {description ? <DialogDescription className="text-text-secondary">{description}</DialogDescription> : null}
+        {description ? (
+          <DialogDescription className="text-text-secondary">
+            {description}
+          </DialogDescription>
+        ) : null}
       </DialogHeader>
       <div className="mt-4">
         <Input
@@ -83,12 +92,17 @@ export const InputPrompt: ModalComponent<InputPromptOptions> = ({
         />
       </div>
       <DialogFooter className="mt-4">
-        <Button size="sm" variant="secondary" onClick={handleCancel} disabled={submitting}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={handleCancel}
+          disabled={submitting}
+        >
           {onCancelText}
         </Button>
         <Button
           size="sm"
-          variant={variant === 'danger' ? 'destructive' : 'primary'}
+          variant={variant === "danger" ? "destructive" : "primary"}
           onClick={handleConfirm}
           isLoading={submitting}
           loadingText={onConfirmText}
@@ -97,9 +111,9 @@ export const InputPrompt: ModalComponent<InputPromptOptions> = ({
         </Button>
       </DialogFooter>
     </div>
-  )
-}
+  );
+};
 
-InputPrompt.contentClassName = 'max-w-sm'
+InputPrompt.contentClassName = "max-w-sm";
 
-export type { InputPromptVariant }
+export type { InputPromptVariant };

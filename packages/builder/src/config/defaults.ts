@@ -1,7 +1,7 @@
-import os from 'node:os'
+import os from "node:os";
 
-import { createDefaultOutputSettings } from '../output-paths.js'
-import type { BuilderConfig } from '../types/config.js'
+import { createDefaultOutputSettings } from "../output-paths.js";
+import type { BuilderConfig } from "../types/config.js";
 
 export function createDefaultBuilderConfig(): BuilderConfig {
   return {
@@ -16,7 +16,7 @@ export function createDefaultBuilderConfig(): BuilderConfig {
         showDetailedStats: true,
         logging: {
           verbose: false,
-          level: 'info',
+          level: "info",
           outputToFile: false,
         },
         performance: {
@@ -32,5 +32,5 @@ export function createDefaultBuilderConfig(): BuilderConfig {
     user: null!,
     output: createDefaultOutputSettings(),
     plugins: [],
-  }
+  };
 }

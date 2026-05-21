@@ -1,106 +1,114 @@
-import { clsxm } from '@afilmory/ui'
-import * as AvatarPrimitive from '@radix-ui/react-avatar'
-import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { clsxm } from "@afilmory/ui";
+import * as AvatarPrimitive from "@radix-ui/react-avatar";
+import { useAtomValue } from "jotai";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { gallerySettingAtom } from '~/atoms/app'
-import { siteConfig } from '~/config'
-import { photoLoader } from '~/data-runtime/photo-loader'
-import { useContextPhotos } from '~/hooks/usePhotoViewer'
-import { MageLens, TablerAperture } from '~/icons'
-import { convertExifGPSToDecimal } from '~/lib/map-utils'
-import type { PhotoManifest } from '~/types/photo'
+import { gallerySettingAtom } from "~/atoms/app";
+import { siteConfig } from "~/config";
+import { photoLoader } from "~/data-runtime/photo-loader";
+import { useContextPhotos } from "~/hooks/usePhotoViewer";
+import { MageLens, TablerAperture } from "~/icons";
+import { convertExifGPSToDecimal } from "~/lib/map-utils";
+import type { PhotoManifest } from "~/types/photo";
 
-import { ActionGroup } from './ActionGroup'
+import { ActionGroup } from "./ActionGroup";
 
 const getPhotoCameraName = (photo: PhotoManifest) => {
-  const make = photo.exif?.Make?.trim()
-  const model = photo.exif?.Model?.trim()
-  if (!make || !model) return null
-  return `${make} ${model}`
-}
+  const make = photo.exif?.Make?.trim();
+  const model = photo.exif?.Model?.trim();
+  if (!make || !model) return null;
+  return `${make} ${model}`;
+};
 
 const getPhotoLensName = (photo: PhotoManifest) => {
-  const model = photo.exif?.LensModel?.trim()
-  if (!model) return null
-  const make = photo.exif?.LensMake?.trim()
-  return make ? `${make} ${model}` : model
-}
+  const model = photo.exif?.LensModel?.trim();
+  if (!model) return null;
+  const make = photo.exif?.LensMake?.trim();
+  return make ? `${make} ${model}` : model;
+};
 
 const getPhotoLocationKey = (photo: PhotoManifest) => {
-  const gpsData = convertExifGPSToDecimal(photo.exif)
-  if (!gpsData) return null
+  const gpsData = convertExifGPSToDecimal(photo.exif);
+  if (!gpsData) return null;
 
-  return `${gpsData.latitude.toFixed(4)},${gpsData.longitude.toFixed(4)}`
-}
+  return `${gpsData.latitude.toFixed(4)},${gpsData.longitude.toFixed(4)}`;
+};
 
 const getGitHubUrl = (github: string | undefined) => {
-  const value = github?.trim()
-  if (!value) return null
-  if (/^https?:\/\//i.test(value)) return value
-  if (value.startsWith('github.com/')) return `https://${value}`
-  return `https://github.com/${value.replace(/^@/, '')}`
-}
+  const value = github?.trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("github.com/")) return `https://${value}`;
+  return `https://github.com/${value.replace(/^@/, "")}`;
+};
 
-export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.CSSProperties; className?: string }) => {
-  const { t } = useTranslation()
-  const gallerySetting = useAtomValue(gallerySettingAtom)
-  const visiblePhotos = useContextPhotos()
-  const visiblePhotoCount = visiblePhotos.length
-  const githubUrl = getGitHubUrl(siteConfig.social?.github)
-  const statsGridRef = useRef<HTMLDivElement>(null)
-  const [statsGridDensity, setStatsGridDensity] = useState<'normal' | 'compact' | 'tight'>('normal')
+export const MasonryHeaderMasonryItem = ({
+  style,
+  className,
+}: {
+  style?: React.CSSProperties;
+  className?: string;
+}) => {
+  const { t } = useTranslation();
+  const gallerySetting = useAtomValue(gallerySettingAtom);
+  const visiblePhotos = useContextPhotos();
+  const visiblePhotoCount = visiblePhotos.length;
+  const githubUrl = getGitHubUrl(siteConfig.social?.github);
+  const statsGridRef = useRef<HTMLDivElement>(null);
+  const [statsGridDensity, setStatsGridDensity] = useState<
+    "normal" | "compact" | "tight"
+  >("normal");
 
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
     gallerySetting.selectedCameras.length > 0 ||
-    gallerySetting.selectedLenses.length > 0
+    gallerySetting.selectedLenses.length > 0;
 
   const libraryStats = useMemo(() => {
-    const photos = photoLoader.getPhotos()
-    const cameraSet = new Set<string>()
-    const lensSet = new Set<string>()
-    const locationSet = new Set<string>()
+    const photos = photoLoader.getPhotos();
+    const cameraSet = new Set<string>();
+    const lensSet = new Set<string>();
+    const locationSet = new Set<string>();
 
     for (const photo of photos) {
-      const camera = getPhotoCameraName(photo)
-      if (camera) cameraSet.add(camera)
+      const camera = getPhotoCameraName(photo);
+      if (camera) cameraSet.add(camera);
 
-      const lens = getPhotoLensName(photo)
-      if (lens) lensSet.add(lens)
+      const lens = getPhotoLensName(photo);
+      if (lens) lensSet.add(lens);
 
-      const location = getPhotoLocationKey(photo)
-      if (location) locationSet.add(location)
+      const location = getPhotoLocationKey(photo);
+      if (location) locationSet.add(location);
     }
 
     return [
       {
-        id: 'photos',
+        id: "photos",
         value: photos.length,
-        label: t('gallery.library.stats.photos'),
-        icon: 'i-mingcute-pic-fill',
+        label: t("gallery.library.stats.photos"),
+        icon: "i-mingcute-pic-fill",
       },
       {
-        id: 'cameras',
+        id: "cameras",
         value: cameraSet.size,
-        label: t('gallery.library.stats.cameras'),
-        icon: 'i-mingcute-camera-fill',
+        label: t("gallery.library.stats.cameras"),
+        icon: "i-mingcute-camera-fill",
       },
       {
-        id: 'lenses',
+        id: "lenses",
         value: lensSet.size,
-        label: t('gallery.library.stats.lenses'),
-        icon: 'aperture',
+        label: t("gallery.library.stats.lenses"),
+        icon: "aperture",
       },
       {
-        id: 'locations',
+        id: "locations",
         value: locationSet.size,
-        label: t('gallery.library.stats.locations'),
-        icon: 'i-mingcute-map-pin-fill',
+        label: t("gallery.library.stats.locations"),
+        icon: "i-mingcute-map-pin-fill",
       },
-    ]
-  }, [t])
+    ];
+  }, [t]);
 
   const filterChips = useMemo(
     () => [
@@ -112,19 +120,21 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
       ...gallerySetting.selectedCameras.map((camera) => ({
         id: `camera-${camera}`,
         label: camera,
-        icon: 'camera' as const,
+        icon: "camera" as const,
       })),
       ...gallerySetting.selectedLenses.map((lens) => ({
         id: `lens-${lens}`,
         label: lens,
-        icon: 'lens' as const,
+        icon: "lens" as const,
       })),
       ...(gallerySetting.selectedTags.length > 1
         ? [
             {
               id: `tag-mode-${gallerySetting.tagFilterMode}`,
               label:
-                gallerySetting.tagFilterMode === 'intersection' ? t('action.tag.match.all') : t('action.tag.match.any'),
+                gallerySetting.tagFilterMode === "intersection"
+                  ? t("action.tag.match.all")
+                  : t("action.tag.match.any"),
               icon: null,
             },
           ]
@@ -137,42 +147,42 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
       gallerySetting.tagFilterMode,
       t,
     ],
-  )
+  );
 
   useEffect(() => {
-    const element = statsGridRef.current
-    if (!element || typeof ResizeObserver === 'undefined') return
+    const element = statsGridRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
 
     const updateLayout = (width: number) => {
       if (width < 210) {
-        setStatsGridDensity('tight')
-        return
+        setStatsGridDensity("tight");
+        return;
       }
 
       if (width < 280) {
-        setStatsGridDensity('compact')
-        return
+        setStatsGridDensity("compact");
+        return;
       }
 
-      setStatsGridDensity('normal')
-    }
+      setStatsGridDensity("normal");
+    };
 
-    updateLayout(element.clientWidth)
+    updateLayout(element.clientWidth);
     const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) updateLayout(entry.contentRect.width)
-    })
-    observer.observe(element)
+      const entry = entries[0];
+      if (entry) updateLayout(entry.contentRect.width);
+    });
+    observer.observe(element);
 
-    return () => observer.disconnect()
-  }, [hasFilters])
+    return () => observer.disconnect();
+  }, [hasFilters]);
 
-  const isCompactStatsGrid = statsGridDensity !== 'normal'
+  const isCompactStatsGrid = statsGridDensity !== "normal";
 
   return (
     <div
       className={clsxm(
-        'overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900',
+        "overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900",
         className,
       )}
       style={style}
@@ -200,7 +210,9 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
           </div>
         </div>
 
-        <h2 className="text-text mb-2 truncate text-xl leading-tight font-semibold">{siteConfig.name}</h2>
+        <h2 className="text-text mb-2 truncate text-xl leading-tight font-semibold">
+          {siteConfig.name}
+        </h2>
 
         {siteConfig.social && (
           <div className="flex items-center justify-center gap-2">
@@ -218,7 +230,7 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
             )}
             {siteConfig.social.twitter && (
               <a
-                href={`https://twitter.com/${siteConfig.social.twitter.replace('@', '')}`}
+                href={`https://twitter.com/${siteConfig.social.twitter.replace("@", "")}`}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="text-text-secondary hover:bg-fill-secondary inline-flex size-8 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
@@ -253,10 +265,12 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
           <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-text-secondary text-[10px] leading-none font-medium sm:text-xs">
-                {t('gallery.library.filters.title')}
+                {t("gallery.library.filters.title")}
               </span>
               <span className="text-text-secondary text-[10px] leading-none font-medium tabular-nums sm:text-xs">
-                {t('gallery.library.filters.subtitle', { count: visiblePhotoCount })}
+                {t("gallery.library.filters.subtitle", {
+                  count: visiblePhotoCount,
+                })}
               </span>
             </div>
 
@@ -267,31 +281,46 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                   className="bg-fill-secondary/50 text-text-secondary inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] leading-4 sm:px-2.5 sm:py-1 sm:text-[11px] sm:leading-5"
                   title={chip.label}
                 >
-                  {chip.icon === 'camera' && (
-                    <i className="i-mingcute-camera-line shrink-0 text-[11px] sm:text-xs" aria-hidden="true" />
+                  {chip.icon === "camera" && (
+                    <i
+                      className="i-mingcute-camera-line shrink-0 text-[11px] sm:text-xs"
+                      aria-hidden="true"
+                    />
                   )}
-                  {chip.icon === 'lens' && <MageLens className="shrink-0 text-[11px] sm:text-xs" aria-hidden="true" />}
+                  {chip.icon === "lens" && (
+                    <MageLens
+                      className="shrink-0 text-[11px] sm:text-xs"
+                      aria-hidden="true"
+                    />
+                  )}
                   <span className="min-w-0 truncate">{chip.label}</span>
                 </span>
               ))}
             </div>
           </div>
         ) : (
-          <div ref={statsGridRef} className="divide-fill-secondary grid grid-cols-4 divide-x">
+          <div
+            ref={statsGridRef}
+            className="divide-fill-secondary grid grid-cols-4 divide-x"
+          >
             {libraryStats.map((stat) => (
               <div
                 key={stat.id}
                 className={clsxm(
-                  'flex min-w-0 justify-center first:pl-0 last:pr-0',
-                  statsGridDensity === 'tight' ? 'px-0' : isCompactStatsGrid ? 'px-0.5' : 'px-1.5 sm:px-2',
+                  "flex min-w-0 justify-center first:pl-0 last:pr-0",
+                  statsGridDensity === "tight"
+                    ? "px-0"
+                    : isCompactStatsGrid
+                      ? "px-0.5"
+                      : "px-1.5 sm:px-2",
                 )}
               >
                 <div
                   className={clsxm(
-                    'inline-flex min-w-max flex-col items-center justify-center text-center',
-                    statsGridDensity === 'normal' && 'gap-1',
-                    statsGridDensity === 'compact' && 'gap-0.5',
-                    statsGridDensity === 'tight' && 'gap-0.5',
+                    "inline-flex min-w-max flex-col items-center justify-center text-center",
+                    statsGridDensity === "normal" && "gap-1",
+                    statsGridDensity === "compact" && "gap-0.5",
+                    statsGridDensity === "tight" && "gap-0.5",
                   )}
                   title={`${stat.label}: ${stat.value}`}
                   role="group"
@@ -299,18 +328,18 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                 >
                   <span
                     className={clsxm(
-                      'text-text-secondary flex shrink-0 items-center justify-center',
-                      statsGridDensity === 'normal' && 'size-6',
-                      statsGridDensity === 'compact' && 'size-[22px]',
-                      statsGridDensity === 'tight' && 'size-5',
+                      "text-text-secondary flex shrink-0 items-center justify-center",
+                      statsGridDensity === "normal" && "size-6",
+                      statsGridDensity === "compact" && "size-[22px]",
+                      statsGridDensity === "tight" && "size-5",
                     )}
                   >
-                    {stat.icon === 'aperture' ? (
+                    {stat.icon === "aperture" ? (
                       <TablerAperture
                         className={clsxm(
-                          statsGridDensity === 'normal' && 'text-[23px]',
-                          statsGridDensity === 'compact' && 'text-[21px]',
-                          statsGridDensity === 'tight' && 'text-[19px]',
+                          statsGridDensity === "normal" && "text-[23px]",
+                          statsGridDensity === "compact" && "text-[21px]",
+                          statsGridDensity === "tight" && "text-[19px]",
                         )}
                         aria-hidden="true"
                       />
@@ -318,9 +347,9 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                       <i
                         className={clsxm(
                           stat.icon,
-                          statsGridDensity === 'normal' && 'text-[23px]',
-                          statsGridDensity === 'compact' && 'text-[21px]',
-                          statsGridDensity === 'tight' && 'text-[19px]',
+                          statsGridDensity === "normal" && "text-[23px]",
+                          statsGridDensity === "compact" && "text-[21px]",
+                          statsGridDensity === "tight" && "text-[19px]",
                         )}
                         aria-hidden="true"
                       />
@@ -328,10 +357,10 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
                   </span>
                   <span
                     className={clsxm(
-                      'text-text block shrink-0 whitespace-nowrap leading-none font-semibold tabular-nums',
-                      statsGridDensity === 'normal' && 'text-base',
-                      statsGridDensity === 'compact' && 'text-[15px]',
-                      statsGridDensity === 'tight' && 'text-sm',
+                      "text-text block shrink-0 whitespace-nowrap leading-none font-semibold tabular-nums",
+                      statsGridDensity === "normal" && "text-base",
+                      statsGridDensity === "compact" && "text-[15px]",
+                      statsGridDensity === "tight" && "text-sm",
                     )}
                   >
                     {stat.value}
@@ -343,5 +372,5 @@ export const MasonryHeaderMasonryItem = ({ style, className }: { style?: React.C
         )}
       </div>
     </div>
-  )
-}
+  );
+};

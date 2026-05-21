@@ -1,43 +1,43 @@
-import 'maplibre-gl/dist/maplibre-gl.css'
+import "maplibre-gl/dist/maplibre-gl.css";
 
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Map from 'react-map-gl/maplibre'
-import { Link } from 'react-router'
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Map from "react-map-gl/maplibre";
+import { Link } from "react-router";
 
-import { getMapStyle } from '~/lib/map/style'
-import { isValidGPSCoordinates } from '~/lib/map-utils'
+import { getMapStyle } from "~/lib/map/style";
+import { isValidGPSCoordinates } from "~/lib/map-utils";
 
 interface MiniMapProps {
-  latitude: number
-  longitude: number
-  photoId: string
+  latitude: number;
+  longitude: number;
+  photoId: string;
 }
 
 export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
-  const [isLoaded, setIsLoaded] = useState(false)
-  const { t } = useTranslation()
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { t } = useTranslation();
 
   const handleMapLoad = useCallback(() => {
-    setIsLoaded(true)
-  }, [])
+    setIsLoaded(true);
+  }, []);
 
   // 检查是否有有效的GPS坐标
-  const hasValidCoordinates = isValidGPSCoordinates({ latitude, longitude })
+  const hasValidCoordinates = isValidGPSCoordinates({ latitude, longitude });
 
   if (!hasValidCoordinates) {
-    return null
+    return null;
   }
 
   return (
     <div className="relative h-40 w-full overflow-hidden rounded-lg border border-white/10">
       <Map
-        mapLib={import('maplibre-gl')}
+        mapLib={import("maplibre-gl")}
         key={`${latitude}-${longitude}`}
         longitude={longitude}
         latitude={latitude}
         zoom={15}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: "100%", height: "100%" }}
         mapStyle={getMapStyle()}
         attributionControl={false}
         onLoad={handleMapLoad}
@@ -55,7 +55,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
       {/* 加载状态 */}
       {!isLoaded && (
         <div className="bg-material-ultra-thin absolute inset-0 flex items-center justify-center backdrop-blur-sm">
-          <div className="text-xs text-white/60">{t('minimap.loading')}</div>
+          <div className="text-xs text-white/60">{t("minimap.loading")}</div>
         </div>
       )}
 
@@ -63,8 +63,8 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
       <Link
         to={`/explore?photoId=${photoId}`}
         className="absolute inset-0 cursor-pointer transition-opacity duration-200 hover:bg-black/10"
-        aria-label={t('minimap.view.in.map')}
+        aria-label={t("minimap.view.in.map")}
       />
     </div>
-  )
-}
+  );
+};

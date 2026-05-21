@@ -1,23 +1,32 @@
-'use client'
+"use client";
 
-import * as SwitchPrimitives from '@radix-ui/react-switch'
-import type { HTMLMotionProps, LegacyAnimationControls, TargetAndTransition, VariantLabels } from 'motion/react'
-import { m as motion } from 'motion/react'
-import * as React from 'react'
+import * as SwitchPrimitives from "@radix-ui/react-switch";
+import type {
+  HTMLMotionProps,
+  LegacyAnimationControls,
+  TargetAndTransition,
+  VariantLabels,
+} from "motion/react";
+import { m as motion } from "motion/react";
+import * as React from "react";
 
-import { useControlledState } from '../../../hooks/useControlledState'
-import { SwitchProvider, useSwitch } from './switch.context'
+import { useControlledState } from "../../../hooks/useControlledState";
+import { SwitchProvider, useSwitch } from "./switch.context";
 
-type SwitchProps = Omit<React.ComponentProps<typeof SwitchPrimitives.Root>, 'asChild'> & HTMLMotionProps<'button'>
+type SwitchProps = Omit<
+  React.ComponentProps<typeof SwitchPrimitives.Root>,
+  "asChild"
+> &
+  HTMLMotionProps<"button">;
 
 function Switch(props: SwitchProps) {
-  const [isPressed, setIsPressed] = React.useState(false)
+  const [isPressed, setIsPressed] = React.useState(false);
   const [isChecked, setIsChecked] = useControlledState({
     value: props.checked,
     defaultValue: props.defaultChecked,
     onChange: props.onCheckedChange,
-  })
-  const captureBaselineRef = React.useRef<(() => void) | null>(null)
+  });
+  const captureBaselineRef = React.useRef<(() => void) | null>(null);
 
   return (
     <SwitchProvider
@@ -36,15 +45,15 @@ function Switch(props: SwitchProps) {
           initial={false}
           onPointerDown={(e) => {
             // Capture baseline as early as possible for FLIP
-            captureBaselineRef.current?.()
-            setIsPressed(true)
-            props.onPointerDown?.(e)
+            captureBaselineRef.current?.();
+            setIsPressed(true);
+            props.onPointerDown?.(e);
           }}
           onKeyDown={(e) => {
-            if (e.key === ' ' || e.key === 'Enter') {
-              captureBaselineRef.current?.()
+            if (e.key === " " || e.key === "Enter") {
+              captureBaselineRef.current?.();
             }
-            props.onKeyDown?.(e)
+            props.onKeyDown?.(e);
           }}
           onTapCancel={() => setIsPressed(false)}
           onTap={() => setIsPressed(false)}
@@ -52,69 +61,90 @@ function Switch(props: SwitchProps) {
         />
       </SwitchPrimitives.Root>
     </SwitchProvider>
-  )
+  );
 }
 
-type SwitchThumbProps = Omit<React.ComponentProps<typeof SwitchPrimitives.Thumb>, 'asChild'> &
-  HTMLMotionProps<'div'> & {
-    pressedAnimation?: TargetAndTransition | VariantLabels | boolean | LegacyAnimationControls
-  }
+type SwitchThumbProps = Omit<
+  React.ComponentProps<typeof SwitchPrimitives.Thumb>,
+  "asChild"
+> &
+  HTMLMotionProps<"div"> & {
+    pressedAnimation?:
+      | TargetAndTransition
+      | VariantLabels
+      | boolean
+      | LegacyAnimationControls;
+  };
 
-function SwitchThumb({ pressedAnimation, transition, ...props }: SwitchThumbProps) {
-  const { isPressed, isChecked, captureBaselineRef } = useSwitch()
-  const thumbRef = React.useRef<HTMLDivElement | null>(null)
-  const prevRectRef = React.useRef<DOMRect | null>(null)
+function SwitchThumb({
+  pressedAnimation,
+  transition,
+  ...props
+}: SwitchThumbProps) {
+  const { isPressed, isChecked, captureBaselineRef } = useSwitch();
+  const thumbRef = React.useRef<HTMLDivElement | null>(null);
+  const prevRectRef = React.useRef<DOMRect | null>(null);
 
   const resolvedTransition = React.useMemo(
-    () => transition ?? ({ type: 'spring', stiffness: 300, damping: 25 } as const),
+    () =>
+      transition ?? ({ type: "spring", stiffness: 300, damping: 25 } as const),
     [transition],
-  )
+  );
 
   React.useLayoutEffect(() => {
-    const el = thumbRef.current
-    if (!el) return
+    const el = thumbRef.current;
+    if (!el) return;
 
     // Ensure baseline is current on mount/update
     if (!prevRectRef.current) {
-      prevRectRef.current = el.getBoundingClientRect()
+      prevRectRef.current = el.getBoundingClientRect();
     }
 
-    const newRect = el.getBoundingClientRect()
-    const prevRect = prevRectRef.current
+    const newRect = el.getBoundingClientRect();
+    const prevRect = prevRectRef.current;
 
     if (prevRect) {
-      const deltaX = prevRect.left - newRect.left
-      const deltaY = prevRect.top - newRect.top
+      const deltaX = prevRect.left - newRect.left;
+      const deltaY = prevRect.top - newRect.top;
 
       if (deltaX !== 0 || deltaY !== 0) {
         const durationMs =
-          typeof (resolvedTransition as any)?.duration === 'number' ? (resolvedTransition as any).duration * 1000 : 200
-        const easing = (resolvedTransition as any)?.ease || 'cubic-bezier(0.22, 1, 0.36, 1)'
+          typeof (resolvedTransition as any)?.duration === "number"
+            ? (resolvedTransition as any).duration * 1000
+            : 200;
+        const easing =
+          (resolvedTransition as any)?.ease || "cubic-bezier(0.22, 1, 0.36, 1)";
 
         // Defer to next frame to ensure layout settles in scroll containers
         requestAnimationFrame(() => {
-          el.animate([{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: 'translate(0, 0)' }], {
-            duration: durationMs,
-            easing,
-          })
-        })
+          el.animate(
+            [
+              { transform: `translate(${deltaX}px, ${deltaY}px)` },
+              { transform: "translate(0, 0)" },
+            ],
+            {
+              duration: durationMs,
+              easing,
+            },
+          );
+        });
       }
     }
 
-    prevRectRef.current = newRect
-  }, [isChecked, resolvedTransition])
+    prevRectRef.current = newRect;
+  }, [isChecked, resolvedTransition]);
 
   // Provide capture function to parent so it can snapshot baseline on pointer/tap start
   React.useLayoutEffect(() => {
     captureBaselineRef.current = () => {
-      const el = thumbRef.current
-      if (!el) return
-      prevRectRef.current = el.getBoundingClientRect()
-    }
+      const el = thumbRef.current;
+      if (!el) return;
+      prevRectRef.current = el.getBoundingClientRect();
+    };
     return () => {
-      if (captureBaselineRef.current) captureBaselineRef.current = null
-    }
-  }, [captureBaselineRef])
+      if (captureBaselineRef.current) captureBaselineRef.current = null;
+    };
+  }, [captureBaselineRef]);
 
   // No global scroll listeners; baseline is captured on interaction and animation starts next frame
 
@@ -129,26 +159,29 @@ function SwitchThumb({ pressedAnimation, transition, ...props }: SwitchThumbProp
         {...props}
       />
     </SwitchPrimitives.Thumb>
-  )
+  );
 }
 
-type SwitchIconPosition = 'left' | 'right' | 'thumb'
+type SwitchIconPosition = "left" | "right" | "thumb";
 
-type SwitchIconProps = HTMLMotionProps<'div'> & {
-  position: SwitchIconPosition
-}
+type SwitchIconProps = HTMLMotionProps<"div"> & {
+  position: SwitchIconPosition;
+};
 
 function SwitchIcon({ position, transition, ...props }: SwitchIconProps) {
-  const { isChecked } = useSwitch()
+  const { isChecked } = useSwitch();
 
-  const resolvedTransition = React.useMemo(() => transition ?? ({ type: 'spring', bounce: 0 } as const), [transition])
+  const resolvedTransition = React.useMemo(
+    () => transition ?? ({ type: "spring", bounce: 0 } as const),
+    [transition],
+  );
 
   const isAnimated = React.useMemo(() => {
-    if (position === 'right') return !isChecked
-    if (position === 'left') return isChecked
-    if (position === 'thumb') return true
-    return false
-  }, [position, isChecked])
+    if (position === "right") return !isChecked;
+    if (position === "left") return isChecked;
+    if (position === "thumb") return true;
+    return false;
+  }, [position, isChecked]);
 
   return (
     <motion.div
@@ -157,7 +190,7 @@ function SwitchIcon({ position, transition, ...props }: SwitchIconProps) {
       transition={resolvedTransition}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -168,4 +201,4 @@ export {
   type SwitchProps,
   SwitchThumb,
   type SwitchThumbProps,
-}
+};

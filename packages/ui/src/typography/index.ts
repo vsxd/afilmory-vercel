@@ -1,1 +1,1 @@
-export * from './EllipsisWithTooltip'
+export * from "./EllipsisWithTooltip";

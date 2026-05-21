@@ -1,45 +1,64 @@
-import { Thumbhash } from '@afilmory/ui'
-import clsx from 'clsx'
-import { useAtomValue } from 'jotai'
-import { m } from 'motion/react'
-import { Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router'
+import { Thumbhash } from "@afilmory/ui";
+import clsx from "clsx";
+import { useAtomValue } from "jotai";
+import { m } from "motion/react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router";
 
-import { gallerySettingAtom } from '~/atoms/app'
-import { useLivePhotoHandler } from '~/hooks/useLivePhotoHandler'
-import { useContextPhotos, usePhotoViewer } from '~/hooks/usePhotoViewer'
+import { gallerySettingAtom } from "~/atoms/app";
+import { useLivePhotoHandler } from "~/hooks/useLivePhotoHandler";
+import { useContextPhotos, usePhotoViewer } from "~/hooks/usePhotoViewer";
 import {
   CarbonIsoOutline,
   MaterialSymbolsShutterSpeed,
   StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens,
   TablerAperture,
-} from '~/icons'
-import { isMobileDevice } from '~/lib/device-viewport'
-import { buildGalleryFilterSearch } from '~/lib/gallery-filter-url'
+} from "~/icons";
+import { isMobileDevice } from "~/lib/device-viewport";
+import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
 import {
   getGalleryThumbnailCacheKey,
   hasLoadedGalleryThumbnail,
   markGalleryThumbnailLoaded,
-} from '~/lib/gallery-thumbnail-cache'
-import { getImageFormat } from '~/lib/image-utils'
-import { flushStartupMetrics, markStartupOnce } from '~/lib/startup-metrics'
-import type { PhotoManifest } from '~/types/photo'
+} from "~/lib/gallery-thumbnail-cache";
+import { getImageFormat } from "~/lib/image-utils";
+import { flushStartupMetrics, markStartupOnce } from "~/lib/startup-metrics";
+import type { PhotoManifest } from "~/types/photo";
 
 export const MasonryPhotoItem = memo(
-  ({ data, width, index }: { data: PhotoManifest; width: number; index: number }) => {
-    const photos = useContextPhotos()
-    const gallerySetting = useAtomValue(gallerySettingAtom)
-    const { openViewer } = usePhotoViewer()
-    const { t } = useTranslation()
-    const location = useLocation()
-    const navigate = useNavigate()
-    const [imageLoaded, setImageLoaded] = useState(false)
-    const [imageError, setImageError] = useState(false)
+  ({
+    data,
+    width,
+    index,
+  }: {
+    data: PhotoManifest;
+    width: number;
+    index: number;
+  }) => {
+    const photos = useContextPhotos();
+    const gallerySetting = useAtomValue(gallerySettingAtom);
+    const { openViewer } = usePhotoViewer();
+    const { t } = useTranslation();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
 
-    const imageRef = useRef<HTMLImageElement>(null)
-    const thumbnailCacheKey = getGalleryThumbnailCacheKey(data.id, data.thumbnailUrl)
-    const hasLoadedThumbnailBefore = hasLoadedGalleryThumbnail(thumbnailCacheKey)
+    const imageRef = useRef<HTMLImageElement>(null);
+    const thumbnailCacheKey = getGalleryThumbnailCacheKey(
+      data.id,
+      data.thumbnailUrl,
+    );
+    const hasLoadedThumbnailBefore =
+      hasLoadedGalleryThumbnail(thumbnailCacheKey);
 
     const {
       videoRef,
@@ -50,56 +69,72 @@ export const MasonryPhotoItem = memo(
       handleMouseEnter,
       handleMouseLeave,
       handleVideoEnded,
-    } = useLivePhotoHandler({ data, imageLoaded })
+    } = useLivePhotoHandler({ data, imageLoaded });
 
     useEffect(() => {
-      setImageLoaded(false)
-      setImageError(false)
-    }, [thumbnailCacheKey])
+      setImageLoaded(false);
+      setImageError(false);
+    }, [thumbnailCacheKey]);
 
     const handleImageLoad = () => {
-      markGalleryThumbnailLoaded(thumbnailCacheKey)
-      if (markStartupOnce('first-thumbnail-loaded', { photoId: data.id })) {
-        flushStartupMetrics('first-thumbnail-loaded')
+      markGalleryThumbnailLoaded(thumbnailCacheKey);
+      if (markStartupOnce("first-thumbnail-loaded", { photoId: data.id })) {
+        flushStartupMetrics("first-thumbnail-loaded");
       }
-      setImageLoaded(true)
-    }
+      setImageLoaded(true);
+    };
 
     const handleImageError = () => {
-      setImageError(true)
-    }
+      setImageError(true);
+    };
 
     const handleClick = useCallback(() => {
-      const photoIndex = photos[index]?.id === data.id ? index : photos.findIndex((photo) => photo.id === data.id)
+      const photoIndex =
+        photos[index]?.id === data.id
+          ? index
+          : photos.findIndex((photo) => photo.id === data.id);
       if (photoIndex !== -1) {
         const triggerEl =
-          imageRef.current?.parentElement instanceof HTMLElement ? imageRef.current.parentElement : imageRef.current
+          imageRef.current?.parentElement instanceof HTMLElement
+            ? imageRef.current.parentElement
+            : imageRef.current;
 
         openViewer(photoIndex, {
           element: triggerEl ?? undefined,
-          sourceMode: 'filtered',
+          sourceMode: "filtered",
           sourcePhotoIds: photos.map((photo) => photo.id),
-        })
+        });
       }
-      navigate({ pathname: `/photos/${data.id}`, search: buildGalleryFilterSearch(location.search, gallerySetting) })
-    }, [data.id, gallerySetting, index, location.search, navigate, openViewer, photos])
+      navigate({
+        pathname: `/photos/${data.id}`,
+        search: buildGalleryFilterSearch(location.search, gallerySetting),
+      });
+    }, [
+      data.id,
+      gallerySetting,
+      index,
+      location.search,
+      navigate,
+      openViewer,
+      photos,
+    ]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          handleClick()
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
         }
       },
       [handleClick],
-    )
+    );
 
     // 计算基于宽度的高度
-    const calculatedHeight = width / data.aspectRatio
+    const calculatedHeight = width / data.aspectRatio;
 
     // 格式化 EXIF 数据
     const formatExifData = () => {
-      const { exif } = data
+      const { exif } = data;
 
       // 安全处理：如果 exif 不存在或为空，则返回空对象
       if (!exif) {
@@ -108,7 +143,7 @@ export const MasonryPhotoItem = memo(
           iso: null,
           shutterSpeed: null,
           aperture: null,
-        }
+        };
       }
 
       // 等效焦距 (35mm)
@@ -116,31 +151,31 @@ export const MasonryPhotoItem = memo(
         ? Number.parseInt(exif.FocalLengthIn35mmFormat)
         : exif.FocalLength
           ? Number.parseInt(exif.FocalLength)
-          : null
+          : null;
 
       // ISO
-      const iso = exif.ISO
+      const iso = exif.ISO;
 
       // 快门速度
-      const exposureTime = exif.ExposureTime
-      const shutterSpeed = exposureTime ? `${exposureTime}s` : null
+      const exposureTime = exif.ExposureTime;
+      const shutterSpeed = exposureTime ? `${exposureTime}s` : null;
 
       // 光圈
-      const aperture = exif.FNumber ? `f/${exif.FNumber}` : null
+      const aperture = exif.FNumber ? `f/${exif.FNumber}` : null;
 
       return {
         focalLength35mm,
         iso,
         shutterSpeed,
         aperture,
-      }
-    }
+      };
+    };
 
-    const exifData = formatExifData()
-    const shouldShowImageDetails = imageLoaded || hasLoadedThumbnailBefore
+    const exifData = formatExifData();
+    const shouldShowImageDetails = imageLoaded || hasLoadedThumbnailBefore;
 
     // 使用通用的图片格式提取函数
-    const imageFormat = getImageFormat(data.originalUrl || data.s3Key || '')
+    const imageFormat = getImageFormat(data.originalUrl || data.s3Key || "");
 
     return (
       <m.div
@@ -159,7 +194,9 @@ export const MasonryPhotoItem = memo(
         onMouseLeave={handleMouseLeave}
       >
         {/* Blurhash 占位符 */}
-        {data.thumbHash && <Thumbhash thumbHash={data.thumbHash} className="absolute inset-0" />}
+        {data.thumbHash && (
+          <Thumbhash thumbHash={data.thumbHash} className="absolute inset-0" />
+        )}
 
         {!imageError && (
           <img
@@ -167,7 +204,9 @@ export const MasonryPhotoItem = memo(
             src={data.thumbnailUrl}
             alt={data.title}
             loading="lazy"
-            className={clsx('absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105')}
+            className={clsx(
+              "absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105",
+            )}
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
@@ -178,8 +217,8 @@ export const MasonryPhotoItem = memo(
           <video
             ref={videoRef}
             className={clsx(
-              'absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105',
-              isPlayingLivePhoto ? 'z-10' : 'pointer-events-none opacity-0',
+              "absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105",
+              isPlayingLivePhoto ? "z-10" : "pointer-events-none opacity-0",
             )}
             muted
             playsInline
@@ -192,7 +231,7 @@ export const MasonryPhotoItem = memo(
           <div className="bg-fill-quaternary text-text-tertiary absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <i className="i-mingcute-image-line text-2xl" />
-              <p className="mt-2 text-sm">{t('photo.error.loading')}</p>
+              <p className="mt-2 text-sm">{t("photo.error.loading")}</p>
             </div>
           </div>
         )}
@@ -201,23 +240,27 @@ export const MasonryPhotoItem = memo(
         {hasVideo && (
           <div
             className={clsx(
-              'absolute z-20 flex items-center space-x-1 rounded-xl bg-black/50 px-1 py-1 text-xs text-white transition-all duration-200 hover:bg-black/70',
-              'top-2 left-2',
-              'flex-wrap gap-y-1',
+              "absolute z-20 flex items-center space-x-1 rounded-xl bg-black/50 px-1 py-1 text-xs text-white transition-all duration-200 hover:bg-black/70",
+              "top-2 left-2",
+              "flex-wrap gap-y-1",
             )}
-            title={isMobileDevice ? t('photo.live.tooltip.mobile.main') : t('photo.live.tooltip.desktop.main')}
+            title={
+              isMobileDevice
+                ? t("photo.live.tooltip.mobile.main")
+                : t("photo.live.tooltip.desktop.main")
+            }
           >
             {isConvertingVideo ? (
               <div className="flex items-center gap-1 px-1">
                 <i className="i-mingcute-loading-line animate-spin" />
-                <span>{t('loading.converting')}</span>
+                <span>{t("loading.converting")}</span>
               </div>
             ) : (
               <Fragment>
                 <i className="i-mingcute-live-photo-line size-4 shrink-0" />
-                <span className="mr-1 shrink-0">{t('photo.live.badge')}</span>
+                <span className="mr-1 shrink-0">{t("photo.live.badge")}</span>
                 {videoConversionError ? (
-                  <span className={'bg-warning/20 ml-0.5 rounded px-1 text-xs'}>
+                  <span className={"bg-warning/20 ml-0.5 rounded px-1 text-xs"}>
                     <div
                       className="text-yellow w-3 text-center font-bold"
                       title={(videoConversionError as Error).message}
@@ -241,7 +284,9 @@ export const MasonryPhotoItem = memo(
             <div className="absolute inset-x-0 bottom-0 p-4 pb-0 text-white">
               {/* 基本信息和标签 section */}
               <div className="mb-3 [&_*]:duration-300">
-                <h3 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">{data.title}</h3>
+                <h3 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">
+                  {data.title}
+                </h3>
                 {data.description && (
                   <p className="mb-2 line-clamp-2 text-sm text-white/80 opacity-0 group-hover:opacity-100">
                     {data.description}
@@ -280,7 +325,9 @@ export const MasonryPhotoItem = memo(
                   {exifData.focalLength35mm && (
                     <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
                       <StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens className="text-white/70" />
-                      <span className="text-white/90">{exifData.focalLength35mm}mm</span>
+                      <span className="text-white/90">
+                        {exifData.focalLength35mm}mm
+                      </span>
                     </div>
                   )}
 
@@ -294,7 +341,9 @@ export const MasonryPhotoItem = memo(
                   {exifData.shutterSpeed && (
                     <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
                       <MaterialSymbolsShutterSpeed className="text-white/70" />
-                      <span className="text-white/90">{exifData.shutterSpeed}</span>
+                      <span className="text-white/90">
+                        {exifData.shutterSpeed}
+                      </span>
                     </div>
                   )}
 
@@ -310,6 +359,6 @@ export const MasonryPhotoItem = memo(
           </div>
         )}
       </m.div>
-    )
+    );
   },
-)
+);

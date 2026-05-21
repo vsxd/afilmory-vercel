@@ -1,104 +1,106 @@
-import { RootPortal, RootPortalProvider } from '@afilmory/ui'
-import clsx from 'clsx'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RemoveScroll } from 'react-remove-scroll'
-import { useParams } from 'react-router'
+import { RootPortal, RootPortalProvider } from "@afilmory/ui";
+import clsx from "clsx";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RemoveScroll } from "react-remove-scroll";
+import { useParams } from "react-router";
 
-import { NotFound } from '~/components/common/NotFound'
-import { PhotoViewer } from '~/components/ui/photo-viewer'
-import { usePhotoViewer, useViewerPhotos } from '~/hooks/usePhotoViewer'
-import { useTitle } from '~/hooks/useTitle'
-import { applyAccentTransitionStyle } from '~/lib/accent-transition-style'
-import { deriveAccentFromSources } from '~/lib/color'
+import { NotFound } from "~/components/common/NotFound";
+import { PhotoViewer } from "~/components/ui/photo-viewer";
+import { usePhotoViewer, useViewerPhotos } from "~/hooks/usePhotoViewer";
+import { useTitle } from "~/hooks/useTitle";
+import { applyAccentTransitionStyle } from "~/lib/accent-transition-style";
+import { deriveAccentFromSources } from "~/lib/color";
 
 export const Component = () => {
-  const { photoId } = useParams()
-  const photos = useViewerPhotos(photoId)
-  const photoViewer = usePhotoViewer(photos.length)
+  const { photoId } = useParams();
+  const photos = useViewerPhotos(photoId);
+  const photoViewer = usePhotoViewer(photos.length);
 
   // 直接根据 photoId 从 Context 的照片列表中查找照片和索引
   const photoIndex = useMemo(() => {
     if (!photoId) {
-      console.warn('[PhotoDetail] photoId is missing from URL params')
-      return -1
+      console.warn("[PhotoDetail] photoId is missing from URL params");
+      return -1;
     }
     if (!photos || photos.length === 0) {
-      console.warn('[PhotoDetail] Photos array is empty or not loaded yet', {
+      console.warn("[PhotoDetail] Photos array is empty or not loaded yet", {
         photosLength: photos?.length || 0,
         photoId,
-        hasManifest: typeof window !== 'undefined' && window.__MANIFEST__ !== undefined,
-      })
-      return -1
+        hasManifest:
+          typeof window !== "undefined" && window.__MANIFEST__ !== undefined,
+      });
+      return -1;
     }
-    const index = photos.findIndex((photo) => photo?.id === photoId)
-    return index
-  }, [photos, photoId])
+    const index = photos.findIndex((photo) => photo?.id === photoId);
+    return index;
+  }, [photos, photoId]);
 
   const currentPhoto = useMemo(() => {
-    const photo = photoIndex !== -1 && photos[photoIndex] ? photos[photoIndex] : null
-    return photo
-  }, [photos, photoIndex])
+    const photo =
+      photoIndex !== -1 && photos[photoIndex] ? photos[photoIndex] : null;
+    return photo;
+  }, [photos, photoIndex]);
 
   // 处理照片索引变化：更新 photoViewer 的 currentIndex，URL 由 layout.tsx 的 useSyncStateToUrl 自动同步
   const handleIndexChange = useCallback(
     (newIndex: number) => {
       if (newIndex >= 0 && newIndex < photos.length) {
         // 更新 photoViewer 的 currentIndex，layout.tsx 的 useSyncStateToUrl 会自动同步 URL
-        photoViewer.goToIndex(newIndex)
+        photoViewer.goToIndex(newIndex);
       }
     },
     [photos, photoViewer],
-  )
+  );
 
-  const [ref, setRef] = useState<HTMLElement | null>(null)
+  const [ref, setRef] = useState<HTMLElement | null>(null);
   const rootPortalValue = useMemo(
     () => ({
       to: ref as HTMLElement,
     }),
     [ref],
-  )
-  useTitle(currentPhoto?.title || 'Not Found')
+  );
+  useTitle(currentPhoto?.title || "Not Found");
 
-  const [accentColor, setAccentColor] = useState<string | null>(null)
+  const [accentColor, setAccentColor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentPhoto) return
+    if (!currentPhoto) return;
 
-    let isCancelled = false
-    let cleanupAccentTransitionStyle: (() => void) | null = null
+    let isCancelled = false;
+    let cleanupAccentTransitionStyle: (() => void) | null = null;
 
-    ;(async () => {
+    (async () => {
       try {
         const color = await deriveAccentFromSources({
           thumbHash: currentPhoto.thumbHash,
           thumbnailUrl: currentPhoto.thumbnailUrl,
-        })
+        });
         if (!isCancelled) {
-          cleanupAccentTransitionStyle = applyAccentTransitionStyle(100)
-          setAccentColor(color ?? null)
+          cleanupAccentTransitionStyle = applyAccentTransitionStyle(100);
+          setAccentColor(color ?? null);
         }
       } catch {
-        if (!isCancelled) setAccentColor(null)
+        if (!isCancelled) setAccentColor(null);
       }
-    })()
+    })();
 
     return () => {
-      isCancelled = true
-      cleanupAccentTransitionStyle?.()
-    }
-  }, [currentPhoto])
+      isCancelled = true;
+      cleanupAccentTransitionStyle?.();
+    };
+  }, [currentPhoto]);
 
   // 如果照片不存在，显示 NotFound
   if (!currentPhoto || photoIndex === -1) {
-    if (typeof window !== 'undefined') {
-      console.error('[PhotoDetail] Photo not found:', {
+    if (typeof window !== "undefined") {
+      console.error("[PhotoDetail] Photo not found:", {
         requestedPhotoId: photoId,
         photosLength: photos?.length || 0,
         hasManifest: window.__MANIFEST__ !== undefined,
         photoIds: photos?.slice(0, 10).map((p) => p?.id) || [],
-      })
+      });
     }
-    return <NotFound />
+    return <NotFound />;
   }
 
   return (
@@ -107,11 +109,15 @@ export const Component = () => {
         <RemoveScroll
           style={
             {
-              ...(accentColor ? { '--color-accent': accentColor } : {}),
+              ...(accentColor ? { "--color-accent": accentColor } : {}),
             } as React.CSSProperties
           }
           ref={setRef}
-          className={clsx(photoViewer.isOpen ? 'fixed inset-0 z-9999' : 'pointer-events-none fixed inset-0 z-40')}
+          className={clsx(
+            photoViewer.isOpen
+              ? "fixed inset-0 z-9999"
+              : "pointer-events-none fixed inset-0 z-40",
+          )}
         >
           <PhotoViewer
             photos={photos}
@@ -124,5 +130,5 @@ export const Component = () => {
         </RemoveScroll>
       </RootPortalProvider>
     </RootPortal>
-  )
-}
+  );
+};

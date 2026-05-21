@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 @plugin '@tailwindcss/typography';
 @plugin '@egoist/tailwindcss-icons';
 @plugin 'daisyui' {
@@ -7,13 +7,13 @@
 }
 @plugin 'tailwind-scrollbar';
 @plugin 'tailwindcss-animate';
-@import 'tailwindcss-safe-area';
-@import 'tailwindcss-uikit-colors/v4/macos.css';
+@import "tailwindcss-safe-area";
+@import "tailwindcss-uikit-colors/v4/macos.css";
 
 @source "../../node_modules/@afilmory/ui";
 
 @plugin "daisyui/theme" {
-  name: 'dark';
+  name: "dark";
   prefersdark: true;
   color-scheme: dark;
   --color-primary: #007aff;
@@ -33,7 +33,7 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   --radius: 0.5rem;
   --border: 0 0% 22.1%;
 }
@@ -67,12 +67,15 @@
   /* Font families */
   --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
   --font-serif:
-    'Noto Serif CJK SC', 'Noto Serif SC', var(--font-serif), 'Source Han Serif SC', 'Source Han Serif',
-    source-han-serif-sc, SongTi SC, SimSum, 'Hiragino Sans GB', system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
-    'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
+    "Noto Serif CJK SC", "Noto Serif SC", var(--font-serif),
+    "Source Han Serif SC", "Source Han Serif", source-han-serif-sc, SongTi SC,
+    SimSum, "Hiragino Sans GB", system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
   --font-mono:
-    'OperatorMonoSSmLig Nerd Font', 'Cascadia Code PL', 'FantasqueSansMono Nerd Font', 'operator mono', JetBrainsMono,
-    'Fira code Retina', 'Fira code', Consolas, Monaco, 'Hannotate SC', monospace, -apple-system;
+    "OperatorMonoSSmLig Nerd Font", "Cascadia Code PL",
+    "FantasqueSansMono Nerd Font", "operator mono", JetBrainsMono,
+    "Fira code Retina", "Fira code", Consolas, Monaco, "Hannotate SC",
+    monospace, -apple-system;
 
   /* Custom screens */
   --screen-light-mode: (prefers-color-scheme: light);
@@ -114,7 +117,7 @@ html body {
   outline: none;
 }
 
-*:not(input):not(textarea):not([contenteditable='true']):focus-visible {
+*:not(input):not(textarea):not([contenteditable="true"]):focus-visible {
   outline: 0 !important;
 }
 
@@ -145,35 +148,39 @@ html body {
 }
 
 [data-sonner-toast] {
-  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 20%,
+    transparent
+  ) !important;
   box-shadow:
     0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent),
     0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent),
     0 2px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
-[data-sonner-toast][data-type='success'] {
+[data-sonner-toast][data-type="success"] {
   border-color: rgba(48, 209, 88, 0.3) !important;
 }
 
-[data-sonner-toast][data-type='error'] {
+[data-sonner-toast][data-type="error"] {
   border-color: rgba(255, 69, 58, 0.3) !important;
 }
 
-[data-sonner-toast][data-type='warning'] {
+[data-sonner-toast][data-type="warning"] {
   border-color: rgba(255, 159, 10, 0.3) !important;
 }
 
-[data-sonner-toast][data-type='info'] {
+[data-sonner-toast][data-type="info"] {
   border-color: rgba(10, 132, 255, 0.3) !important;
 }
 
-[data-sonner-toast][data-type='loading'] {
+[data-sonner-toast][data-type="loading"] {
   border-color: rgba(142, 142, 147, 0.3) !important;
 }
 
 [data-sonner-toast]::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 1rem;

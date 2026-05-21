@@ -21,7 +21,7 @@ export const VERTEX_SHADER_SOURCE = `
     gl_Position = vec4(position.xy, 0, 1);
     v_texCoord = a_texCoord;
   }
-`
+`;
 
 /**
  * 片段着色器源码
@@ -42,7 +42,7 @@ export const FRAGMENT_SHADER_SOURCE = `
       gl_FragColor = u_solidColor;
     }
   }
-`
+`;
 
 /**
  * 创建WebGL着色器
@@ -51,16 +51,20 @@ export const FRAGMENT_SHADER_SOURCE = `
  * @param source 着色器源码
  * @returns 编译好的着色器
  */
-export function createShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
-  const shader = gl.createShader(type)!
-  gl.shaderSource(shader, source)
-  gl.compileShader(shader)
+export function createShader(
+  gl: WebGLRenderingContext,
+  type: number,
+  source: string,
+): WebGLShader {
+  const shader = gl.createShader(type)!;
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
 
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const error = gl.getShaderInfoLog(shader)
-    gl.deleteShader(shader)
-    throw new Error(`Shader compilation failed: ${error}`)
+    const error = gl.getShaderInfoLog(shader);
+    gl.deleteShader(shader);
+    throw new Error(`Shader compilation failed: ${error}`);
   }
 
-  return shader
+  return shader;
 }

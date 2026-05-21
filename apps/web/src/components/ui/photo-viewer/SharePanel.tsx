@@ -1,207 +1,216 @@
-import { clsxm, RootPortal, Spring } from '@afilmory/ui'
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
-import { AnimatePresence, m } from 'motion/react'
-import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
+import { clsxm, RootPortal, Spring } from "@afilmory/ui";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { AnimatePresence, m } from "motion/react";
+import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
-import { injectConfig, siteConfig } from '~/config'
-import type { PhotoManifest } from '~/types/photo'
+import { injectConfig, siteConfig } from "~/config";
+import type { PhotoManifest } from "~/types/photo";
 
 interface SharePanelProps {
-  photo: PhotoManifest
-  trigger: React.ReactNode
-  blobSrc?: string
+  photo: PhotoManifest;
+  trigger: React.ReactNode;
+  blobSrc?: string;
 }
 
 interface ShareOption {
-  id: string
-  label: string
-  icon: string
-  action: () => Promise<void> | void
-  color?: string
-  bgColor?: string
+  id: string;
+  label: string;
+  icon: string;
+  action: () => Promise<void> | void;
+  color?: string;
+  bgColor?: string;
 }
 
 interface SocialShareOption {
-  id: string
-  label: string
-  icon: string
-  url: string
-  color: string
-  bgColor: string
+  id: string;
+  label: string;
+  icon: string;
+  url: string;
+  color: string;
+  bgColor: string;
 }
 
 function isAbortLikeError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError'
+  return error instanceof Error && error.name === "AbortError";
 }
 
 export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
-  const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
-  const embedPhotoId = encodeURIComponent(photo.id)
-  const embedWidth = Number.isFinite(photo.width) && photo.width > 0 ? photo.width : 1
-  const embedHeight = Number.isFinite(photo.height) && photo.height > 0 ? photo.height : 1
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const embedPhotoId = encodeURIComponent(photo.id);
+  const embedWidth =
+    Number.isFinite(photo.width) && photo.width > 0 ? photo.width : 1;
+  const embedHeight =
+    Number.isFinite(photo.height) && photo.height > 0 ? photo.height : 1;
 
   // 社交媒体分享选项
   const socialOptions: SocialShareOption[] = [
     {
-      id: 'twitter',
-      label: 'Twitter',
-      icon: 'i-mingcute-twitter-fill',
-      url: 'https://twitter.com/intent/tweet?text={text}&url={url}',
-      color: 'text-white',
-      bgColor: 'bg-sky-500',
+      id: "twitter",
+      label: "Twitter",
+      icon: "i-mingcute-twitter-fill",
+      url: "https://twitter.com/intent/tweet?text={text}&url={url}",
+      color: "text-white",
+      bgColor: "bg-sky-500",
     },
     {
-      id: 'facebook',
-      label: 'Facebook',
-      icon: 'i-mingcute-facebook-line',
-      url: 'https://www.facebook.com/sharer/sharer.php?u={url}',
-      color: 'text-white',
-      bgColor: 'bg-[#1877F2]',
+      id: "facebook",
+      label: "Facebook",
+      icon: "i-mingcute-facebook-line",
+      url: "https://www.facebook.com/sharer/sharer.php?u={url}",
+      color: "text-white",
+      bgColor: "bg-[#1877F2]",
     },
     {
-      id: 'telegram',
-      label: 'Telegram',
-      icon: 'i-mingcute-telegram-line',
-      url: 'https://t.me/share/url?url={url}&text={text}',
-      color: 'text-white',
-      bgColor: 'bg-[#0088CC]',
+      id: "telegram",
+      label: "Telegram",
+      icon: "i-mingcute-telegram-line",
+      url: "https://t.me/share/url?url={url}&text={text}",
+      color: "text-white",
+      bgColor: "bg-[#0088CC]",
     },
     {
-      id: 'weibo',
-      label: t('photo.share.weibo'),
-      icon: 'i-mingcute-weibo-line',
-      url: 'https://service.weibo.com/share/share.php?url={url}&title={text}',
-      color: 'text-white',
-      bgColor: 'bg-[#E6162D]',
+      id: "weibo",
+      label: t("photo.share.weibo"),
+      icon: "i-mingcute-weibo-line",
+      url: "https://service.weibo.com/share/share.php?url={url}&title={text}",
+      color: "text-white",
+      bgColor: "bg-[#E6162D]",
     },
-  ]
+  ];
 
   const handleNativeShare = useCallback(async () => {
-    const shareUrl = window.location.href
-    const shareTitle = photo.title || t('photo.share.default.title')
-    const shareText = t('photo.share.text', { title: shareTitle })
+    const shareUrl = window.location.href;
+    const shareTitle = photo.title || t("photo.share.default.title");
+    const shareText = t("photo.share.text", { title: shareTitle });
     const sharePayload = {
       title: shareTitle,
       text: shareText,
       url: shareUrl,
-    }
+    };
 
     try {
       if (navigator.canShare) {
-        const imageUrl = blobSrc || photo.originalUrl
-        const response = await fetch(imageUrl)
-        const blob = await response.blob()
-        const file = new File([blob], `${photo.title || 'photo'}.jpg`, {
-          type: blob.type || 'image/jpeg',
-        })
+        const imageUrl = blobSrc || photo.originalUrl;
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `${photo.title || "photo"}.jpg`, {
+          type: blob.type || "image/jpeg",
+        });
 
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             ...sharePayload,
             files: [file],
-          })
-          setIsOpen(false)
-          return
+          });
+          setIsOpen(false);
+          return;
         }
       }
 
-      await navigator.share(sharePayload)
-      setIsOpen(false)
+      await navigator.share(sharePayload);
+      setIsOpen(false);
     } catch (error) {
       if (isAbortLikeError(error)) {
-        setIsOpen(false)
-        return
+        setIsOpen(false);
+        return;
       }
 
       if (navigator.clipboard?.writeText) {
         try {
-          await navigator.clipboard.writeText(shareUrl)
-          toast.success(t('photo.share.link.copied'))
-          setIsOpen(false)
-          return
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success(t("photo.share.link.copied"));
+          setIsOpen(false);
+          return;
         } catch {
-          toast.error(t('photo.share.copy.failed'))
-          return
+          toast.error(t("photo.share.copy.failed"));
+          return;
         }
       }
 
-      toast.error(t('photo.share.copy.failed'))
+      toast.error(t("photo.share.copy.failed"));
     }
-  }, [photo.title, blobSrc, photo.originalUrl, t])
+  }, [photo.title, blobSrc, photo.originalUrl, t]);
 
   const handleCopyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href)
-      toast.success(t('photo.share.link.copied'))
-      setIsOpen(false)
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success(t("photo.share.link.copied"));
+      setIsOpen(false);
     } catch {
-      toast.error(t('photo.share.copy.failed'))
+      toast.error(t("photo.share.copy.failed"));
     }
-  }, [t])
-  const shareCodeRef = useRef<HTMLElement>(null)
+  }, [t]);
+  const shareCodeRef = useRef<HTMLElement>(null);
 
   const handleCopyEmbedCode = useCallback(async () => {
     try {
-      const embedCode = shareCodeRef.current?.textContent
+      const embedCode = shareCodeRef.current?.textContent;
       if (embedCode) {
-        await navigator.clipboard.writeText(embedCode)
+        await navigator.clipboard.writeText(embedCode);
       }
-      toast.success(t('photo.share.embed.copied'))
-      setIsOpen(false)
+      toast.success(t("photo.share.embed.copied"));
+      setIsOpen(false);
     } catch {
-      toast.error(t('photo.share.copy.failed'))
+      toast.error(t("photo.share.copy.failed"));
     }
-  }, [t])
+  }, [t]);
 
   const handleSocialShare = useCallback(
     (url: string) => {
-      const shareUrl = encodeURIComponent(window.location.href)
-      const defaultTitle = t('photo.share.default.title')
-      const shareTitle = encodeURIComponent(photo.title || defaultTitle)
-      const shareText = encodeURIComponent(t('photo.share.text', { title: photo.title || defaultTitle }))
+      const shareUrl = encodeURIComponent(window.location.href);
+      const defaultTitle = t("photo.share.default.title");
+      const shareTitle = encodeURIComponent(photo.title || defaultTitle);
+      const shareText = encodeURIComponent(
+        t("photo.share.text", { title: photo.title || defaultTitle }),
+      );
 
-      const finalUrl = url.replace('{url}', shareUrl).replace('{title}', shareTitle).replace('{text}', shareText)
+      const finalUrl = url
+        .replace("{url}", shareUrl)
+        .replace("{title}", shareTitle)
+        .replace("{text}", shareText);
 
-      window.open(finalUrl, '_blank', 'width=600,height=400')
-      setIsOpen(false)
+      window.open(finalUrl, "_blank", "width=600,height=400");
+      setIsOpen(false);
     },
     [photo.title, t],
-  )
+  );
 
   // 功能选项
   const actionOptions: ShareOption[] = [
-    ...(typeof navigator !== 'undefined' && 'share' in navigator
+    ...(typeof navigator !== "undefined" && "share" in navigator
       ? [
           {
-            id: 'native-share',
-            label: t('photo.share.system'),
-            icon: 'i-mingcute-share-2-line',
+            id: "native-share",
+            label: t("photo.share.system"),
+            icon: "i-mingcute-share-2-line",
             action: handleNativeShare,
-            color: 'text-blue-500',
+            color: "text-blue-500",
           },
         ]
       : []),
     {
-      id: 'copy-link',
-      label: t('photo.share.copy.link'),
-      icon: 'i-mingcute-link-line',
+      id: "copy-link",
+      label: t("photo.share.copy.link"),
+      icon: "i-mingcute-link-line",
       action: handleCopyLink,
     },
     {
-      id: 'copy-embed',
-      label: t('photo.share.embed.code'),
-      icon: 'i-mingcute-code-line',
+      id: "copy-embed",
+      label: t("photo.share.embed.code"),
+      icon: "i-mingcute-code-line",
       action: handleCopyEmbedCode,
-      color: 'text-purple-500',
+      color: "text-purple-500",
     },
-  ]
+  ];
 
   return (
     <DropdownMenuPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuPrimitive.Trigger asChild>{trigger}</DropdownMenuPrimitive.Trigger>
+      <DropdownMenuPrimitive.Trigger asChild>
+        {trigger}
+      </DropdownMenuPrimitive.Trigger>
 
       <AnimatePresence>
         {isOpen && (
@@ -221,9 +230,9 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 className="border-accent/20 rounded-2xl border p-4 backdrop-blur-2xl"
                 style={{
                   backgroundImage:
-                    'linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))',
+                    "linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))",
                   boxShadow:
-                    '0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)',
+                    "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
                 }}
               >
                 {/* Inner glow layer */}
@@ -231,20 +240,26 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                   className="pointer-events-none absolute inset-0 rounded-2xl"
                   style={{
                     background:
-                      'linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))',
+                      "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
                   }}
                 />
                 {/* 标题区域 */}
                 <div className="relative mb-4 text-center">
-                  <h3 className="text-text font-semibold">{t('photo.share.title')}</h3>
-                  {photo.title && <p className="text-text-secondary mt-1 line-clamp-1 text-sm">{photo.title}</p>}
+                  <h3 className="text-text font-semibold">
+                    {t("photo.share.title")}
+                  </h3>
+                  {photo.title && (
+                    <p className="text-text-secondary mt-1 line-clamp-1 text-sm">
+                      {photo.title}
+                    </p>
+                  )}
                 </div>
 
                 {/* 社交媒体分享 - 第一排 */}
                 <div className="relative mb-6">
                   <div className="mb-3">
                     <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
-                      {t('photo.share.social.media')}
+                      {t("photo.share.social.media")}
                     </h4>
                   </div>
                   <div className="flex gap-6 px-2">
@@ -258,15 +273,23 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       >
                         <div
                           className={clsxm(
-                            'flex size-12 items-center justify-center rounded-full transition-all duration-200',
+                            "flex size-12 items-center justify-center rounded-full transition-all duration-200",
                             option.bgColor,
-                            'group-hover:scale-110 group-active:scale-95',
-                            'shadow-lg',
+                            "group-hover:scale-110 group-active:scale-95",
+                            "shadow-lg",
                           )}
                         >
-                          <i className={clsxm(option.icon, 'size-5', option.color)} />
+                          <i
+                            className={clsxm(
+                              option.icon,
+                              "size-5",
+                              option.color,
+                            )}
+                          />
                         </div>
-                        <span className="text-text-secondary text-xs font-medium">{option.label}</span>
+                        <span className="text-text-secondary text-xs font-medium">
+                          {option.label}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -277,25 +300,27 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                   <div className="relative mb-6">
                     <div className="mb-3">
                       <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
-                        {t('photo.share.embed.code')}
+                        {t("photo.share.embed.code")}
                       </h4>
-                      <p className="text-text-tertiary mt-1 text-xs">{t('photo.share.embed.description')}</p>
+                      <p className="text-text-tertiary mt-1 text-xs">
+                        {t("photo.share.embed.description")}
+                      </p>
                     </div>
                     <div className="relative">
                       <div className="border-accent/20 bg-accent/5 rounded-lg border p-3">
                         <code
                           ref={(ref) => {
                             if (ref) {
-                              shareCodeRef.current = ref
+                              shareCodeRef.current = ref;
                             }
                             return () => {
-                              shareCodeRef.current = null
-                            }
+                              shareCodeRef.current = null;
+                            };
                           }}
                           className="text-text-secondary font-mono text-xs break-all whitespace-pre select-all"
                         >
                           {`<iframe
-  src="${siteConfig.url.replace(/\/$/, '')}/share/iframe?id=${embedPhotoId}"
+  src="${siteConfig.url.replace(/\/$/, "")}/share/iframe?id=${embedPhotoId}"
   style="width: 100%; aspect-ratio: ${embedWidth} / ${embedHeight}"
   allowTransparency
   sandbox="allow-scripts allow-same-origin allow-popups"
@@ -305,8 +330,8 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       <button
                         type="button"
                         className="glassmorphic-btn border-accent/20 bg-accent/5 focus-visible:ring-accent/45 absolute top-2 right-2 flex size-9 items-center justify-center rounded-lg border backdrop-blur-2xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
-                        aria-label={t('photo.share.copy.embed')}
-                        title={t('photo.share.copy.embed')}
+                        aria-label={t("photo.share.copy.embed")}
+                        title={t("photo.share.copy.embed")}
                         onClick={handleCopyEmbedCode}
                       >
                         <i className="i-mingcute-copy-line size-4" />
@@ -319,12 +344,12 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 <div className="relative">
                   <div className="mb-3">
                     <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
-                      {t('photo.share.actions')}
+                      {t("photo.share.actions")}
                     </h4>
                   </div>
                   <div className="grid grid-cols-2 gap-1">
                     {actionOptions
-                      .filter((option) => option.id !== 'copy-embed')
+                      .filter((option) => option.id !== "copy-embed")
                       .map((option) => (
                         <button
                           key={option.id}
@@ -334,9 +359,17 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                         >
                           <div className="flex items-center gap-2">
                             <div className="bg-accent/10 flex size-7 items-center justify-center rounded-full transition-colors duration-200">
-                              <i className={clsxm(option.icon, 'size-3.5', option.color || 'text-text-secondary')} />
+                              <i
+                                className={clsxm(
+                                  option.icon,
+                                  "size-3.5",
+                                  option.color || "text-text-secondary",
+                                )}
+                              />
                             </div>
-                            <span className="text-text text-xs font-medium">{option.label}</span>
+                            <span className="text-text text-xs font-medium">
+                              {option.label}
+                            </span>
                           </div>
                         </button>
                       ))}
@@ -348,5 +381,5 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
         )}
       </AnimatePresence>
     </DropdownMenuPrimitive.Root>
-  )
-}
+  );
+};

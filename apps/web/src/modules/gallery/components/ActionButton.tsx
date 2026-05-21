@@ -1,12 +1,18 @@
-import { Button, clsxm, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@afilmory/ui'
-import type { SetStateAction } from 'jotai'
-import { useSetAtom } from 'jotai'
-import { useState } from 'react'
-import { Drawer } from 'vaul'
+import {
+  Button,
+  clsxm,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@afilmory/ui";
+import type { SetStateAction } from "jotai";
+import { useSetAtom } from "jotai";
+import { useState } from "react";
+import { Drawer } from "vaul";
 
-import type { GallerySetting } from '~/atoms/app'
-import { gallerySettingAtom } from '~/atoms/app'
-import { useMobile } from '~/hooks/useMobile'
+import type { GallerySetting } from "~/atoms/app";
+import { gallerySettingAtom } from "~/atoms/app";
+import { useMobile } from "~/hooks/useMobile";
 
 // 通用的操作按钮组件
 export const ActionButton = ({
@@ -17,11 +23,11 @@ export const ActionButton = ({
   ref,
   ...props
 }: {
-  icon: string
-  title: string
-  badge?: number | string
-  onClick: () => void
-  ref?: React.RefObject<HTMLButtonElement>
+  icon: string;
+  title: string;
+  badge?: number | string;
+  onClick: () => void;
+  ref?: React.RefObject<HTMLButtonElement>;
 }) => {
   return (
     <Button
@@ -34,15 +40,15 @@ export const ActionButton = ({
       ref={ref}
       {...props}
     >
-      <i className={clsxm(icon, 'text-text-secondary text-base')} />
+      <i className={clsxm(icon, "text-text-secondary text-base")} />
       {badge && (
         <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-white shadow-sm">
           {badge}
         </span>
       )}
     </Button>
-  )
-}
+  );
+};
 
 // 桌面端的下拉菜单按钮
 export const DesktopActionButton = ({
@@ -54,31 +60,39 @@ export const DesktopActionButton = ({
   open,
   onOpenChange,
 }: {
-  icon: string
-  title: string
-  badge?: number | string
-  children: React.ReactNode
-  contentClassName?: string
-  open?: boolean
-  onOpenChange?: (open: boolean, setGallerySetting: (setting: SetStateAction<GallerySetting>) => void) => void
+  icon: string;
+  title: string;
+  badge?: number | string;
+  children: React.ReactNode;
+  contentClassName?: string;
+  open?: boolean;
+  onOpenChange?: (
+    open: boolean,
+    setGallerySetting: (setting: SetStateAction<GallerySetting>) => void,
+  ) => void;
 }) => {
-  const setGallerySetting = useSetAtom(gallerySettingAtom)
+  const setGallerySetting = useSetAtom(gallerySettingAtom);
   return (
     <DropdownMenu
       defaultOpen={open}
       onOpenChange={(open) => {
-        onOpenChange?.(open, setGallerySetting)
+        onOpenChange?.(open, setGallerySetting);
       }}
     >
       <DropdownMenuTrigger asChild>
-        <ActionButton icon={icon} title={title} badge={badge} onClick={() => {}} />
+        <ActionButton
+          icon={icon}
+          title={title}
+          badge={badge}
+          onClick={() => {}}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="center" className={contentClassName}>
         {children}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};
 
 // 移动端的抽屉按钮
 export const MobileActionButton = ({
@@ -89,16 +103,21 @@ export const MobileActionButton = ({
   open,
   onOpenChange,
 }: {
-  icon: string
-  title: string
-  badge?: number | string
-  children: React.ReactNode
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  icon: string;
+  title: string;
+  badge?: number | string;
+  children: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) => {
   return (
     <>
-      <ActionButton icon={icon} title={title} badge={badge} onClick={() => onOpenChange(!open)} />
+      <ActionButton
+        icon={icon}
+        title={title}
+        badge={badge}
+        onClick={() => onOpenChange(!open)}
+      />
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm" />
@@ -109,8 +128,8 @@ export const MobileActionButton = ({
         </Drawer.Portal>
       </Drawer.Root>
     </>
-  )
-}
+  );
+};
 
 // 响应式操作按钮组件
 export const ResponsiveActionButton = ({
@@ -122,23 +141,32 @@ export const ResponsiveActionButton = ({
   globalOpen,
   onGlobalOpenChange,
 }: {
-  icon: string
-  title: string
-  badge?: number | string
-  children: React.ReactNode
-  contentClassName?: string
-  globalOpen?: boolean
-  onGlobalOpenChange?: (open: boolean, setGallerySetting: (setting: SetStateAction<GallerySetting>) => void) => void
+  icon: string;
+  title: string;
+  badge?: number | string;
+  children: React.ReactNode;
+  contentClassName?: string;
+  globalOpen?: boolean;
+  onGlobalOpenChange?: (
+    open: boolean,
+    setGallerySetting: (setting: SetStateAction<GallerySetting>) => void,
+  ) => void;
 }) => {
-  const isMobile = useMobile()
-  const [open, setOpen] = useState(false)
+  const isMobile = useMobile();
+  const [open, setOpen] = useState(false);
 
   if (isMobile) {
     return (
-      <MobileActionButton icon={icon} title={title} badge={badge} open={open} onOpenChange={setOpen}>
+      <MobileActionButton
+        icon={icon}
+        title={title}
+        badge={badge}
+        open={open}
+        onOpenChange={setOpen}
+      >
         {children}
       </MobileActionButton>
-    )
+    );
   }
 
   return (
@@ -152,5 +180,5 @@ export const ResponsiveActionButton = ({
     >
       {children}
     </DesktopActionButton>
-  )
-}
+  );
+};

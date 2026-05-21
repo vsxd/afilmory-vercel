@@ -1,14 +1,17 @@
-import type { Atom, PrimitiveAtom } from 'jotai'
-import { createStore, useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { selectAtom } from 'jotai/utils'
-import { useCallback } from 'react'
+import type { Atom, PrimitiveAtom } from "jotai";
+import { createStore, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
+import { useCallback } from "react";
 
-export const jotaiStore = createStore()
+export const jotaiStore = createStore();
 
 export const createAtomAccessor = <T>(atom: PrimitiveAtom<T>) =>
-  [() => jotaiStore.get(atom), (value: T) => jotaiStore.set(atom, value)] as const
+  [
+    () => jotaiStore.get(atom),
+    (value: T) => jotaiStore.set(atom, value),
+  ] as const;
 
-const options = { store: jotaiStore }
+const options = { store: jotaiStore };
 /**
  * @param atom - jotai
  * @returns - [atom, useAtom, useAtomValue, useSetAtom, jotaiStore.get, jotaiStore.set]
@@ -20,7 +23,7 @@ export const createAtomHooks = <T>(atom: PrimitiveAtom<T>) =>
     () => useAtomValue(atom, options),
     () => useSetAtom(atom, options),
     ...createAtomAccessor(atom),
-  ] as const
+  ] as const;
 
 export const createAtomSelector = <T>(atom: Atom<T>) => {
   const useHook = <R>(selector: (a: T) => R) =>
@@ -29,8 +32,8 @@ export const createAtomSelector = <T>(atom: Atom<T>) => {
         atom,
         useCallback((a) => selector(a as T), [selector]),
       ),
-    )
+    );
 
-  useHook.__atom = atom
-  return useHook
-}
+  useHook.__atom = atom;
+  return useHook;
+};

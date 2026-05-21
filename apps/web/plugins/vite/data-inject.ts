@@ -1,98 +1,107 @@
-import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
-import { DOMParser } from 'linkedom'
-import type { Plugin } from 'vite'
+import { DOMParser } from "linkedom";
+import type { Plugin } from "vite";
 
-import { siteConfig } from '../../../../site.config.build'
-import { MANIFEST_PATH } from './__internal__/constants'
+import { siteConfig } from "../../../../site.config.build";
+import { MANIFEST_PATH } from "./__internal__/constants";
 
 // ── manifest helpers ──────────────────────────────────────────────────────────
 
-function resolveEmbedPreference(command: 'serve' | 'build'): boolean {
-  const flag = process.env.AFILMORY_EMBED_MANIFEST?.trim().toLowerCase()
-  if (flag === 'true') return true
-  if (flag === 'false') return false
-  return command === 'serve'
+function resolveEmbedPreference(command: "serve" | "build"): boolean {
+  const flag = process.env.AFILMORY_EMBED_MANIFEST?.trim().toLowerCase();
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return command === "serve";
 }
 
 function stripLegacyRatingFromPhoto(photo: unknown): unknown {
-  if (!photo || typeof photo !== 'object') {
-    return photo
+  if (!photo || typeof photo !== "object") {
+    return photo;
   }
 
-  const {exif} = (photo as { exif?: unknown })
-  if (!exif || typeof exif !== 'object' || !('Rating' in exif)) {
-    return photo
+  const { exif } = photo as { exif?: unknown };
+  if (!exif || typeof exif !== "object" || !("Rating" in exif)) {
+    return photo;
   }
 
-  const nextExif = { ...(exif as Record<string, unknown>) }
-  delete nextExif.Rating
+  const nextExif = { ...(exif as Record<string, unknown>) };
+  delete nextExif.Rating;
 
   return {
     ...(photo as Record<string, unknown>),
     exif: nextExif,
-  }
+  };
 }
 
 function stripLegacyRatingFromManifest(input: unknown): unknown {
-  if (!input || typeof input !== 'object') {
-    return input
+  if (!input || typeof input !== "object") {
+    return input;
   }
 
-  const manifest = input as { data?: unknown }
+  const manifest = input as { data?: unknown };
   if (!Array.isArray(manifest.data)) {
-    return input
+    return input;
   }
 
   return {
     ...(input as Record<string, unknown>),
     data: manifest.data.map(stripLegacyRatingFromPhoto),
-  }
+  };
 }
 
-function getManifestContent(command: 'serve' | 'build'): string {
+function getManifestContent(command: "serve" | "build"): string {
   try {
-    const content = readFileSync(MANIFEST_PATH, 'utf-8')
-    return JSON.stringify(stripLegacyRatingFromManifest(JSON.parse(content)))
+    const content = readFileSync(MANIFEST_PATH, "utf-8");
+    return JSON.stringify(stripLegacyRatingFromManifest(JSON.parse(content)));
   } catch (error) {
-    if (command === 'build') {
+    if (command === "build") {
       throw new Error(
         `[data-inject] Cannot read manifest at ${MANIFEST_PATH}. ` +
           `Run "pnpm build:manifest" before "pnpm build:web". Original error: ${error}`,
-      )
+      );
     }
-    console.warn('[data-inject] Failed to read manifest file (dev mode, using empty object):', error)
-    return '{}'
+    console.warn(
+      "[data-inject] Failed to read manifest file (dev mode, using empty object):",
+      error,
+    );
+    return "{}";
   }
 }
 
 function escapeInlineScriptJson(json: string): string {
   return json
-    .replaceAll('&', '\\u0026')
-    .replaceAll('<', '\\u003C')
-    .replaceAll('>', '\\u003E')
-    .replaceAll('\u2028', '\\u2028')
-    .replaceAll('\u2029', '\\u2029')
+    .replaceAll("&", "\\u0026")
+    .replaceAll("<", "\\u003C")
+    .replaceAll(">", "\\u003E")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
 }
 
-function buildInlineScriptAssignment(name: '__MANIFEST__' | '__SITE_CONFIG__', json: string): string {
-  return `window.${name} = ${escapeInlineScriptJson(json)};`
+function buildInlineScriptAssignment(
+  name: "__MANIFEST__" | "__SITE_CONFIG__",
+  json: string,
+): string {
+  return `window.${name} = ${escapeInlineScriptJson(json)};`;
 }
 
 // ── site-config helpers ───────────────────────────────────────────────────────
 
-const CONFIG_SCRIPT_ID = 'config'
-const INJECTED_SCRIPT_ID = 'config-runtime'
-const MANIFEST_DEV_PUBLIC_PATH = '/__afilmory/photos-manifest.json'
+const CONFIG_SCRIPT_ID = "config";
+const INJECTED_SCRIPT_ID = "config-runtime";
+const MANIFEST_DEV_PUBLIC_PATH = "/__afilmory/photos-manifest.json";
 
 function buildInlineManifestScriptContent(manifestJson: string): string {
-  const manifestAssignment = buildInlineScriptAssignment('__MANIFEST__', manifestJson)
-  return `${manifestAssignment}window.__MANIFEST_PROMISE__ = Promise.resolve(window.__MANIFEST__);`
+  const manifestAssignment = buildInlineScriptAssignment(
+    "__MANIFEST__",
+    manifestJson,
+  );
+  return `${manifestAssignment}window.__MANIFEST_PROMISE__ = Promise.resolve(window.__MANIFEST__);`;
 }
 
 function buildExternalManifestScriptContent(manifestUrl: string): string {
-  const safeUrl = JSON.stringify(manifestUrl)
+  const safeUrl = JSON.stringify(manifestUrl);
 
   return [
     `window.__MANIFEST_URL__ = ${safeUrl};`,
@@ -113,128 +122,149 @@ function buildExternalManifestScriptContent(manifestUrl: string): string {
     `    })`,
     `    .finally(() => window.clearTimeout(timeoutId));`,
     `})();`,
-  ].join('')
+  ].join("");
 }
 
 // ── combined plugin ───────────────────────────────────────────────────────────
 
 export function dataInjectPlugin(): Plugin {
-  let embedManifest: boolean | undefined
-  let emittedManifestAssetFileName: string | null = null
+  let embedManifest: boolean | undefined;
+  let emittedManifestAssetFileName: string | null = null;
 
-  const siteConfigPayload = JSON.stringify(siteConfig)
-  const siteConfigScriptContent = buildInlineScriptAssignment('__SITE_CONFIG__', siteConfigPayload)
-  const parser = new DOMParser()
+  const siteConfigPayload = JSON.stringify(siteConfig);
+  const siteConfigScriptContent = buildInlineScriptAssignment(
+    "__SITE_CONFIG__",
+    siteConfigPayload,
+  );
+  const parser = new DOMParser();
   const getBuildManifestAssetPublicPath = () => {
     if (!emittedManifestAssetFileName) {
-      throw new Error('[data-inject] External manifest asset path was not initialized during build.')
+      throw new Error(
+        "[data-inject] External manifest asset path was not initialized during build.",
+      );
     }
-    return `/${emittedManifestAssetFileName}`
-  }
+    return `/${emittedManifestAssetFileName}`;
+  };
 
   return {
-    name: 'data-inject',
-    enforce: 'pre',
+    name: "data-inject",
+    enforce: "pre",
 
     configResolved(config) {
-      embedManifest = resolveEmbedPreference(config.command as 'serve' | 'build')
+      embedManifest = resolveEmbedPreference(
+        config.command as "serve" | "build",
+      );
     },
 
     buildStart() {
-      const shouldEmbed = embedManifest ?? resolveEmbedPreference('build')
-      emittedManifestAssetFileName = null
+      const shouldEmbed = embedManifest ?? resolveEmbedPreference("build");
+      emittedManifestAssetFileName = null;
 
       if (shouldEmbed) {
-        return
+        return;
       }
 
-      const manifestContent = getManifestContent('build')
-      const manifestHash = createHash('sha256').update(manifestContent).digest('hex').slice(0, 10)
-      emittedManifestAssetFileName = `assets/photos-manifest.${manifestHash}.json`
+      const manifestContent = getManifestContent("build");
+      const manifestHash = createHash("sha256")
+        .update(manifestContent)
+        .digest("hex")
+        .slice(0, 10);
+      emittedManifestAssetFileName = `assets/photos-manifest.${manifestHash}.json`;
 
       this.emitFile({
-        type: 'asset',
+        type: "asset",
         fileName: emittedManifestAssetFileName,
         source: manifestContent,
-      })
+      });
     },
 
     configureServer(server) {
-      const shouldEmbed = embedManifest ?? resolveEmbedPreference(server.config.command as 'serve')
-      server.watcher.add(MANIFEST_PATH)
+      const shouldEmbed =
+        embedManifest ??
+        resolveEmbedPreference(server.config.command as "serve");
+      server.watcher.add(MANIFEST_PATH);
 
-      server.watcher.on('change', (file) => {
+      server.watcher.on("change", (file) => {
         if (file === MANIFEST_PATH) {
-          server.config.logger.info('[data-inject] Manifest file changed, triggering full reload')
+          server.config.logger.info(
+            "[data-inject] Manifest file changed, triggering full reload",
+          );
           // 触发页面重新加载
           server.ws.send({
-            type: 'full-reload',
-          })
+            type: "full-reload",
+          });
         }
-      })
+      });
 
       if (shouldEmbed) {
-        return
+        return;
       }
 
       server.middlewares.use(MANIFEST_DEV_PUBLIC_PATH, (_req, res) => {
         try {
-          const manifestContent = getManifestContent('serve')
-          res.setHeader('Content-Type', 'application/json; charset=utf-8')
-          res.setHeader('Cache-Control', 'no-store')
-          res.end(manifestContent)
+          const manifestContent = getManifestContent("serve");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.setHeader("Cache-Control", "no-store");
+          res.end(manifestContent);
         } catch (error) {
-          res.statusCode = 500
-          res.end(JSON.stringify({ error: String(error) }))
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: String(error) }));
         }
-      })
+      });
     },
 
     transformIndexHtml(html, ctx) {
-      const command: 'serve' | 'build' = ctx?.server ? 'serve' : 'build'
-      const shouldEmbed = embedManifest ?? resolveEmbedPreference(command)
-      embedManifest = shouldEmbed
-      const document = parser.parseFromString(html, 'text/html')
+      const command: "serve" | "build" = ctx?.server ? "serve" : "build";
+      const shouldEmbed = embedManifest ?? resolveEmbedPreference(command);
+      embedManifest = shouldEmbed;
+      const document = parser.parseFromString(html, "text/html");
 
       const manifestScriptContent = shouldEmbed
         ? buildInlineManifestScriptContent(getManifestContent(command))
         : buildExternalManifestScriptContent(
-            command === 'serve' ? MANIFEST_DEV_PUBLIC_PATH : getBuildManifestAssetPublicPath(),
-          )
+            command === "serve"
+              ? MANIFEST_DEV_PUBLIC_PATH
+              : getBuildManifestAssetPublicPath(),
+          );
 
-      const manifestScript = document.querySelector('#manifest')
+      const manifestScript = document.querySelector("#manifest");
       if (manifestScript) {
-        manifestScript.textContent = manifestScriptContent
+        manifestScript.textContent = manifestScriptContent;
       }
 
       if (!shouldEmbed) {
         const manifestAssetPublicPath =
-          command === 'serve' ? MANIFEST_DEV_PUBLIC_PATH : getBuildManifestAssetPublicPath()
-        const preloadLink = document.createElement('link')
-        preloadLink.setAttribute('rel', 'preload')
-        preloadLink.setAttribute('as', 'fetch')
-        preloadLink.setAttribute('href', manifestAssetPublicPath)
-        preloadLink.setAttribute('crossorigin', 'anonymous')
-        document.head?.append(preloadLink)
+          command === "serve"
+            ? MANIFEST_DEV_PUBLIC_PATH
+            : getBuildManifestAssetPublicPath();
+        const preloadLink = document.createElement("link");
+        preloadLink.setAttribute("rel", "preload");
+        preloadLink.setAttribute("as", "fetch");
+        preloadLink.setAttribute("href", manifestAssetPublicPath);
+        preloadLink.setAttribute("crossorigin", "anonymous");
+        document.head?.append(preloadLink);
       }
 
       if (!document.querySelector(`#${INJECTED_SCRIPT_ID}`)) {
-        const scriptEl = document.createElement('script', 'text/javascript')
-        scriptEl.id = INJECTED_SCRIPT_ID
-        scriptEl.textContent = siteConfigScriptContent
+        const scriptEl = document.createElement("script", "text/javascript");
+        scriptEl.id = INJECTED_SCRIPT_ID;
+        scriptEl.textContent = siteConfigScriptContent;
 
-        const configScript = document.querySelector(`#${CONFIG_SCRIPT_ID}`)
+        const configScript = document.querySelector(`#${CONFIG_SCRIPT_ID}`);
         if (configScript?.parentNode) {
-          configScript.parentNode.insertBefore(scriptEl, configScript.nextSibling)
+          configScript.parentNode.insertBefore(
+            scriptEl,
+            configScript.nextSibling,
+          );
         } else if (document.head) {
-          document.head.append(scriptEl)
+          document.head.append(scriptEl);
         } else {
-          const fallbackParent = document.body ?? document.documentElement
-          fallbackParent?.append(scriptEl)
+          const fallbackParent = document.body ?? document.documentElement;
+          fallbackParent?.append(scriptEl);
         }
       }
 
-      return document.toString()
+      return document.toString();
     },
-  }
+  };
 }

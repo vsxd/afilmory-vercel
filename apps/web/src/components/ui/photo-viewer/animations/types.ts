@@ -1,21 +1,21 @@
 export interface AnimationFrameRect {
-  left: number
-  top: number
-  width: number
-  height: number
-  borderRadius: number
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  borderRadius: number;
 }
 
-export type PhotoViewerTransitionVariant = 'entry' | 'exit'
+export type PhotoViewerTransitionVariant = "entry" | "exit";
 
 export interface PhotoViewerTransitionState {
-  photoId: string
-  imageSrc: string
-  thumbHash?: string | null
-  from: AnimationFrameRect
-  to: AnimationFrameRect
+  photoId: string;
+  imageSrc: string;
+  thumbHash?: string | null;
+  from: AnimationFrameRect;
+  to: AnimationFrameRect;
 }
 
 export type PhotoViewerTransition = PhotoViewerTransitionState & {
-  variant: PhotoViewerTransitionVariant
-}
+  variant: PhotoViewerTransitionVariant;
+};

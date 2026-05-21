@@ -1,29 +1,35 @@
-import { useEffect, useLayoutEffect } from 'react'
-import type { NavigateFunction } from 'react-router'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useEffect, useLayoutEffect } from "react";
+import type { NavigateFunction } from "react-router";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 
-import { setNavigate, setRoute } from '~/atoms/route'
+import { setNavigate, setRoute } from "~/atoms/route";
 
 declare global {
   interface Window {
     router?: {
-      navigate: NavigateFunction
-    }
+      navigate: NavigateFunction;
+    };
   }
 }
 
-const useSafeLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+const useSafeLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-function getWindowRouter(): Window['router'] | null {
-  if (typeof window === 'undefined') {
-    return null
+function getWindowRouter(): Window["router"] | null {
+  if (typeof window === "undefined") {
+    return null;
   }
 
   window.router ??= {
     navigate() {},
-  }
+  };
 
-  return window.router
+  return window.router;
 }
 
 /**
@@ -34,25 +40,25 @@ function getWindowRouter(): Window['router'] | null {
  * Also it can access values outside of the component and provide a value selector
  */
 export const StableRouterProvider = () => {
-  const [searchParams] = useSearchParams()
-  const params = useParams()
-  const nav = useNavigate()
-  const location = useLocation()
+  const [searchParams] = useSearchParams();
+  const params = useParams();
+  const nav = useNavigate();
+  const location = useLocation();
 
   // NOTE: This is a hack to expose the navigate function to the window object, avoid to import `router` circular issue.
   useSafeLayoutEffect(() => {
-    const browserRouter = getWindowRouter()
+    const browserRouter = getWindowRouter();
     if (browserRouter) {
-      browserRouter.navigate = nav
+      browserRouter.navigate = nav;
     }
 
     setRoute({
       params,
       searchParams,
       location,
-    })
-    setNavigate({ fn: nav })
-  }, [searchParams, params, location, nav])
+    });
+    setNavigate({ fn: nav });
+  }, [searchParams, params, location, nav]);
 
-  return null
-}
+  return null;
+};

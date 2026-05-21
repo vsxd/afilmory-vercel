@@ -10,15 +10,15 @@
 
 ```typescript
 const s3Config: StorageConfig = {
-  provider: 's3',
-  bucket: 'my-bucket',
-  region: 'us-east-1',
-  endpoint: 'https://s3.amazonaws.com',
-  accessKeyId: 'your-access-key',
-  secretAccessKey: 'your-secret-key',
-  prefix: 'photos/',
-  customDomain: 'https://cdn.example.com',
-}
+  provider: "s3",
+  bucket: "my-bucket",
+  region: "us-east-1",
+  endpoint: "https://s3.amazonaws.com",
+  accessKeyId: "your-access-key",
+  secretAccessKey: "your-secret-key",
+  prefix: "photos/",
+  customDomain: "https://cdn.example.com",
+};
 ```
 
 ## GitHub 存储提供商
@@ -39,14 +39,14 @@ const s3Config: StorageConfig = {
 
 ```typescript
 const githubConfig: StorageConfig = {
-  provider: 'github',
-  owner: 'your-username', // GitHub 用户名或组织名
-  repo: 'photo-gallery', // 仓库名称
-  branch: 'main', // 分支名称（可选，默认 'main'）
-  token: 'ghp_xxxxxxxxxxxx', // GitHub 访问令牌（可选）
-  path: 'photos', // 照片存储路径（可选）
+  provider: "github",
+  owner: "your-username", // GitHub 用户名或组织名
+  repo: "photo-gallery", // 仓库名称
+  branch: "main", // 分支名称（可选，默认 'main'）
+  token: "ghp_xxxxxxxxxxxx", // GitHub 访问令牌（可选）
+  path: "photos", // 照片存储路径（可选）
   useRawUrl: true, // 使用 raw.githubusercontent.com（默认 true）
-}
+};
 ```
 
 ### 设置步骤
@@ -78,39 +78,39 @@ const githubConfig: StorageConfig = {
    export const builderConfig: BuilderConfig = {
      ...defaultBuilderConfig,
      storage: {
-       provider: 'github',
-       owner: 'your-username',
-       repo: 'photo-gallery',
-       branch: 'main',
+       provider: "github",
+       owner: "your-username",
+       repo: "photo-gallery",
+       branch: "main",
        token: process.env.GITHUB_TOKEN,
-       path: 'photos',
+       path: "photos",
        useRawUrl: true,
      },
-   }
+   };
    ```
 
 ### 使用示例
 
 ```typescript
-import { GitHubStorageProvider } from '@/core/storage'
+import { GitHubStorageProvider } from "@/core/storage";
 
 const githubProvider = new GitHubStorageProvider({
-  provider: 'github',
-  owner: 'octocat',
-  repo: 'Hello-World',
-  branch: 'main',
-  token: 'your-token',
-  path: 'images',
-})
+  provider: "github",
+  owner: "octocat",
+  repo: "Hello-World",
+  branch: "main",
+  token: "your-token",
+  path: "images",
+});
 
 // 获取文件
-const buffer = await githubProvider.getFile('sunset.jpg')
+const buffer = await githubProvider.getFile("sunset.jpg");
 
 // 列出所有图片
-const images = await githubProvider.listImages()
+const images = await githubProvider.listImages();
 
 // 生成公共 URL
-const url = githubProvider.generatePublicUrl('sunset.jpg')
+const url = githubProvider.generatePublicUrl("sunset.jpg");
 // 结果：https://raw.githubusercontent.com/octocat/Hello-World/main/images/sunset.jpg
 ```
 
@@ -158,9 +158,9 @@ GitHub 存储提供商会处理以下错误：
 
 ```typescript
 const localConfig: StorageConfig = {
-  provider: 'local',
-  basePath: './photos', // 本地照片存储路径（相对或绝对路径）
-  baseUrl: 'http://localhost:3000/photos', // 用于生成公共 URL；未设置时需配置 distPath
+  provider: "local",
+  basePath: "./photos", // 本地照片存储路径（相对或绝对路径）
+  baseUrl: "http://localhost:3000/photos", // 用于生成公共 URL；未设置时需配置 distPath
   /**
    * 可选：将 basePath 下的文件复制到发布目录，用于静态托管
    * - 支持绝对/相对路径（相对路径相对于项目根目录解析）
@@ -168,10 +168,10 @@ const localConfig: StorageConfig = {
    *
    * 如果你使用了下面的配置，你可以将 baseUrl 配置为 '/originals/' 以匹配前端访问路径。
    */
-  distPath: './apps/web/public/originals',
-  excludeRegex: '\\.(tmp|cache)$', // 可选：排除文件的正则表达式
+  distPath: "./apps/web/public/originals",
+  excludeRegex: "\\.(tmp|cache)$", // 可选：排除文件的正则表达式
   maxFileLimit: 1000, // 可选：最大文件数量限制
-}
+};
 ```
 
 ### 路径配置
@@ -184,30 +184,30 @@ const localConfig: StorageConfig = {
 ### 使用示例
 
 ```typescript
-import { LocalStorageProvider } from '@/core/storage'
+import { LocalStorageProvider } from "@/core/storage";
 
 const localProvider = new LocalStorageProvider({
-  provider: 'local',
-  basePath: './photos',
-  baseUrl: 'http://localhost:3000/photos',
+  provider: "local",
+  basePath: "./photos",
+  baseUrl: "http://localhost:3000/photos",
   // 可选：在初始化时自动将 basePath 的内容复制到 distPath（会覆盖同名文件）
-  distPath: './apps/web/public/photos',
-})
+  distPath: "./apps/web/public/photos",
+});
 
 // 获取文件
-const buffer = await localProvider.getFile('sunset.jpg')
+const buffer = await localProvider.getFile("sunset.jpg");
 
 // 列出所有图片
-const images = await localProvider.listImages()
+const images = await localProvider.listImages();
 
 // 生成公共 URL
-const url = localProvider.generatePublicUrl('sunset.jpg')
+const url = localProvider.generatePublicUrl("sunset.jpg");
 // 结果：http://localhost:3000/photos/sunset.jpg
 
 // 检查存储路径
-const exists = await localProvider.checkBasePath()
+const exists = await localProvider.checkBasePath();
 if (!exists) {
-  await localProvider.ensureBasePath()
+  await localProvider.ensureBasePath();
 }
 ```
 
@@ -303,21 +303,21 @@ photos/
 ### 配置示例
 
 ```typescript
-import type { EagleConfig } from '@afilmory/builder'
+import type { EagleConfig } from "@afilmory/builder";
 
 const eagleConfig: EagleConfig = {
-  provider: 'eagle',
-  libraryPath: '/Users/alice/Pictures/Eagle.library',
-  distPath: '/Users/alice/workspaces/afilmory-vercel/apps/web/public/originals',
-  baseUrl: '/originals/',
+  provider: "eagle",
+  libraryPath: "/Users/alice/Pictures/Eagle.library",
+  distPath: "/Users/alice/workspaces/afilmory-vercel/apps/web/public/originals",
+  baseUrl: "/originals/",
   include: [
-    { type: 'folder', name: '精选', includeSubfolder: true },
-    { type: 'tag', name: 'Published' },
+    { type: "folder", name: "精选", includeSubfolder: true },
+    { type: "tag", name: "Published" },
   ],
-  exclude: [{ type: 'tag', name: 'Private' }],
+  exclude: [{ type: "tag", name: "Private" }],
   folderAsTag: true,
-  omitTagNamesInMetadata: ['Temp'],
-}
+  omitTagNamesInMetadata: ["Temp"],
+};
 ```
 
 ### 设置步骤
@@ -337,13 +337,13 @@ const eagleConfig: EagleConfig = {
 ### 使用示例
 
 ```typescript
-import { EagleStorageProvider } from '@/core/storage'
+import { EagleStorageProvider } from "@/core/storage";
 
-const provider = new EagleStorageProvider(eagleConfig)
+const provider = new EagleStorageProvider(eagleConfig);
 
-const files = await provider.listImages()
-const buffer = await provider.getFile(files[0].key)
-const publicUrl = await provider.generatePublicUrl(files[0].key)
+const files = await provider.listImages();
+const buffer = await provider.getFile(files[0].key);
+const publicUrl = await provider.generatePublicUrl(files[0].key);
 ```
 
 首次生成公共 URL 时，提供商会将原图复制到 `distPath`，后续则复用已存在文件。

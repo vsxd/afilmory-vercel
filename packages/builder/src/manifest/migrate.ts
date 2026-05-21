@@ -1,148 +1,166 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
+import fs from "node:fs/promises";
+import path from "node:path";
 
-import { logger } from '../logger/index.js'
-import { getBuilderOutputSettings } from '../output-paths.js'
-import type { AfilmoryManifest } from '../types/manifest.js'
-import type { ManifestVersion } from './version.js'
-import { CURRENT_MANIFEST_VERSION } from './version.js'
+import { logger } from "../logger/index.js";
+import { getBuilderOutputSettings } from "../output-paths.js";
+import type { AfilmoryManifest } from "../types/manifest.js";
+import type { ManifestVersion } from "./version.js";
+import { CURRENT_MANIFEST_VERSION } from "./version.js";
 
 // Placeholder migration scaffolding (chain-of-executors)
 // Supports sequential migrations: v1 -> v2 -> v3 -> ... -> CURRENT
 export type MigrationContext = {
-  from: ManifestVersion | string
-  to: ManifestVersion
-}
+  from: ManifestVersion | string;
+  to: ManifestVersion;
+};
 
-export type ManifestMigrator = (raw: AfilmoryManifest, ctx: MigrationContext) => AfilmoryManifest
+export type ManifestMigrator = (
+  raw: AfilmoryManifest,
+  ctx: MigrationContext,
+) => AfilmoryManifest;
 
 export type MigrationStep = {
-  from: ManifestVersion | string
-  to: ManifestVersion
-  exec: ManifestMigrator
-}
+  from: ManifestVersion | string;
+  to: ManifestVersion;
+  exec: ManifestMigrator;
+};
 
 // Registry of ordered migration steps. Keep empty until concrete steps are added.
 const MIGRATION_STEPS: MigrationStep[] = [
   {
-    from: 'v1',
-    to: 'v6',
+    from: "v1",
+    to: "v6",
     exec: () => {
-      logger.fs.error('🔍 无效的 manifest 版本，创建新的 manifest 文件...')
+      logger.fs.error("🔍 无效的 manifest 版本，创建新的 manifest 文件...");
       return {
-        version: 'v6',
+        version: "v6",
         data: [],
         cameras: [],
         lenses: [],
-      }
+      };
     },
   },
   {
-    from: 'v6',
-    to: 'v7',
+    from: "v6",
+    to: "v7",
     exec: (raw) => {
       raw.data.forEach((item) => {
-        if (typeof item.thumbnailUrl === 'string') {
-          item.thumbnailUrl = item.thumbnailUrl.replace(/\.webp$/, '.jpg')
+        if (typeof item.thumbnailUrl === "string") {
+          item.thumbnailUrl = item.thumbnailUrl.replace(/\.webp$/, ".jpg");
         }
-      })
+      });
       // 更新版本号为目标版本
-      ;(raw as any).version = 'v7'
-      return raw
+      (raw as any).version = "v7";
+      return raw;
     },
   },
   {
-    from: 'v7',
-    to: 'v8',
+    from: "v7",
+    to: "v8",
     exec: (raw) => {
-      logger.main.info('🔄 迁移 v7 -> v8: 将 Live Photo/Motion Photo 字段转换为 VideoSource sum type')
+      logger.main.info(
+        "🔄 迁移 v7 -> v8: 将 Live Photo/Motion Photo 字段转换为 VideoSource sum type",
+      );
 
       raw.data.forEach((item: any) => {
         // 转换为 VideoSource sum type
-        if (item.motionPhotoOffset !== undefined && item.motionPhotoOffset > 0) {
+        if (
+          item.motionPhotoOffset !== undefined &&
+          item.motionPhotoOffset > 0
+        ) {
           // Motion Photo: 嵌入视频
           item.video = {
-            type: 'motion-photo',
+            type: "motion-photo",
             offset: item.motionPhotoOffset,
-            ...(item.motionPhotoVideoSize && { size: item.motionPhotoVideoSize }),
-            ...(item.presentationTimestampUs && { presentationTimestamp: item.presentationTimestampUs }),
-          }
+            ...(item.motionPhotoVideoSize && {
+              size: item.motionPhotoVideoSize,
+            }),
+            ...(item.presentationTimestampUs && {
+              presentationTimestamp: item.presentationTimestampUs,
+            }),
+          };
         } else if (item.isLivePhoto && item.livePhotoVideoUrl) {
           // Live Photo: 独立视频文件
           // 仅在 s3Key 存在时创建 video 对象，避免无效元数据
           if (item.livePhotoVideoS3Key) {
             item.video = {
-              type: 'live-photo',
+              type: "live-photo",
               videoUrl: item.livePhotoVideoUrl,
               s3Key: item.livePhotoVideoS3Key,
-            }
+            };
           } else {
             logger.main.warn(
               `⚠️ 照片 ${item.id || item.url} 的 Live Photo 数据不完整（缺少 s3Key），跳过 video 字段生成`,
-            )
+            );
           }
         }
         // 如果两者都不是，video 字段保持 undefined
 
         // 删除旧字段
-        delete item.isLivePhoto
-        delete item.livePhotoVideoUrl
-        delete item.livePhotoVideoS3Key
-        delete item.motionPhotoOffset
-        delete item.motionPhotoVideoSize
-        delete item.presentationTimestampUs
-      })
+        delete item.isLivePhoto;
+        delete item.livePhotoVideoUrl;
+        delete item.livePhotoVideoS3Key;
+        delete item.motionPhotoOffset;
+        delete item.motionPhotoVideoSize;
+        delete item.presentationTimestampUs;
+      });
 
       // 更新版本号为目标版本
-      ;(raw as any).version = 'v8'
-      return raw
+      (raw as any).version = "v8";
+      return raw;
     },
   },
-]
+];
 
 export function migrateManifest(
   raw: AfilmoryManifest,
   target: ManifestVersion = CURRENT_MANIFEST_VERSION,
 ): AfilmoryManifest {
-  let current: ManifestVersion | string = (raw?.version as any) ?? 'unknown'
-  let working = raw
+  let current: ManifestVersion | string = (raw?.version as any) ?? "unknown";
+  let working = raw;
 
   // Iterate through chain-of-executors until reaching target.
-  const guard = new Set<string>()
+  const guard = new Set<string>();
 
   while (current !== target) {
-    const guardKey = `${String(current)}->${String(target)}`
+    const guardKey = `${String(current)}->${String(target)}`;
     if (guard.has(guardKey)) {
-      throw new Error(`检测到 manifest 迁移循环：${guardKey}`)
+      throw new Error(`检测到 manifest 迁移循环：${guardKey}`);
     }
-    guard.add(guardKey)
+    guard.add(guardKey);
 
-    const step = MIGRATION_STEPS.find((s) => s.from === current)
+    const step = MIGRATION_STEPS.find((s) => s.from === current);
     if (!step) {
-      throw new Error(`不支持的 manifest 版本：${String(current)}，无法迁移到 ${target}`)
+      throw new Error(
+        `不支持的 manifest 版本：${String(current)}，无法迁移到 ${target}`,
+      );
     }
 
-    const ctx: MigrationContext = { from: step.from, to: step.to }
-    logger.main.info(`🔁 执行迁移步骤：${String(step.from)} -> ${String(step.to)}`)
-    working = step.exec(working, ctx)
-    current = (working?.version as any) ?? step.to
+    const ctx: MigrationContext = { from: step.from, to: step.to };
+    logger.main.info(
+      `🔁 执行迁移步骤：${String(step.from)} -> ${String(step.to)}`,
+    );
+    working = step.exec(working, ctx);
+    current = (working?.version as any) ?? step.to;
   }
 
   // Already at target
-  return working as AfilmoryManifest
+  return working as AfilmoryManifest;
 }
 
-export async function migrateManifestFileIfNeeded(parsed: AfilmoryManifest): Promise<AfilmoryManifest | null> {
+export async function migrateManifestFileIfNeeded(
+  parsed: AfilmoryManifest,
+): Promise<AfilmoryManifest | null> {
   try {
-    const { manifestPath } = getBuilderOutputSettings()
-    if (parsed?.version === CURRENT_MANIFEST_VERSION) return null
-    const migrated = migrateManifest(parsed, CURRENT_MANIFEST_VERSION)
-    await fs.mkdir(path.dirname(manifestPath), { recursive: true })
-    await fs.writeFile(manifestPath, JSON.stringify(migrated, null, 2))
-    logger.main.success(`✅ Manifest 版本已更新为 ${CURRENT_MANIFEST_VERSION}`)
-    return migrated
+    const { manifestPath } = getBuilderOutputSettings();
+    if (parsed?.version === CURRENT_MANIFEST_VERSION) return null;
+    const migrated = migrateManifest(parsed, CURRENT_MANIFEST_VERSION);
+    await fs.mkdir(path.dirname(manifestPath), { recursive: true });
+    await fs.writeFile(manifestPath, JSON.stringify(migrated, null, 2));
+    logger.main.success(`✅ Manifest 版本已更新为 ${CURRENT_MANIFEST_VERSION}`);
+    return migrated;
   } catch (e) {
-    logger.main.error('❌ Manifest 迁移失败（占位实现）：', e)
-    throw e
+    logger.main.error("❌ Manifest 迁移失败（占位实现）：", e);
+    throw e;
   }
 }

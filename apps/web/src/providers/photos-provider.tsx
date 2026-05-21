@@ -1,11 +1,17 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { createContext } from 'react'
+import { createContext } from "react";
 
-import type { PhotoManifest } from '~/types/photo'
+import type { PhotoManifest } from "~/types/photo";
 
-export const PhotosContext = createContext<PhotoManifest[]>(null!)
+export const PhotosContext = createContext<PhotoManifest[]>(null!);
 
-export const PhotosProvider = ({ children, photos }: { children: React.ReactNode; photos: PhotoManifest[] }) => {
-  return <PhotosContext value={photos}>{children}</PhotosContext>
-}
+export const PhotosProvider = ({
+  children,
+  photos,
+}: {
+  children: React.ReactNode;
+  photos: PhotoManifest[];
+}) => {
+  return <PhotosContext value={photos}>{children}</PhotosContext>;
+};

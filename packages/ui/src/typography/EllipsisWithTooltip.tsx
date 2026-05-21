@@ -1,50 +1,55 @@
-import type { PropsWithChildren } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import type { PropsWithChildren } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '../tooltip'
-import { clsxm } from '../utils/cn'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipPortal,
+  TooltipTrigger,
+} from "../tooltip";
+import { clsxm } from "../utils/cn";
 
-const isTextOverflowed = (element: HTMLElement, dir: 'h' | 'v') => {
-  if (dir === 'h') {
-    return element.offsetWidth < element.scrollWidth
+const isTextOverflowed = (element: HTMLElement, dir: "h" | "v") => {
+  if (dir === "h") {
+    return element.offsetWidth < element.scrollWidth;
   } else {
-    return element.offsetHeight < element.scrollHeight
+    return element.offsetHeight < element.scrollHeight;
   }
-}
+};
 type EllipsisProps = PropsWithChildren<{
-  width?: string
-  className?: string
-  disabled?: boolean
-  dir?: 'h' | 'v'
-}>
+  width?: string;
+  className?: string;
+  disabled?: boolean;
+  dir?: "h" | "v";
+}>;
 
 export const EllipsisTextWithTooltip = (props: EllipsisProps) => {
-  const { children, className, width, disabled, dir = 'v' } = props
+  const { children, className, width, disabled, dir = "v" } = props;
 
-  const [textElRef, setTextElRef] = useState<HTMLSpanElement | null>(null)
-  const [isOverflowed, setIsOverflowed] = useState(false)
+  const [textElRef, setTextElRef] = useState<HTMLSpanElement | null>(null);
+  const [isOverflowed, setIsOverflowed] = useState(false);
 
   const judgment = useCallback(() => {
-    if (!textElRef) return
+    if (!textElRef) return;
 
-    setIsOverflowed(isTextOverflowed(textElRef, dir))
-  }, [dir, textElRef])
-
-  useEffect(() => {
-    judgment()
-  }, [children, judgment])
+    setIsOverflowed(isTextOverflowed(textElRef, dir));
+  }, [dir, textElRef]);
 
   useEffect(() => {
-    if (!textElRef) return
+    judgment();
+  }, [children, judgment]);
+
+  useEffect(() => {
+    if (!textElRef) return;
     const resizeObserver = new ResizeObserver(() => {
-      judgment()
-    })
-    resizeObserver.observe(textElRef)
+      judgment();
+    });
+    resizeObserver.observe(textElRef);
 
     return () => {
-      resizeObserver.disconnect()
-    }
-  }, [judgment, textElRef])
+      resizeObserver.disconnect();
+    };
+  }, [judgment, textElRef]);
 
   const Content = (
     <span
@@ -60,28 +65,37 @@ export const EllipsisTextWithTooltip = (props: EllipsisProps) => {
     >
       {children}
     </span>
-  )
+  );
 
-  if (!isOverflowed || disabled) return Content
+  if (!isOverflowed || disabled) return Content;
   return (
     <Tooltip>
       <TooltipTrigger asChild>{Content}</TooltipTrigger>
 
       <TooltipPortal>
         <TooltipContent>
-          <span className="break-all whitespace-pre-line" onClick={(e) => e.stopPropagation()}>
+          <span
+            className="break-all whitespace-pre-line"
+            onClick={(e) => e.stopPropagation()}
+          >
             {children}
           </span>
         </TooltipContent>
       </TooltipPortal>
     </Tooltip>
-  )
-}
+  );
+};
 
 /**
  * Show ellipses when horizontal text overflows and full text on hover.
  */
 export const EllipsisHorizontalTextWithTooltip = (props: EllipsisProps) => {
-  const { className, ...rest } = props
-  return <EllipsisTextWithTooltip className={clsxm('block truncate', className)} {...rest} dir="h" />
-}
+  const { className, ...rest } = props;
+  return (
+    <EllipsisTextWithTooltip
+      className={clsxm("block truncate", className)}
+      {...rest}
+      dir="h"
+    />
+  );
+};

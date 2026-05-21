@@ -1,112 +1,123 @@
-import { clsxm, Spring, Thumbhash } from '@afilmory/ui'
-import { m } from 'motion/react'
-import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { clsxm, Spring, Thumbhash } from "@afilmory/ui";
+import { m } from "motion/react";
+import type { FC } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { useMobile } from '~/hooks/useMobile'
-import { nextFrame } from '~/lib/dom'
-import type { PhotoManifest } from '~/types/photo'
+import { useMobile } from "~/hooks/useMobile";
+import { nextFrame } from "~/lib/dom";
+import type { PhotoManifest } from "~/types/photo";
 
 const thumbnailSize = {
   mobile: 48,
   desktop: 64,
-}
+};
 
 const thumbnailGapSize = {
   mobile: 8,
   desktop: 12,
-}
+};
 
 const thumbnailPaddingSize = {
   mobile: 12,
   desktop: 16,
-}
+};
 
 export const GalleryThumbnail: FC<{
-  currentIndex: number
-  photos: PhotoManifest[]
-  onIndexChange: (index: number) => void
-  visible?: boolean
+  currentIndex: number;
+  photos: PhotoManifest[];
+  onIndexChange: (index: number) => void;
+  visible?: boolean;
 }> = ({ currentIndex, photos, onIndexChange, visible = true }) => {
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation()
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
-  const isMobile = useMobile()
+  const isMobile = useMobile();
 
-  const [scrollContainerWidth, setScrollContainerWidth] = useState(0)
+  const [scrollContainerWidth, setScrollContainerWidth] = useState(0);
 
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current
+    const scrollContainer = scrollContainerRef.current;
     if (scrollContainer) {
-      setScrollContainerWidth(scrollContainer.clientWidth)
+      setScrollContainerWidth(scrollContainer.clientWidth);
       const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          setScrollContainerWidth(entry.contentRect.width)
+          setScrollContainerWidth(entry.contentRect.width);
         }
-      })
-      observer.observe(scrollContainer)
+      });
+      observer.observe(scrollContainer);
       return () => {
-        observer.disconnect()
-      }
+        observer.disconnect();
+      };
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current
+    const scrollContainer = scrollContainerRef.current;
 
     if (scrollContainer) {
-      const containerWidth = scrollContainerWidth
+      const containerWidth = scrollContainerWidth;
       const thumbnailLeft =
-        currentIndex * (isMobile ? thumbnailSize.mobile : thumbnailSize.desktop) +
-        (isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop) * currentIndex
-      const thumbnailWidth = isMobile ? thumbnailSize.mobile : thumbnailSize.desktop
+        currentIndex *
+          (isMobile ? thumbnailSize.mobile : thumbnailSize.desktop) +
+        (isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop) *
+          currentIndex;
+      const thumbnailWidth = isMobile
+        ? thumbnailSize.mobile
+        : thumbnailSize.desktop;
 
-      const scrollLeft = thumbnailLeft - containerWidth / 2 + thumbnailWidth / 2
+      const scrollLeft =
+        thumbnailLeft - containerWidth / 2 + thumbnailWidth / 2;
       nextFrame(() => {
         scrollContainer.scrollTo({
           left: scrollLeft,
-          behavior: 'smooth',
-        })
-      })
+          behavior: "smooth",
+        });
+      });
     }
-  }, [currentIndex, isMobile, scrollContainerWidth])
+  }, [currentIndex, isMobile, scrollContainerWidth]);
 
   // 处理鼠标滚轮事件，映射为横向滚动
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current
-    if (!scrollContainer) return
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
 
     const handleWheel = (e: WheelEvent) => {
       // 阻止默认的垂直滚动
-      e.preventDefault()
+      e.preventDefault();
 
       // 优先使用触控板的横向滚动 (deltaX)
       // 如果没有横向滚动，则将垂直滚动 (deltaY) 转换为横向滚动
-      const scrollAmount = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-      scrollContainer.scrollLeft += scrollAmount
-    }
+      const scrollAmount =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      scrollContainer.scrollLeft += scrollAmount;
+    };
 
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: false })
+    scrollContainer.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
-      scrollContainer.removeEventListener('wheel', handleWheel)
-    }
-  }, [])
+      scrollContainer.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   // Virtual scrolling optimization: only render thumbnails near the visible area
   // Calculate the range of thumbnails to render
-  const renderRange = 30 // Render 30 items before and after current index, ~60 total
-  const startIndex = Math.max(0, currentIndex - renderRange)
-  const endIndex = Math.min(photos.length - 1, currentIndex + renderRange)
+  const renderRange = 30; // Render 30 items before and after current index, ~60 total
+  const startIndex = Math.max(0, currentIndex - renderRange);
+  const endIndex = Math.min(photos.length - 1, currentIndex + renderRange);
 
   // Calculate placeholder widths
-  const thumbnailWidth = isMobile ? thumbnailSize.mobile : thumbnailSize.desktop
-  const gapSize = isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop
-  const itemWidth = thumbnailWidth + gapSize
+  const thumbnailWidth = isMobile
+    ? thumbnailSize.mobile
+    : thumbnailSize.desktop;
+  const gapSize = isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop;
+  const itemWidth = thumbnailWidth + gapSize;
 
-  const leftPlaceholderWidth = startIndex > 0 ? startIndex * itemWidth : 0
-  const rightPlaceholderWidth = endIndex < photos.length - 1 ? (photos.length - 1 - endIndex) * itemWidth : 0
+  const leftPlaceholderWidth = startIndex > 0 ? startIndex * itemWidth : 0;
+  const rightPlaceholderWidth =
+    endIndex < photos.length - 1
+      ? (photos.length - 1 - endIndex) * itemWidth
+      : 0;
 
   return (
     <m.div
@@ -119,16 +130,17 @@ export const GalleryThumbnail: FC<{
       exit={{ y: 100, opacity: 0 }}
       transition={Spring.presets.smooth}
       style={{
-        pointerEvents: visible ? 'auto' : 'none',
+        pointerEvents: visible ? "auto" : "none",
         boxShadow:
-          '0 -8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 -4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -2px 8px rgba(0, 0, 0, 0.1)',
+          "0 -8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 -4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -2px 8px rgba(0, 0, 0, 0.1)",
       }}
     >
       {/* Inner glow layer */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background: 'linear-gradient(to top, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent)',
+          background:
+            "linear-gradient(to top, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent)",
         }}
       />
       <div
@@ -136,7 +148,9 @@ export const GalleryThumbnail: FC<{
         className="scrollbar-none relative z-10 flex overflow-x-auto"
         style={{
           gap: isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop,
-          padding: isMobile ? thumbnailPaddingSize.mobile : thumbnailPaddingSize.desktop,
+          padding: isMobile
+            ? thumbnailPaddingSize.mobile
+            : thumbnailPaddingSize.desktop,
         }}
       >
         {/* Left placeholder */}
@@ -151,16 +165,16 @@ export const GalleryThumbnail: FC<{
 
         {/* Only render thumbnails within visible range */}
         {photos.slice(startIndex, endIndex + 1).map((photo, sliceIndex) => {
-          const index = startIndex + sliceIndex
+          const index = startIndex + sliceIndex;
           return (
             <button
               type="button"
               key={photo.id}
               className={clsxm(
-                'contain-intrinsic-size focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2',
+                "contain-intrinsic-size focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2",
                 index === currentIndex
-                  ? 'border-accent opacity-100 shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] ring-2 ring-accent/40'
-                  : 'grayscale-50 border-white/15 opacity-75 hover:border-accent/70 hover:opacity-100 hover:grayscale-0',
+                  ? "border-accent opacity-100 shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] ring-2 ring-accent/40"
+                  : "grayscale-50 border-white/15 opacity-75 hover:border-accent/70 hover:opacity-100 hover:grayscale-0",
               )}
               style={
                 isMobile
@@ -173,19 +187,26 @@ export const GalleryThumbnail: FC<{
                       height: thumbnailSize.desktop,
                     }
               }
-              aria-current={index === currentIndex ? 'true' : undefined}
-              aria-label={t('photo.thumbnail.open', { title: photo.title || photo.id })}
+              aria-current={index === currentIndex ? "true" : undefined}
+              aria-label={t("photo.thumbnail.open", {
+                title: photo.title || photo.id,
+              })}
               title={photo.title || photo.id}
               onClick={() => onIndexChange(index)}
             >
-              {photo.thumbHash && <Thumbhash thumbHash={photo.thumbHash} className="size-fill absolute inset-0" />}
+              {photo.thumbHash && (
+                <Thumbhash
+                  thumbHash={photo.thumbHash}
+                  className="size-fill absolute inset-0"
+                />
+              )}
               <img
                 src={photo.thumbnailUrl}
                 alt={photo.title || photo.id}
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </button>
-          )
+          );
         })}
 
         {/* Right placeholder */}
@@ -199,5 +220,5 @@ export const GalleryThumbnail: FC<{
         )}
       </div>
     </m.div>
-  )
-}
+  );
+};

@@ -1,65 +1,72 @@
-import { LazyImage, Spring } from '@afilmory/ui'
-import { m } from 'motion/react'
-import { useTranslation } from 'react-i18next'
-import { Link, useLocation } from 'react-router'
+import { LazyImage, Spring } from "@afilmory/ui";
+import { m } from "motion/react";
+import { useTranslation } from "react-i18next";
+import { Link, useLocation } from "react-router";
 
-import { buildPhotoDetailSearch } from '~/lib/return-to'
-import type { PhotoMarker } from '~/types/map'
+import { buildPhotoDetailSearch } from "~/lib/return-to";
+import type { PhotoMarker } from "~/types/map";
 
 interface ClusterPhotoGridProps {
-  photos: PhotoMarker[]
-  onPhotoClick?: (photo: PhotoMarker) => void
+  photos: PhotoMarker[];
+  onPhotoClick?: (photo: PhotoMarker) => void;
 }
 
-export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps) => {
+export const ClusterPhotoGrid = ({
+  photos,
+  onPhotoClick,
+}: ClusterPhotoGridProps) => {
   // 最多显示 6 张照片
-  const displayPhotos = photos.slice(0, 6)
-  const remainingCount = Math.max(0, photos.length - 6)
-  const primaryPhoto = photos[0]
-  const { t, i18n } = useTranslation()
-  const location = useLocation()
-  const returnTo = `${location.pathname}${location.search}`
+  const displayPhotos = photos.slice(0, 6);
+  const remainingCount = Math.max(0, photos.length - 6);
+  const primaryPhoto = photos[0];
+  const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}`;
   const locationLabel = primaryPhoto
-    ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${primaryPhoto.latitudeRef || 'N'}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${primaryPhoto.longitudeRef || 'E'}`
-    : null
+    ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${primaryPhoto.latitudeRef || "N"}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${primaryPhoto.longitudeRef || "E"}`
+    : null;
   const dateRangeLabel = (() => {
     const dates = photos
       .map((p) => p.photo.exif?.DateTimeOriginal)
       .filter(Boolean)
       .map((d) => new Date(d!))
-      .sort((a, b) => a.getTime() - b.getTime())
+      .sort((a, b) => a.getTime() - b.getTime());
 
-    if (dates.length === 0) return null
+    if (dates.length === 0) return null;
 
-    const earliest = dates[0]
-    const latest = dates.at(-1)
-    const isSameDay = earliest.toDateString() === latest?.toDateString()
+    const earliest = dates[0];
+    const latest = dates.at(-1);
+    const isSameDay = earliest.toDateString() === latest?.toDateString();
 
     if (isSameDay) {
       return earliest.toLocaleDateString(i18n.language, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
     }
 
     return `${earliest.toLocaleDateString(i18n.language, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     })} - ${latest?.toLocaleDateString(i18n.language, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })}`
-  })()
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })}`;
+  })();
 
   return (
     <div className="space-y-3">
       {/* 标题 */}
       <div className="flex items-center justify-between">
-        <h3 className="text-text text-sm font-semibold">{t('explore.cluster.photos', { count: photos.length })}</h3>
-        <div className="text-text-secondary text-xs">{t('explore.cluster.click.details')}</div>
+        <h3 className="text-text text-sm font-semibold">
+          {t("explore.cluster.photos", { count: photos.length })}
+        </h3>
+        <div className="text-text-secondary text-xs">
+          {t("explore.cluster.click.details")}
+        </div>
       </div>
 
       {/* 照片网格 */}
@@ -81,13 +88,16 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
                 search: buildPhotoDetailSearch(returnTo),
               }}
               onClick={(e) => {
-                e.stopPropagation()
-                onPhotoClick?.(photoMarker)
+                e.stopPropagation();
+                onPhotoClick?.(photoMarker);
               }}
               className="block h-full w-full"
             >
               <LazyImage
-                src={photoMarker.photo.thumbnailUrl || photoMarker.photo.originalUrl}
+                src={
+                  photoMarker.photo.thumbnailUrl ||
+                  photoMarker.photo.originalUrl
+                }
                 alt={photoMarker.photo.title || photoMarker.photo.id}
                 thumbHash={photoMarker.photo.thumbHash}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
@@ -101,7 +111,12 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
               {/* 悬停图标 */}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                 <div className="rounded-full bg-black/50 p-2 backdrop-blur-sm">
-                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="h-4 w-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -127,8 +142,12 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
             className="bg-fill-secondary flex aspect-square items-center justify-center rounded-lg"
           >
             <div className="text-center">
-              <div className="text-text text-lg font-bold">+{remainingCount}</div>
-              <div className="text-text-secondary text-xs">{t('explore.cluster.more')}</div>
+              <div className="text-text text-lg font-bold">
+                +{remainingCount}
+              </div>
+              <div className="text-text-secondary text-xs">
+                {t("explore.cluster.more")}
+              </div>
             </div>
           </m.div>
         )}
@@ -152,5 +171,5 @@ export const ClusterPhotoGrid = ({ photos, onPhotoClick }: ClusterPhotoGridProps
         </div>
       )}
     </div>
-  )
-}
+  );
+};

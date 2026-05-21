@@ -1,14 +1,14 @@
-import { atom, useAtomValue } from 'jotai'
-import { selectAtom } from 'jotai/utils'
-import { useCallback } from 'react'
-import type { Location, NavigateFunction, Params } from 'react-router'
+import { atom, useAtomValue } from "jotai";
+import { selectAtom } from "jotai/utils";
+import { useCallback } from "react";
+import type { Location, NavigateFunction, Params } from "react-router";
 
-import { createAtomHooks } from '~/lib/jotai'
+import { createAtomHooks } from "~/lib/jotai";
 
 interface RouteAtom {
-  params: Readonly<Params<string>>
-  searchParams: URLSearchParams
-  location: Location
+  params: Readonly<Params<string>>;
+  searchParams: URLSearchParams;
+  location: Location;
 }
 
 export const [routeAtom, , , , getReadonlyRoute, setRoute] = createAtomHooks(
@@ -16,26 +16,30 @@ export const [routeAtom, , , , getReadonlyRoute, setRoute] = createAtomHooks(
     params: {},
     searchParams: new URLSearchParams(),
     location: {
-      pathname: '',
-      search: '',
-      hash: '',
+      pathname: "",
+      search: "",
+      hash: "",
       state: null,
-      key: '',
+      key: "",
       unstable_mask: undefined,
     },
   }),
-)
+);
 
-export const useReadonlyRouteSelector = <T>(selector: (route: RouteAtom) => T): T =>
+export const useReadonlyRouteSelector = <T>(
+  selector: (route: RouteAtom) => T,
+): T =>
   useAtomValue(
     selectAtom(
       routeAtom,
       useCallback((route) => selector(route), [selector]),
     ),
-  )
+  );
 
 // Vite HMR will create new router instance, but RouterProvider always stable
 
-const [, , , , navigate, setNavigate] = createAtomHooks(atom<{ fn: NavigateFunction | null }>({ fn() {} }))
-const getStableRouterNavigate = () => navigate().fn
-export { getStableRouterNavigate, setNavigate }
+const [, , , , navigate, setNavigate] = createAtomHooks(
+  atom<{ fn: NavigateFunction | null }>({ fn() {} }),
+);
+const getStableRouterNavigate = () => navigate().fn;
+export { getStableRouterNavigate, setNavigate };

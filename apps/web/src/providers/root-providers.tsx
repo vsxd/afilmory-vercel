@@ -1,18 +1,22 @@
-import { Spring, Toaster } from '@afilmory/ui'
-import { SpeedInsights } from '@vercel/speed-insights/react'
-import { Provider } from 'jotai'
-import { LazyMotion, MotionConfig } from 'motion/react'
-import type { FC, PropsWithChildren } from 'react'
+import { Spring, Toaster } from "@afilmory/ui";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Provider } from "jotai";
+import { LazyMotion, MotionConfig } from "motion/react";
+import type { FC, PropsWithChildren } from "react";
 
-import { jotaiStore } from '~/lib/jotai'
+import { jotaiStore } from "~/lib/jotai";
 
-import { ContextMenuProvider } from './context-menu-provider'
-import { EventProvider } from './event-provider'
-import { I18nProvider } from './i18n-provider'
-import { StableRouterProvider } from './stable-router-provider'
+import { ContextMenuProvider } from "./context-menu-provider";
+import { EventProvider } from "./event-provider";
+import { I18nProvider } from "./i18n-provider";
+import { StableRouterProvider } from "./stable-router-provider";
 
 export const RootProviders: FC<PropsWithChildren> = ({ children }) => (
-  <LazyMotion features={() => import('motion/react').then((m) => m.domMax)} strict key="framer">
+  <LazyMotion
+    features={() => import("motion/react").then((m) => m.domMax)}
+    strict
+    key="framer"
+  >
     <MotionConfig transition={Spring.presets.smooth}>
       <Provider store={jotaiStore}>
         <EventProvider />
@@ -25,4 +29,4 @@ export const RootProviders: FC<PropsWithChildren> = ({ children }) => (
     <Toaster />
     <SpeedInsights />
   </LazyMotion>
-)
+);

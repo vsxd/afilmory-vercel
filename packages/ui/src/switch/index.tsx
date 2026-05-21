@@ -1,21 +1,24 @@
-import type * as SwitchPrimitives from '@radix-ui/react-switch'
-import type { HTMLMotionProps } from 'motion/react'
+import type * as SwitchPrimitives from "@radix-ui/react-switch";
+import type { HTMLMotionProps } from "motion/react";
 
-import { Switch as SwitchAnimate, SwitchThumb } from '../animate-ui/primitives/radix/switch'
-import { clsxm } from '../utils/cn'
+import {
+  Switch as SwitchAnimate,
+  SwitchThumb,
+} from "../animate-ui/primitives/radix/switch";
+import { clsxm } from "../utils/cn";
 
 type SwitchProps = React.ComponentProps<typeof SwitchPrimitives.Root> &
-  HTMLMotionProps<'button'> & {
-    leftIcon?: React.ReactNode
-    rightIcon?: React.ReactNode
-  }
+  HTMLMotionProps<"button"> & {
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
+  };
 
 export function Switch({ className, ...props }: SwitchProps) {
   return (
     <SwitchAnimate
       className={clsxm(
-        'relative flex h-6 w-10 items-center justify-start rounded-full border p-0.5 transition-colors',
-        'data-[state=checked]:justify-end',
+        "relative flex h-6 w-10 items-center justify-start rounded-full border p-0.5 transition-colors",
+        "data-[state=checked]:justify-end",
         className,
       )}
       {...props}
@@ -25,5 +28,5 @@ export function Switch({ className, ...props }: SwitchProps) {
         pressedAnimation={{ width: 22 }}
       />
     </SwitchAnimate>
-  )
+  );
 }

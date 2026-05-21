@@ -1,4 +1,4 @@
-export { LoadingState } from './enum'
+export { LoadingState } from "./enum";
 export type {
   AlignmentAnimationConfig,
   DebugInfo,
@@ -9,5 +9,5 @@ export type {
   WebGLImageViewerProps,
   WebGLImageViewerRef,
   WheelConfig,
-} from './interface'
-export { WebGLImageViewer } from './WebGLImageViewer'
+} from "./interface";
+export { WebGLImageViewer } from "./WebGLImageViewer";

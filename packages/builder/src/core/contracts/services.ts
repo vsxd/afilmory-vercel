@@ -1,24 +1,27 @@
-import type { Logger } from '../../logger/index.js'
-import type { StorageProviderFactory } from '../../storage/factory.js'
-import type { StorageManager } from '../../storage/index.js'
-import type { StorageConfig } from '../../storage/interfaces.js'
-import type { BuilderConfig, BuilderOutputSettings } from '../../types/config.js'
-import type { PhotoManifestItem } from '../../types/photo.js'
+import type { Logger } from "../../logger/index.js";
+import type { StorageProviderFactory } from "../../storage/factory.js";
+import type { StorageManager } from "../../storage/index.js";
+import type { StorageConfig } from "../../storage/interfaces.js";
+import type {
+  BuilderConfig,
+  BuilderOutputSettings,
+} from "../../types/config.js";
+import type { PhotoManifestItem } from "../../types/photo.js";
 
 export interface StorageService {
-  getConfig: () => StorageConfig
-  getManager: () => StorageManager
-  registerProvider: (name: string, factory: StorageProviderFactory) => void
+  getConfig: () => StorageConfig;
+  getManager: () => StorageManager;
+  registerProvider: (name: string, factory: StorageProviderFactory) => void;
 }
 
 export interface OutputPathsService {
-  getSettings: () => BuilderOutputSettings
+  getSettings: () => BuilderOutputSettings;
 }
 
 export interface PhotoIdService {
-  hasCollision: (key: string) => boolean
-  getIdForKey: (key: string, existingItem?: PhotoManifestItem) => string
-  setCollisionKeys: (keys: Iterable<string>) => void
+  hasCollision: (key: string) => boolean;
+  getIdForKey: (key: string, existingItem?: PhotoManifestItem) => string;
+  setCollisionKeys: (keys: Iterable<string>) => void;
 }
 
 /**
@@ -27,9 +30,9 @@ export interface PhotoIdService {
  * plugins are event subscribers, not coordinators.
  */
 export interface BuilderServices {
-  storage: StorageService
-  output: OutputPathsService
-  photoId: PhotoIdService
-  config: BuilderConfig
-  logger: Logger
+  storage: StorageService;
+  output: OutputPathsService;
+  photoId: PhotoIdService;
+  config: BuilderConfig;
+  logger: Logger;
 }

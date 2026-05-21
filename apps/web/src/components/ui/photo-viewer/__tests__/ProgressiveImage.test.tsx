@@ -1,73 +1,86 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ProgressiveImage } from '../ProgressiveImage'
+import { ProgressiveImage } from "../ProgressiveImage";
 
-vi.mock('@afilmory/ui', () => ({
-  clsxm: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
-}))
+vi.mock("@afilmory/ui", () => ({
+  clsxm: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(" "),
+}));
 
-vi.mock('@afilmory/webgl-viewer', () => ({
+vi.mock("@afilmory/webgl-viewer", () => ({
   WebGLImageViewer: () => null,
-}))
+}));
 
-vi.mock('~/lib/image-loader-manager', () => {
+vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
     loadImage() {
-      return Promise.resolve({ blobSrc: 'blob:mock-image' })
+      return Promise.resolve({ blobSrc: "blob:mock-image" });
     }
 
     cleanup() {}
   }
 
-  return { ImageLoaderManager: MockImageLoaderManager }
-})
+  return { ImageLoaderManager: MockImageLoaderManager };
+});
 
-vi.mock('motion/react', async () => {
-  const React = await import('react')
+vi.mock("motion/react", async () => {
+  const React = await import("react");
 
   return {
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => (
+      <>{children}</>
+    ),
     m: {
-      div: ({ children, ...props }: React.ComponentProps<'div'>) => <div {...props}>{children}</div>,
+      div: ({ children, ...props }: React.ComponentProps<"div">) => (
+        <div {...props}>{children}</div>
+      ),
     },
-  }
-})
+  };
+});
 
-vi.mock('react-i18next', () => ({
+vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}))
+}));
 
-vi.mock('usehooks-ts', () => ({
+vi.mock("usehooks-ts", () => ({
   useMediaQuery: () => false,
-}))
+}));
 
-vi.mock('react-zoom-pan-pinch', () => {
+vi.mock("react-zoom-pan-pinch", () => {
   return {
-    TransformWrapper: ({ children }: { children?: any }) => <div>{children}</div>,
-    TransformComponent: ({ children }: { children?: any }) => <div>{children}</div>,
-  }
-})
+    TransformWrapper: ({ children }: { children?: any }) => (
+      <div>{children}</div>
+    ),
+    TransformComponent: ({ children }: { children?: any }) => (
+      <div>{children}</div>
+    ),
+  };
+});
 
-vi.mock('~/atoms/context-menu', () => ({
+vi.mock("~/atoms/context-menu", () => ({
   useShowContextMenu: () => vi.fn(),
-}))
+}));
 
-vi.mock('~/lib/feature', () => ({
+vi.mock("~/lib/feature", () => ({
   canUseWebGL: false,
-}))
+}));
 
-describe('ProgressiveImage', () => {
+describe("ProgressiveImage", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
-    cleanup()
-  })
+    vi.restoreAllMocks();
+    cleanup();
+  });
 
-  it('shows the thumbnail when the browser reports the image as already loaded on mount', async () => {
-    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
-    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(1600)
+  it("shows the thumbnail when the browser reports the image as already loaded on mount", async () => {
+    vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
+      true,
+    );
+    vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(
+      1600,
+    );
 
     render(
       <ProgressiveImage
@@ -78,16 +91,16 @@ describe('ProgressiveImage', () => {
         shouldRenderHighRes={false}
         loadingIndicatorRef={{ current: null }}
       />,
-    )
+    );
 
-    const thumbnail = screen.getByAltText('Loaded thumbnail')
+    const thumbnail = screen.getByAltText("Loaded thumbnail");
 
     await waitFor(() => {
-      expect(thumbnail.className).toContain('opacity-100')
-    })
-  })
+      expect(thumbnail.className).toContain("opacity-100");
+    });
+  });
 
-  it('renders a DOM high-resolution image when WebGL is unavailable', async () => {
+  it("renders a DOM high-resolution image when WebGL is unavailable", async () => {
     render(
       <ProgressiveImage
         src="https://example.com/photo.jpg"
@@ -97,15 +110,15 @@ describe('ProgressiveImage', () => {
         shouldRenderHighRes={true}
         loadingIndicatorRef={{ current: null }}
       />,
-    )
+    );
 
-    const highResImage = await screen.findByAltText('High resolution fallback')
+    const highResImage = await screen.findByAltText("High resolution fallback");
 
     await waitFor(() => {
-      expect(highResImage.getAttribute('src')).toBe('blob:mock-image')
-    })
-    expect(highResImage.parentElement?.style.width).toBe('100%')
-    expect(highResImage.parentElement?.style.height).toBe('100%')
-    expect(screen.getByText('photo.webgl.unavailable')).toBeTruthy()
-  })
-})
+      expect(highResImage.getAttribute("src")).toBe("blob:mock-image");
+    });
+    expect(highResImage.parentElement?.style.width).toBe("100%");
+    expect(highResImage.parentElement?.style.height).toBe("100%");
+    expect(screen.getByText("photo.webgl.unavailable")).toBeTruthy();
+  });
+});

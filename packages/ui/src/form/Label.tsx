@@ -1,12 +1,12 @@
-import type { FC, LabelHTMLAttributes } from 'react'
+import type { FC, LabelHTMLAttributes } from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
 export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
   /**
    * Whether the field is required
    */
-  required?: boolean
+  required?: boolean;
 }
 
 /**
@@ -24,11 +24,19 @@ export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
  * </Label>
  * ```
  */
-export const Label: FC<LabelProps> = ({ required, className, children, ...props }) => (
-  <label className={clsxm('block text-sm font-medium text-text', className)} {...props}>
+export const Label: FC<LabelProps> = ({
+  required,
+  className,
+  children,
+  ...props
+}) => (
+  <label
+    className={clsxm("block text-sm font-medium text-text", className)}
+    {...props}
+  >
     {children}
     {required && <span className="text-red ml-1">*</span>}
   </label>
-)
+);
 
-Label.displayName = 'Label'
+Label.displayName = "Label";

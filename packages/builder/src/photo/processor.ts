@@ -1,21 +1,24 @@
-import type { _Object } from '@aws-sdk/client-s3'
+import type { _Object } from "@aws-sdk/client-s3";
 
-import type { EmitPluginEventFn } from '../core/contracts/execution-context.js'
+import type { EmitPluginEventFn } from "../core/contracts/execution-context.js";
 import type {
   PhotoProcessingContext as PhotoProcessingContextType,
   PhotoProcessorOptions as PhotoProcessorOptionsType,
-} from '../core/contracts/photo-processing.js'
-import type { PluginRunState } from '../core/contracts/plugin-ref.js'
-import type { BuilderServices } from '../core/contracts/services.js'
-import { logger } from '../logger/index.js'
-import type { BuilderOptions } from '../types/options.js'
-import type { PhotoManifestItem, ProcessPhotoResult } from '../types/photo.js'
-import { createStorageKeyNormalizer, runWithPhotoExecutionContext } from './execution-context.js'
-import { processPhotoWithPipeline } from './image-pipeline.js'
-import { createPhotoProcessingLoggers } from './logger-adapter.js'
+} from "../core/contracts/photo-processing.js";
+import type { PluginRunState } from "../core/contracts/plugin-ref.js";
+import type { BuilderServices } from "../core/contracts/services.js";
+import { logger } from "../logger/index.js";
+import type { BuilderOptions } from "../types/options.js";
+import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
+import {
+  createStorageKeyNormalizer,
+  runWithPhotoExecutionContext,
+} from "./execution-context.js";
+import { processPhotoWithPipeline } from "./image-pipeline.js";
+import { createPhotoProcessingLoggers } from "./logger-adapter.js";
 
-export type PhotoProcessorOptions = PhotoProcessorOptionsType
-export type { PhotoProcessingContext } from '../core/contracts/photo-processing.js'
+export type PhotoProcessorOptions = PhotoProcessorOptionsType;
+export type { PhotoProcessingContext } from "../core/contracts/photo-processing.js";
 
 // 处理单张照片
 export async function processPhoto(
@@ -29,17 +32,17 @@ export async function processPhoto(
   services: BuilderServices,
   emitPluginEvent: EmitPluginEventFn,
   pluginRuntime: {
-    runState: PluginRunState
-    builderOptions: BuilderOptions
+    runState: PluginRunState;
+    builderOptions: BuilderOptions;
   },
 ): Promise<ProcessPhotoResult> {
-  const key = obj.Key
+  const key = obj.Key;
   if (!key) {
-    logger.image.warn(`跳过没有 Key 的对象`)
-    return { item: null, type: 'failed' }
+    logger.image.warn(`跳过没有 Key 的对象`);
+    return { item: null, type: "failed" };
   }
 
-  const existingItem = existingManifestMap.get(key)
+  const existingItem = existingManifestMap.get(key);
 
   // 构建处理上下文
   const context: PhotoProcessingContextType = {
@@ -49,11 +52,11 @@ export async function processPhoto(
     livePhotoMap,
     options,
     pluginData: {},
-  }
+  };
 
-  const storageManager = services.storage.getManager()
-  const storageConfig = services.storage.getConfig()
-  const photoLoggers = createPhotoProcessingLoggers(workerId, logger)
+  const storageManager = services.storage.getManager();
+  const storageConfig = services.storage.getConfig();
+  const photoLoggers = createPhotoProcessingLoggers(workerId, logger);
 
   return await runWithPhotoExecutionContext(
     {
@@ -65,10 +68,10 @@ export async function processPhoto(
       loggers: photoLoggers,
     },
     async () => {
-      photoLoggers.image.info(`📸 [${index + 1}/${totalImages}] ${key}`)
+      photoLoggers.image.info(`📸 [${index + 1}/${totalImages}] ${key}`);
 
       // 使用处理管道
-      return await processPhotoWithPipeline(context, pluginRuntime)
+      return await processPhotoWithPipeline(context, pluginRuntime);
     },
-  )
+  );
 }

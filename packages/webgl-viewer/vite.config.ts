@@ -1,24 +1,24 @@
-import dts from 'unplugin-dts/vite'
-import { defineConfig } from 'vite'
+import dts from "unplugin-dts/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   build: {
     minify: true,
     lib: {
-      entry: './src/index.ts',
-      name: 'WebGLImageViewer',
+      entry: "./src/index.ts",
+      name: "WebGLImageViewer",
       fileName: () => `index.js`,
-      formats: ['es'],
+      formats: ["es"],
     },
     rollupOptions: {
-      external: ['react'],
+      external: ["react"],
     },
   },
   plugins: [
     dts({
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
-      outDirs: ['dist'],
-      tsconfigPath: 'tsconfig.json',
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      outDirs: ["dist"],
+      tsconfigPath: "tsconfig.json",
     }),
   ],
-})
+});

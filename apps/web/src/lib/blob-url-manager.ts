@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Blob URL 管理工具
@@ -6,15 +6,15 @@ import { useEffect, useRef, useState } from 'react'
  */
 
 export class BlobUrlManager {
-  private urls = new Set<string>()
+  private urls = new Set<string>();
 
   /**
    * 创建 blob URL 并自动追踪
    */
   createUrl(blob: Blob): string {
-    const url = URL.createObjectURL(blob)
-    this.urls.add(url)
-    return url
+    const url = URL.createObjectURL(blob);
+    this.urls.add(url);
+    return url;
   }
 
   /**
@@ -23,10 +23,10 @@ export class BlobUrlManager {
   revokeUrl(url: string): void {
     if (this.urls.has(url)) {
       try {
-        URL.revokeObjectURL(url)
-        this.urls.delete(url)
+        URL.revokeObjectURL(url);
+        this.urls.delete(url);
       } catch (error) {
-        console.warn('Failed to revoke blob URL:', error)
+        console.warn("Failed to revoke blob URL:", error);
       }
     }
   }
@@ -37,19 +37,19 @@ export class BlobUrlManager {
   revokeAll(): void {
     for (const url of this.urls) {
       try {
-        URL.revokeObjectURL(url)
+        URL.revokeObjectURL(url);
       } catch (error) {
-        console.warn('Failed to revoke blob URL:', error)
+        console.warn("Failed to revoke blob URL:", error);
       }
     }
-    this.urls.clear()
+    this.urls.clear();
   }
 
   /**
    * 获取当前追踪的 URL 数量
    */
   getCount(): number {
-    return this.urls.size
+    return this.urls.size;
   }
 }
 
@@ -57,51 +57,51 @@ export class BlobUrlManager {
  * React Hook: 用于在组件中安全管理 blob URLs
  */
 export function useBlobUrlManager() {
-  const managerRef = useRef<BlobUrlManager | null>(null)
+  const managerRef = useRef<BlobUrlManager | null>(null);
 
   if (!managerRef.current) {
-    managerRef.current = new BlobUrlManager()
+    managerRef.current = new BlobUrlManager();
   }
 
   // 组件卸载时自动清理所有 URL
   useEffect(() => {
     return () => {
-      managerRef.current?.revokeAll()
-    }
-  }, [])
+      managerRef.current?.revokeAll();
+    };
+  }, []);
 
-  return managerRef.current
+  return managerRef.current;
 }
 
 /**
  * React Hook: 用于单个 blob URL 的管理
  */
 export function useBlobUrl(blob: Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null)
-  const currentUrlRef = useRef<string | null>(null)
+  const [url, setUrl] = useState<string | null>(null);
+  const currentUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (currentUrlRef.current) {
-      URL.revokeObjectURL(currentUrlRef.current)
-      currentUrlRef.current = null
+      URL.revokeObjectURL(currentUrlRef.current);
+      currentUrlRef.current = null;
     }
 
     if (!blob) {
-      setUrl(null)
-      return
+      setUrl(null);
+      return;
     }
 
-    const newUrl = URL.createObjectURL(blob)
-    currentUrlRef.current = newUrl
-    setUrl(newUrl)
+    const newUrl = URL.createObjectURL(blob);
+    currentUrlRef.current = newUrl;
+    setUrl(newUrl);
 
     return () => {
       if (currentUrlRef.current === newUrl) {
-        URL.revokeObjectURL(newUrl)
-        currentUrlRef.current = null
+        URL.revokeObjectURL(newUrl);
+        currentUrlRef.current = null;
       }
-    }
-  }, [blob])
+    };
+  }, [blob]);
 
-  return url
+  return url;
 }

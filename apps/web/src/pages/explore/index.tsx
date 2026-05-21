@@ -1,9 +1,11 @@
-import { m } from 'motion/react'
-import { lazy, Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-import { useTranslation } from 'react-i18next'
+import { m } from "motion/react";
+import { lazy, Suspense } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+import { useTranslation } from "react-i18next";
 
-const MapSection = lazy(() => import('~/modules/map/MapSection').then((m) => ({ default: m.MapSection })))
+const MapSection = lazy(() =>
+  import("~/modules/map/MapSection").then((m) => ({ default: m.MapSection })),
+);
 
 export const Component = () => {
   return (
@@ -12,11 +14,11 @@ export const Component = () => {
         <MapSection />
       </ErrorBoundary>
     </Suspense>
-  )
-}
+  );
+};
 
 const ExploryPageSkeleton = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <m.div
@@ -40,7 +42,7 @@ const ExploryPageSkeleton = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          {t('explore.loading.map')}
+          {t("explore.loading.map")}
         </m.div>
         <m.p
           className="text-sm text-gray-600 dark:text-gray-400"
@@ -48,15 +50,15 @@ const ExploryPageSkeleton = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.4 }}
         >
-          {t('explore.parsing.location')}
+          {t("explore.parsing.location")}
         </m.p>
       </div>
     </m.div>
-  )
-}
+  );
+};
 
 const ExploryPageError = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <m.div
@@ -80,7 +82,7 @@ const ExploryPageError = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          {t('explore.map.error.title')}
+          {t("explore.map.error.title")}
         </m.div>
         <m.p
           className="text-sm text-red-600 dark:text-red-400"
@@ -88,9 +90,9 @@ const ExploryPageError = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          {t('explore.map.error.description')}
+          {t("explore.map.error.description")}
         </m.p>
       </div>
     </m.div>
-  )
-}
+  );
+};

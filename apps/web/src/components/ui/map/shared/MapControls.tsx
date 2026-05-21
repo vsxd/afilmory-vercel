@@ -1,64 +1,64 @@
-import { m } from 'motion/react'
-import { useTranslation } from 'react-i18next'
-import { useMap } from 'react-map-gl/maplibre'
+import { m } from "motion/react";
+import { useTranslation } from "react-i18next";
+import { useMap } from "react-map-gl/maplibre";
 
-import type { MapControlsProps } from './types'
+import type { MapControlsProps } from "./types";
 
 const controlShellClassName =
-  'bg-material-thick border-fill-tertiary overflow-hidden rounded-xl border shadow-xl backdrop-blur-2xl'
+  "bg-material-thick border-fill-tertiary overflow-hidden rounded-xl border shadow-xl backdrop-blur-2xl";
 
 const controlButtonClassName =
-  'group hover:bg-fill-secondary active:bg-fill-tertiary focus-visible:ring-accent/45 focus-visible:ring-offset-background flex h-12 w-12 items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0'
+  "group hover:bg-fill-secondary active:bg-fill-tertiary focus-visible:ring-accent/45 focus-visible:ring-offset-background flex h-12 w-12 items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0";
 
 export const MapControls = ({ onGeolocate }: MapControlsProps) => {
-  const { current: map } = useMap()
-  const { t } = useTranslation()
+  const { current: map } = useMap();
+  const { t } = useTranslation();
 
   const handleZoomIn = () => {
     if (map) {
-      const currentZoom = map.getZoom()
-      map.easeTo({ zoom: currentZoom + 1, duration: 300 })
+      const currentZoom = map.getZoom();
+      map.easeTo({ zoom: currentZoom + 1, duration: 300 });
     }
-  }
+  };
 
   const handleZoomOut = () => {
     if (map) {
-      const currentZoom = map.getZoom()
-      map.easeTo({ zoom: currentZoom - 1, duration: 300 })
+      const currentZoom = map.getZoom();
+      map.easeTo({ zoom: currentZoom - 1, duration: 300 });
     }
-  }
+  };
 
   const handleCompass = () => {
     if (map) {
-      map.easeTo({ bearing: 0, pitch: 0, duration: 500 })
+      map.easeTo({ bearing: 0, pitch: 0, duration: 500 });
     }
-  }
+  };
 
   const handleGeolocate = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { longitude, latitude } = position.coords
+          const { longitude, latitude } = position.coords;
           if (map) {
             map.flyTo({
               center: [longitude, latitude],
               zoom: 14,
               duration: 1000,
-            })
+            });
           }
-          onGeolocate?.(longitude, latitude)
+          onGeolocate?.(longitude, latitude);
         },
         (error) => {
-          console.warn('Geolocation error:', error)
+          console.warn("Geolocation error:", error);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
           maximumAge: 60000,
         },
-      )
+      );
     }
-  }
+  };
 
   return (
     <m.div
@@ -74,8 +74,8 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           type="button"
           onClick={handleZoomIn}
           className={controlButtonClassName}
-          aria-label={t('explore.controls.zoom.in')}
-          title={t('explore.controls.zoom.in')}
+          aria-label={t("explore.controls.zoom.in")}
+          title={t("explore.controls.zoom.in")}
         >
           <i className="i-mingcute-add-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
         </button>
@@ -88,8 +88,8 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           type="button"
           onClick={handleZoomOut}
           className={controlButtonClassName}
-          aria-label={t('explore.controls.zoom.out')}
-          title={t('explore.controls.zoom.out')}
+          aria-label={t("explore.controls.zoom.out")}
+          title={t("explore.controls.zoom.out")}
         >
           <i className="i-mingcute-minimize-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
         </button>
@@ -101,8 +101,8 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           type="button"
           onClick={handleCompass}
           className={controlButtonClassName}
-          aria-label={t('explore.controls.compass')}
-          title={t('explore.controls.compass')}
+          aria-label={t("explore.controls.compass")}
+          title={t("explore.controls.compass")}
         >
           <i className="i-mingcute-navigation-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
         </button>
@@ -114,12 +114,12 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           type="button"
           onClick={handleGeolocate}
           className={controlButtonClassName}
-          aria-label={t('explore.controls.locate')}
-          title={t('explore.controls.locate')}
+          aria-label={t("explore.controls.locate")}
+          title={t("explore.controls.locate")}
         >
           <i className="i-mingcute-location-fill text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
         </button>
       </div>
     </m.div>
-  )
-}
+  );
+};

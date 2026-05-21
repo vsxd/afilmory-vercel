@@ -1,49 +1,52 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync } from "node:fs";
 
-import type { PhotoManifestItem } from '@afilmory/data'
-import type { Plugin } from 'vite'
+import type { PhotoManifestItem } from "@afilmory/data";
+import type { Plugin } from "vite";
 
-import { generateOGImage } from '../../../../scripts/generate-og-image.js'
-import type { SiteConfig } from '../../../../site.config'
-import { MANIFEST_PATH } from './__internal__/constants'
-import { generateRSSFeed } from './rss'
+import { generateOGImage } from "../../../../scripts/generate-og-image.js";
+import type { SiteConfig } from "../../../../site.config";
+import { MANIFEST_PATH } from "./__internal__/constants";
+import { generateRSSFeed } from "./rss";
 
 interface OGImagePluginOptions {
-  title?: string
-  description?: string
-  siteName?: string
-  siteUrl?: string
+  title?: string;
+  description?: string;
+  siteName?: string;
+  siteUrl?: string;
 }
 
 function escapeHtmlAttribute(value: string): string {
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function normalizeBaseUrl(url: string): string {
-  return url.endsWith('/') ? url.slice(0, -1) : url
+  return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
-export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConfig: SiteConfig): Plugin {
+export function buildAssetsPlugin(
+  ogOptions: OGImagePluginOptions = {},
+  siteConfig: SiteConfig,
+): Plugin {
   const {
-    title = 'Afilmory',
-    description = 'Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.',
-    siteName = 'Afilmory',
+    title = "Afilmory",
+    description = "Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.",
+    siteName = "Afilmory",
     siteUrl,
-  } = ogOptions
+  } = ogOptions;
 
-  let ogImagePath = ''
+  let ogImagePath = "";
 
   return {
-    name: 'build-assets',
-    apply: 'build',
+    name: "build-assets",
+    apply: "build",
     async buildStart() {
-      const timestamp = Date.now()
-      const fileName = `assets/og-image-${timestamp}.png`
+      const timestamp = Date.now();
+      const fileName = `assets/og-image-${timestamp}.png`;
 
       try {
         const ogImage = await generateOGImage({
@@ -53,70 +56,77 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
           includePhotos: true,
           photoCount: 4,
           writeToDisk: false,
-        })
+        });
 
         this.emitFile({
-          type: 'asset',
+          type: "asset",
           fileName: ogImage.outputPath,
           source: ogImage.buffer,
-        })
+        });
 
-        ogImagePath = `/${ogImage.outputPath}`
-        this.info(`OG image generated: ${ogImagePath}`)
+        ogImagePath = `/${ogImage.outputPath}`;
+        this.info(`OG image generated: ${ogImagePath}`);
       } catch (error) {
-        this.error(`Failed to generate OG image: ${error instanceof Error ? error.message : String(error)}`)
+        this.error(
+          `Failed to generate OG image: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     },
     generateBundle() {
       try {
-        const photosData: PhotoManifestItem[] = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8')).data
+        const photosData: PhotoManifestItem[] = JSON.parse(
+          readFileSync(MANIFEST_PATH, "utf-8"),
+        ).data;
 
         // Sort photos by date taken (newest first)
         const sortedPhotos = photosData.sort(
-          (a, b) => new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
-        )
+          (a, b) =>
+            new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
+        );
 
         // Generate RSS feed
-        const rssXml = generateRSSFeed(sortedPhotos, siteConfig)
+        const rssXml = generateRSSFeed(sortedPhotos, siteConfig);
 
         // Generate sitemap
-        const sitemapXml = generateSitemap(sortedPhotos, siteConfig)
+        const sitemapXml = generateSitemap(sortedPhotos, siteConfig);
 
         // Emit RSS feed
         this.emitFile({
-          type: 'asset',
-          fileName: 'feed.xml',
+          type: "asset",
+          fileName: "feed.xml",
           source: rssXml,
-        })
+        });
 
         // Emit sitemap
         this.emitFile({
-          type: 'asset',
-          fileName: 'sitemap.xml',
+          type: "asset",
+          fileName: "sitemap.xml",
           source: sitemapXml,
-        })
+        });
 
-        this.info(`Generated RSS feed with ${sortedPhotos.length} photos`)
-        this.info(`Generated sitemap with ${sortedPhotos.length + 1} URLs`)
+        this.info(`Generated RSS feed with ${sortedPhotos.length} photos`);
+        this.info(`Generated sitemap with ${sortedPhotos.length + 1} URLs`);
       } catch (error) {
-        this.error(`Error generating RSS feed and sitemap: ${error instanceof Error ? error.message : String(error)}`)
+        this.error(
+          `Error generating RSS feed and sitemap: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     },
     transformIndexHtml: {
-      order: 'pre',
+      order: "pre",
       handler(html) {
         if (!ogImagePath) {
-          console.warn('⚠️  No OG image path available')
-          return html
+          console.warn("⚠️  No OG image path available");
+          return html;
         }
 
-        const baseUrl = normalizeBaseUrl(siteUrl || '')
-        const ogImageUrl = `${baseUrl}${ogImagePath}`
-        const safeBaseUrl = escapeHtmlAttribute(baseUrl)
-        const safeTitle = escapeHtmlAttribute(title)
-        const safeDescription = escapeHtmlAttribute(description)
-        const safeSiteName = escapeHtmlAttribute(siteName)
-        const safeOgImageUrl = escapeHtmlAttribute(ogImageUrl)
+        const baseUrl = normalizeBaseUrl(siteUrl || "");
+        const ogImageUrl = `${baseUrl}${ogImagePath}`;
+        const safeBaseUrl = escapeHtmlAttribute(baseUrl);
+        const safeTitle = escapeHtmlAttribute(title);
+        const safeDescription = escapeHtmlAttribute(description);
+        const safeSiteName = escapeHtmlAttribute(siteName);
+        const safeOgImageUrl = escapeHtmlAttribute(ogImageUrl);
 
         // 生成 meta 标签
         const metaTags = `
@@ -149,18 +159,21 @@ export function buildAssetsPlugin(ogOptions: OGImagePluginOptions = {}, siteConf
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
             <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="shortcut icon" href="/favicon.ico" />
-        `
+        `;
 
         // 在 </head> 标签前插入 meta 标签
-        return html.replace('</head>', `${metaTags}\n  </head>`)
+        return html.replace("</head>", `${metaTags}\n  </head>`);
       },
     },
-  }
+  };
 }
 
-function generateSitemap(photos: PhotoManifestItem[], config: SiteConfig): string {
-  const now = new Date().toISOString()
-  const baseUrl = normalizeBaseUrl(config.url)
+function generateSitemap(
+  photos: PhotoManifestItem[],
+  config: SiteConfig,
+): string {
+  const now = new Date().toISOString();
+  const baseUrl = normalizeBaseUrl(config.url);
 
   // Main page
   const mainPageXml = `  <url>
@@ -168,25 +181,27 @@ function generateSitemap(photos: PhotoManifestItem[], config: SiteConfig): strin
     <lastmod>${now}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-  </url>`
+  </url>`;
 
   // Photo pages
   const photoUrls = photos
     .map((photo) => {
-      const lastmod = new Date(photo.lastModified || photo.dateTaken).toISOString()
-      const photoUrl = `${baseUrl}/photos/${encodeURIComponent(photo.id)}`
+      const lastmod = new Date(
+        photo.lastModified || photo.dateTaken,
+      ).toISOString();
+      const photoUrl = `${baseUrl}/photos/${encodeURIComponent(photo.id)}`;
       return `  <url>
     <loc>${photoUrl}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-  </url>`
+  </url>`;
     })
-    .join('\n')
+    .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${mainPageXml}
 ${photoUrls}
-</urlset>`
+</urlset>`;
 }

@@ -1,16 +1,16 @@
-import type { PhotoProcessorOptions } from '../core/contracts/photo-processing.js'
-import { thumbnailExists } from '../image/thumbnail.js'
-import { needsUpdate } from '../manifest/manager.js'
-import type { PhotoManifestItem } from '../types/photo.js'
+import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
+import { thumbnailExists } from "../image/thumbnail.js";
+import { needsUpdate } from "../manifest/manager.js";
+import type { PhotoManifestItem } from "../types/photo.js";
 
 export interface CacheableData {
   thumbnail?: {
-    thumbnailUrl: string
-    thumbnailBuffer: Buffer
-    blurhash: string
-  }
-  exif?: any
-  toneAnalysis?: any
+    thumbnailUrl: string;
+    thumbnailBuffer: Buffer;
+    blurhash: string;
+  };
+  exif?: any;
+  toneAnalysis?: any;
 }
 
 /**
@@ -25,12 +25,12 @@ export async function shouldProcessPhoto(
 ): Promise<{ shouldProcess: boolean; reason: string }> {
   // 强制模式下总是处理
   if (options.isForceMode) {
-    return { shouldProcess: true, reason: '强制模式' }
+    return { shouldProcess: true, reason: "强制模式" };
   }
 
   // 新照片总是需要处理
   if (!existingItem) {
-    return { shouldProcess: true, reason: '新照片' }
+    return { shouldProcess: true, reason: "新照片" };
   }
 
   // Keep this predicate in sync with task filtering so same-timestamp
@@ -40,25 +40,25 @@ export async function shouldProcessPhoto(
     LastModified: obj.LastModified,
     Size: obj.Size,
     ETag: obj.ETag,
-  })
+  });
 
   if (fileNeedsUpdate || options.isForceManifest) {
     return {
       shouldProcess: true,
-      reason: fileNeedsUpdate ? '文件已更新' : '强制更新清单',
-    }
+      reason: fileNeedsUpdate ? "文件已更新" : "强制更新清单",
+    };
   }
 
   // 检查缩略图是否存在
-  const hasThumbnail = await thumbnailExists(photoId)
+  const hasThumbnail = await thumbnailExists(photoId);
   if (!hasThumbnail || options.isForceThumbnails) {
     return {
       shouldProcess: true,
-      reason: options.isForceThumbnails ? '强制重新生成缩略图' : '缩略图缺失',
-    }
+      reason: options.isForceThumbnails ? "强制重新生成缩略图" : "缩略图缺失",
+    };
   }
 
-  return { shouldProcess: false, reason: '无需处理' }
+  return { shouldProcess: false, reason: "无需处理" };
 }
 
 /**
@@ -68,21 +68,28 @@ export function validateCacheData(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): {
-  needsThumbnail: boolean
-  needsExif: boolean
-  needsToneAnalysis: boolean
+  needsThumbnail: boolean;
+  needsExif: boolean;
+  needsToneAnalysis: boolean;
 } {
   if (!existingItem) {
     return {
       needsThumbnail: true,
       needsExif: true,
       needsToneAnalysis: true,
-    }
+    };
   }
 
   return {
-    needsThumbnail: options.isForceMode || options.isForceThumbnails || !existingItem.thumbHash,
-    needsExif: options.isForceMode || options.isForceManifest || !existingItem.exif,
-    needsToneAnalysis: options.isForceMode || options.isForceManifest || !existingItem.toneAnalysis,
-  }
+    needsThumbnail:
+      options.isForceMode ||
+      options.isForceThumbnails ||
+      !existingItem.thumbHash,
+    needsExif:
+      options.isForceMode || options.isForceManifest || !existingItem.exif,
+    needsToneAnalysis:
+      options.isForceMode ||
+      options.isForceManifest ||
+      !existingItem.toneAnalysis,
+  };
 }

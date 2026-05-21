@@ -2,31 +2,34 @@
  * 图像转换策略模式实现
  * 支持多种浏览器原生不支持的图片格式转换
  */
-import { i18nAtom } from '~/i18n'
-import { debugLog } from '~/lib/debug-log'
-import { detectFileTypeFromBlob } from '~/lib/file-type'
-import { jotaiStore } from '~/lib/jotai'
+import { i18nAtom } from "~/i18n";
+import { debugLog } from "~/lib/debug-log";
+import { detectFileTypeFromBlob } from "~/lib/file-type";
+import { jotaiStore } from "~/lib/jotai";
 
-import type { LoadingCallbacks } from '../image-loader-manager'
-import type { PipelineOptions } from './pipeline'
-import { ImageConversionPipeline } from './pipeline'
-import { HeicConverterStrategy } from './strategies/heic'
-import { TiffConverterStrategy } from './strategies/tiff'
-import type { ConversionResult, ImageConverterStrategy } from './type'
+import type { LoadingCallbacks } from "../image-loader-manager";
+import type { PipelineOptions } from "./pipeline";
+import { ImageConversionPipeline } from "./pipeline";
+import { HeicConverterStrategy } from "./strategies/heic";
+import { TiffConverterStrategy } from "./strategies/tiff";
+import type { ConversionResult, ImageConverterStrategy } from "./type";
 
 // 图像转换策略管理器
 export class ImageConverterManager {
-  private strategies = new Map<string, ImageConverterStrategy>()
-  private readonly conversionPipeline: ImageConversionPipeline
-  private readonly pendingConversions = new Map<string, Promise<ConversionResult>>()
+  private strategies = new Map<string, ImageConverterStrategy>();
+  private readonly conversionPipeline: ImageConversionPipeline;
+  private readonly pendingConversions = new Map<
+    string,
+    Promise<ConversionResult>
+  >();
 
   constructor(options: PipelineOptions = {}) {
     this.conversionPipeline = new ImageConversionPipeline({
       maxConcurrent: options.maxConcurrent ?? 2,
-    })
+    });
     // 注册默认策略
-    this.registerStrategy(new HeicConverterStrategy())
-    this.registerStrategy(new TiffConverterStrategy())
+    this.registerStrategy(new HeicConverterStrategy());
+    this.registerStrategy(new TiffConverterStrategy());
   }
 
   /**
@@ -35,107 +38,120 @@ export class ImageConverterManager {
   registerStrategy(strategy: ImageConverterStrategy): void {
     // 为每个支持的格式注册策略
     strategy.getSupportedFormats().forEach((format) => {
-      this.strategies.set(format, strategy)
-    })
-    debugLog(`Registered image converter strategy: ${strategy.getName()}`)
+      this.strategies.set(format, strategy);
+    });
+    debugLog(`Registered image converter strategy: ${strategy.getName()}`);
   }
 
   /**
    * 移除转换策略
    */
   removeStrategy(strategyName: string): boolean {
-    let removed = false
-    const strategy = Array.from(this.strategies.values()).find((s) => s.getName() === strategyName)
+    let removed = false;
+    const strategy = Array.from(this.strategies.values()).find(
+      (s) => s.getName() === strategyName,
+    );
 
     if (strategy) {
       strategy.getSupportedFormats().forEach((format) => {
         if (this.strategies.get(format) === strategy) {
-          this.strategies.delete(format)
-          removed = true
+          this.strategies.delete(format);
+          removed = true;
         }
-      })
-      if (removed) debugLog(`Removed image converter strategy: ${strategyName}`)
+      });
+      if (removed)
+        debugLog(`Removed image converter strategy: ${strategyName}`);
     }
-    return removed
+    return removed;
   }
 
   /**
    * 获取所有已注册的策略
    */
   getStrategies(): ImageConverterStrategy[] {
-    const uniqueStrategies = new Set(this.strategies.values())
-    return Array.from(uniqueStrategies)
+    const uniqueStrategies = new Set(this.strategies.values());
+    return Array.from(uniqueStrategies);
   }
 
   /**
    * 使用 file-type 直接查找适合的转换策略
    */
-  async findSuitableStrategy(blob: Blob): Promise<ImageConverterStrategy | null> {
+  async findSuitableStrategy(
+    blob: Blob,
+  ): Promise<ImageConverterStrategy | null> {
     try {
-      const fileType = await detectFileTypeFromBlob(blob)
+      const fileType = await detectFileTypeFromBlob(blob);
 
       if (!fileType) {
-        debugLog('Could not detect file type with file-type library')
-        return null
+        debugLog("Could not detect file type with file-type library");
+        return null;
       }
 
-      debugLog(`Detected file type: ${fileType.ext} (${fileType.mime})`)
+      debugLog(`Detected file type: ${fileType.ext} (${fileType.mime})`);
 
       // 直接根据 MIME 类型查找策略
-      const strategy = this.strategies.get(fileType.mime)
+      const strategy = this.strategies.get(fileType.mime);
 
       if (strategy) {
         // 验证策略是否确实需要转换这个文件
-        const shouldConvert = await strategy.shouldConvert(blob)
+        const shouldConvert = await strategy.shouldConvert(blob);
         if (shouldConvert) {
-          debugLog(`Found suitable conversion strategy: ${strategy.getName()}`)
-          return strategy
+          debugLog(`Found suitable conversion strategy: ${strategy.getName()}`);
+          return strategy;
         } else {
-          debugLog(`Strategy ${strategy.getName()} detected but conversion not needed`)
-          return null
+          debugLog(
+            `Strategy ${strategy.getName()} detected but conversion not needed`,
+          );
+          return null;
         }
       }
 
-      debugLog(`No strategy found for MIME type: ${fileType.mime}`)
-      return null
+      debugLog(`No strategy found for MIME type: ${fileType.mime}`);
+      return null;
     } catch (error) {
-      console.error('File type detection failed:', error)
-      return null
+      console.error("File type detection failed:", error);
+      return null;
     }
   }
 
   /**
    * 执行图像转换
    */
-  async convertImage(blob: Blob, originalUrl: string, callbacks?: LoadingCallbacks): Promise<ConversionResult | null> {
-    const strategy = await this.findSuitableStrategy(blob)
+  async convertImage(
+    blob: Blob,
+    originalUrl: string,
+    callbacks?: LoadingCallbacks,
+  ): Promise<ConversionResult | null> {
+    const strategy = await this.findSuitableStrategy(blob);
 
     if (!strategy) {
-      debugLog('No conversion strategy needed for this image')
-      return null
+      debugLog("No conversion strategy needed for this image");
+      return null;
     }
 
-    debugLog(`Converting image using ${strategy.getName()} strategy`)
-    const taskKey = this.getConversionTaskKey(strategy, originalUrl)
+    debugLog(`Converting image using ${strategy.getName()} strategy`);
+    const taskKey = this.getConversionTaskKey(strategy, originalUrl);
 
-    const onLoadingStateUpdate = callbacks?.onLoadingStateUpdate
-    const pipelineActive = this.conversionPipeline.getActiveCount()
-    const maxConcurrent = this.conversionPipeline.getMaxConcurrent()
-    const isPipelineSaturated = pipelineActive >= maxConcurrent
+    const onLoadingStateUpdate = callbacks?.onLoadingStateUpdate;
+    const pipelineActive = this.conversionPipeline.getActiveCount();
+    const maxConcurrent = this.conversionPipeline.getMaxConcurrent();
+    const isPipelineSaturated = pipelineActive >= maxConcurrent;
 
-    const existingTask = this.pendingConversions.get(taskKey)
+    const existingTask = this.pendingConversions.get(taskKey);
     if (existingTask) {
-      debugLog(`Joining pending conversion task for ${strategy.getName()} (${originalUrl})`)
-      return await existingTask
+      debugLog(
+        `Joining pending conversion task for ${strategy.getName()} (${originalUrl})`,
+      );
+      return await existingTask;
     }
 
     if (onLoadingStateUpdate && isPipelineSaturated) {
-      const i18n = jotaiStore.get(i18nAtom)
+      const i18n = jotaiStore.get(i18nAtom);
       onLoadingStateUpdate({
         isConverting: true,
         isQueueWaiting: true,
-        conversionMessage: i18n.t('loading.queue.waiting'),
-      })
+        conversionMessage: i18n.t("loading.queue.waiting"),
+      });
     }
 
     const conversionPromise = this.conversionPipeline.enqueue(async () => {
@@ -143,45 +159,48 @@ export class ImageConverterManager {
         onLoadingStateUpdate?.({
           isQueueWaiting: false,
           conversionMessage: undefined,
-        })
-        return await strategy.convert(blob, originalUrl, callbacks)
+        });
+        return await strategy.convert(blob, originalUrl, callbacks);
       } finally {
-        this.pendingConversions.delete(taskKey)
+        this.pendingConversions.delete(taskKey);
       }
-    })
+    });
 
-    this.pendingConversions.set(taskKey, conversionPromise)
-    return await conversionPromise
+    this.pendingConversions.set(taskKey, conversionPromise);
+    return await conversionPromise;
   }
 
   /**
    * 获取支持的格式列表
    */
   getSupportedFormats(): string[] {
-    return Array.from(this.strategies.keys())
+    return Array.from(this.strategies.keys());
   }
 
   getPipelineStats(): {
-    active: number
-    pending: number
+    active: number;
+    pending: number;
   } {
     return {
       active: this.conversionPipeline.getActiveCount(),
       pending: this.conversionPipeline.getPendingCount(),
-    }
+    };
   }
 
   /**
    * 调整管道的最大并发转换数量
    */
   setMaxConcurrentConversions(maxConcurrent: number): void {
-    this.conversionPipeline.setMaxConcurrent(maxConcurrent)
+    this.conversionPipeline.setMaxConcurrent(maxConcurrent);
   }
 
-  private getConversionTaskKey(strategy: ImageConverterStrategy, originalUrl: string): string {
-    return `${strategy.getName()}::${originalUrl}`
+  private getConversionTaskKey(
+    strategy: ImageConverterStrategy,
+    originalUrl: string,
+  ): string {
+    return `${strategy.getName()}::${originalUrl}`;
   }
 }
 
 // 导出单例实例
-export const imageConverterManager = new ImageConverterManager()
+export const imageConverterManager = new ImageConverterManager();

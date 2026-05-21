@@ -1,38 +1,40 @@
-import { isExiftoolLoadedAtom } from '~/atoms/app'
+import { isExiftoolLoadedAtom } from "~/atoms/app";
 
-import { debugLog } from './debug-log'
-import { jotaiStore } from './jotai'
+import { debugLog } from "./debug-log";
+import { jotaiStore } from "./jotai";
 
 class ExifToolManagerStatic {
-  private isLoaded = false
+  private isLoaded = false;
 
-  private exifTool: typeof import('@uswriting/exiftool') | null = null
+  private exifTool: typeof import("@uswriting/exiftool") | null = null;
 
   async load() {
-    if (this.isLoaded) return
-    const exiftool = await import('@uswriting/exiftool')
-    debugLog('ExifTool loaded...')
-    this.exifTool = exiftool
-    this.isLoaded = true
+    if (this.isLoaded) return;
+    const exiftool = await import("@uswriting/exiftool");
+    debugLog("ExifTool loaded...");
+    this.exifTool = exiftool;
+    this.isLoaded = true;
 
-    jotaiStore.set(isExiftoolLoadedAtom, true)
+    jotaiStore.set(isExiftoolLoadedAtom, true);
   }
 
   async parse(buffer: Blob, filename?: string) {
     if (!this.exifTool) {
-      await this.load()
+      await this.load();
     }
 
     if (!this.exifTool) {
-      throw new Error('ExifTool not loaded')
+      throw new Error("ExifTool not loaded");
     }
-    const metadata = await this.exifTool.parseMetadata(new File([buffer], `/afilmory/${filename}`))
+    const metadata = await this.exifTool.parseMetadata(
+      new File([buffer], `/afilmory/${filename}`),
+    );
 
     if (metadata.error) {
-      throw new Error(metadata.error)
+      throw new Error(metadata.error);
     }
 
-    return metadata.data
+    return metadata.data;
   }
 }
-export const ExifToolManager = new ExifToolManagerStatic()
+export const ExifToolManager = new ExifToolManagerStatic();

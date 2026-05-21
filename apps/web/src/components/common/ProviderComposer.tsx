@@ -1,7 +1,11 @@
-import type { JSX, ReactNode } from 'react'
-import { cloneElement } from 'react'
+import type { JSX, ReactNode } from "react";
+import { cloneElement } from "react";
 
 export const ProviderComposer: Component<{
-  contexts: JSX.Element[]
+  contexts: JSX.Element[];
 }> = ({ contexts, children }) =>
-  contexts.reduceRight((kids: ReactNode, parent: JSX.Element) => cloneElement(parent, { children: kids }), children)
+  contexts.reduceRight(
+    (kids: ReactNode, parent: JSX.Element) =>
+      cloneElement(parent, { children: kids }),
+    children,
+  );

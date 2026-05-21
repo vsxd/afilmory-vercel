@@ -1,24 +1,24 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState } from "react";
 
 export const useExifPanel = () => {
-  const [showExifPanel, setShowExifPanel] = useState(false)
+  const [showExifPanel, setShowExifPanel] = useState(false);
 
   const toggleExifPanel = useCallback(() => {
-    setShowExifPanel((prev) => !prev)
-  }, [])
+    setShowExifPanel((prev) => !prev);
+  }, []);
 
   const closeExifPanel = useCallback(() => {
-    setShowExifPanel(false)
-  }, [])
+    setShowExifPanel(false);
+  }, []);
 
   const openExifPanel = useCallback(() => {
-    setShowExifPanel(true)
-  }, [])
+    setShowExifPanel(true);
+  }, []);
 
   return {
     showExifPanel,
     toggleExifPanel,
     closeExifPanel,
     openExifPanel,
-  }
-}
+  };
+};

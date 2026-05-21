@@ -3,7 +3,7 @@
  * Defined here (not in plugins/manager.ts) so contracts that reference
  * the plugin runtime do not need to import the manager.
  */
-export type PluginRunState = Map<string, Map<string, unknown>>
+export type PluginRunState = Map<string, Map<string, unknown>>;
 
 /**
  * Minimal plugin reference types used by `BuilderConfig.plugins`. The full
@@ -14,18 +14,24 @@ export type PluginRunState = Map<string, Map<string, unknown>>
  */
 
 export interface MinimalBuilderPlugin {
-  name?: string
-  hooks?: unknown
+  name?: string;
+  hooks?: unknown;
 }
 
 export type BuilderPluginESMImporter = () => Promise<{
-  default: (() => MinimalBuilderPlugin | Promise<MinimalBuilderPlugin>) | MinimalBuilderPlugin
-}>
+  default:
+    | (() => MinimalBuilderPlugin | Promise<MinimalBuilderPlugin>)
+    | MinimalBuilderPlugin;
+}>;
 
-export type BuilderPluginReference = string | BuilderPluginESMImporter
+export type BuilderPluginReference = string | BuilderPluginESMImporter;
 
-export type BuilderPluginConfigEntry = BuilderPluginReference | MinimalBuilderPlugin
+export type BuilderPluginConfigEntry =
+  | BuilderPluginReference
+  | MinimalBuilderPlugin;
 
-export function isPluginESMImporter(value: BuilderPluginConfigEntry): value is BuilderPluginESMImporter {
-  return typeof value === 'function' && value.length === 0
+export function isPluginESMImporter(
+  value: BuilderPluginConfigEntry,
+): value is BuilderPluginESMImporter {
+  return typeof value === "function" && value.length === 0;
 }

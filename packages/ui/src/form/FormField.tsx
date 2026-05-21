@@ -1,36 +1,36 @@
-import type { FC, ReactNode } from 'react'
+import type { FC, ReactNode } from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
 export interface FormFieldProps {
   /**
    * Label text for the field
    */
-  label: string
+  label: string;
   /**
    * HTML id for the input element
    */
-  htmlFor: string
+  htmlFor: string;
   /**
    * Error message to display
    */
-  error?: string
+  error?: string;
   /**
    * Helper text to display below the input
    */
-  helperText?: string
+  helperText?: string;
   /**
    * Whether the field is required
    */
-  required?: boolean
+  required?: boolean;
   /**
    * The input/textarea element
    */
-  children: ReactNode
+  children: ReactNode;
   /**
    * Additional class name for the container
    */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -60,16 +60,26 @@ export interface FormFieldProps {
  * </FormField>
  * ```
  */
-export const FormField: FC<FormFieldProps> = ({ label, htmlFor, error, helperText, required, children, className }) => (
-  <div className={clsxm('space-y-2', className)}>
+export const FormField: FC<FormFieldProps> = ({
+  label,
+  htmlFor,
+  error,
+  helperText,
+  required,
+  children,
+  className,
+}) => (
+  <div className={clsxm("space-y-2", className)}>
     <label htmlFor={htmlFor} className="text-text block text-sm font-medium">
       {label}
       {required && <span className="text-red ml-1">*</span>}
     </label>
     {children}
     {error && <p className="text-red text-xs">{error}</p>}
-    {!error && helperText && <p className="text-text-tertiary text-xs">{helperText}</p>}
+    {!error && helperText && (
+      <p className="text-text-tertiary text-xs">{helperText}</p>
+    )}
   </div>
-)
+);
 
-FormField.displayName = 'FormField'
+FormField.displayName = "FormField";

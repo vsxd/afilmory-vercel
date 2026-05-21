@@ -1,105 +1,113 @@
-import type { ImageLoaderManager } from '~/lib/image-loader-manager'
+import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 
-import type { LoadingIndicatorRef } from './LoadingIndicator'
+import type { LoadingIndicatorRef } from "./LoadingIndicator";
 
 export interface LivePhotoVideoHandle {
-  play: () => void
-  stop: () => void
-  getIsVideoLoaded: () => boolean
+  play: () => void;
+  stop: () => void;
+  getIsVideoLoaded: () => boolean;
 }
 
-export const SHOW_SCALE_INDICATOR_DURATION = 1000
+export const SHOW_SCALE_INDICATOR_DURATION = 1000;
 
 // Video source 的 sum type：Live Photo 或 Motion Photo
 export type VideoSource =
-  | { type: 'live-photo'; videoUrl: string }
-  | { type: 'motion-photo'; imageUrl: string; offset: number; size?: number; presentationTimestamp?: number }
-  | { type: 'none' }
+  | { type: "live-photo"; videoUrl: string }
+  | {
+      type: "motion-photo";
+      imageUrl: string;
+      offset: number;
+      size?: number;
+      presentationTimestamp?: number;
+    }
+  | { type: "none" };
 
 export function getVideoSourceKey(videoSource: VideoSource): string {
   switch (videoSource.type) {
-    case 'live-photo': {
-      return `live-photo:${videoSource.videoUrl}`
+    case "live-photo": {
+      return `live-photo:${videoSource.videoUrl}`;
     }
-    case 'motion-photo': {
+    case "motion-photo": {
       return [
-        'motion-photo',
+        "motion-photo",
         videoSource.imageUrl,
         videoSource.offset,
-        videoSource.size ?? '',
-        videoSource.presentationTimestamp ?? '',
-      ].join(':')
+        videoSource.size ?? "",
+        videoSource.presentationTimestamp ?? "",
+      ].join(":");
     }
-    case 'none': {
-      return 'none'
+    case "none": {
+      return "none";
     }
   }
 }
 
 export interface ProgressiveImageProps {
-  src: string
-  thumbnailSrc?: string
+  src: string;
+  thumbnailSrc?: string;
 
-  alt: string
-  width?: number
-  height?: number
-  className?: string
-  onError?: () => void
-  onProgress?: (progress: number) => void
-  onZoomChange?: (isZoomed: boolean) => void
-  onBlobSrcChange?: (blobSrc: string | null) => void
+  alt: string;
+  width?: number;
+  height?: number;
+  className?: string;
+  onError?: () => void;
+  onProgress?: (progress: number) => void;
+  onZoomChange?: (isZoomed: boolean) => void;
+  onBlobSrcChange?: (blobSrc: string | null) => void;
 
-  enableZoom?: boolean
-  enablePan?: boolean
-  maxZoom?: number
-  minZoom?: number
+  enableZoom?: boolean;
+  enablePan?: boolean;
+  maxZoom?: number;
+  minZoom?: number;
 
-  isCurrentImage?: boolean
-  shouldRenderHighRes?: boolean
+  isCurrentImage?: boolean;
+  shouldRenderHighRes?: boolean;
 
   // Video source (Live Photo or Motion Photo)
-  videoSource?: VideoSource
-  shouldAutoPlayVideoOnce?: boolean
+  videoSource?: VideoSource;
+  shouldAutoPlayVideoOnce?: boolean;
 
   // HDR 相关 props
-  isHDR?: boolean
+  isHDR?: boolean;
 
-  loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null>
+  loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null>;
 }
 
 export interface WebGLImageViewerRef {
-  zoomIn: (animated?: boolean) => void
-  zoomOut: (animated?: boolean) => void
-  resetView: () => void
-  getScale: () => number
+  zoomIn: (animated?: boolean) => void;
+  zoomOut: (animated?: boolean) => void;
+  resetView: () => void;
+  getScale: () => number;
 }
 
 export interface DOMImageViewerProps {
-  ref?: React.RefObject<import('react-zoom-pan-pinch').ReactZoomPanPinchRef | null>
-  onZoomChange?: (isZoomed: boolean, scale: number) => any
-  minZoom: number
-  maxZoom: number
-  fitScale?: number
-  src: string
-  alt: string
-  highResLoaded: boolean
-  onLoad?: () => void
-  children?: React.ReactNode
+  ref?: React.RefObject<
+    import("react-zoom-pan-pinch").ReactZoomPanPinchRef | null
+  >;
+  onZoomChange?: (isZoomed: boolean, scale: number) => any;
+  minZoom: number;
+  maxZoom: number;
+  fitScale?: number;
+  src: string;
+  alt: string;
+  highResLoaded: boolean;
+  onLoad?: () => void;
+  children?: React.ReactNode;
 }
 
 export interface LivePhotoBadgeProps {
-  livePhotoRef: React.RefObject<LivePhotoVideoHandle | null>
-  isLivePhotoPlaying: boolean
-  imageLoaderManagerRef: React.RefObject<ImageLoaderManager | null>
+  livePhotoRef: React.RefObject<LivePhotoVideoHandle | null>;
+  isLivePhotoPlaying: boolean;
+  imageLoaderManagerRef: React.RefObject<ImageLoaderManager | null>;
 }
 
 export interface ProgressiveImageState {
-  blobSrc: string | null
-  highResLoaded: boolean
-  error: boolean
-  isHighResImageRendered: boolean
-  currentScale: number
-  showScaleIndicator: boolean
-  isThumbnailLoaded: boolean
-  isLivePhotoPlaying: boolean
+  blobSrc: string | null;
+  highResLoaded: boolean;
+  error: boolean;
+  isHighResImageRendered: boolean;
+  currentScale: number;
+  showScaleIndicator: boolean;
+  isThumbnailLoaded: boolean;
+  isLivePhotoPlaying: boolean;
 }

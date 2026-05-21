@@ -1,17 +1,21 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from "react-i18next";
 
-import { ExifFieldRow } from './ExifFieldRow'
+import { ExifFieldRow } from "./ExifFieldRow";
 
 interface ExifFieldGroupProps {
-  title: string
-  translationKey: string
-  fields: Array<[string, string | number | boolean | null]>
+  title: string;
+  translationKey: string;
+  fields: Array<[string, string | number | boolean | null]>;
 }
 
-export const ExifFieldGroup = ({ title, translationKey, fields }: ExifFieldGroupProps) => {
-  const { t } = useTranslation()
+export const ExifFieldGroup = ({
+  title,
+  translationKey,
+  fields,
+}: ExifFieldGroupProps) => {
+  const { t } = useTranslation();
 
-  if (fields.length === 0) return null
+  if (fields.length === 0) return null;
 
   return (
     <div>
@@ -24,5 +28,5 @@ export const ExifFieldGroup = ({ title, translationKey, fields }: ExifFieldGroup
         ))}
       </div>
     </div>
-  )
-}
+  );
+};

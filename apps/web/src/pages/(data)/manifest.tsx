@@ -1,67 +1,75 @@
-import { Button, ScrollArea } from '@afilmory/ui'
-import { useMemo, useState } from 'react'
+import { Button, ScrollArea } from "@afilmory/ui";
+import { useMemo, useState } from "react";
 
-import { NotFound } from '~/components/common/NotFound'
-import { photoLoader } from '~/data-runtime/photo-loader'
+import { NotFound } from "~/components/common/NotFound";
+import { photoLoader } from "~/data-runtime/photo-loader";
 
 const JSON_TOKEN_REGEX =
-  /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g
+  /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
 
 // JSON 语法高亮组件
 const JsonHighlight = ({ data }: { data: any }) => {
-  const jsonString = JSON.stringify(data, null, 2)
+  const jsonString = JSON.stringify(data, null, 2);
 
   const highlightJson = (str: string) => {
-    const nodes: React.ReactNode[] = []
-    let lastIndex = 0
+    const nodes: React.ReactNode[] = [];
+    let lastIndex = 0;
 
     for (const match of str.matchAll(JSON_TOKEN_REGEX)) {
-      const token = match[0]
-      const index = match.index ?? 0
+      const token = match[0];
+      const index = match.index ?? 0;
 
       if (index > lastIndex) {
-        nodes.push(str.slice(lastIndex, index))
+        nodes.push(str.slice(lastIndex, index));
       }
 
-      let cls = 'text-zinc-500'
+      let cls = "text-zinc-500";
       if (token.startsWith('"')) {
-        if (token.endsWith(':')) {
-          cls = 'text-blue-400'
+        if (token.endsWith(":")) {
+          cls = "text-blue-400";
         } else {
-          cls = 'text-emerald-400'
+          cls = "text-emerald-400";
         }
       } else if (/true|false/.test(token)) {
-        cls = 'text-purple-400'
+        cls = "text-purple-400";
       } else if (/null/.test(token)) {
-        cls = 'text-red-400'
+        cls = "text-red-400";
       } else {
-        cls = 'text-orange-400'
+        cls = "text-orange-400";
       }
 
       nodes.push(
         <span key={`token-${index}`} className={cls}>
           {token}
         </span>,
-      )
-      lastIndex = index + token.length
+      );
+      lastIndex = index + token.length;
     }
 
     if (lastIndex < str.length) {
-      nodes.push(str.slice(lastIndex))
+      nodes.push(str.slice(lastIndex));
     }
 
-    return nodes
-  }
+    return nodes;
+  };
 
   return (
     <pre className="text-sm leading-6 text-zinc-300">
       <code>{highlightJson(jsonString)}</code>
     </pre>
-  )
-}
+  );
+};
 
 // 统计卡片组件
-const StatCard = ({ label, value, icon }: { label: string; value: string | number; icon: string }) => (
+const StatCard = ({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  icon: string;
+}) => (
   <div className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur-sm transition-all hover:border-zinc-700 hover:bg-zinc-900/80">
     <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/0 via-zinc-800/5 to-zinc-800/10" />
     <div className="relative">
@@ -74,25 +82,25 @@ const StatCard = ({ label, value, icon }: { label: string; value: string | numbe
       </div>
     </div>
   </div>
-)
+);
 
 // 统计信息组件
 const ManifestStats = ({ data }: { data: any[] }) => {
   const stats = useMemo(() => {
-    const totalPhotos = data.length
-    const totalSize = data.reduce((sum, photo) => sum + (photo.size || 0), 0)
+    const totalPhotos = data.length;
+    const totalSize = data.reduce((sum, photo) => sum + (photo.size || 0), 0);
 
-    const uniqueTags = new Set()
+    const uniqueTags = new Set();
     data.forEach((photo) => {
-      photo.tags?.forEach((tag: string) => uniqueTags.add(tag))
-    })
+      photo.tags?.forEach((tag: string) => uniqueTags.add(tag));
+    });
 
-    const cameras = new Set()
+    const cameras = new Set();
     data.forEach((photo) => {
       if (photo.exif?.Make && photo.exif?.Model) {
-        cameras.add(`${photo.exif.Make} ${photo.exif.Model}`)
+        cameras.add(`${photo.exif.Make} ${photo.exif.Model}`);
       }
-    })
+    });
 
     return {
       totalPhotos,
@@ -100,8 +108,8 @@ const ManifestStats = ({ data }: { data: any[] }) => {
 
       uniqueTags: uniqueTags.size,
       uniqueCameras: cameras.size,
-    }
-  }, [data])
+    };
+  }, [data]);
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -111,8 +119,8 @@ const ManifestStats = ({ data }: { data: any[] }) => {
       <StatCard label="Tags" value={stats.uniqueTags} icon="🏷️" />
       <StatCard label="Cameras" value={stats.uniqueCameras} icon="📷" />
     </div>
-  )
-}
+  );
+};
 
 // 照片卡片组件
 const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
@@ -145,7 +153,9 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
             <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-zinc-800 font-mono text-xs text-zinc-400">
               {index + 1}
             </span>
-            <h3 className="truncate font-medium text-zinc-100">{photo.title}</h3>
+            <h3 className="truncate font-medium text-zinc-100">
+              {photo.title}
+            </h3>
           </div>
 
           {/* 元数据网格 */}
@@ -158,7 +168,9 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
             </div>
             <div className="flex items-center gap-2">
               <span className="text-zinc-500">📦</span>
-              <span className="text-zinc-300">{(photo.size / (1024 * 1024)).toFixed(1)} MB</span>
+              <span className="text-zinc-300">
+                {(photo.size / (1024 * 1024)).toFixed(1)} MB
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-zinc-500">📷</span>
@@ -190,23 +202,23 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
       </div>
     </div>
   </div>
-)
+);
 
 const ManifestInspectorPage = () => {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [viewMode, setViewMode] = useState<'stats' | 'raw'>('stats')
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"stats" | "raw">("stats");
 
-  const photos = photoLoader.getPhotos()
+  const photos = photoLoader.getPhotos();
   const manifestData = {
-    version: 'v6',
+    version: "v6",
     data: photos,
-  }
+  };
 
   // 搜索过滤
   const filteredPhotos = useMemo(() => {
-    if (!searchTerm) return photos
+    if (!searchTerm) return photos;
 
-    const term = searchTerm.toLowerCase()
+    const term = searchTerm.toLowerCase();
     return photos.filter(
       (photo) =>
         photo.title?.toLowerCase().includes(term) ||
@@ -214,22 +226,22 @@ const ManifestInspectorPage = () => {
         photo.tags?.some((tag) => tag.toLowerCase().includes(term)) ||
         photo.exif?.Make?.toLowerCase().includes(term) ||
         photo.exif?.Model?.toLowerCase().includes(term),
-    )
-  }, [photos, searchTerm])
+    );
+  }, [photos, searchTerm]);
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(manifestData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
+    const dataStr = JSON.stringify(manifestData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
 
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'photos-manifest.json'
-    document.body.append(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-  }
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "photos-manifest.json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-black">
@@ -244,22 +256,24 @@ const ManifestInspectorPage = () => {
             <div className="flex h-16 items-center justify-between">
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-semibold text-zinc-100">Afilmory Manifest</h1>
+                  <h1 className="text-xl font-semibold text-zinc-100">
+                    Afilmory Manifest
+                  </h1>
                 </div>
 
                 <div className="flex items-center rounded-lg bg-zinc-900/50 p-1">
                   <Button
-                    variant={viewMode === 'stats' ? 'primary' : 'ghost'}
+                    variant={viewMode === "stats" ? "primary" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode('stats')}
+                    onClick={() => setViewMode("stats")}
                     className="h-8 text-xs"
                   >
                     Overview
                   </Button>
                   <Button
-                    variant={viewMode === 'raw' ? 'primary' : 'ghost'}
+                    variant={viewMode === "raw" ? "primary" : "ghost"}
                     size="sm"
-                    onClick={() => setViewMode('raw')}
+                    onClick={() => setViewMode("raw")}
                     className="h-8 text-xs"
                   >
                     Raw Data
@@ -276,7 +290,9 @@ const ManifestInspectorPage = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-64 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-2 text-sm text-zinc-100 placeholder-zinc-500 backdrop-blur-sm transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                   />
-                  <div className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-500">🔍</div>
+                  <div className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-500">
+                    🔍
+                  </div>
                 </div>
 
                 <Button
@@ -294,11 +310,13 @@ const ManifestInspectorPage = () => {
 
         {/* Content */}
         <div className="relative mx-auto max-w-7xl px-6 py-8">
-          {viewMode === 'stats' ? (
+          {viewMode === "stats" ? (
             <div className="space-y-8">
               {/* 统计信息 */}
               <div>
-                <h2 className="mb-6 text-lg font-medium text-zinc-300">Overview</h2>
+                <h2 className="mb-6 text-lg font-medium text-zinc-300">
+                  Overview
+                </h2>
                 <ManifestStats data={filteredPhotos} />
               </div>
 
@@ -309,7 +327,9 @@ const ManifestInspectorPage = () => {
                     Photos ({filteredPhotos.length.toLocaleString()})
                   </h2>
                   {searchTerm && (
-                    <div className="text-sm text-zinc-400">Filtered from {photos.length.toLocaleString()} total</div>
+                    <div className="text-sm text-zinc-400">
+                      Filtered from {photos.length.toLocaleString()} total
+                    </div>
                   )}
                 </div>
 
@@ -326,8 +346,12 @@ const ManifestInspectorPage = () => {
             /* 原始 JSON 数据视图 */
             <div>
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-zinc-300">Raw Manifest Data</h2>
-                <p className="mt-1 text-sm text-zinc-500">Complete JSON manifest in structured format</p>
+                <h2 className="text-lg font-medium text-zinc-300">
+                  Raw Manifest Data
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Complete JSON manifest in structured format
+                </p>
               </div>
 
               <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 backdrop-blur-sm">
@@ -338,13 +362,21 @@ const ManifestInspectorPage = () => {
                       <div className="h-3 w-3 rounded-full bg-yellow-500" />
                       <div className="h-3 w-3 rounded-full bg-green-500" />
                     </div>
-                    <span className="font-mono text-sm text-zinc-400">photos-manifest.json</span>
+                    <span className="font-mono text-sm text-zinc-400">
+                      photos-manifest.json
+                    </span>
                   </div>
                 </div>
 
                 <ScrollArea rootClassName="h-[700px]">
                   <div className="p-6">
-                    <JsonHighlight data={searchTerm ? { version: 'v6', data: filteredPhotos } : manifestData} />
+                    <JsonHighlight
+                      data={
+                        searchTerm
+                          ? { version: "v6", data: filteredPhotos }
+                          : manifestData
+                      }
+                    />
                   </div>
                 </ScrollArea>
               </div>
@@ -353,13 +385,13 @@ const ManifestInspectorPage = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export const Component = () => {
   if (!import.meta.env.DEV) {
-    return <NotFound />
+    return <NotFound />;
   }
 
-  return <ManifestInspectorPage />
-}
+  return <ManifestInspectorPage />;
+};

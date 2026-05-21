@@ -1,101 +1,108 @@
-import { i18nAtom } from '~/i18n'
-import { isSafari } from '~/lib/device-viewport'
-import type { LoadingCallbacks } from '~/lib/image-loader-manager'
-import { jotaiStore } from '~/lib/jotai'
-import { LRUCache } from '~/lib/lru-cache'
+import { i18nAtom } from "~/i18n";
+import { isSafari } from "~/lib/device-viewport";
+import type { LoadingCallbacks } from "~/lib/image-loader-manager";
+import { jotaiStore } from "~/lib/jotai";
+import { LRUCache } from "~/lib/lru-cache";
 
-import type { ConversionResult, ImageConverterStrategy } from '../type'
+import type { ConversionResult, ImageConverterStrategy } from "../type";
 
-type HeicModule = typeof import('heic-to')
+type HeicModule = typeof import("heic-to");
 
-let heicModulePromise: Promise<HeicModule> | null = null
+let heicModulePromise: Promise<HeicModule> | null = null;
 
 async function loadHeicModule(): Promise<HeicModule> {
-  heicModulePromise ??= import('heic-to').catch((error) => {
-    heicModulePromise = null
-    throw error
-  })
-  return await heicModulePromise
+  heicModulePromise ??= import("heic-to").catch((error) => {
+    heicModulePromise = null;
+    throw error;
+  });
+  return await heicModulePromise;
 }
 
 // HEIC 转换策略
 export class HeicConverterStrategy implements ImageConverterStrategy {
   getName(): string {
-    return 'HEIC'
+    return "HEIC";
   }
 
   getSupportedFormats(): string[] {
-    return ['image/heic', 'image/heif']
+    return ["image/heic", "image/heif"];
   }
 
   async shouldConvert(_blob: Blob): Promise<boolean> {
     try {
       // 只需检查浏览器是否支持，格式检测已由 file-type 完成
-      return !isBrowserSupportHeic()
+      return !isBrowserSupportHeic();
     } catch (error) {
-      console.error('HEIC browser support detection failed:', error)
-      return false
+      console.error("HEIC browser support detection failed:", error);
+      return false;
     }
   }
 
-  async convert(blob: Blob, originalUrl: string, callbacks?: LoadingCallbacks): Promise<ConversionResult> {
-    const { onLoadingStateUpdate } = callbacks || {}
+  async convert(
+    blob: Blob,
+    originalUrl: string,
+    callbacks?: LoadingCallbacks,
+  ): Promise<ConversionResult> {
+    const { onLoadingStateUpdate } = callbacks || {};
 
     try {
       // 获取国际化文案
-      const i18n = jotaiStore.get(i18nAtom)
+      const i18n = jotaiStore.get(i18nAtom);
 
       // 更新转换状态
       onLoadingStateUpdate?.({
         isConverting: true,
         isQueueWaiting: false,
-        conversionMessage: i18n.t('loading.heic.converting'),
+        conversionMessage: i18n.t("loading.heic.converting"),
         isHeicFormat: true,
         loadingProgress: 100,
         loadedBytes: blob.size,
         totalBytes: blob.size,
-      })
+      });
 
-      const result = await convertHeicImage(blob, originalUrl)
+      const result = await convertHeicImage(blob, originalUrl);
 
       return {
         url: result.url,
         convertedSize: result.convertedSize,
         format: result.format,
         originalSize: result.originalSize,
-      }
+      };
     } catch (error) {
-      console.error('HEIC conversion failed:', error)
-      throw new Error(`HEIC conversion failed: ${error}`)
+      console.error("HEIC conversion failed:", error);
+      throw new Error(`HEIC conversion failed: ${error}`);
     }
   }
 }
 
 export interface HeicConversionOptions {
-  quality?: number
-  format?: 'image/jpeg' | 'image/png'
+  quality?: number;
+  format?: "image/jpeg" | "image/png";
 }
 
 // HEIC conversion cache using generic LRU cache
-const heicCache: LRUCache<string, ConversionResult> = new LRUCache<string, ConversionResult>(
+const heicCache: LRUCache<string, ConversionResult> = new LRUCache<
+  string,
+  ConversionResult
+>(
   10, // Smaller cache size for images as they might be larger
   (value, key, reason) => {
     try {
-      URL.revokeObjectURL(value.url)
+      URL.revokeObjectURL(value.url);
     } catch (error) {
-      console.warn(`Failed to revoke HEIC blob URL (${reason}):`, error)
+      console.warn(`Failed to revoke HEIC blob URL (${reason}):`, error);
     }
   },
-)
+);
 
 /**
  * 生成文件的缓存键（基于 src）
  */
 function generateCacheKey(src: string, options: HeicConversionOptions): string {
-  const quality = options.quality || 1
-  const format = options.format || 'image/jpeg'
+  const quality = options.quality || 1;
+  const format = options.format || "image/jpeg";
   // 使用文件 src 和转换选项生成唯一键
-  return `${src}-${quality}-${format}`
+  return `${src}-${quality}-${format}`;
 }
 
 /**
@@ -103,25 +110,25 @@ function generateCacheKey(src: string, options: HeicConversionOptions): string {
  */
 export async function detectHeicFormat(file: File | Blob): Promise<boolean> {
   try {
-    const { isHeic } = await loadHeicModule()
-    return await isHeic(file as File)
+    const { isHeic } = await loadHeicModule();
+    return await isHeic(file as File);
   } catch (error) {
-    console.warn('Failed to detect HEIC format:', error)
-    return false
+    console.warn("Failed to detect HEIC format:", error);
+    return false;
   }
 }
 
 export const isBrowserSupportHeic = () => {
-  if (typeof navigator === 'undefined') {
-    return false
+  if (typeof navigator === "undefined") {
+    return false;
   }
 
-  const safariVersionMatch = navigator.userAgent.match(/version\/(\d+)/i)
-  const versionString = safariVersionMatch?.[1]
-  const version = versionString ? Number.parseInt(versionString, 10) : 0
+  const safariVersionMatch = navigator.userAgent.match(/version\/(\d+)/i);
+  const versionString = safariVersionMatch?.[1];
+  const version = versionString ? Number.parseInt(versionString, 10) : 0;
 
-  return isSafari && version >= 17
-}
+  return isSafari && version >= 17;
+};
 
 /**
  * 将 HEIC/HEIF 图片转换为 JPEG 或 PNG（支持缓存）
@@ -131,24 +138,24 @@ export async function convertHeicImage(
   src: string,
   options: HeicConversionOptions = {},
 ): Promise<ConversionResult> {
-  const { quality = 1, format = 'image/jpeg' } = options
+  const { quality = 1, format = "image/jpeg" } = options;
 
   // 生成缓存键
-  const cacheKey = generateCacheKey(src, options)
+  const cacheKey = generateCacheKey(src, options);
 
   // 检查缓存
-  const cachedResult = heicCache.get(cacheKey)
+  const cachedResult = heicCache.get(cacheKey);
   if (cachedResult) {
-    return cachedResult
+    return cachedResult;
   }
 
   try {
-    const { heicTo } = await loadHeicModule()
+    const { heicTo } = await loadHeicModule();
 
     // 检查是否为 HEIC 格式
-    const isHeicFormat = await detectHeicFormat(file)
+    const isHeicFormat = await detectHeicFormat(file);
     if (!isHeicFormat) {
-      throw new Error('File is not in HEIC/HEIF format')
+      throw new Error("File is not in HEIC/HEIF format");
     }
 
     // 转换图片
@@ -156,25 +163,27 @@ export async function convertHeicImage(
       blob: file,
       type: format,
       quality,
-    })
+    });
 
     // 创建 URL
-    const url = URL.createObjectURL(convertedBlob)
+    const url = URL.createObjectURL(convertedBlob);
 
     const result: ConversionResult = {
       url,
       originalSize: file.size,
       convertedSize: convertedBlob.size,
       format,
-    }
+    };
 
     // 缓存结果
-    heicCache.set(cacheKey, result)
+    heicCache.set(cacheKey, result);
 
-    return result
+    return result;
   } catch (error) {
-    console.error('HEIC conversion failed:', error)
-    throw new Error(`Failed to convert HEIC image: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.error("HEIC conversion failed:", error);
+    throw new Error(
+      `Failed to convert HEIC image: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
   }
 }
 
@@ -183,37 +192,40 @@ export async function convertHeicImage(
  */
 export function revokeConvertedUrl(url: string): void {
   try {
-    URL.revokeObjectURL(url)
+    URL.revokeObjectURL(url);
   } catch (error) {
-    console.warn('Failed to revoke URL:', error)
+    console.warn("Failed to revoke URL:", error);
   }
 }
 
 // HEIC 缓存管理函数
 export function getHeicCacheSize(): number {
-  return heicCache.size()
+  return heicCache.size();
 }
 
 export function clearHeicCache(): void {
-  heicCache.clear()
+  heicCache.clear();
 }
 
 export function removeHeicCache(cacheKey: string): boolean {
-  return heicCache.delete(cacheKey)
+  return heicCache.delete(cacheKey);
 }
 
 export function getHeicCacheStats(): {
-  size: number
-  maxSize: number
-  keys: string[]
+  size: number;
+  maxSize: number;
+  keys: string[];
 } {
-  return heicCache.getStats()
+  return heicCache.getStats();
 }
 
 /**
  * 根据 src 和选项移除特定的 HEIC 缓存项
  */
-export function removeHeicCacheBySrc(src: string, options: HeicConversionOptions = {}): boolean {
-  const cacheKey = generateCacheKey(src, options)
-  return heicCache.delete(cacheKey)
+export function removeHeicCacheBySrc(
+  src: string,
+  options: HeicConversionOptions = {},
+): boolean {
+  const cacheKey = generateCacheKey(src, options);
+  return heicCache.delete(cacheKey);
 }

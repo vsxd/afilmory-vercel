@@ -24,5 +24,9 @@
     }
   },
   "include": ["./src/**/*", "./scripts/**/*"],
-  "exclude": ["./src/**/*.test.ts", "./src/**/*.test.tsx", "./src/**/__tests__/**"]
+  "exclude": [
+    "./src/**/*.test.ts",
+    "./src/**/*.test.tsx",
+    "./src/**/__tests__/**"
+  ]
 }

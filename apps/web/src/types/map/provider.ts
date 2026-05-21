@@ -1,47 +1,47 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
-import type { MapBounds, MapViewState, PhotoMarker } from './core'
+import type { MapBounds, MapViewState, PhotoMarker } from "./core";
 
 /**
  * Generic map provider interface
  */
 export interface MapProvider {
   /** The display name of the map provider */
-  name: string
+  name: string;
   /** Whether the provider is available (e.g., has valid API keys) */
-  isAvailable: boolean
+  isAvailable: boolean;
   /** Initialize the provider */
-  initialize: () => Promise<void>
+  initialize: () => Promise<void>;
   /** Clean up the provider */
-  cleanup?: () => void
+  cleanup?: () => void;
 }
 
 /**
  * Map interaction handlers
  */
 export interface MapHandlers {
-  onMarkerClick?: (marker: PhotoMarker) => void
-  onGeoJsonClick?: (feature: GeoJSON.Feature) => void
-  onGeolocate?: (longitude: number, latitude: number) => void
-  onPopupClose?: () => void
+  onMarkerClick?: (marker: PhotoMarker) => void;
+  onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
+  onGeolocate?: (longitude: number, latitude: number) => void;
+  onPopupClose?: () => void;
 }
 
 /**
  * Map component props that any provider implementation should support
  */
 export interface BaseMapProps {
-  id?: string
-  initialViewState?: MapViewState
-  markers?: PhotoMarker[]
-  selectedMarkerId?: string | null
-  geoJsonData?: GeoJSON.FeatureCollection
-  className?: string
-  style?: React.CSSProperties
-  theme?: 'light' | 'dark'
-  showGeocoder?: boolean
-  handlers?: MapHandlers
-  autoFitBounds?: boolean
-  syncViewStateOnInitialViewStateChange?: boolean
+  id?: string;
+  initialViewState?: MapViewState;
+  markers?: PhotoMarker[];
+  selectedMarkerId?: string | null;
+  geoJsonData?: GeoJSON.FeatureCollection;
+  className?: string;
+  style?: React.CSSProperties;
+  theme?: "light" | "dark";
+  showGeocoder?: boolean;
+  handlers?: MapHandlers;
+  autoFitBounds?: boolean;
+  syncViewStateOnInitialViewStateChange?: boolean;
 }
 
 /**
@@ -49,30 +49,32 @@ export interface BaseMapProps {
  */
 export interface MapContextValue {
   /** Current map provider */
-  provider: MapProvider | null
+  provider: MapProvider | null;
   /** Available providers */
-  providers: MapProvider[]
+  providers: MapProvider[];
   /** Switch to a different provider */
-  switchProvider: (providerName: string) => Promise<void>
+  switchProvider: (providerName: string) => Promise<void>;
   /** Current map bounds */
-  bounds: MapBounds | null
+  bounds: MapBounds | null;
   /** Selected marker */
-  selectedMarker: PhotoMarker | null
+  selectedMarker: PhotoMarker | null;
   /** Set selected marker */
-  setSelectedMarker: (marker: PhotoMarker | null) => void
+  setSelectedMarker: (marker: PhotoMarker | null) => void;
   /** Fly to location */
-  flyToLocation: (longitude: number, latitude: number) => void
+  flyToLocation: (longitude: number, latitude: number) => void;
   /** Show popup info */
   popupInfo: {
-    marker: PhotoMarker
-    longitude: number
-    latitude: number
-  } | null
+    marker: PhotoMarker;
+    longitude: number;
+    latitude: number;
+  } | null;
   /** Set popup info */
-  setPopupInfo: (info: { marker: PhotoMarker; longitude: number; latitude: number } | null) => void
+  setPopupInfo: (
+    info: { marker: PhotoMarker; longitude: number; latitude: number } | null,
+  ) => void;
 }
 
 /**
  * Map component interface that providers must implement
  */
-export type MapComponent = (props: BaseMapProps) => ReactNode
+export type MapComponent = (props: BaseMapProps) => ReactNode;

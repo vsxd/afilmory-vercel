@@ -1,1 +1,1 @@
-export { LinearDivider } from './LinearDivider'
+export { LinearDivider } from "./LinearDivider";

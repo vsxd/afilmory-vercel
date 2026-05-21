@@ -1,16 +1,17 @@
-import type { TextareaHTMLAttributes } from 'react'
+import type { TextareaHTMLAttributes } from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
-export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps
+  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /**
    * Whether the textarea has an error state
    */
-  error?: boolean
+  error?: boolean;
   /**
    * Additional class name
    */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -42,17 +43,17 @@ export const Textarea = ({
   <textarea
     ref={ref}
     className={clsxm(
-      'w-full rounded border border-fill-tertiary bg-background',
-      'px-3 py-2 text-sm text-text placeholder:text-text-tertiary/70',
-      'focus:outline-none focus:ring-2 focus:ring-accent/40',
-      'transition-all duration-200',
-      'disabled:cursor-not-allowed disabled:opacity-60',
-      'resize-y',
-      error && 'border-red/60 focus:ring-red/30',
+      "w-full rounded border border-fill-tertiary bg-background",
+      "px-3 py-2 text-sm text-text placeholder:text-text-tertiary/70",
+      "focus:outline-none focus:ring-2 focus:ring-accent/40",
+      "transition-all duration-200",
+      "disabled:cursor-not-allowed disabled:opacity-60",
+      "resize-y",
+      error && "border-red/60 focus:ring-red/30",
       className,
     )}
     {...props}
   />
-)
+);
 
-Textarea.displayName = 'Textarea'
+Textarea.displayName = "Textarea";

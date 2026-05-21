@@ -23,10 +23,10 @@
 ```typescript
 // 通用 Logger 接口
 interface PhotoLogger {
-  info(message: string, ...args: any[]): void
-  warn(message: string, ...args: any[]): void
-  error(message: string, error?: any): void
-  success(message: string, ...args: any[]): void
+  info(message: string, ...args: any[]): void;
+  warn(message: string, ...args: any[]): void;
+  error(message: string, error?: any): void;
+  success(message: string, ...args: any[]): void;
 }
 
 // 适配器实现
@@ -62,9 +62,9 @@ class CompatibleLoggerAdapter implements PhotoLogger {
 #### 基本使用
 
 ```typescript
-import { processPhoto, createPhotoProcessingLoggers } from './index.js'
+import { processPhoto, createPhotoProcessingLoggers } from "./index.js";
 
-const loggers = createPhotoProcessingLoggers(workerId, baseLogger)
+const loggers = createPhotoProcessingLoggers(workerId, baseLogger);
 
 const result = await processPhoto(
   obj,
@@ -76,22 +76,43 @@ const result = await processPhoto(
   options,
   builder,
   pluginRuntime,
-)
+);
 ```
 
 #### 单独使用各个模块
 
 ```typescript
-import { processLivePhoto, processThumbnailAndBlurhash, processExifData } from './index.js'
+import {
+  processLivePhoto,
+  processThumbnailAndBlurhash,
+  processExifData,
+} from "./index.js";
 
 // Live Photo 处理
-const livePhotoResult = processLivePhoto(photoKey, livePhotoMap, builder.getStorageManager())
+const livePhotoResult = processLivePhoto(
+  photoKey,
+  livePhotoMap,
+  builder.getStorageManager(),
+);
 
 // 缩略图处理
-const thumbnailResult = await processThumbnailAndBlurhash(imageBuffer, photoId, width, height, existingItem, options)
+const thumbnailResult = await processThumbnailAndBlurhash(
+  imageBuffer,
+  photoId,
+  width,
+  height,
+  existingItem,
+  options,
+);
 
 // EXIF 处理
-const exifData = await processExifData(imageBuffer, rawImageBuffer, photoKey, existingItem, options)
+const exifData = await processExifData(
+  imageBuffer,
+  rawImageBuffer,
+  photoKey,
+  existingItem,
+  options,
+);
 ```
 
 #### 启用反向地理编码
@@ -99,19 +120,19 @@ const exifData = await processExifData(imageBuffer, rawImageBuffer, photoKey, ex
 在 `builder.config.ts` 中通过插件开启：
 
 ```typescript
-import { defineBuilderConfig, geocodingPlugin } from '@afilmory/builder'
+import { defineBuilderConfig, geocodingPlugin } from "@afilmory/builder";
 
 export default defineBuilderConfig(() => ({
   plugins: [
     geocodingPlugin({
       enable: true,
-      provider: 'auto',
+      provider: "auto",
       mapboxToken: process.env.MAPBOX_TOKEN,
       // language: 'en,zh', // 可选，按需设置语言
       // nominatimBaseUrl: 'https://your-nominatim-instance.com',
     }),
   ],
-}))
+}));
 ```
 
 ### 扩展性

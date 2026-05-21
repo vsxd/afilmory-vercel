@@ -114,6 +114,7 @@ Click the button below and follow the prompts to configure S3-related environmen
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20storage%20and%20site%20configurations&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-environment-variables&project-name=my-afilmory&repository-name=my-afilmory)
 
 **Deployment steps:**
+
 1. Click the "Deploy with Vercel" button above
 2. Sign in to your Vercel account
 3. Fork this repo to your GitHub account
@@ -132,6 +133,7 @@ Click the button below and follow the prompts to configure S3-related environmen
 Environment variables > `site.config.ts` defaults
 
 This means:
+
 - ✅ If an environment variable is set, it takes precedence
 - ✅ If not set, the fallback is the default in `site.config.ts`
 
@@ -139,63 +141,63 @@ This means:
 
 This project **only supports S3-compatible storage**. The following variables are required:
 
-| Variable | Description | Example |
-|---------|-------------|---------|
-| `S3_BUCKET_NAME` | S3 bucket name | `my-photos` |
-| `S3_REGION` | S3 region | `us-east-1` |
-| `S3_ACCESS_KEY_ID` | S3 access key ID | `AKIAIOSFODNN7EXAMPLE` |
+| Variable               | Description          | Example                                    |
+| ---------------------- | -------------------- | ------------------------------------------ |
+| `S3_BUCKET_NAME`       | S3 bucket name       | `my-photos`                                |
+| `S3_REGION`            | S3 region            | `us-east-1`                                |
+| `S3_ACCESS_KEY_ID`     | S3 access key ID     | `AKIAIOSFODNN7EXAMPLE`                     |
 | `S3_SECRET_ACCESS_KEY` | S3 access key secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 
 ### Optional (S3 advanced options)
 
-| Variable | Description | Default | Example |
-|---------|-------------|---------|---------|
-| `S3_ENDPOINT` | S3 endpoint | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
-| `S3_PREFIX` | Path prefix for photos | empty | `photos/` |
-| `S3_CUSTOM_DOMAIN` | Custom CDN domain | empty | `https://cdn.example.com` |
-| `S3_EXCLUDE_REGEX` | Regex for excluding files | empty | `.*\.txt$` |
+| Variable           | Description               | Default                              | Example                                |
+| ------------------ | ------------------------- | ------------------------------------ | -------------------------------------- |
+| `S3_ENDPOINT`      | S3 endpoint               | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
+| `S3_PREFIX`        | Path prefix for photos    | empty                                | `photos/`                              |
+| `S3_CUSTOM_DOMAIN` | Custom CDN domain         | empty                                | `https://cdn.example.com`              |
+| `S3_EXCLUDE_REGEX` | Regex for excluding files | empty                                | `.*\.txt$`                             |
 
 ### Recommended (site info)
 
 **Strongly recommended** to configure these via environment variables so you can update them from the Vercel dashboard without redeploying code:
 
-| Variable | Description | Example |
-|---------|-------------|---------|
-| `SITE_NAME` | Site name | `My Photo Gallery` |
-| `SITE_TITLE` | Site title | `My Photo Gallery` |
-| `SITE_DESCRIPTION` | Site description | `Capturing beautiful moments in life` |
-| `SITE_URL` | Site URL | `https://your-site.vercel.app` |
-| `SITE_ACCENT_COLOR` | Accent color (hex) | `#007bff` |
+| Variable            | Description        | Example                               |
+| ------------------- | ------------------ | ------------------------------------- |
+| `SITE_NAME`         | Site name          | `My Photo Gallery`                    |
+| `SITE_TITLE`        | Site title         | `My Photo Gallery`                    |
+| `SITE_DESCRIPTION`  | Site description   | `Capturing beautiful moments in life` |
+| `SITE_URL`          | Site URL           | `https://your-site.vercel.app`        |
+| `SITE_ACCENT_COLOR` | Accent color (hex) | `#007bff`                             |
 
 ### Recommended (author info)
 
-| Variable | Description | Example |
-|---------|-------------|---------|
-| `AUTHOR_NAME` | Author name | `Your Name` |
-| `AUTHOR_URL` | Author website | `https://your-website.com` |
+| Variable        | Description       | Example                             |
+| --------------- | ----------------- | ----------------------------------- |
+| `AUTHOR_NAME`   | Author name       | `Your Name`                         |
+| `AUTHOR_URL`    | Author website    | `https://your-website.com`          |
 | `AUTHOR_AVATAR` | Author avatar URL | `https://avatar-url.com/avatar.png` |
 
 ### Optional (social links)
 
-| Variable | Description | Example |
-|---------|-------------|---------|
-| `SOCIAL_GITHUB` | GitHub username | `your-github-username` |
+| Variable         | Description      | Example                 |
+| ---------------- | ---------------- | ----------------------- |
+| `SOCIAL_GITHUB`  | GitHub username  | `your-github-username`  |
 | `SOCIAL_TWITTER` | Twitter/X handle | `your-twitter-username` |
-| `SOCIAL_RSS` | Enable RSS | `true` or `false` |
+| `SOCIAL_RSS`     | Enable RSS       | `true` or `false`       |
 
 ### Optional (Feed)
 
-| Variable | Description | Example |
-|---------|-------------|---------|
+| Variable            | Description  | Example        |
+| ------------------- | ------------ | -------------- |
 | `FEED_FOLO_FEED_ID` | Folo Feed ID | `your-feed-id` |
 | `FEED_FOLO_USER_ID` | Folo User ID | `your-user-id` |
 
 ### Optional (map)
 
-| Variable | Description | Default | Possible values |
-|---------|-------------|---------|-----------------|
-| `MAP_STYLE` | Map style | `builtin` | `builtin` or custom URL |
-| `MAP_PROJECTION` | Map projection | `mercator` | `globe` or `mercator` |
+| Variable         | Description    | Default    | Possible values         |
+| ---------------- | -------------- | ---------- | ----------------------- |
+| `MAP_STYLE`      | Map style      | `builtin`  | `builtin` or custom URL |
+| `MAP_PROJECTION` | Map projection | `mercator` | `globe` or `mercator`   |
 
 ### Examples
 
@@ -447,8 +449,8 @@ Edit `site.config.ts`:
 ```typescript
 export const siteConfig: SiteConfig = {
   // ...
-  accentColor: '#ff6b6b',
-}
+  accentColor: "#ff6b6b",
+};
 ```
 
 ### Custom map style
@@ -477,11 +479,7 @@ To add a new language:
 
 Contributions, issues and feature requests are welcome!
 
-1. Fork the project
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [Contributing Guide](docs/CONTRIBUTING.md) for setup, common commands, manifest notes, and PR verification.
 
 ---
 

@@ -1,12 +1,17 @@
-import { HoverCard, HoverCardContent, HoverCardTrigger, LazyImage } from '@afilmory/ui'
-import { m } from 'motion/react'
-import { useTranslation } from 'react-i18next'
-import { Marker } from 'react-map-gl/maplibre'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  LazyImage,
+} from "@afilmory/ui";
+import { m } from "motion/react";
+import { useTranslation } from "react-i18next";
+import { Marker } from "react-map-gl/maplibre";
 
-import { ClusterPhotoGrid } from '../ClusterPhotoGrid'
-import type { ClusterMarkerProps } from './types'
+import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
+import type { ClusterMarkerProps } from "./types";
 
-const DEFAULT_CLUSTERED_PHOTOS: ClusterMarkerProps['clusteredPhotos'] = []
+const DEFAULT_CLUSTERED_PHOTOS: ClusterMarkerProps["clusteredPhotos"] = [];
 
 export const ClusterMarker = ({
   longitude,
@@ -16,14 +21,14 @@ export const ClusterMarker = ({
   clusteredPhotos = DEFAULT_CLUSTERED_PHOTOS,
   onClusterClick,
 }: ClusterMarkerProps) => {
-  const { t } = useTranslation()
-  const size = Math.min(64, Math.max(40, 32 + Math.log(pointCount) * 8))
+  const { t } = useTranslation();
+  const size = Math.min(64, Math.max(40, 32 + Math.log(pointCount) * 8));
   const handleClusterKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      onClusterClick?.(longitude, latitude)
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClusterClick?.(longitude, latitude);
     }
-  }
+  };
 
   return (
     <Marker longitude={longitude} latitude={latitude}>
@@ -34,7 +39,7 @@ export const ClusterMarker = ({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
-              type: 'spring',
+              type: "spring",
               stiffness: 300,
               damping: 25,
             }}
@@ -44,7 +49,7 @@ export const ClusterMarker = ({
             onKeyDown={handleClusterKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={t('explore.found.locations', { count: pointCount })}
+            aria-label={t("explore.found.locations", { count: pointCount })}
           >
             {/* Subtle pulse ring for attention */}
             <div
@@ -71,17 +76,24 @@ export const ClusterMarker = ({
                   {/* Show up to 4 photos in a mosaic pattern */}
                   {clusteredPhotos.slice(0, 4).map((photoMarker, index) => {
                     const positions = [
-                      { left: '0%', top: '0%', width: '50%', height: '50%' },
-                      { left: '50%', top: '0%', width: '50%', height: '50%' },
-                      { left: '0%', top: '50%', width: '50%', height: '50%' },
-                      { left: '50%', top: '50%', width: '50%', height: '50%' },
-                    ]
-                    const position = positions[index]
+                      { left: "0%", top: "0%", width: "50%", height: "50%" },
+                      { left: "50%", top: "0%", width: "50%", height: "50%" },
+                      { left: "0%", top: "50%", width: "50%", height: "50%" },
+                      { left: "50%", top: "50%", width: "50%", height: "50%" },
+                    ];
+                    const position = positions[index];
 
                     return (
-                      <div key={photoMarker.photo.id} className="absolute opacity-30" style={position}>
+                      <div
+                        key={photoMarker.photo.id}
+                        className="absolute opacity-30"
+                        style={position}
+                      >
                         <LazyImage
-                          src={photoMarker.photo.thumbnailUrl || photoMarker.photo.originalUrl}
+                          src={
+                            photoMarker.photo.thumbnailUrl ||
+                            photoMarker.photo.originalUrl
+                          }
                           alt={photoMarker.photo.title || photoMarker.photo.id}
                           thumbHash={photoMarker.photo.thumbHash}
                           className="h-full w-full object-cover"
@@ -89,7 +101,7 @@ export const ClusterMarker = ({
                           threshold={0.1}
                         />
                       </div>
-                    )
+                    );
                   })}
 
                   {/* Overlay for mosaic effect */}
@@ -130,5 +142,5 @@ export const ClusterMarker = ({
         </HoverCardContent>
       </HoverCard>
     </Marker>
-  )
-}
+  );
+};

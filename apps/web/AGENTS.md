@@ -7,28 +7,34 @@
 ## 技术栈
 
 ### 核心框架
+
 - **React 19** - 最新版本，包含 React Compiler
 - **TypeScript 5.9** - 类型安全
 - **Vite 7** - 快速构建工具
 
 ### UI 框架
+
 - **Tailwind CSS 4** - 原子化 CSS
 - **Radix UI** - 无障碍组件库
 - **Motion** (Framer Motion fork) - 动画库
 
 ### 状态管理
+
 - **Jotai** - 原子化状态管理
 - **TanStack Query** - 服务端状态和数据获取
 - **Zustand** - 轻量状态管理
 
 ### 路由
+
 - **React Router 7** - 类型安全的路由
 
 ### 国际化
+
 - **i18next** - 多语言支持
 - **react-i18next** - React 集成
 
 ### 地图
+
 - **MapLibre GL** - 开源地图库
 - **react-map-gl** - React 封装
 
@@ -90,6 +96,7 @@ import { Masonic } from 'masonic'
 ```
 
 **特性**:
+
 - 响应式列数
 - 虚拟滚动优化
 - 图片懒加载
@@ -111,6 +118,7 @@ import { WebGLViewer } from '@afilmory/webgl-viewer'
 ```
 
 **特性**:
+
 - GPU 加速渲染
 - 流畅缩放和平移
 - 手势支持（触摸屏）
@@ -145,21 +153,21 @@ import { Marker } from 'react-map-gl'
 使用 `PhotoLoader` 单例加载照片数据：
 
 ```typescript
-import { PhotoLoader } from '@afilmory/data'
+import { PhotoLoader } from "@afilmory/data";
 
-const loader = PhotoLoader.getInstance()
+const loader = PhotoLoader.getInstance();
 
 // 获取所有照片
-const photos = await loader.getAllPhotos()
+const photos = await loader.getAllPhotos();
 
 // 分页加载
-const page = await loader.getPhotos({ page: 1, pageSize: 20 })
+const page = await loader.getPhotos({ page: 1, pageSize: 20 });
 
 // 按标签过滤
-const tagged = await loader.getPhotosByTag('travel')
+const tagged = await loader.getPhotosByTag("travel");
 
 // 搜索
-const results = await loader.searchPhotos('sunset')
+const results = await loader.searchPhotos("sunset");
 ```
 
 ## 设计系统
@@ -193,6 +201,7 @@ const results = await loader.searchPhotos('sunset')
 ### 主题色
 
 从 `site.config.ts` 或环境变量读取 `accentColor`，动态应用到：
+
 - 按钮和链接
 - 进度条
 - 选中状态
@@ -209,6 +218,7 @@ pnpm dev
 启动 Vite 开发服务器在 http://localhost:1924
 
 **特性**:
+
 - HMR 热更新
 - React Fast Refresh
 - TypeScript 类型检查
@@ -241,6 +251,7 @@ pnpm build
    - 生成 Web App Manifest
 
 **输出**:
+
 ```
 dist/
 ├── index.html
@@ -264,15 +275,18 @@ dist/
 ```typescript
 export function dataInjectPlugin(): Plugin {
   return {
-    name: 'data-inject',
+    name: "data-inject",
     transformIndexHtml(html) {
-      const manifest = fs.readFileSync('generated/photos-manifest.json', 'utf-8')
+      const manifest = fs.readFileSync(
+        "generated/photos-manifest.json",
+        "utf-8",
+      );
       return html.replace(
-        '</body>',
-        `<script>window.__MANIFEST__=${manifest}</script></body>`
-      )
-    }
-  }
+        "</body>",
+        `<script>window.__MANIFEST__=${manifest}</script></body>`,
+      );
+    },
+  };
 }
 ```
 
@@ -283,11 +297,11 @@ export function dataInjectPlugin(): Plugin {
 ```typescript
 export function photosStaticPlugin(): Plugin {
   return {
-    name: 'photos-static',
+    name: "photos-static",
     configureServer() {
       // 开发环境下将 /photos/* 请求映射到本地 photos 目录
     },
-  }
+  };
 }
 ```
 
@@ -298,13 +312,13 @@ export function photosStaticPlugin(): Plugin {
 ```typescript
 export function buildAssetsPlugin(config: SiteConfig): Plugin {
   return {
-    name: 'build-assets',
+    name: "build-assets",
     async buildStart() {
       // 使用 satori 生成 SVG
       // 使用 resvg 转换为 PNG
       // 生成 og-image / feed.xml / sitemap.xml
-    }
-  }
+    },
+  };
 }
 ```
 
@@ -319,15 +333,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-i18n': ['i18next', 'react-i18next'],
-          'vendor-map': ['maplibre-gl', 'react-map-gl'],
-          'vendor-image': ['heic-to'],
-        }
-      }
-    }
-  }
-})
+          "vendor-react": ["react", "react-dom"],
+          "vendor-i18n": ["i18next", "react-i18next"],
+          "vendor-map": ["maplibre-gl", "react-map-gl"],
+          "vendor-image": ["heic-to"],
+        },
+      },
+    },
+  },
+});
 ```
 
 ### 图片懒加载
@@ -355,9 +369,7 @@ function PhotoCard({ photo }) {
 
 ```javascript
 // babel.config.js
-plugins: [
-  ['babel-plugin-react-compiler', ReactCompilerConfig]
-]
+plugins: [["babel-plugin-react-compiler", ReactCompilerConfig]];
 ```
 
 ## 国际化
@@ -411,6 +423,7 @@ function Component() {
 ### React DevTools
 
 支持 React 19 DevTools，可以查看：
+
 - 组件树
 - Props 和 State
 - React Query 缓存
@@ -439,24 +452,24 @@ src/components/
 
 ```typescript
 // src/store/app.ts
-import { atom } from 'jotai'
+import { atom } from "jotai";
 
-export const viewModeAtom = atom<'grid' | 'list'>('grid')
+export const viewModeAtom = atom<"grid" | "list">("grid");
 ```
 
 ### 调用 API
 
 ```typescript
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
 function usePhotos() {
   return useQuery({
-    queryKey: ['photos'],
+    queryKey: ["photos"],
     queryFn: async () => {
-      const loader = PhotoLoader.getInstance()
-      return loader.getAllPhotos()
-    }
-  })
+      const loader = PhotoLoader.getInstance();
+      return loader.getAllPhotos();
+    },
+  });
 }
 ```
 
@@ -476,10 +489,10 @@ define: {
 使用：
 
 ```typescript
-declare const GIT_COMMIT_HASH: string
-declare const BUILT_DATE: string
+declare const GIT_COMMIT_HASH: string;
+declare const BUILT_DATE: string;
 
-console.log(`Build: ${BUILT_DATE} (${GIT_COMMIT_HASH})`)
+console.log(`Build: ${BUILT_DATE} (${GIT_COMMIT_HASH})`);
 ```
 
 ## 更多信息

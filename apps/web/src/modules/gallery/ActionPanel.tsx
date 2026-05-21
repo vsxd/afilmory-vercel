@@ -1,23 +1,23 @@
-import { Drawer } from 'vaul'
+import { Drawer } from "vaul";
 
-import { ViewPanel } from './panels/ViewPanel'
+import { ViewPanel } from "./panels/ViewPanel";
 
 const panelMap = {
   view: ViewPanel,
-}
+};
 
-export type PanelType = keyof typeof panelMap
+export type PanelType = keyof typeof panelMap;
 
 export const ActionPanel = ({
   open,
   onOpenChange,
   type,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  type: PanelType | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: PanelType | null;
 }) => {
-  const Panel = type ? panelMap[type] : null
+  const Panel = type ? panelMap[type] : null;
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
@@ -28,5 +28,5 @@ export const ActionPanel = ({
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>
-  )
-}
+  );
+};

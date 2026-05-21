@@ -1,145 +1,152 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { createEmptyManifest, parseManifest } from '../manifest'
-import { CURRENT_MANIFEST_VERSION } from '../version'
+import { createEmptyManifest, parseManifest } from "../manifest";
+import { CURRENT_MANIFEST_VERSION } from "../version";
 
-describe('manifest', () => {
-  describe('createEmptyManifest', () => {
-    it('should return a manifest with the current version', () => {
-      const manifest = createEmptyManifest()
-      expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION)
-    })
+describe("manifest", () => {
+  describe("createEmptyManifest", () => {
+    it("should return a manifest with the current version", () => {
+      const manifest = createEmptyManifest();
+      expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    });
 
-    it('should return empty arrays for data, cameras, and lenses', () => {
-      const manifest = createEmptyManifest()
-      expect(manifest.data).toEqual([])
-      expect(manifest.cameras).toEqual([])
-      expect(manifest.lenses).toEqual([])
-    })
-  })
+    it("should return empty arrays for data, cameras, and lenses", () => {
+      const manifest = createEmptyManifest();
+      expect(manifest.data).toEqual([]);
+      expect(manifest.cameras).toEqual([]);
+      expect(manifest.lenses).toEqual([]);
+    });
+  });
 
-  describe('parseManifest', () => {
-    it('should parse a valid manifest', () => {
+  describe("parseManifest", () => {
+    it("should parse a valid manifest", () => {
       const input = {
-        version: 'v5',
-        data: [{ id: 'photo-1' }],
-        cameras: [{ make: 'Canon', model: 'EOS R5', displayName: 'Canon EOS R5' }],
-        lenses: [{ model: 'RF 50mm F1.2L', displayName: 'Canon RF 50mm F1.2L' }],
-      }
-      const result = parseManifest(input)
-      expect(result.version).toBe('v5')
-      expect(result.data).toEqual([{ id: 'photo-1' }])
-      expect(result.cameras).toHaveLength(1)
-      expect(result.lenses).toHaveLength(1)
-    })
+        version: "v5",
+        data: [{ id: "photo-1" }],
+        cameras: [
+          { make: "Canon", model: "EOS R5", displayName: "Canon EOS R5" },
+        ],
+        lenses: [
+          { model: "RF 50mm F1.2L", displayName: "Canon RF 50mm F1.2L" },
+        ],
+      };
+      const result = parseManifest(input);
+      expect(result.version).toBe("v5");
+      expect(result.data).toEqual([{ id: "photo-1" }]);
+      expect(result.cameras).toHaveLength(1);
+      expect(result.lenses).toHaveLength(1);
+    });
 
-    it('should return an empty manifest for null input', () => {
-      const result = parseManifest(null)
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-      expect(result.data).toEqual([])
-      expect(result.cameras).toEqual([])
-      expect(result.lenses).toEqual([])
-    })
+    it("should return an empty manifest for null input", () => {
+      const result = parseManifest(null);
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+      expect(result.data).toEqual([]);
+      expect(result.cameras).toEqual([]);
+      expect(result.lenses).toEqual([]);
+    });
 
-    it('should return an empty manifest for undefined input', () => {
-      const result = parseManifest()
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-      expect(result.data).toEqual([])
-    })
+    it("should return an empty manifest for undefined input", () => {
+      const result = parseManifest();
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+      expect(result.data).toEqual([]);
+    });
 
-    it('should return an empty manifest for non-object input', () => {
-      const result = parseManifest('not an object')
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-      expect(result.data).toEqual([])
-    })
+    it("should return an empty manifest for non-object input", () => {
+      const result = parseManifest("not an object");
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+      expect(result.data).toEqual([]);
+    });
 
-    it('should handle empty object input', () => {
-      const result = parseManifest({})
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-      expect(result.data).toEqual([])
-      expect(result.cameras).toEqual([])
-      expect(result.lenses).toEqual([])
-    })
+    it("should handle empty object input", () => {
+      const result = parseManifest({});
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+      expect(result.data).toEqual([]);
+      expect(result.cameras).toEqual([]);
+      expect(result.lenses).toEqual([]);
+    });
 
-    it('should use current version when version is missing', () => {
-      const result = parseManifest({ data: [] })
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-    })
+    it("should use current version when version is missing", () => {
+      const result = parseManifest({ data: [] });
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+    });
 
-    it('should use current version when version is not a string', () => {
-      const result = parseManifest({ version: 123 })
-      expect(result.version).toBe(CURRENT_MANIFEST_VERSION)
-    })
+    it("should use current version when version is not a string", () => {
+      const result = parseManifest({ version: 123 });
+      expect(result.version).toBe(CURRENT_MANIFEST_VERSION);
+    });
 
-    it('should handle non-array data, cameras, lenses fields', () => {
+    it("should handle non-array data, cameras, lenses fields", () => {
       const result = parseManifest({
-        version: 'v1',
-        data: 'not-an-array',
+        version: "v1",
+        data: "not-an-array",
         cameras: null,
         lenses: 42,
-      })
-      expect(result.version).toBe('v1')
-      expect(result.data).toEqual([])
-      expect(result.cameras).toEqual([])
-      expect(result.lenses).toEqual([])
-    })
+      });
+      expect(result.version).toBe("v1");
+      expect(result.data).toEqual([]);
+      expect(result.cameras).toEqual([]);
+      expect(result.lenses).toEqual([]);
+    });
 
-    it('should preserve version string across versions (migration scenario)', () => {
-      const oldManifest = parseManifest({ version: 'v1', data: [] })
-      expect(oldManifest.version).toBe('v1')
+    it("should preserve version string across versions (migration scenario)", () => {
+      const oldManifest = parseManifest({ version: "v1", data: [] });
+      expect(oldManifest.version).toBe("v1");
 
-      const currentManifest = parseManifest({ version: CURRENT_MANIFEST_VERSION, data: [] })
-      expect(currentManifest.version).toBe(CURRENT_MANIFEST_VERSION)
-    })
+      const currentManifest = parseManifest({
+        version: CURRENT_MANIFEST_VERSION,
+        data: [],
+      });
+      expect(currentManifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    });
 
-    it('should strip legacy rating metadata from photo exif', () => {
+    it("should strip legacy rating metadata from photo exif", () => {
       const input = {
         version: CURRENT_MANIFEST_VERSION,
         data: [
           {
-            id: 'photo-1',
+            id: "photo-1",
             exif: {
-              Make: 'Sony',
+              Make: "Sony",
               Rating: 5,
             },
           },
         ],
-      }
+      };
 
-      const result = parseManifest(input)
+      const result = parseManifest(input);
 
-      expect(result.data[0]?.exif).toEqual({ Make: 'Sony' })
-      expect(input.data[0]?.exif).toHaveProperty('Rating', 5)
-    })
+      expect(result.data[0]?.exif).toEqual({ Make: "Sony" });
+      expect(input.data[0]?.exif).toHaveProperty("Rating", 5);
+    });
 
-    it('should preserve malformed photo entries while stripping supported legacy exif fields', () => {
+    it("should preserve malformed photo entries while stripping supported legacy exif fields", () => {
       const input = {
         version: CURRENT_MANIFEST_VERSION,
         data: [
           null,
-          'not-a-photo',
+          "not-a-photo",
           {
-            id: 'photo-1',
+            id: "photo-1",
             exif: {
-              Make: 'Sony',
+              Make: "Sony",
               Rating: 5,
             },
           },
         ],
-      }
+      };
 
-      const result = parseManifest(input)
+      const result = parseManifest(input);
 
       expect(result.data).toEqual([
         null,
-        'not-a-photo',
+        "not-a-photo",
         {
-          id: 'photo-1',
+          id: "photo-1",
           exif: {
-            Make: 'Sony',
+            Make: "Sony",
           },
         },
-      ])
-    })
-  })
-})
+      ]);
+    });
+  });
+});

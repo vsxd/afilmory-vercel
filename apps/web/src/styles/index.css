@@ -1,4 +1,4 @@
-@import './tailwind.css';
+@import "./tailwind.css";
 
 html {
   @apply fixed inset-0 overflow-hidden flex flex-col;

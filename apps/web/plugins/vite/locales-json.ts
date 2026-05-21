@@ -1,30 +1,30 @@
-import { set } from 'es-toolkit/compat'
-import type { Plugin } from 'vite'
+import { set } from "es-toolkit/compat";
+import type { Plugin } from "vite";
 
-import { MONOREPO_ROOT_PATH } from './__internal__/constants'
+import { MONOREPO_ROOT_PATH } from "./__internal__/constants";
 
 export function localesJsonPlugin(): Plugin {
   return {
-    name: 'locales-json-transform',
-    enforce: 'pre',
+    name: "locales-json-transform",
+    enforce: "pre",
 
     async transform(code, id) {
-      if (!id.includes(MONOREPO_ROOT_PATH) || !id.endsWith('.json')) {
-        return null
+      if (!id.includes(MONOREPO_ROOT_PATH) || !id.endsWith(".json")) {
+        return null;
       }
 
-      const content = JSON.parse(code)
-      const obj = {}
+      const content = JSON.parse(code);
+      const obj = {};
 
-      const keys = Object.keys(content as object)
+      const keys = Object.keys(content as object);
       for (const accessorKey of keys) {
-        set(obj, accessorKey, (content as any)[accessorKey])
+        set(obj, accessorKey, (content as any)[accessorKey]);
       }
 
       return {
         code: JSON.stringify(obj),
         map: null,
-      }
+      };
     },
-  }
+  };
 }

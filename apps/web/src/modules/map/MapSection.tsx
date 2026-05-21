@@ -1,99 +1,107 @@
-import { m } from 'motion/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
+import { m } from "motion/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 
-import { GenericMap, MapBackButton, MapInfoPanel, MapLoadingState } from '~/components/ui/map'
-import { photoLoader } from '~/data-runtime/photo-loader'
-import { debugLog } from '~/lib/debug-log'
+import {
+  GenericMap,
+  MapBackButton,
+  MapInfoPanel,
+  MapLoadingState,
+} from "~/components/ui/map";
+import { photoLoader } from "~/data-runtime/photo-loader";
+import { debugLog } from "~/lib/debug-log";
 import {
   calculateMapBounds,
   convertExifGPSToDecimal,
   convertPhotosToMarkersFromEXIF,
   getInitialViewStateForMarkers,
-} from '~/lib/map-utils'
-import { MapProvider } from '~/modules/map/MapProvider'
-import type { MapBounds, PhotoMarker } from '~/types/map'
+} from "~/lib/map-utils";
+import { MapProvider } from "~/modules/map/MapProvider";
+import type { MapBounds, PhotoMarker } from "~/types/map";
 
 export const MapSection = () => {
   return (
     <MapProvider>
       <MapSectionContent />
     </MapProvider>
-  )
-}
+  );
+};
 
 const MapSectionContent = () => {
-  const { t } = useTranslation()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Photo markers state and loading logic
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [markers, setMarkers] = useState<PhotoMarker[]>([])
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [markers, setMarkers] = useState<PhotoMarker[]>([]);
 
   // Track if this is the initial load to control auto fit bounds
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Handle marker click - update URL parameters
   const handleMarkerClick = useCallback(
     (marker: PhotoMarker) => {
-      const newSearchParams = new URLSearchParams(searchParams)
+      const newSearchParams = new URLSearchParams(searchParams);
 
       // Check if this marker is already selected
-      const currentPhotoId = searchParams.get('photoId')
+      const currentPhotoId = searchParams.get("photoId");
 
       if (currentPhotoId === marker.id) {
         // If already selected, deselect by removing the photoId parameter
-        newSearchParams.delete('photoId')
+        newSearchParams.delete("photoId");
       } else {
         // Select the new marker
-        newSearchParams.set('photoId', marker.id)
+        newSearchParams.set("photoId", marker.id);
       }
 
-      setSearchParams(newSearchParams, { replace: true })
+      setSearchParams(newSearchParams, { replace: true });
 
       // Mark that this is no longer the initial load
-      setIsInitialLoad(false)
+      setIsInitialLoad(false);
     },
     [searchParams, setSearchParams],
-  )
+  );
   const bounds = useMemo<MapBounds | null>(() => {
-    if (markers.length === 0) return null
-    return calculateMapBounds(markers)
-  }, [markers])
+    if (markers.length === 0) return null;
+    return calculateMapBounds(markers);
+  }, [markers]);
 
   // Load photo markers effect
   useEffect(() => {
     const loadPhotoMarkersData = async () => {
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
 
       try {
-        const photos = photoLoader.getPhotos()
-        const photoMarkers = convertPhotosToMarkersFromEXIF(photos)
+        const photos = photoLoader.getPhotos();
+        const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
 
-        setMarkers(photoMarkers)
-        debugLog(`Found ${photoMarkers.length} photos with GPS coordinates`)
+        setMarkers(photoMarkers);
+        debugLog(`Found ${photoMarkers.length} photos with GPS coordinates`);
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to load photo markers')
-        setError(error)
-        console.error('Failed to load photo markers:', error)
+        const error =
+          err instanceof Error
+            ? err
+            : new Error("Failed to load photo markers");
+        setError(error);
+        console.error("Failed to load photo markers:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadPhotoMarkersData()
-  }, [setMarkers])
+    loadPhotoMarkersData();
+  }, [setMarkers]);
 
   // Parse URL parameters - only use photoId
   const { latitude, longitude, zoom, photoId } = useMemo(() => {
-    const photoIdParam = searchParams.get('photoId')
+    const photoIdParam = searchParams.get("photoId");
 
     if (photoIdParam) {
-      const photo = photoLoader.getPhoto(photoIdParam)
-      const gpsData = convertExifGPSToDecimal(photo?.exif ?? null)
+      const photo = photoLoader.getPhoto(photoIdParam);
+      const gpsData = convertExifGPSToDecimal(photo?.exif ?? null);
 
       if (gpsData) {
         return {
@@ -101,7 +109,7 @@ const MapSectionContent = () => {
           longitude: gpsData.longitude,
           zoom: 15, // Default zoom when coordinates derived from photo
           photoId: photoIdParam,
-        }
+        };
       }
     }
 
@@ -110,8 +118,8 @@ const MapSectionContent = () => {
       longitude: null,
       zoom: null,
       photoId: photoIdParam,
-    }
-  }, [searchParams])
+    };
+  }, [searchParams]);
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {
@@ -121,16 +129,16 @@ const MapSectionContent = () => {
         latitude,
         longitude,
         zoom: zoom ?? 15,
-      }
+      };
     }
 
     // Fall back to markers-based view state
-    return getInitialViewStateForMarkers(markers)
-  }, [markers, latitude, longitude, zoom])
+    return getInitialViewStateForMarkers(markers);
+  }, [markers, latitude, longitude, zoom]);
 
   // Show loading state
   if (isLoading) {
-    return <MapLoadingState />
+    return <MapLoadingState />;
   }
 
   // Show error state
@@ -139,11 +147,15 @@ const MapSectionContent = () => {
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
           <div className="mb-4 text-4xl">❌</div>
-          <div className="text-lg font-medium text-red-900 dark:text-red-100">{t('explore.map.error.title')}</div>
-          <p className="text-sm text-red-600 dark:text-red-400">{t('explore.map.error.description')}</p>
+          <div className="text-lg font-medium text-red-900 dark:text-red-100">
+            {t("explore.map.error.title")}
+          </div>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {t("explore.map.error.description")}
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -164,7 +176,9 @@ const MapSectionContent = () => {
         <GenericMap
           markers={markers}
           initialViewState={initialViewState}
-          autoFitBounds={isInitialLoad && latitude === null && longitude === null}
+          autoFitBounds={
+            isInitialLoad && latitude === null && longitude === null
+          }
           syncViewStateOnInitialViewStateChange={Boolean(photoId)}
           selectedMarkerId={photoId}
           onMarkerClick={handleMarkerClick}
@@ -172,5 +186,5 @@ const MapSectionContent = () => {
         />
       </m.div>
     </div>
-  )
-}
+  );
+};

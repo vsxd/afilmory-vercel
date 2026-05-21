@@ -1,6 +1,6 @@
-import { Toaster as Sonner } from 'sonner'
+import { Toaster as Sonner } from "sonner";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const toastStyles = {
   toast: tw`
@@ -73,7 +73,7 @@ const toastStyles = {
     focus:outline-none focus:ring-2 focus:ring-accent/50
     focus:opacity-100
   `,
-}
+};
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
@@ -89,11 +89,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <i className="i-mingcute-close-circle-fill" />,
         warning: <i className="i-mingcute-warning-fill" />,
         info: <i className="i-mingcute-information-fill" />,
-        loading: <i className="i-mingcute-loading-3-fill animate-spin !duration-1000" />,
+        loading: (
+          <i className="i-mingcute-loading-3-fill animate-spin !duration-1000" />
+        ),
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

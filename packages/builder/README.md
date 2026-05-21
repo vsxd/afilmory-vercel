@@ -82,29 +82,38 @@ src/core/
 ### 基本使用
 
 ```typescript
-import { buildManifest } from './src/core/index.js'
+import { buildManifest } from "./src/core/index.js";
 
 await buildManifest({
   isForceMode: false,
   isForceManifest: false,
   isForceThumbnails: false,
   concurrencyLimit: 10,
-})
+});
 ```
 
 ### 单独使用模块
 
 ```typescript
-import { getImageFromS3, generateThumbnailAndBlurhash, extractExifData } from './src/core/index.js'
+import {
+  getImageFromS3,
+  generateThumbnailAndBlurhash,
+  extractExifData,
+} from "./src/core/index.js";
 
 // 下载图片
-const buffer = await getImageFromS3('path/to/image.jpg')
+const buffer = await getImageFromS3("path/to/image.jpg");
 
 // 生成缩略图
-const result = await generateThumbnailAndBlurhash(buffer, 'photo-id', 1920, 1080)
+const result = await generateThumbnailAndBlurhash(
+  buffer,
+  "photo-id",
+  1920,
+  1080,
+);
 
 // 提取 EXIF
-const exif = await extractExifData(buffer)
+const exif = await extractExifData(buffer);
 ```
 
 ## 特性
@@ -162,10 +171,10 @@ const exif = await extractExifData(buffer)
 ### 自定义日志器
 
 ```typescript
-import { logger } from './src/core/index.js'
+import { logger } from "./src/core/index.js";
 
-const customLogger = logger.worker(1).withTag('CUSTOM')
-customLogger.info('自定义日志')
+const customLogger = logger.worker(1).withTag("CUSTOM");
+customLogger.info("自定义日志");
 ```
 
 ## 性能考虑

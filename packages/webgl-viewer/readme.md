@@ -26,21 +26,21 @@ pnpm add @afilmory/webgl-viewer
 ## 🚀 快速开始
 
 ```tsx
-import React from 'react'
-import { WebGLImageViewer } from '@afilmory/webgl-viewer'
+import React from "react";
+import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 
 function App() {
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <WebGLImageViewer
         src="/path/to/your/image.jpg"
         className="image-viewer"
         onZoomChange={(originalScale, relativeScale) => {
-          console.log('Zoom changed:', { originalScale, relativeScale })
+          console.log("Zoom changed:", { originalScale, relativeScale });
         }}
       />
     </div>
-  )
+  );
 }
 ```
 
@@ -160,13 +160,13 @@ onImageCopied?: () => void
 ### 组件引用方法
 
 ```tsx
-const viewerRef = useRef<WebGLImageViewerRef>(null)
+const viewerRef = useRef<WebGLImageViewerRef>(null);
 
 // 可用方法
-viewerRef.current?.zoomIn(true) // 放大（可选动画）
-viewerRef.current?.zoomOut(false) // 缩小（可选动画）
-viewerRef.current?.resetView() // 重置视图
-viewerRef.current?.getScale() // 获取当前缩放比例
+viewerRef.current?.zoomIn(true); // 放大（可选动画）
+viewerRef.current?.zoomOut(false); // 缩小（可选动画）
+viewerRef.current?.resetView(); // 重置视图
+viewerRef.current?.getScale(); // 获取当前缩放比例
 ```
 
 ## 🎮 使用示例
@@ -174,7 +174,11 @@ viewerRef.current?.getScale() // 获取当前缩放比例
 ### 基础使用
 
 ```tsx
-<WebGLImageViewer src="https://example.com/image.jpg" initialScale={1} centerOnInit={true} />
+<WebGLImageViewer
+  src="https://example.com/image.jpg"
+  initialScale={1}
+  centerOnInit={true}
+/>
 ```
 
 ### 高级配置
@@ -186,14 +190,14 @@ viewerRef.current?.getScale() // 获取当前缩放比例
   maxScale={20}
   wheel={{ step: 0.05 }}
   doubleClick={{
-    mode: 'zoom',
+    mode: "zoom",
     step: 1.5,
     animationTime: 300,
   }}
   onZoomChange={(original, relative) => {
-    console.log(`Zoom: ${relative.toFixed(2)}x`)
+    console.log(`Zoom: ${relative.toFixed(2)}x`);
   }}
-  debug={process.env.NODE_ENV === 'development'}
+  debug={process.env.NODE_ENV === "development"}
 />
 ```
 
@@ -201,7 +205,7 @@ viewerRef.current?.getScale() // 获取当前缩放比例
 
 ```tsx
 function ControlledViewer() {
-  const viewerRef = useRef<WebGLImageViewerRef>(null)
+  const viewerRef = useRef<WebGLImageViewerRef>(null);
 
   return (
     <>
@@ -212,7 +216,7 @@ function ControlledViewer() {
         <button onClick={() => viewerRef.current?.resetView()}>重置</button>
       </div>
     </>
-  )
+  );
 }
 ```
 

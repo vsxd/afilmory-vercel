@@ -1,18 +1,18 @@
-import { clsxm } from '@afilmory/ui'
-import { WebGLImageViewer } from '@afilmory/webgl-viewer'
-import { AnimatePresence, m } from 'motion/react'
-import { useCallback, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch'
-import { useMediaQuery } from 'usehooks-ts'
+import { clsxm } from "@afilmory/ui";
+import { WebGLImageViewer } from "@afilmory/webgl-viewer";
+import { AnimatePresence, m } from "motion/react";
+import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
+import { useMediaQuery } from "usehooks-ts";
 
-import { useShowContextMenu } from '~/atoms/context-menu'
-import { canUseWebGL } from '~/lib/feature'
+import { useShowContextMenu } from "~/atoms/context-menu";
+import { canUseWebGL } from "~/lib/feature";
 
-import { SlidingNumber } from '../number/SlidingNumber'
-import { PHOTO_VIEWER_FIT_SCALE } from './animations/utils'
-import { DOMImageViewer } from './DOMImageViewer'
-import { HDRBadge } from './HDRBadge'
+import { SlidingNumber } from "../number/SlidingNumber";
+import { PHOTO_VIEWER_FIT_SCALE } from "./animations/utils";
+import { DOMImageViewer } from "./DOMImageViewer";
+import { HDRBadge } from "./HDRBadge";
 import {
   createContextMenuItems,
   useImageLoader,
@@ -20,18 +20,18 @@ import {
   useProgressiveImageState,
   useScaleIndicator,
   useWebGLLoadingState,
-} from './hooks'
-import { LivePhotoBadge } from './LivePhotoBadge'
-import { LivePhotoVideo } from './LivePhotoVideo'
-import type { ProgressiveImageProps, WebGLImageViewerRef } from './types'
+} from "./hooks";
+import { LivePhotoBadge } from "./LivePhotoBadge";
+import { LivePhotoVideo } from "./LivePhotoVideo";
+import type { ProgressiveImageProps, WebGLImageViewerRef } from "./types";
 
 const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
-  top: '50%',
-  left: '50%',
+  top: "50%",
+  left: "50%",
   width: `${PHOTO_VIEWER_FIT_SCALE * 100}%`,
   height: `${PHOTO_VIEWER_FIT_SCALE * 100}%`,
-  transform: 'translate(-50%, -50%)',
-}
+  transform: "translate(-50%, -50%)",
+};
 
 export const ProgressiveImage = ({
   src,
@@ -53,10 +53,10 @@ export const ProgressiveImage = ({
   isHDR = false,
   loadingIndicatorRef,
 }: ProgressiveImageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   // State management
-  const [state, setState] = useProgressiveImageState()
+  const [state, setState] = useProgressiveImageState();
   const {
     blobSrc,
     highResLoaded,
@@ -66,19 +66,19 @@ export const ProgressiveImage = ({
     showScaleIndicator,
     isThumbnailLoaded,
     isLivePhotoPlaying,
-  } = state
+  } = state;
 
-  const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes)
-  const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE)
+  const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes);
+  const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE);
 
   // 判断是否有视频内容（Live Photo 或 Motion Photo）
-  const hasVideo = Boolean(videoSource && videoSource.type !== 'none')
+  const hasVideo = Boolean(videoSource && videoSource.type !== "none");
 
   // Refs
-  const thumbnailRef = useRef<HTMLImageElement>(null)
-  const webglImageViewerRef = useRef<WebGLImageViewerRef | null>(null)
-  const domImageViewerRef = useRef<ReactZoomPanPinchRef>(null)
-  const livePhotoRef = useRef<any>(null)
+  const thumbnailRef = useRef<HTMLImageElement>(null);
+  const webglImageViewerRef = useRef<WebGLImageViewerRef | null>(null);
+  const domImageViewerRef = useRef<ReactZoomPanPinchRef>(null);
+  const livePhotoRef = useRef<any>(null);
 
   // Hooks
   const imageLoaderManagerRef = useImageLoader(
@@ -94,51 +94,58 @@ export const ProgressiveImage = ({
     setState.setHighResLoaded,
     setState.setError,
     setState.setIsHighResImageRendered,
-  )
+  );
 
   const { onTransformed, onDOMTransformed } = useScaleIndicator(
     onZoomChange,
     setState.setCurrentScale,
     setState.setShowScaleIndicator,
-  )
+  );
 
-  const { handleLongPressStart, handleLongPressEnd } = useLivePhotoControls(hasVideo, isLivePhotoPlaying, livePhotoRef)
+  const { handleLongPressStart, handleLongPressEnd } = useLivePhotoControls(
+    hasVideo,
+    isLivePhotoPlaying,
+    livePhotoRef,
+  );
 
-  const handleWebGLLoadingStateChange = useWebGLLoadingState(loadingIndicatorRef)
+  const handleWebGLLoadingStateChange =
+    useWebGLLoadingState(loadingIndicatorRef);
 
   const handleThumbnailLoad = useCallback(() => {
-    setState.setIsThumbnailLoaded(true)
-  }, [setState])
+    setState.setIsThumbnailLoaded(true);
+  }, [setState]);
 
   useEffect(() => {
     if (!thumbnailSrc) {
-      setState.setIsThumbnailLoaded(false)
-      return
+      setState.setIsThumbnailLoaded(false);
+      return;
     }
 
-    const thumbnailElement = thumbnailRef.current
-    const isThumbnailReady = Boolean(thumbnailElement?.complete && thumbnailElement.naturalWidth > 0)
+    const thumbnailElement = thumbnailRef.current;
+    const isThumbnailReady = Boolean(
+      thumbnailElement?.complete && thumbnailElement.naturalWidth > 0,
+    );
 
-    setState.setIsThumbnailLoaded(isThumbnailReady)
-  }, [thumbnailSrc, setState])
+    setState.setIsThumbnailLoaded(isThumbnailReady);
+  }, [thumbnailSrc, setState]);
 
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {
-    setState.setIsHighResImageRendered(true)
+    setState.setIsHighResImageRendered(true);
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: false,
-    })
-  }, [loadingIndicatorRef, setState])
+    });
+  }, [loadingIndicatorRef, setState]);
 
-  const showContextMenu = useShowContextMenu()
+  const showContextMenu = useShowContextMenu();
 
-  const isHDRSupported = useMediaQuery('(dynamic-range: high)')
+  const isHDRSupported = useMediaQuery("(dynamic-range: high)");
   // Only use HDR if the browser supports it and the image is HDR
-  const shouldUseHDR = isHDR && isHDRSupported
+  const shouldUseHDR = isHDR && isHDRSupported;
 
   return (
     <div
-      className={clsxm('relative overflow-hidden', className)}
+      className={clsxm("relative overflow-hidden", className)}
       onMouseDown={handleLongPressStart}
       onMouseUp={handleLongPressEnd}
       onMouseLeave={handleLongPressEnd}
@@ -153,8 +160,8 @@ export const ProgressiveImage = ({
           key={thumbnailSrc}
           alt={alt}
           className={clsxm(
-            'pointer-events-none absolute object-contain transition-opacity duration-300',
-            isThumbnailLoaded ? 'opacity-100' : 'opacity-0',
+            "pointer-events-none absolute object-contain transition-opacity duration-300",
+            isThumbnailLoaded ? "opacity-100" : "opacity-0",
           )}
           style={PHOTO_VIEWER_FIT_IMAGE_STYLE}
           loading="eager"
@@ -168,8 +175,8 @@ export const ProgressiveImage = ({
         <div
           className="absolute inset-0 h-full w-full"
           onContextMenu={(e) => {
-            const items = createContextMenuItems(blobSrc, alt, t)
-            showContextMenu(items, e)
+            const items = createContextMenuItems(blobSrc, alt, t);
+            showContextMenu(items, e);
           }}
         >
           {/* LivePhoto/Motion Photo、HDR 或无 WebGL 时使用 DOMImageViewer */}
@@ -228,20 +235,28 @@ export const ProgressiveImage = ({
         />
       )}
 
-      {shouldUseHDR && highResLoaded && blobSrc && isActiveImage && !error && <HDRBadge />}
+      {shouldUseHDR && highResLoaded && blobSrc && isActiveImage && !error && (
+        <HDRBadge />
+      )}
 
       {/* 备用图片（当 WebGL 不可用时） - 只在非错误状态时显示 */}
-      {!canUseWebGL && !hasVideo && !shouldUseHDR && highResLoaded && blobSrc && isActiveImage && !error && (
-        <div className="pointer-events-none absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded bg-black/50 px-3 py-1.5 text-white">
-          <i className="i-mingcute-warning-line text-base" />
-          <span className="text-xs">{t('photo.webgl.unavailable')}</span>
-        </div>
-      )}
+      {!canUseWebGL &&
+        !hasVideo &&
+        !shouldUseHDR &&
+        highResLoaded &&
+        blobSrc &&
+        isActiveImage &&
+        !error && (
+          <div className="pointer-events-none absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded bg-black/50 px-3 py-1.5 text-white">
+            <i className="i-mingcute-warning-line text-base" />
+            <span className="text-xs">{t("photo.webgl.unavailable")}</span>
+          </div>
+        )}
 
       {/* 操作提示 */}
       {!hasVideo && (
         <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded bg-black/50 px-2 py-1 text-xs text-white opacity-0 duration-200 group-hover:opacity-50">
-          {t('photo.zoom.hint')}
+          {t("photo.zoom.hint")}
         </div>
       )}
 
@@ -259,7 +274,7 @@ export const ProgressiveImage = ({
         )}
       </AnimatePresence>
     </div>
-  )
-}
+  );
+};
 
-export type { ProgressiveImageProps } from './types'
+export type { ProgressiveImageProps } from "./types";

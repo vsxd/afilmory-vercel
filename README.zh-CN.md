@@ -114,6 +114,7 @@
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23-%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory)
 
 **部署步骤：**
+
 1. 点击上方 "Deploy with Vercel" 按钮
 2. 登录你的 Vercel 账户
 3. Fork 项目到你的 GitHub
@@ -132,6 +133,7 @@
 环境变量 > `site.config.ts` 默认值
 
 这意味着：
+
 - ✅ 如果设置了环境变量，将优先使用环境变量的值
 - ✅ 如果没有设置环境变量，则使用 `site.config.ts` 中的默认配置
 
@@ -139,63 +141,63 @@
 
 项目**仅支持 S3 存储**，以下环境变量为必填：
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `S3_BUCKET_NAME` | S3 存储桶名称 | `my-photos` |
-| `S3_REGION` | S3 区域 | `us-east-1` |
-| `S3_ACCESS_KEY_ID` | S3 访问密钥 ID | `AKIAIOSFODNN7EXAMPLE` |
+| 环境变量               | 说明               | 示例                                       |
+| ---------------------- | ------------------ | ------------------------------------------ |
+| `S3_BUCKET_NAME`       | S3 存储桶名称      | `my-photos`                                |
+| `S3_REGION`            | S3 区域            | `us-east-1`                                |
+| `S3_ACCESS_KEY_ID`     | S3 访问密钥 ID     | `AKIAIOSFODNN7EXAMPLE`                     |
 | `S3_SECRET_ACCESS_KEY` | S3 访问密钥 Secret | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 
 ### 可选配置 (S3 高级选项)
 
-| 环境变量 | 说明 | 默认值 | 示例 |
-|---------|------|--------|------|
-| `S3_ENDPOINT` | S3 服务端点 | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
-| `S3_PREFIX` | 照片路径前缀 | 空 | `photos/` |
-| `S3_CUSTOM_DOMAIN` | 自定义 CDN 域名 | 空 | `https://cdn.example.com` |
-| `S3_EXCLUDE_REGEX` | 排除文件的正则表达式 | 空 | `.*\.txt$` |
+| 环境变量           | 说明                 | 默认值                               | 示例                                   |
+| ------------------ | -------------------- | ------------------------------------ | -------------------------------------- |
+| `S3_ENDPOINT`      | S3 服务端点          | `https://s3.us-east-1.amazonaws.com` | `https://oss-cn-hangzhou.aliyuncs.com` |
+| `S3_PREFIX`        | 照片路径前缀         | 空                                   | `photos/`                              |
+| `S3_CUSTOM_DOMAIN` | 自定义 CDN 域名      | 空                                   | `https://cdn.example.com`              |
+| `S3_EXCLUDE_REGEX` | 排除文件的正则表达式 | 空                                   | `.*\.txt$`                             |
 
 ### 推荐配置 (站点信息)
 
 **强烈建议通过环境变量配置**，这样在 Vercel 等平台上可以直接在 Dashboard 修改，无需重新部署代码：
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `SITE_NAME` | 站点名称 | `My Photo Gallery` |
-| `SITE_TITLE` | 站点标题 | `My Photo Gallery` |
-| `SITE_DESCRIPTION` | 站点描述 | `Capturing beautiful moments in life` |
-| `SITE_URL` | 站点 URL | `https://your-site.vercel.app` |
-| `SITE_ACCENT_COLOR` | 主题色 | `#007bff` |
+| 环境变量            | 说明     | 示例                                  |
+| ------------------- | -------- | ------------------------------------- |
+| `SITE_NAME`         | 站点名称 | `My Photo Gallery`                    |
+| `SITE_TITLE`        | 站点标题 | `My Photo Gallery`                    |
+| `SITE_DESCRIPTION`  | 站点描述 | `Capturing beautiful moments in life` |
+| `SITE_URL`          | 站点 URL | `https://your-site.vercel.app`        |
+| `SITE_ACCENT_COLOR` | 主题色   | `#007bff`                             |
 
 ### 推荐配置 (作者信息)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `AUTHOR_NAME` | 作者名称 | `Your Name` |
-| `AUTHOR_URL` | 作者网站 | `https://your-website.com` |
+| 环境变量        | 说明         | 示例                                |
+| --------------- | ------------ | ----------------------------------- |
+| `AUTHOR_NAME`   | 作者名称     | `Your Name`                         |
+| `AUTHOR_URL`    | 作者网站     | `https://your-website.com`          |
 | `AUTHOR_AVATAR` | 作者头像 URL | `https://avatar-url.com/avatar.png` |
 
 ### 可选配置 (社交媒体)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
-| `SOCIAL_GITHUB` | GitHub 用户名 | `your-github-username` |
+| 环境变量         | 说明           | 示例                    |
+| ---------------- | -------------- | ----------------------- |
+| `SOCIAL_GITHUB`  | GitHub 用户名  | `your-github-username`  |
 | `SOCIAL_TWITTER` | Twitter 用户名 | `your-twitter-username` |
-| `SOCIAL_RSS` | 是否启用 RSS | `true` 或 `false` |
+| `SOCIAL_RSS`     | 是否启用 RSS   | `true` 或 `false`       |
 
 ### 可选配置 (Feed)
 
-| 环境变量 | 说明 | 示例 |
-|---------|------|------|
+| 环境变量            | 说明         | 示例           |
+| ------------------- | ------------ | -------------- |
 | `FEED_FOLO_FEED_ID` | Folo Feed ID | `your-feed-id` |
 | `FEED_FOLO_USER_ID` | Folo User ID | `your-user-id` |
 
 ### 可选配置 (地图)
 
-| 环境变量 | 说明 | 默认值 | 可选值 |
-|---------|------|--------|--------|
-| `MAP_STYLE` | 地图样式 | `builtin` | `builtin` 或自定义 URL |
-| `MAP_PROJECTION` | 地图投影 | `mercator` | `globe` 或 `mercator` |
+| 环境变量         | 说明     | 默认值     | 可选值                 |
+| ---------------- | -------- | ---------- | ---------------------- |
+| `MAP_STYLE`      | 地图样式 | `builtin`  | `builtin` 或自定义 URL |
+| `MAP_PROJECTION` | 地图投影 | `mercator` | `globe` 或 `mercator`  |
 
 ### 配置示例
 
@@ -263,6 +265,7 @@ pnpm install
 ### 准备 S3 存储并上传照片
 
 将你的照片上传到 S3 兼容的对象存储中，支持以下格式：
+
 - JPG / JPEG
 - PNG
 - HEIC (Apple 设备)
@@ -405,6 +408,7 @@ pnpm build:manifest -- --force-manifest
 ### 存储
 
 支持的 S3 兼容服务：
+
 - **AWS S3** - Amazon S3
 - **MinIO** - 开源对象存储
 - **阿里云 OSS** - 阿里云对象存储
@@ -445,8 +449,8 @@ afilmory/
 ```typescript
 export const siteConfig: SiteConfig = {
   // ...
-  accentColor: '#ff6b6b',
-}
+  accentColor: "#ff6b6b",
+};
 ```
 
 ### 添加地图样式
@@ -464,6 +468,7 @@ export const siteConfig: SiteConfig = {
 语言文件位于 `apps/web/public/locales/`。
 
 添加新语言：
+
 1. 创建语言目录（如 `fr/`）
 2. 复制并翻译 `common.json`
 3. 在 `apps/web/src/lib/i18n.ts` 添加语言代码
@@ -474,11 +479,7 @@ export const siteConfig: SiteConfig = {
 
 欢迎贡献代码、报告问题或提出建议！
 
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 开启 Pull Request
+请查看 [贡献指南](docs/CONTRIBUTING.md)，了解环境准备、常用命令、manifest 说明和 PR 验证要求。
 
 ---
 

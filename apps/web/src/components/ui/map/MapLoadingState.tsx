@@ -1,8 +1,8 @@
-import { m } from 'motion/react'
-import { useTranslation } from 'react-i18next'
+import { m } from "motion/react";
+import { useTranslation } from "react-i18next";
 
 export const MapLoadingState = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -26,7 +26,7 @@ export const MapLoadingState = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          {t('explore.loading.map')}
+          {t("explore.loading.map")}
         </m.div>
         <m.p
           className="text-sm text-gray-600 dark:text-gray-400"
@@ -34,9 +34,9 @@ export const MapLoadingState = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          {t('explore.parsing.location')}
+          {t("explore.parsing.location")}
         </m.p>
       </m.div>
     </div>
-  )
-}
+  );
+};

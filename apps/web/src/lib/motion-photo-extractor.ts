@@ -4,9 +4,9 @@
  */
 
 interface MotionPhotoMetadata {
-  motionPhotoOffset: number
-  motionPhotoVideoSize?: number
-  presentationTimestampUs?: number
+  motionPhotoOffset: number;
+  motionPhotoVideoSize?: number;
+  presentationTimestampUs?: number;
 }
 
 /**
@@ -21,36 +21,49 @@ export async function extractMotionPhotoVideo(
   signal?: AbortSignal,
 ): Promise<string | null> {
   try {
-    const { motionPhotoOffset, motionPhotoVideoSize } = metadata
+    const { motionPhotoOffset, motionPhotoVideoSize } = metadata;
 
     // 尝试使用 Range Request 仅获取视频部分
     if (motionPhotoVideoSize && motionPhotoVideoSize > 0) {
       try {
-        const videoBlob = await fetchVideoWithRange(imageUrl, motionPhotoOffset, motionPhotoVideoSize, signal)
+        const videoBlob = await fetchVideoWithRange(
+          imageUrl,
+          motionPhotoOffset,
+          motionPhotoVideoSize,
+          signal,
+        );
         if (videoBlob) {
-          return URL.createObjectURL(videoBlob)
+          return URL.createObjectURL(videoBlob);
         }
       } catch (rangeError) {
-        if (rangeError instanceof Error && rangeError.name === 'AbortError') {
-          throw rangeError
+        if (rangeError instanceof Error && rangeError.name === "AbortError") {
+          throw rangeError;
         }
-        console.warn('[motion-photo] Range request failed, falling back to full fetch:', rangeError)
+        console.warn(
+          "[motion-photo] Range request failed, falling back to full fetch:",
+          rangeError,
+        );
       }
     }
 
     // Fallback: 下载完整图片并提取视频部分
-    const videoBlob = await fetchVideoWithFullDownload(imageUrl, motionPhotoOffset, motionPhotoVideoSize, signal)
+    const videoBlob = await fetchVideoWithFullDownload(
+      imageUrl,
+      motionPhotoOffset,
+      motionPhotoVideoSize,
+      signal,
+    );
     if (videoBlob) {
-      return URL.createObjectURL(videoBlob)
+      return URL.createObjectURL(videoBlob);
     }
 
-    return null
+    return null;
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw error
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
     }
-    console.error('[motion-photo] Failed to extract video:', error)
-    return null
+    console.error("[motion-photo] Failed to extract video:", error);
+    return null;
   }
 }
 
@@ -63,27 +76,27 @@ async function fetchVideoWithRange(
   size: number,
   signal?: AbortSignal,
 ): Promise<Blob | null> {
-  const endByte = offset + size - 1
+  const endByte = offset + size - 1;
   const response = await fetch(imageUrl, {
     signal,
     headers: {
       Range: `bytes=${offset}-${endByte}`,
     },
-  })
+  });
 
   // 检查是否支持 Range Request
   if (response.status !== 206) {
-    throw new Error('Range request not supported')
+    throw new Error("Range request not supported");
   }
 
-  const blob = await response.blob()
+  const blob = await response.blob();
 
   // 验证是否为有效的 MP4
   if (!(await isValidMp4(blob))) {
-    throw new Error('Invalid MP4 data')
+    throw new Error("Invalid MP4 data");
   }
 
-  return new Blob([blob], { type: 'video/mp4' })
+  return new Blob([blob], { type: "video/mp4" });
 }
 
 /**
@@ -95,21 +108,23 @@ async function fetchVideoWithFullDownload(
   size?: number,
   signal?: AbortSignal,
 ): Promise<Blob | null> {
-  const response = await fetch(imageUrl, { signal })
-  const arrayBuffer = await response.arrayBuffer()
+  const response = await fetch(imageUrl, { signal });
+  const arrayBuffer = await response.arrayBuffer();
 
   // 提取视频部分
-  const videoData = size ? arrayBuffer.slice(offset, offset + size) : arrayBuffer.slice(offset)
+  const videoData = size
+    ? arrayBuffer.slice(offset, offset + size)
+    : arrayBuffer.slice(offset);
 
-  const blob = new Blob([videoData], { type: 'video/mp4' })
+  const blob = new Blob([videoData], { type: "video/mp4" });
 
   // 验证是否为有效的 MP4
   if (!(await isValidMp4(blob))) {
-    console.error('[motion-photo] Extracted data is not a valid MP4')
-    return null
+    console.error("[motion-photo] Extracted data is not a valid MP4");
+    return null;
   }
 
-  return blob
+  return blob;
 }
 
 /**
@@ -118,14 +133,14 @@ async function fetchVideoWithFullDownload(
  */
 async function isValidMp4(blob: Blob): Promise<boolean> {
   if (blob.size < 32) {
-    return false
+    return false;
   }
 
-  const header = await blob.slice(0, 32).arrayBuffer()
-  const headerBytes = new Uint8Array(header)
+  const header = await blob.slice(0, 32).arrayBuffer();
+  const headerBytes = new Uint8Array(header);
 
   // 在前 32 字节中查找 'ftyp' (0x66 0x74 0x79 0x70)
-  const ftypSignature = [0x66, 0x74, 0x79, 0x70]
+  const ftypSignature = [0x66, 0x74, 0x79, 0x70];
 
   for (let i = 0; i <= headerBytes.length - 4; i++) {
     if (
@@ -134,18 +149,18 @@ async function isValidMp4(blob: Blob): Promise<boolean> {
       headerBytes[i + 2] === ftypSignature[2] &&
       headerBytes[i + 3] === ftypSignature[3]
     ) {
-      return true
+      return true;
     }
   }
 
-  return false
+  return false;
 }
 
 /**
  * 清理由 extractMotionPhotoVideo 创建的 Blob URL
  */
 export function revokeMotionPhotoVideoUrl(blobUrl: string): void {
-  if (blobUrl.startsWith('blob:')) {
-    URL.revokeObjectURL(blobUrl)
+  if (blobUrl.startsWith("blob:")) {
+    URL.revokeObjectURL(blobUrl);
   }
 }

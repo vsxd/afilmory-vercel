@@ -1,6 +1,9 @@
-import path from 'node:path'
+import path from "node:path";
 
-const dirname = path.dirname(new URL(import.meta.url).pathname)
-export const MANIFEST_PATH = path.resolve(dirname, '../../../../../generated/photos-manifest.json')
+const dirname = path.dirname(new URL(import.meta.url).pathname);
+export const MANIFEST_PATH = path.resolve(
+  dirname,
+  "../../../../../generated/photos-manifest.json",
+);
 
-export const MONOREPO_ROOT_PATH = path.resolve(dirname, '../../../../..')
+export const MONOREPO_ROOT_PATH = path.resolve(dirname, "../../../../..");

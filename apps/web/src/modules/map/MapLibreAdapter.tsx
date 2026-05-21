@@ -1,24 +1,26 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import * as React from 'react'
-import { lazy } from 'react'
-import type { MapRef } from 'react-map-gl/maplibre'
+import * as React from "react";
+import { lazy } from "react";
+import type { MapRef } from "react-map-gl/maplibre";
 
-import type { BaseMapProps, PhotoMarker } from '~/types/map'
+import type { BaseMapProps, PhotoMarker } from "~/types/map";
 
-import type { MapAdapter } from './map-context'
+import type { MapAdapter } from "./map-context";
 
-const Maplibre = lazy(() => import('~/components/ui/map/MapLibre').then((m) => ({ default: m.Maplibre })))
+const Maplibre = lazy(() =>
+  import("~/components/ui/map/MapLibre").then((m) => ({ default: m.Maplibre })),
+);
 /**
  * MapLibre map adapter implementation
  * This adapts MapLibre to work with our generic map provider system
  */
 export class MapLibreMapAdapter implements MapAdapter {
-  name = 'maplibre'
+  name = "maplibre";
 
-  readonly isAvailable: boolean = true
+  readonly isAvailable: boolean = true;
 
-  MapComponent = MapLibreMapComponent
+  MapComponent = MapLibreMapComponent;
 
   async initialize(): Promise<void> {
     // MapLibre doesn't require additional async initialization
@@ -45,28 +47,28 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   autoFitBounds,
   syncViewStateOnInitialViewStateChange,
 }) => {
-  const mapRef = React.useRef<MapRef>(null)
+  const mapRef = React.useRef<MapRef>(null);
 
   // Default map config constants
-  const DEFAULT_ANIMATION_DURATION = 1000
-  const DEFAULT_ZOOM = 14
+  const DEFAULT_ANIMATION_DURATION = 1000;
+  const DEFAULT_ZOOM = 14;
 
   // Handle GeoJSON click
   const handleGeoJsonClick = React.useCallback(
     (
       event: maplibregl.MapMouseEvent & {
-        features?: maplibregl.GeoJSONFeature[]
+        features?: maplibregl.GeoJSONFeature[];
       },
     ) => {
-      if (!handlers?.onGeoJsonClick) return
+      if (!handlers?.onGeoJsonClick) return;
 
-      const feature = event.features?.[0]
+      const feature = event.features?.[0];
       if (feature) {
-        handlers.onGeoJsonClick(feature as GeoJSON.Feature)
+        handlers.onGeoJsonClick(feature as GeoJSON.Feature);
       }
     },
     [handlers],
-  )
+  );
 
   // Fly to location with animation duration from config
   const flyToLocation = React.useCallback(
@@ -75,27 +77,27 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
         center: [longitude, latitude],
         duration: DEFAULT_ANIMATION_DURATION,
         zoom: zoom || DEFAULT_ZOOM,
-      })
+      });
     },
     [], // No dependencies needed as constants don't change
-  )
+  );
 
   // Handle marker click
   const handleMarkerClick = React.useCallback(
     (marker: PhotoMarker) => {
-      handlers?.onMarkerClick?.(marker)
+      handlers?.onMarkerClick?.(marker);
     },
     [handlers],
-  )
+  );
 
   // Handle geolocate
   const handleGeolocate = React.useCallback(
     (longitude: number, latitude: number) => {
-      flyToLocation(longitude, latitude)
-      handlers?.onGeolocate?.(longitude, latitude)
+      flyToLocation(longitude, latitude);
+      handlers?.onGeolocate?.(longitude, latitude);
     },
     [flyToLocation, handlers],
-  )
+  );
 
   return (
     <Maplibre
@@ -111,14 +113,16 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
       style={style}
       mapRef={mapRef}
       autoFitBounds={autoFitBounds}
-      syncViewStateOnInitialViewStateChange={syncViewStateOnInitialViewStateChange}
+      syncViewStateOnInitialViewStateChange={
+        syncViewStateOnInitialViewStateChange
+      }
     />
-  )
-}
+  );
+};
 
 /**
  * Create a MapLibre adapter instance
  */
 export const createMapLibreAdapter = (): MapAdapter => {
-  return new MapLibreMapAdapter()
-}
+  return new MapLibreMapAdapter();
+};

@@ -1,14 +1,14 @@
-import { useViewport } from './useViewport'
+import { useViewport } from "./useViewport";
 
 export const useMobile = () => {
-  return useViewport((v) => v.w < 1024 && v.w !== 0)
-}
+  return useViewport((v) => v.w < 1024 && v.w !== 0);
+};
 
 export const isMobile = () => {
-  if (typeof window === 'undefined') {
-    return false
+  if (typeof window === "undefined") {
+    return false;
   }
 
-  const w = window.innerWidth
-  return w < 1024 && w !== 0
-}
+  const w = window.innerWidth;
+  return w < 1024 && w !== 0;
+};

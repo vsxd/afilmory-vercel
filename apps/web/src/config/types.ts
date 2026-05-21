@@ -1,4 +1,4 @@
 export interface InjectConfig {
-  useApi: boolean
-  useCloud: boolean
+  useApi: boolean;
+  useCloud: boolean;
 }

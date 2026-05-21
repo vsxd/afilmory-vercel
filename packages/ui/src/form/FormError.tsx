@@ -1,12 +1,12 @@
-import type { FC, HTMLAttributes } from 'react'
+import type { FC, HTMLAttributes } from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
 export interface FormErrorProps extends HTMLAttributes<HTMLParagraphElement> {
   /**
    * Error message to display
    */
-  children?: string
+  children?: string;
 }
 
 /**
@@ -23,14 +23,18 @@ export interface FormErrorProps extends HTMLAttributes<HTMLParagraphElement> {
  * <FormError>{errors.email}</FormError>
  * ```
  */
-export const FormError: FC<FormErrorProps> = ({ children, className, ...props }) => {
-  if (!children) return null
+export const FormError: FC<FormErrorProps> = ({
+  children,
+  className,
+  ...props
+}) => {
+  if (!children) return null;
 
   return (
-    <p className={clsxm('mt-1 text-xs text-red', className)} {...props}>
+    <p className={clsxm("mt-1 text-xs text-red", className)} {...props}>
       {children}
     </p>
-  )
-}
+  );
+};
 
-FormError.displayName = 'FormError'
+FormError.displayName = "FormError";

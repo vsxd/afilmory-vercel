@@ -1,232 +1,264 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { isMobileDevice } from '~/lib/device-viewport'
-import { ImageLoaderManager } from '~/lib/image-loader-manager'
-import type { PhotoManifest } from '~/types/photo'
+import { isMobileDevice } from "~/lib/device-viewport";
+import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { PhotoManifest } from "~/types/photo";
 
 interface UseLivePhotoHandlerProps {
-  data: PhotoManifest
-  imageLoaded: boolean
+  data: PhotoManifest;
+  imageLoaded: boolean;
 }
 
 type LoadableVideo =
-  | { type: 'motion-photo'; offset: number; size?: number; presentationTimestamp?: number }
-  | { type: 'live-photo'; videoUrl: string }
-  | undefined
+  | {
+      type: "motion-photo";
+      offset: number;
+      size?: number;
+      presentationTimestamp?: number;
+    }
+  | { type: "live-photo"; videoUrl: string }
+  | undefined;
 
 function isAbortLikeError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError'
+  return error instanceof Error && error.name === "AbortError";
 }
 
 function resetVideoElement(videoElement: HTMLVideoElement | null): void {
   if (!videoElement) {
-    return
+    return;
   }
 
-  videoElement.pause()
-  videoElement.removeAttribute('src')
-  videoElement.load()
+  videoElement.pause();
+  videoElement.removeAttribute("src");
+  videoElement.load();
 }
 
-function getVideoLoadKey(dataVideo: LoadableVideo, originalUrl: string): string {
+function getVideoLoadKey(
+  dataVideo: LoadableVideo,
+  originalUrl: string,
+): string {
   if (!dataVideo) {
-    return 'none'
+    return "none";
   }
 
-  if (dataVideo.type === 'motion-photo') {
+  if (dataVideo.type === "motion-photo") {
     return [
-      'motion-photo',
+      "motion-photo",
       originalUrl,
       dataVideo.offset,
-      dataVideo.size ?? '',
-      dataVideo.presentationTimestamp ?? '',
-    ].join(':')
+      dataVideo.size ?? "",
+      dataVideo.presentationTimestamp ?? "",
+    ].join(":");
   }
 
-  if (dataVideo.type === 'live-photo') {
-    return `live-photo:${dataVideo.videoUrl}`
+  if (dataVideo.type === "live-photo") {
+    return `live-photo:${dataVideo.videoUrl}`;
   }
 
-  return 'none'
+  return "none";
 }
 
-export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerProps) => {
-  const { id, video, originalUrl } = data
-  const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false)
-  const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false)
-  const [isConvertingVideo, setIsConvertingVideo] = useState(false)
-  const [videoConversionError, setVideoConversionError] = useState<unknown>(null)
+export const useLivePhotoHandler = ({
+  data,
+  imageLoaded,
+}: UseLivePhotoHandlerProps) => {
+  const { id, video, originalUrl } = data;
+  const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false);
+  const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false);
+  const [isConvertingVideo, setIsConvertingVideo] = useState(false);
+  const [videoConversionError, setVideoConversionError] =
+    useState<unknown>(null);
 
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null)
-  const loadedVideoKeyRef = useRef<string | null>(null)
-  const videoType = video?.type
-  const livePhotoUrl = videoType === 'live-photo' ? video?.videoUrl : undefined
-  const motionPhotoOffset = videoType === 'motion-photo' ? video?.offset : undefined
-  const motionPhotoSize = videoType === 'motion-photo' ? video?.size : undefined
-  const motionPhotoPresentationTimestamp = videoType === 'motion-photo' ? video?.presentationTimestamp : undefined
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null);
+  const loadedVideoKeyRef = useRef<string | null>(null);
+  const videoType = video?.type;
+  const livePhotoUrl = videoType === "live-photo" ? video?.videoUrl : undefined;
+  const motionPhotoOffset =
+    videoType === "motion-photo" ? video?.offset : undefined;
+  const motionPhotoSize =
+    videoType === "motion-photo" ? video?.size : undefined;
+  const motionPhotoPresentationTimestamp =
+    videoType === "motion-photo" ? video?.presentationTimestamp : undefined;
   const stableVideo = useMemo(() => {
     if (!videoType) {
-      return
+      return;
     }
 
-    if (videoType === 'motion-photo') {
+    if (videoType === "motion-photo") {
       return {
-        type: 'motion-photo' as const,
+        type: "motion-photo" as const,
         offset: motionPhotoOffset!,
         size: motionPhotoSize,
         presentationTimestamp: motionPhotoPresentationTimestamp,
-      }
+      };
     }
 
-    if (videoType === 'live-photo') {
+    if (videoType === "live-photo") {
       return {
-        type: 'live-photo' as const,
+        type: "live-photo" as const,
         videoUrl: livePhotoUrl!,
-      }
+      };
     }
-  }, [videoType, livePhotoUrl, motionPhotoOffset, motionPhotoSize, motionPhotoPresentationTimestamp])
-  const videoLoadKey = getVideoLoadKey(stableVideo, originalUrl)
+  }, [
+    videoType,
+    livePhotoUrl,
+    motionPhotoOffset,
+    motionPhotoSize,
+    motionPhotoPresentationTimestamp,
+  ]);
+  const videoLoadKey = getVideoLoadKey(stableVideo, originalUrl);
 
-  const hasVideo = videoType !== undefined
+  const hasVideo = videoType !== undefined;
 
   useEffect(() => {
-    setIsPlayingLivePhoto(false)
-    setLivePhotoVideoLoaded(false)
-    setIsConvertingVideo(false)
-    setVideoConversionError(null)
-    loadedVideoKeyRef.current = null
+    setIsPlayingLivePhoto(false);
+    setLivePhotoVideoLoaded(false);
+    setIsConvertingVideo(false);
+    setVideoConversionError(null);
+    loadedVideoKeyRef.current = null;
 
-    resetVideoElement(videoRef.current)
-  }, [id])
+    resetVideoElement(videoRef.current);
+  }, [id]);
 
   // Live Photo/Motion Photo video loading logic
   useEffect(() => {
-    if (!stableVideo || !imageLoaded || !videoRef.current || loadedVideoKeyRef.current === videoLoadKey) {
-      return
+    if (
+      !stableVideo ||
+      !imageLoaded ||
+      !videoRef.current ||
+      loadedVideoKeyRef.current === videoLoadKey
+    ) {
+      return;
     }
 
-    const videoEl = videoRef.current
+    const videoEl = videoRef.current;
 
-    let cancelled = false
+    let cancelled = false;
 
     const loadVideo = async () => {
-      setLivePhotoVideoLoaded(false)
-      setIsConvertingVideo(true)
+      setLivePhotoVideoLoaded(false);
+      setIsConvertingVideo(true);
 
-      const imageLoaderManager = new ImageLoaderManager()
-      imageLoaderManagerRef.current = imageLoaderManager
+      const imageLoaderManager = new ImageLoaderManager();
+      imageLoaderManagerRef.current = imageLoaderManager;
 
       try {
-        let videoSource: Parameters<typeof imageLoaderManager.processVideo>[0]
+        let videoSource: Parameters<typeof imageLoaderManager.processVideo>[0];
 
-        if (stableVideo.type === 'motion-photo') {
+        if (stableVideo.type === "motion-photo") {
           videoSource = {
-            type: 'motion-photo',
+            type: "motion-photo",
             imageUrl: originalUrl,
             offset: stableVideo.offset,
             size: stableVideo.size,
             presentationTimestamp: stableVideo.presentationTimestamp,
-          }
-        } else if (stableVideo.type === 'live-photo') {
+          };
+        } else if (stableVideo.type === "live-photo") {
           videoSource = {
-            type: 'live-photo',
+            type: "live-photo",
             videoUrl: stableVideo.videoUrl,
-          }
+          };
         } else {
-          videoSource = { type: 'none' }
+          videoSource = { type: "none" };
         }
 
-        if (videoSource.type !== 'none') {
-          await imageLoaderManager.processVideo(videoSource, videoEl)
+        if (videoSource.type !== "none") {
+          await imageLoaderManager.processVideo(videoSource, videoEl);
           if (!cancelled) {
-            loadedVideoKeyRef.current = videoLoadKey
-            setLivePhotoVideoLoaded(true)
+            loadedVideoKeyRef.current = videoLoadKey;
+            setLivePhotoVideoLoaded(true);
           }
         }
       } catch (videoError) {
         if (!cancelled && !isAbortLikeError(videoError)) {
-          console.error('Failed to process video:', videoError)
-          setVideoConversionError(videoError)
+          console.error("Failed to process video:", videoError);
+          setVideoConversionError(videoError);
         }
       } finally {
         if (!cancelled) {
-          setIsConvertingVideo(false)
+          setIsConvertingVideo(false);
         }
       }
-    }
+    };
 
-    void loadVideo()
+    void loadVideo();
 
     return () => {
-      cancelled = true
+      cancelled = true;
       if (imageLoaderManagerRef.current) {
-        imageLoaderManagerRef.current.cleanup()
-        imageLoaderManagerRef.current = null
+        imageLoaderManagerRef.current.cleanup();
+        imageLoaderManagerRef.current = null;
       }
-      resetVideoElement(videoEl)
-    }
-  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey])
+      resetVideoElement(videoEl);
+    };
+  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey]);
 
   // Live Photo/Motion Photo hover handling (desktop only)
   const handleMouseEnter = useCallback(() => {
-    if (isMobileDevice || !hasVideo || !livePhotoVideoLoaded || isPlayingLivePhoto || isConvertingVideo) {
-      return
+    if (
+      isMobileDevice ||
+      !hasVideo ||
+      !livePhotoVideoLoaded ||
+      isPlayingLivePhoto ||
+      isConvertingVideo
+    ) {
+      return;
     }
 
     hoverTimerRef.current = setTimeout(() => {
-      setIsPlayingLivePhoto(true)
-      const video = videoRef.current
+      setIsPlayingLivePhoto(true);
+      const video = videoRef.current;
       if (video) {
-        video.currentTime = 0
+        video.currentTime = 0;
         void video.play().catch((error: unknown) => {
-          console.error('Failed to play masonry live photo video:', error)
-          setIsPlayingLivePhoto(false)
-        })
+          console.error("Failed to play masonry live photo video:", error);
+          setIsPlayingLivePhoto(false);
+        });
       }
-    }, 200)
-  }, [hasVideo, livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo])
+    }, 200);
+  }, [hasVideo, livePhotoVideoLoaded, isPlayingLivePhoto, isConvertingVideo]);
 
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
     }
 
     if (isPlayingLivePhoto) {
-      setIsPlayingLivePhoto(false)
-      const video = videoRef.current
+      setIsPlayingLivePhoto(false);
+      const video = videoRef.current;
       if (video) {
-        video.pause()
-        video.currentTime = 0
+        video.pause();
+        video.currentTime = 0;
       }
     }
-  }, [isPlayingLivePhoto])
+  }, [isPlayingLivePhoto]);
 
   const handleVideoEnded = useCallback(() => {
-    setIsPlayingLivePhoto(false)
-  }, [])
+    setIsPlayingLivePhoto(false);
+  }, []);
 
   // Clean up timer on unmount
   useEffect(() => {
-    const currentVideoElement = videoRef.current
+    const currentVideoElement = videoRef.current;
 
     return () => {
       if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current)
-        hoverTimerRef.current = null
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
       }
 
       if (imageLoaderManagerRef.current) {
-        imageLoaderManagerRef.current.cleanup()
-        imageLoaderManagerRef.current = null
+        imageLoaderManagerRef.current.cleanup();
+        imageLoaderManagerRef.current = null;
       }
 
-      loadedVideoKeyRef.current = null
-      resetVideoElement(currentVideoElement)
-    }
-  }, [])
+      loadedVideoKeyRef.current = null;
+      resetVideoElement(currentVideoElement);
+    };
+  }, []);
 
   return {
     videoRef,
@@ -237,5 +269,5 @@ export const useLivePhotoHandler = ({ data, imageLoaded }: UseLivePhotoHandlerPr
     handleMouseEnter,
     handleMouseLeave,
     handleVideoEnded,
-  }
-}
+  };
+};

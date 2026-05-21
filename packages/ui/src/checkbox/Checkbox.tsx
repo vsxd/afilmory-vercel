@@ -1,42 +1,57 @@
-'use client'
+"use client";
 
-import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
-import type { HTMLMotionProps } from 'motion/react'
-import { m as motion } from 'motion/react'
-import * as React from 'react'
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import type { HTMLMotionProps } from "motion/react";
+import { m as motion } from "motion/react";
+import * as React from "react";
 
-import { clsxm } from '../utils/cn'
+import { clsxm } from "../utils/cn";
 
 type CheckboxProps = React.ComponentProps<typeof CheckboxPrimitive.Root> &
-  HTMLMotionProps<'button'> & {
-    indeterminate?: boolean
-  }
+  HTMLMotionProps<"button"> & {
+    indeterminate?: boolean;
+  };
 
-function Checkbox({ className, onCheckedChange, indeterminate, ...props }: CheckboxProps) {
-  const [isChecked, setIsChecked] = React.useState(props?.checked ?? props?.defaultChecked ?? false)
+function Checkbox({
+  className,
+  onCheckedChange,
+  indeterminate,
+  ...props
+}: CheckboxProps) {
+  const [isChecked, setIsChecked] = React.useState(
+    props?.checked ?? props?.defaultChecked ?? false,
+  );
 
   React.useEffect(() => {
-    if (props?.checked !== undefined) setIsChecked(props.checked)
-  }, [props?.checked])
+    if (props?.checked !== undefined) setIsChecked(props.checked);
+  }, [props?.checked]);
 
   // Determine the actual state including indeterminate
-  const checkboxState = indeterminate ? 'indeterminate' : isChecked ? 'checked' : 'unchecked'
+  const checkboxState = indeterminate
+    ? "indeterminate"
+    : isChecked
+      ? "checked"
+      : "unchecked";
 
   const handleCheckedChange = React.useCallback(
     (checked: boolean) => {
-      setIsChecked(checked)
-      onCheckedChange?.(checked)
+      setIsChecked(checked);
+      onCheckedChange?.(checked);
     },
     [onCheckedChange],
-  )
+  );
 
   return (
-    <CheckboxPrimitive.Root {...props} onCheckedChange={handleCheckedChange} asChild>
+    <CheckboxPrimitive.Root
+      {...props}
+      onCheckedChange={handleCheckedChange}
+      asChild
+    >
       <motion.button
         data-slot="checkbox"
         className={clsxm(
-          'peer size-5 flex items-center justify-center shrink-0 rounded-sm bg-fill transition-colors duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent data-[state=checked]:text-white',
-          indeterminate && 'bg-accent text-white',
+          "peer size-5 flex items-center justify-center shrink-0 rounded-sm bg-fill transition-colors duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-accent data-[state=checked]:text-white",
+          indeterminate && "bg-accent text-white",
           className,
         )}
         whileTap={{ scale: 0.95 }}
@@ -119,7 +134,7 @@ function Checkbox({ className, onCheckedChange, indeterminate, ...props }: Check
         </CheckboxPrimitive.Indicator>
       </motion.button>
     </CheckboxPrimitive.Root>
-  )
+  );
 }
 
-export { Checkbox, type CheckboxProps }
+export { Checkbox, type CheckboxProps };

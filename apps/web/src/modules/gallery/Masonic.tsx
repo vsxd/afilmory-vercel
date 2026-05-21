@@ -1,15 +1,28 @@
 // @copy internal masonic hooks
-import { useScrollViewElement } from '@afilmory/ui'
-import { clearRequestTimeout, requestTimeout } from '@essentials/request-timeout'
-import { useWindowSize } from '@react-hook/window-size'
-import { isEqual, throttle } from 'es-toolkit/compat'
-import type { ContainerPosition, MasonryProps, MasonryScrollerProps, Positioner } from 'masonic'
-import { createResizeObserver, useMasonry, usePositioner, useScrollToIndex } from 'masonic'
-import { useForceUpdate } from 'motion/react'
-import * as React from 'react'
+import { useScrollViewElement } from "@afilmory/ui";
+import {
+  clearRequestTimeout,
+  requestTimeout,
+} from "@essentials/request-timeout";
+import { useWindowSize } from "@react-hook/window-size";
+import { isEqual, throttle } from "es-toolkit/compat";
+import type {
+  ContainerPosition,
+  MasonryProps,
+  MasonryScrollerProps,
+  Positioner,
+} from "masonic";
+import {
+  createResizeObserver,
+  useMasonry,
+  usePositioner,
+  useScrollToIndex,
+} from "masonic";
+import { useForceUpdate } from "motion/react";
+import * as React from "react";
 
 export interface MasonryRef {
-  reposition: () => void
+  reposition: () => void;
 }
 /**
  * A "batteries included" masonry grid which includes all of the implementation details below. This component is the
@@ -19,56 +32,58 @@ export interface MasonryRef {
  *
  * @param props
  */
-export const Masonry = <Item,>(props: MasonryProps<Item> & { ref?: React.Ref<MasonryRef> }) => {
-  const [scrollTop, setScrollTop] = React.useState(0)
-  const [isScrolling, setIsScrolling] = React.useState(false)
-  const scrollElement = useScrollViewElement()
+export const Masonry = <Item,>(
+  props: MasonryProps<Item> & { ref?: React.Ref<MasonryRef> },
+) => {
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [isScrolling, setIsScrolling] = React.useState(false);
+  const scrollElement = useScrollViewElement();
 
-  const fps = props.scrollFps || 12
+  const fps = props.scrollFps || 12;
   React.useEffect(() => {
-    if (!scrollElement) return
+    if (!scrollElement) return;
 
-    const scrollTimer: number | null = null
+    const scrollTimer: number | null = null;
     const handleScroll = throttle(() => {
-      setIsScrolling(true)
-      setScrollTop(scrollElement.scrollTop)
-    }, 1000 / fps)
+      setIsScrolling(true);
+      setScrollTop(scrollElement.scrollTop);
+    }, 1000 / fps);
 
-    scrollElement.addEventListener('scroll', handleScroll)
+    scrollElement.addEventListener("scroll", handleScroll);
 
     return () => {
-      scrollElement.removeEventListener('scroll', handleScroll)
+      scrollElement.removeEventListener("scroll", handleScroll);
       if (scrollTimer) {
-        clearTimeout(scrollTimer)
+        clearTimeout(scrollTimer);
       }
-    }
-  }, [fps, scrollElement])
-  const didMount = React.useRef(0)
+    };
+  }, [fps, scrollElement]);
+  const didMount = React.useRef(0);
   React.useEffect(() => {
-    if (didMount.current === 1) setIsScrolling(true)
-    let didUnsubscribe = false
+    if (didMount.current === 1) setIsScrolling(true);
+    let didUnsubscribe = false;
     const to = requestTimeout(
       () => {
-        if (didUnsubscribe) return
+        if (didUnsubscribe) return;
         // This is here to prevent premature bail outs while maintaining high resolution
         // unsets. Without it there will always bee a lot of unnecessary DOM writes to style.
-        setIsScrolling(false)
+        setIsScrolling(false);
       },
       40 + 1000 / fps,
-    )
-    didMount.current = 1
+    );
+    didMount.current = 1;
     return () => {
-      didUnsubscribe = true
-      clearRequestTimeout(to)
-    }
-  }, [fps, scrollTop])
+      didUnsubscribe = true;
+      clearRequestTimeout(to);
+    };
+  }, [fps, scrollTop]);
 
-  const containerRef = React.useRef<null | HTMLElement>(null)
+  const containerRef = React.useRef<null | HTMLElement>(null);
   const windowSize = useWindowSize({
     initialWidth: props.ssrWidth,
     initialHeight: props.ssrHeight,
-  })
-  const containerPos = useContainerPosition(containerRef, windowSize)
+  });
+  const containerPos = useContainerPosition(containerRef, windowSize);
 
   const nextProps = Object.assign(
     {
@@ -78,53 +93,61 @@ export const Masonry = <Item,>(props: MasonryProps<Item> & { ref?: React.Ref<Mas
       containerRef,
     },
     props,
-  ) as any
+  ) as any;
 
-  const [positionIndex, setPositionIndex] = React.useState(0)
+  const [positionIndex, setPositionIndex] = React.useState(0);
 
   React.useImperativeHandle(props.ref, () => ({
     reposition: () => {
-      setPositionIndex((i) => i + 1)
+      setPositionIndex((i) => i + 1);
     },
-  }))
+  }));
 
   // Workaround for https://github.com/jaredLunde/masonic/issues/12
-  const itemCounter = React.useRef<number>(props.items.length)
+  const itemCounter = React.useRef<number>(props.items.length);
 
-  let shrunk = false
+  let shrunk = false;
 
   if (props.items.length !== itemCounter.current) {
-    if (props.items.length < itemCounter.current) shrunk = true
+    if (props.items.length < itemCounter.current) shrunk = true;
 
-    itemCounter.current = props.items.length
+    itemCounter.current = props.items.length;
   }
 
-  nextProps.positioner = usePositioner(nextProps, [shrunk ? Math.random() + positionIndex : positionIndex])
+  nextProps.positioner = usePositioner(nextProps, [
+    shrunk ? Math.random() + positionIndex : positionIndex,
+  ]);
 
-  nextProps.resizeObserver = useResizeObserver(nextProps.positioner)
-  nextProps.scrollTop = scrollTop
-  nextProps.isScrolling = isScrolling
-  nextProps.height = windowSize[1]
+  nextProps.resizeObserver = useResizeObserver(nextProps.positioner);
+  nextProps.scrollTop = scrollTop;
+  nextProps.isScrolling = isScrolling;
+  nextProps.height = windowSize[1];
 
   const scrollToIndex = useScrollToIndex(nextProps.positioner, {
     height: nextProps.height,
     offset: containerPos.offset,
-    align: typeof props.scrollToIndex === 'object' ? props.scrollToIndex.align : void 0,
-  })
+    align:
+      typeof props.scrollToIndex === "object"
+        ? props.scrollToIndex.align
+        : void 0,
+  });
   const index =
-    props.scrollToIndex && (typeof props.scrollToIndex === 'number' ? props.scrollToIndex : props.scrollToIndex.index)
+    props.scrollToIndex &&
+    (typeof props.scrollToIndex === "number"
+      ? props.scrollToIndex
+      : props.scrollToIndex.index);
 
   React.useEffect(() => {
-    if (index !== void 0) scrollToIndex(index)
-  }, [index, scrollToIndex])
+    if (index !== void 0) scrollToIndex(index);
+  }, [index, scrollToIndex]);
 
-  return <MasonryScroller {...nextProps} />
-}
+  return <MasonryScroller {...nextProps} />;
+};
 
 function MasonryScroller<Item>(
   props: MasonryScrollerProps<Item> & {
-    scrollTop: number
-    isScrolling: boolean
+    scrollTop: number;
+    isScrolling: boolean;
   },
 ) {
   // We put this in its own layer because it's the thing that will trigger the most updates
@@ -156,46 +179,49 @@ function MasonryScroller<Item>(
     overscanBy: props.overscanBy,
     height: props.height,
     render: props.render,
-  })
+  });
 }
 
 function useContainerPosition(
   elementRef: React.MutableRefObject<HTMLElement | null>,
   deps: React.DependencyList = [],
 ): ContainerPosition & {
-  height: number
+  height: number;
 } {
   const [containerPosition, setContainerPosition] = React.useState<
     ContainerPosition & {
-      height: number
+      height: number;
     }
   >({
     offset: 0,
     width: 0,
     height: 0,
-  })
+  });
 
   React.useLayoutEffect(() => {
-    const { current } = elementRef
+    const { current } = elementRef;
     if (current !== null) {
-      let offset = 0
-      let el = current
+      let offset = 0;
+      let el = current;
 
       do {
-        offset += el.offsetTop || 0
-        el = el.offsetParent as HTMLElement
-      } while (el)
+        offset += el.offsetTop || 0;
+        el = el.offsetParent as HTMLElement;
+      } while (el);
 
-      if (offset !== containerPosition.offset || current.offsetWidth !== containerPosition.width) {
+      if (
+        offset !== containerPosition.offset ||
+        current.offsetWidth !== containerPosition.width
+      ) {
         setContainerPosition({
           offset,
           width: current.offsetWidth,
           height: current.offsetHeight,
-        })
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, deps);
 
   React.useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
@@ -203,25 +229,28 @@ function useContainerPosition(
         const next = {
           ...prev,
           width: elementRef.current?.offsetWidth || 0,
-        }
-        if (isEqual(next, prev)) return prev
-        return next
-      })
-    })
-    resizeObserver.observe(elementRef.current as HTMLElement)
+        };
+        if (isEqual(next, prev)) return prev;
+        return next;
+      });
+    });
+    resizeObserver.observe(elementRef.current as HTMLElement);
     return () => {
-      resizeObserver.disconnect()
-    }
-  }, [containerPosition, elementRef])
+      resizeObserver.disconnect();
+    };
+  }, [containerPosition, elementRef]);
 
-  return containerPosition
+  return containerPosition;
 }
 
 function useResizeObserver(positioner: Positioner) {
-  const [forceUpdate] = useForceUpdate()
-  const resizeObserver = createResizeObserver(positioner, throttle(forceUpdate, 1000 / 12))
+  const [forceUpdate] = useForceUpdate();
+  const resizeObserver = createResizeObserver(
+    positioner,
+    throttle(forceUpdate, 1000 / 12),
+  );
   // Cleans up the resize observers when they change or the
   // component unmounts
-  React.useEffect(() => () => resizeObserver.disconnect(), [resizeObserver])
-  return resizeObserver
+  React.useEffect(() => () => resizeObserver.disconnect(), [resizeObserver]);
+  return resizeObserver;
 }
