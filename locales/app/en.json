@@ -309,6 +309,8 @@
   "explore.cluster.photos_other": "{{count}} photos",
   "explore.controls.compass": "Reset bearing",
   "explore.controls.locate": "Locate me",
+  "explore.controls.locateFailed": "Unable to get your location.",
+  "explore.controls.locateUnsupported": "Location is not supported in this browser.",
   "explore.controls.zoom.in": "Zoom in",
   "explore.controls.zoom.out": "Zoom out",
   "explore.coverage.approx": "Coverage: ~{{area}} km²",

@@ -41,8 +41,8 @@ export const ExifPanel: FC<{
   // Compute decimal GPS coordinates from raw EXIF data
   const gpsData = useMemo(() => convertExifGPSToDecimal(exifData), [exifData]);
 
-  const decimalLatitude = gpsData?.latitude || null;
-  const decimalLongitude = gpsData?.longitude || null;
+  const decimalLatitude = gpsData?.latitude ?? null;
+  const decimalLongitude = gpsData?.longitude ?? null;
 
   // 使用通用的图片格式提取函数
   const imageFormat = getImageFormat(

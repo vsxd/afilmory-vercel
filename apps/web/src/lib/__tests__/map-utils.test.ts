@@ -6,6 +6,7 @@ import type { PhotoMarker } from "~/types/map";
 import {
   calculateApproximateCoverageAreaKm2,
   calculateMapBounds,
+  convertExifGPSToDecimal,
   getInitialViewStateForMarkers,
 } from "../map-utils";
 
@@ -78,5 +79,47 @@ describe("map-utils", () => {
 
     expect(area).toBeGreaterThan(6000);
     expect(area).toBeLessThan(6300);
+  });
+
+  it("keeps valid zero latitude and longitude GPS coordinates", () => {
+    expect(
+      convertExifGPSToDecimal({
+        GPSLatitude: 0,
+        GPSLatitudeRef: "N",
+        GPSLongitude: 120.5,
+        GPSLongitudeRef: "E",
+      } as any),
+    ).toMatchObject({
+      latitude: 0,
+      longitude: 120.5,
+    });
+
+    expect(
+      convertExifGPSToDecimal({
+        GPSLatitude: 30.25,
+        GPSLatitudeRef: "N",
+        GPSLongitude: 0,
+        GPSLongitudeRef: "E",
+      } as any),
+    ).toMatchObject({
+      latitude: 30.25,
+      longitude: 0,
+    });
+  });
+
+  it("preserves a zero meter GPS altitude", () => {
+    expect(
+      convertExifGPSToDecimal({
+        GPSLatitude: 30.25,
+        GPSLatitudeRef: "N",
+        GPSLongitude: 120.5,
+        GPSLongitudeRef: "E",
+        GPSAltitude: 0,
+        GPSAltitudeRef: "Above Sea Level",
+      } as any),
+    ).toMatchObject({
+      altitude: 0,
+      altitudeRef: "Above Sea Level",
+    });
   });
 });

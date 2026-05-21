@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MiniMap } from "../MiniMap";
 
@@ -49,6 +49,10 @@ describe("MiniMap", () => {
     );
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renders when one coordinate is zero but the GPS pair is still valid", () => {
     render(<MiniMap latitude={0} longitude={120.5} photoId="photo-1" />);
 
@@ -56,5 +60,16 @@ describe("MiniMap", () => {
     expect(screen.getByRole("link").getAttribute("href")).toBe(
       "/explore?photoId=photo-1",
     );
+  });
+
+  it("encodes photo ids before placing them in the explore query string", () => {
+    render(<MiniMap latitude={30} longitude={120.5} photoId="a&b#c" />);
+
+    const href = screen.getByRole("link").getAttribute("href");
+
+    expect(href).toBe("/explore?photoId=a%26b%23c");
+    expect(
+      new URL(href!, "https://example.test").searchParams.get("photoId"),
+    ).toBe("a&b#c");
   });
 });

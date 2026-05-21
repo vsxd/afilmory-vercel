@@ -17,6 +17,7 @@ interface MiniMapProps {
 export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const { t } = useTranslation();
+  const exploreHref = `/explore?${new URLSearchParams({ photoId }).toString()}`;
 
   const handleMapLoad = useCallback(() => {
     setIsLoaded(true);
@@ -61,7 +62,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
 
       {/* 点击跳转到explore页面的遮罩 */}
       <Link
-        to={`/explore?photoId=${photoId}`}
+        to={exploreHref}
         className="absolute inset-0 cursor-pointer transition-opacity duration-200 hover:bg-black/10"
         aria-label={t("minimap.view.in.map")}
       />

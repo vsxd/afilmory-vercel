@@ -309,6 +309,8 @@
   "explore.cluster.photos_other": "写真{{count}}枚",
   "explore.controls.compass": "方向をリセット",
   "explore.controls.locate": "現在地を取得",
+  "explore.controls.locateFailed": "現在地を取得できませんでした。",
+  "explore.controls.locateUnsupported": "このブラウザーは位置情報に対応していません。",
   "explore.controls.zoom.in": "拡大",
   "explore.controls.zoom.out": "縮小",
   "explore.coverage.approx": "範囲: 約 {{area}} km²",

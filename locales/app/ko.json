@@ -309,6 +309,8 @@
   "explore.cluster.photos_other": "사진 {{count}}장",
   "explore.controls.compass": "방향 초기화",
   "explore.controls.locate": "내 위치 찾기",
+  "explore.controls.locateFailed": "위치를 가져올 수 없습니다.",
+  "explore.controls.locateUnsupported": "이 브라우저에서는 위치 정보를 지원하지 않습니다.",
   "explore.controls.zoom.in": "확대",
   "explore.controls.zoom.out": "축소",
   "explore.coverage.approx": "범위: 약 {{area}} km²",

@@ -1,6 +1,8 @@
 import { m } from "motion/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMap } from "react-map-gl/maplibre";
+import { toast } from "sonner";
 
 import type { MapControlsProps } from "./types";
 
@@ -13,6 +15,7 @@ const controlButtonClassName =
 export const MapControls = ({ onGeolocate }: MapControlsProps) => {
   const { current: map } = useMap();
   const { t } = useTranslation();
+  const [isLocating, setIsLocating] = useState(false);
 
   const handleZoomIn = () => {
     if (map) {
@@ -35,29 +38,38 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
   };
 
   const handleGeolocate = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { longitude, latitude } = position.coords;
-          if (map) {
-            map.flyTo({
-              center: [longitude, latitude],
-              zoom: 14,
-              duration: 1000,
-            });
-          }
-          onGeolocate?.(longitude, latitude);
-        },
-        (error) => {
-          console.warn("Geolocation error:", error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000,
-        },
-      );
+    if (isLocating) return;
+
+    if (!navigator.geolocation) {
+      toast.error(t("explore.controls.locateUnsupported"));
+      return;
     }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        setIsLocating(false);
+        if (map) {
+          map.flyTo({
+            center: [longitude, latitude],
+            zoom: 14,
+            duration: 1000,
+          });
+        }
+        onGeolocate?.(longitude, latitude);
+      },
+      (error) => {
+        setIsLocating(false);
+        console.warn("Geolocation error:", error);
+        toast.error(t("explore.controls.locateFailed"));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
   };
 
   return (
@@ -113,11 +125,17 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
         <button
           type="button"
           onClick={handleGeolocate}
+          disabled={isLocating}
+          aria-busy={isLocating}
           className={controlButtonClassName}
           aria-label={t("explore.controls.locate")}
           title={t("explore.controls.locate")}
         >
-          <i className="i-mingcute-location-fill text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95" />
+          <i
+            className={`i-mingcute-location-fill text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95 ${
+              isLocating ? "animate-pulse" : ""
+            }`}
+          />
         </button>
       </div>
     </m.div>

@@ -33,7 +33,7 @@ export function convertExifGPSToDecimal(exif: PickedExif | null): {
   altitude?: number;
   altitudeRef?: "Above Sea Level" | "Below Sea Level";
 } | null {
-  if (!exif?.GPSLatitude || !exif?.GPSLongitude) {
+  if (exif?.GPSLatitude == null || exif.GPSLongitude == null) {
     return null;
   }
 
@@ -80,8 +80,13 @@ export function convertExifGPSToDecimal(exif: PickedExif | null): {
     let altitude: number | undefined;
     let altitudeRef: "Above Sea Level" | "Below Sea Level" | undefined;
 
-    if (exif.GPSAltitude && typeof exif.GPSAltitude === "number") {
-      altitude = exif.GPSAltitude;
+    if (exif.GPSAltitude != null) {
+      const numericAltitude = Number(exif.GPSAltitude);
+      if (!Number.isFinite(numericAltitude)) {
+        return null;
+      }
+
+      altitude = numericAltitude;
       altitudeRef = isGpsAltitudeBelowSeaLevel(exif.GPSAltitudeRef)
         ? "Below Sea Level"
         : "Above Sea Level";

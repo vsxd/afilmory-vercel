@@ -49,10 +49,6 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
 }) => {
   const mapRef = React.useRef<MapRef>(null);
 
-  // Default map config constants
-  const DEFAULT_ANIMATION_DURATION = 1000;
-  const DEFAULT_ZOOM = 14;
-
   // Handle GeoJSON click
   const handleGeoJsonClick = React.useCallback(
     (
@@ -70,18 +66,6 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
     [handlers],
   );
 
-  // Fly to location with animation duration from config
-  const flyToLocation = React.useCallback(
-    (longitude: number, latitude: number, zoom?: number) => {
-      mapRef.current?.flyTo({
-        center: [longitude, latitude],
-        duration: DEFAULT_ANIMATION_DURATION,
-        zoom: zoom || DEFAULT_ZOOM,
-      });
-    },
-    [], // No dependencies needed as constants don't change
-  );
-
   // Handle marker click
   const handleMarkerClick = React.useCallback(
     (marker: PhotoMarker) => {
@@ -93,10 +77,9 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   // Handle geolocate
   const handleGeolocate = React.useCallback(
     (longitude: number, latitude: number) => {
-      flyToLocation(longitude, latitude);
       handlers?.onGeolocate?.(longitude, latitude);
     },
-    [flyToLocation, handlers],
+    [handlers],
   );
 
   return (

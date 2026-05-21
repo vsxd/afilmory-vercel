@@ -309,6 +309,8 @@
   "explore.cluster.photos_other": "{{count}} 张照片",
   "explore.controls.compass": "重置方向",
   "explore.controls.locate": "定位到我的位置",
+  "explore.controls.locateFailed": "无法获取你的位置。",
+  "explore.controls.locateUnsupported": "当前浏览器不支持定位。",
   "explore.controls.zoom.in": "放大",
   "explore.controls.zoom.out": "缩小",
   "explore.coverage.approx": "覆盖范围：约 {{area}} 平方公里",
