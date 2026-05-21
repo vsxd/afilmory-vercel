@@ -103,7 +103,7 @@ const processFujiRecipeValue = (value: string | null | undefined): string | null
 // widen to `string | null`, while non-string fields (numbers, optional fields
 // that may be undefined) keep their original type.
 type WidenStringFields<T> = {
-  [K in keyof T]: [T[K]] extends [string] ? string | null : T[K]
+  [K in keyof T]: [NonNullable<T[K]>] extends [string] ? string | null | Extract<T[K], undefined> : T[K]
 }
 type ProcessedFujiRecipe = WidenStringFields<FujiRecipe>
 

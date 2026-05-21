@@ -5,7 +5,9 @@ import { applyAccentTransitionStyle, getAccentTransitionStyle } from '../accent-
 describe('accent transition style', () => {
   afterEach(() => {
     vi.useRealTimers()
-    getAccentTransitionStyle()?.remove()
+    document.querySelectorAll('style[data-afilmory-accent-transition="true"]').forEach((style) => {
+      style.remove()
+    })
   })
 
   it('removes the temporary style when cleanup runs before the timeout', () => {
@@ -32,6 +34,27 @@ describe('accent transition style', () => {
     expect(getAccentTransitionStyle()).not.toBeNull()
 
     vi.advanceTimersByTime(100)
+
+    expect(getAccentTransitionStyle()).toBeNull()
+  })
+
+  it('keeps overlapping transition styles independent until each caller finishes', () => {
+    vi.useFakeTimers()
+
+    const firstCleanup = applyAccentTransitionStyle(100)
+    const secondCleanup = applyAccentTransitionStyle(200)
+
+    expect(document.querySelectorAll('style[data-afilmory-accent-transition="true"]')).toHaveLength(2)
+
+    firstCleanup()
+
+    expect(document.querySelectorAll('style[data-afilmory-accent-transition="true"]')).toHaveLength(1)
+
+    vi.advanceTimersByTime(100)
+
+    expect(document.querySelectorAll('style[data-afilmory-accent-transition="true"]')).toHaveLength(1)
+
+    secondCleanup()
 
     expect(getAccentTransitionStyle()).toBeNull()
   })
