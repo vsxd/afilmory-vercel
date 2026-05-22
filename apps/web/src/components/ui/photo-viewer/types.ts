@@ -45,6 +45,7 @@ export function getVideoSourceKey(videoSource: VideoSource): string {
 export interface ProgressiveImageProps {
   src: string;
   thumbnailSrc?: string;
+  thumbHash?: string | null;
 
   alt: string;
   width?: number;

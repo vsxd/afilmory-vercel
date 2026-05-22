@@ -122,6 +122,7 @@ export const useImageLoader = (
     const loadImage = async () => {
       try {
         const result = await imageLoaderManager.loadImage(src, {
+          priority: "high",
           onProgress,
           onError,
           onLoadingStateUpdate: (state) => {

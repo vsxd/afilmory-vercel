@@ -168,6 +168,14 @@ describe("MasonryPhotoItem", () => {
     });
   });
 
+  it("marks masonry thumbnails as low priority so detail images can win user-initiated loads", () => {
+    const { getByAltText } = render(
+      <MasonryPhotoItem data={photo} width={300} index={0} />,
+    );
+
+    expect(getByAltText("A7C01202").getAttribute("fetchpriority")).toBe("low");
+  });
+
   it("waits for async route navigation before opening the viewer", async () => {
     let resolveNavigation!: () => void;
     navigate.mockReturnValueOnce(

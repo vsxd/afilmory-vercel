@@ -221,6 +221,7 @@ export const MasonryPhotoItem = memo(
             src={data.thumbnailUrl}
             alt={data.title}
             loading="lazy"
+            fetchPriority="low"
             className={clsx(
               "absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105",
             )}

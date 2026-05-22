@@ -1,4 +1,4 @@
-import { clsxm } from "@afilmory/ui";
+import { clsxm, Thumbhash } from "@afilmory/ui";
 import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 import { AnimatePresence, m } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -36,6 +36,7 @@ const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
 export const ProgressiveImage = ({
   src,
   thumbnailSrc,
+  thumbHash,
   alt,
   width,
   height,
@@ -72,6 +73,12 @@ export const ProgressiveImage = ({
 
   const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes);
   const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE);
+  const shouldShowLowResPlaceholder = Boolean(
+    (thumbnailSrc || thumbHash) &&
+      !isThumbnailLoaded &&
+      !isHighResImageRendered &&
+      !error,
+  );
 
   // 判断是否有视频内容（Live Photo 或 Motion Photo）
   const hasVideo = Boolean(videoSource && videoSource.type !== "none");
@@ -178,6 +185,24 @@ export const ProgressiveImage = ({
       onTouchStart={handleLongPressStart}
       onTouchEnd={handleLongPressEnd}
     >
+      {shouldShowLowResPlaceholder && (
+        <div
+          className="bg-fill-quaternary pointer-events-none absolute overflow-hidden rounded-lg"
+          style={PHOTO_VIEWER_FIT_IMAGE_STYLE}
+        >
+          {thumbHash ? (
+            <Thumbhash
+              thumbHash={thumbHash}
+              className="size-full object-contain opacity-80 blur-sm"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <i className="i-mingcute-loading-line text-text-tertiary animate-spin text-2xl" />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 缩略图 - 在高分辨率图片未加载或加载失败时显示 */}
       {thumbnailSrc && (!isHighResImageRendered || error) && (
         <img
@@ -192,6 +217,7 @@ export const ProgressiveImage = ({
           style={PHOTO_VIEWER_FIT_IMAGE_STYLE}
           loading="eager"
           decoding="async"
+          fetchPriority={isCurrentImage ? "high" : "auto"}
           onLoad={handleThumbnailLoad}
         />
       )}

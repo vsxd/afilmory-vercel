@@ -10,6 +10,19 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@afilmory/ui", () => ({
+  Thumbhash: ({
+    thumbHash,
+    className,
+  }: {
+    thumbHash: string;
+    className?: string;
+  }) => (
+    <div
+      data-testid="photo-detail-thumbhash"
+      data-thumbhash={thumbHash}
+      className={className}
+    />
+  ),
   clsxm: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),
 }));
@@ -121,6 +134,25 @@ describe("ProgressiveImage", () => {
     await waitFor(() => {
       expect(thumbnail.className).toContain("opacity-100");
     });
+  });
+
+  it("keeps a thumbhash placeholder visible while the detail thumbnail is still loading", () => {
+    render(
+      <ProgressiveImage
+        src="https://example.com/photo.jpg"
+        thumbnailSrc="https://example.com/photo-thumb.jpg"
+        thumbHash="mock-thumbhash"
+        alt="Loading detail thumbnail"
+        isCurrentImage={false}
+        shouldRenderHighRes={false}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    );
+
+    expect(screen.getByTestId("photo-detail-thumbhash")).toBeTruthy();
+    expect(screen.getByAltText("Loading detail thumbnail").className).toContain(
+      "opacity-0",
+    );
   });
 
   it("renders a DOM high-resolution image when WebGL is unavailable", async () => {

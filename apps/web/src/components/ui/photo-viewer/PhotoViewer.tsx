@@ -371,6 +371,7 @@ export const PhotoViewer = ({
                               isCurrentImage={isCurrentImage}
                               src={photo.originalUrl}
                               thumbnailSrc={photo.thumbnailUrl}
+                              thumbHash={photo.thumbHash}
                               alt={photo.title}
                               width={
                                 isCurrentImage ? currentPhoto.width : undefined

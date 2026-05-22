@@ -21,6 +21,7 @@ export interface LoadingState {
 }
 
 export interface LoadingCallbacks {
+  priority?: "high" | "auto";
   onProgress?: (progress: number) => void;
   onError?: () => void;
   onLoadingStateUpdate?: (state: Partial<LoadingState>) => void;
@@ -217,7 +218,7 @@ export class ImageLoaderManager {
     src: string,
     callbacks: LoadingCallbacks = {},
   ): Promise<ImageLoadResult> {
-    const { onProgress, onError, onLoadingStateUpdate } = callbacks;
+    const { priority, onProgress, onError, onLoadingStateUpdate } = callbacks;
     const cachedRegularImage = this.getCachedRegularImage(src, callbacks);
 
     if (cachedRegularImage) {
@@ -245,6 +246,8 @@ export class ImageLoaderManager {
         }
         reject(error);
       };
+
+      const startDelay = priority === "high" ? 0 : 300;
 
       this.delayTimer = setTimeout(async () => {
         this.delayTimer = null;
@@ -335,7 +338,7 @@ export class ImageLoaderManager {
         };
 
         xhr.send();
-      }, 300);
+      }, startDelay);
     });
   }
 

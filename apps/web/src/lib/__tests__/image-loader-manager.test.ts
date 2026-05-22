@@ -102,6 +102,26 @@ describe("ImageLoaderManager", () => {
     });
   });
 
+  it("starts high-priority detail image requests without the browsing delay", async () => {
+    const manager = new ImageLoaderManager();
+    const resultPromise = manager.loadImage(
+      "https://img.misfork.com/afilmory/A7C02616.jpg",
+      { priority: "high" },
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    const xhr = MockXMLHttpRequest.instances[0];
+    expect(xhr).toBeDefined();
+
+    xhr.onload?.();
+
+    await expect(resultPromise).resolves.toEqual({
+      blobSrc: "blob:mock-image",
+      blob: xhr.response,
+    });
+  });
+
   it("returns cached regular images before starting another network request", async () => {
     const firstManager = new ImageLoaderManager();
     const firstResultPromise = firstManager.loadImage(
