@@ -4,7 +4,7 @@ import * as React from "react";
 import { lazy } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
-import type { BaseMapProps, PhotoMarker } from "~/types/map";
+import type { BaseMapProps, PhotoMarker, ShootingLocation } from "~/types/map";
 
 import type { MapAdapter } from "./map-context";
 
@@ -39,7 +39,10 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   id,
   initialViewState,
   markers,
+  locations,
+  displayMode,
   selectedMarkerId,
+  selectedLocationId,
   geoJsonData,
   className,
   style,
@@ -74,6 +77,13 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
     [handlers],
   );
 
+  const handleLocationClick = React.useCallback(
+    (location: ShootingLocation) => {
+      handlers?.onLocationClick?.(location);
+    },
+    [handlers],
+  );
+
   // Handle geolocate
   const handleGeolocate = React.useCallback(
     (longitude: number, latitude: number) => {
@@ -87,9 +97,13 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
       id={id}
       initialViewState={initialViewState}
       markers={markers}
+      locations={locations}
+      displayMode={displayMode}
       selectedMarkerId={selectedMarkerId}
+      selectedLocationId={selectedLocationId}
       geoJsonData={geoJsonData}
       onMarkerClick={handleMarkerClick}
+      onLocationClick={handleLocationClick}
       onGeoJsonClick={handleGeoJsonClick}
       onGeolocate={handleGeolocate}
       className={className}

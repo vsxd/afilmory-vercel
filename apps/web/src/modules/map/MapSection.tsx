@@ -12,13 +12,22 @@ import {
 import { photoLoader } from "~/data-runtime/photo-loader";
 import { debugLog } from "~/lib/debug-log";
 import {
+  createLocationMarkers,
+  createShootingLocations,
+} from "~/lib/location-clusters";
+import {
   calculateMapBounds,
   convertExifGPSToDecimal,
   convertPhotosToMarkersFromEXIF,
   getInitialViewStateForMarkers,
 } from "~/lib/map-utils";
 import { MapProvider } from "~/modules/map/MapProvider";
-import type { MapBounds, PhotoMarker } from "~/types/map";
+import type {
+  MapBounds,
+  MapDisplayMode,
+  PhotoMarker,
+  ShootingLocation,
+} from "~/types/map";
 
 export const MapSection = () => {
   return (
@@ -31,11 +40,16 @@ export const MapSection = () => {
 const MapSectionContent = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const displayMode: MapDisplayMode =
+    searchParams.get("mode") === "photos" ? "photos" : "locations";
 
   // Photo markers state and loading logic
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [markers, setMarkers] = useState<PhotoMarker[]>([]);
+  const [shootingLocations, setShootingLocations] = useState<
+    ShootingLocation[]
+  >([]);
 
   // Track if this is the initial load to control auto fit bounds
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -56,6 +70,8 @@ const MapSectionContent = () => {
         newSearchParams.set("photoId", marker.id);
       }
 
+      newSearchParams.set("mode", "photos");
+      newSearchParams.delete("locationId");
       setSearchParams(newSearchParams, { replace: true });
 
       // Mark that this is no longer the initial load
@@ -63,10 +79,56 @@ const MapSectionContent = () => {
     },
     [searchParams, setSearchParams],
   );
+
+  const handleLocationClick = useCallback(
+    (location: ShootingLocation) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+      const currentLocationId = searchParams.get("locationId");
+      const currentPhotoId = searchParams.get("photoId");
+      const isCurrentLocation =
+        currentLocationId === location.id ||
+        (currentPhotoId ? location.photoIds.includes(currentPhotoId) : false);
+
+      if (isCurrentLocation) {
+        newSearchParams.delete("locationId");
+      } else {
+        newSearchParams.set("locationId", location.id);
+      }
+
+      newSearchParams.delete("photoId");
+      newSearchParams.delete("mode");
+      setSearchParams(newSearchParams, { replace: true });
+      setIsInitialLoad(false);
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const handleDisplayModeChange = useCallback(
+    (nextMode: MapDisplayMode) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+
+      if (nextMode === "photos") {
+        newSearchParams.set("mode", "photos");
+        newSearchParams.delete("locationId");
+      } else {
+        newSearchParams.delete("mode");
+      }
+
+      setSearchParams(newSearchParams, { replace: true });
+      setIsInitialLoad(false);
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const locationMarkers = useMemo(
+    () => createLocationMarkers(shootingLocations),
+    [shootingLocations],
+  );
+  const activeMarkers = displayMode === "locations" ? locationMarkers : markers;
   const bounds = useMemo<MapBounds | null>(() => {
-    if (markers.length === 0) return null;
-    return calculateMapBounds(markers);
-  }, [markers]);
+    if (activeMarkers.length === 0) return null;
+    return calculateMapBounds(activeMarkers);
+  }, [activeMarkers]);
 
   // Load photo markers effect
   useEffect(() => {
@@ -79,6 +141,7 @@ const MapSectionContent = () => {
         const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
 
         setMarkers(photoMarkers);
+        setShootingLocations(createShootingLocations(photoMarkers));
         debugLog(`Found ${photoMarkers.length} photos with GPS coordinates`);
       } catch (err) {
         const error =
@@ -95,31 +158,67 @@ const MapSectionContent = () => {
     loadPhotoMarkersData();
   }, [setMarkers]);
 
-  // Parse URL parameters - only use photoId
-  const { latitude, longitude, zoom, photoId } = useMemo(() => {
-    const photoIdParam = searchParams.get("photoId");
+  // Parse URL parameters and map photo selections into the active display mode.
+  const { latitude, longitude, zoom, selectedPhotoId, selectedLocationId } =
+    useMemo(() => {
+      const photoIdParam = searchParams.get("photoId");
+      const locationIdParam = searchParams.get("locationId");
 
-    if (photoIdParam) {
-      const photo = photoLoader.getPhoto(photoIdParam);
-      const gpsData = convertExifGPSToDecimal(photo?.exif ?? null);
+      if (displayMode === "locations") {
+        const selectedLocation =
+          shootingLocations.find(
+            (location) => location.id === locationIdParam,
+          ) ??
+          shootingLocations.find((location) =>
+            photoIdParam ? location.photoIds.includes(photoIdParam) : false,
+          );
 
-      if (gpsData) {
+        if (selectedLocation) {
+          return {
+            latitude: selectedLocation.latitude,
+            longitude: selectedLocation.longitude,
+            zoom: 15,
+            selectedPhotoId: null,
+            selectedLocationId: selectedLocation.id,
+          };
+        }
+
         return {
-          latitude: gpsData.latitude,
-          longitude: gpsData.longitude,
-          zoom: 15, // Default zoom when coordinates derived from photo
-          photoId: photoIdParam,
+          latitude: null,
+          longitude: null,
+          zoom: null,
+          selectedPhotoId: null,
+          selectedLocationId: locationIdParam,
         };
       }
-    }
 
-    return {
-      latitude: null,
-      longitude: null,
-      zoom: null,
-      photoId: photoIdParam,
-    };
-  }, [searchParams]);
+      if (photoIdParam) {
+        const marker = markers.find((item) => item.id === photoIdParam);
+        const gpsData = marker
+          ? { latitude: marker.latitude, longitude: marker.longitude }
+          : convertExifGPSToDecimal(
+              photoLoader.getPhoto(photoIdParam)?.exif ?? null,
+            );
+
+        if (gpsData) {
+          return {
+            latitude: gpsData.latitude,
+            longitude: gpsData.longitude,
+            zoom: 15, // Default zoom when coordinates derived from photo
+            selectedPhotoId: photoIdParam,
+            selectedLocationId: null,
+          };
+        }
+      }
+
+      return {
+        latitude: null,
+        longitude: null,
+        zoom: null,
+        selectedPhotoId: photoIdParam,
+        selectedLocationId: null,
+      };
+    }, [displayMode, markers, searchParams, shootingLocations]);
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {
@@ -133,8 +232,8 @@ const MapSectionContent = () => {
     }
 
     // Fall back to markers-based view state
-    return getInitialViewStateForMarkers(markers);
-  }, [markers, latitude, longitude, zoom]);
+    return getInitialViewStateForMarkers(activeMarkers);
+  }, [activeMarkers, latitude, longitude, zoom]);
 
   // Show loading state
   if (isLoading) {
@@ -164,7 +263,13 @@ const MapSectionContent = () => {
       <MapBackButton />
 
       {/* Map info panel */}
-      <MapInfoPanel markersCount={markers.length} bounds={bounds} />
+      <MapInfoPanel
+        displayMode={displayMode}
+        locationsCount={shootingLocations.length}
+        photosCount={markers.length}
+        bounds={bounds}
+        onDisplayModeChange={handleDisplayModeChange}
+      />
 
       {/* Generic Map component */}
       <m.div
@@ -175,13 +280,21 @@ const MapSectionContent = () => {
       >
         <GenericMap
           markers={markers}
+          locations={shootingLocations}
+          displayMode={displayMode}
           initialViewState={initialViewState}
           autoFitBounds={
             isInitialLoad && latitude === null && longitude === null
           }
-          syncViewStateOnInitialViewStateChange={Boolean(photoId)}
-          selectedMarkerId={photoId}
+          syncViewStateOnInitialViewStateChange={Boolean(
+            selectedPhotoId || selectedLocationId,
+          )}
+          selectedMarkerId={displayMode === "photos" ? selectedPhotoId : null}
+          selectedLocationId={
+            displayMode === "locations" ? selectedLocationId : null
+          }
           onMarkerClick={handleMarkerClick}
+          onLocationClick={handleLocationClick}
           className="h-full w-full"
         />
       </m.div>

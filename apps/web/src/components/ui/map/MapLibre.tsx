@@ -5,20 +5,29 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
+import { createLocationMarkers } from "~/lib/location-clusters";
 import { getMapStyle } from "~/lib/map/style";
 import { calculateMapBounds } from "~/lib/map-utils";
-import type { PhotoMarker } from "~/types/map";
+import type {
+  MapDisplayMode,
+  PhotoMarker,
+  ShootingLocation,
+} from "~/types/map";
 
 import {
+  clusterLocations,
   ClusterMarker,
   clusterMarkers,
   DEFAULT_MARKERS,
   DEFAULT_STYLE,
   DEFAULT_VIEW_STATE,
   GeoJsonLayer,
+  LocationMarkerPin,
   MapControls,
   PhotoMarkerPin,
 } from "./shared";
+
+const DEFAULT_LOCATIONS: ShootingLocation[] = [];
 
 export interface PureMaplibreProps {
   id?: string;
@@ -28,9 +37,13 @@ export interface PureMaplibreProps {
     zoom: number;
   };
   markers?: PhotoMarker[];
+  locations?: ShootingLocation[];
+  displayMode?: MapDisplayMode;
   selectedMarkerId?: string | null;
+  selectedLocationId?: string | null;
   geoJsonData?: GeoJSON.FeatureCollection;
   onMarkerClick?: (marker: PhotoMarker) => void;
+  onLocationClick?: (location: ShootingLocation) => void;
   onGeoJsonClick?: (event: any) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
   onClusterClick?: (longitude: number, latitude: number) => void;
@@ -45,9 +58,13 @@ export const Maplibre = ({
   id,
   initialViewState = DEFAULT_VIEW_STATE,
   markers = DEFAULT_MARKERS,
+  locations = DEFAULT_LOCATIONS,
+  displayMode = "locations",
   selectedMarkerId,
+  selectedLocationId,
   geoJsonData,
   onMarkerClick,
+  onLocationClick,
   onGeoJsonClick,
   onGeolocate,
   onClusterClick,
@@ -61,6 +78,11 @@ export const Maplibre = ({
   const [viewState, setViewState] = useState(initialViewState);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasInitialFitCompleted, setHasInitialFitCompleted] = useState(false);
+  const fitMarkers = useMemo(
+    () =>
+      displayMode === "locations" ? createLocationMarkers(locations) : markers,
+    [displayMode, locations, markers],
+  );
 
   // Handle marker click - only call the external callback
   const handleMarkerClick = useCallback(
@@ -83,6 +105,24 @@ export const Maplibre = ({
     }
   }, [selectedMarkerId, onMarkerClick, markers]);
 
+  const handleLocationClick = useCallback(
+    (location: ShootingLocation) => {
+      onLocationClick?.(location);
+    },
+    [onLocationClick],
+  );
+
+  const handleLocationClose = useCallback(() => {
+    if (selectedLocationId && onLocationClick) {
+      const selectedLocation = locations.find(
+        (location) => location.id === selectedLocationId,
+      );
+      if (selectedLocation) {
+        onLocationClick(selectedLocation);
+      }
+    }
+  }, [selectedLocationId, onLocationClick, locations]);
+
   useEffect(() => {
     if (autoFitBounds || !syncViewStateOnInitialViewStateChange) {
       return;
@@ -94,9 +134,16 @@ export const Maplibre = ({
 
   // Clustered markers
   const clusteredMarkers = useMemo(
-    () => clusterMarkers(markers, currentZoom),
-    [markers, currentZoom],
+    () =>
+      displayMode === "locations"
+        ? clusterLocations(locations, currentZoom)
+        : clusterMarkers(markers, currentZoom),
+    [displayMode, locations, markers, currentZoom],
   );
+
+  useEffect(() => {
+    setHasInitialFitCompleted(false);
+  }, [displayMode, fitMarkers]);
 
   const handleClusterClick = useCallback(
     (longitude: number, latitude: number) => {
@@ -144,23 +191,23 @@ export const Maplibre = ({
   const fitMapToBounds = useCallback(() => {
     if (
       !autoFitBounds ||
-      markers.length === 0 ||
+      fitMarkers.length === 0 ||
       !isMapLoaded ||
       hasInitialFitCompleted
     )
       return;
 
-    const bounds = calculateMapBounds(markers);
+    const bounds = calculateMapBounds(fitMarkers);
     if (!bounds) return;
 
     // 标记初次适配已完成
     setHasInitialFitCompleted(true);
 
     // 如果只有一个点，设置默认缩放级别
-    if (markers.length === 1) {
+    if (fitMarkers.length === 1) {
       const newViewState = {
-        longitude: markers[0].longitude,
-        latitude: markers[0].latitude,
+        longitude: fitMarkers[0].longitude,
+        latitude: fitMarkers[0].latitude,
         zoom: 13, // 单点时的合理缩放级别
       };
       setViewState(newViewState);
@@ -230,7 +277,7 @@ export const Maplibre = ({
       setCurrentZoom(zoom);
     }
   }, [
-    markers,
+    fitMarkers,
     autoFitBounds,
     isMapLoaded,
     mapRef,
@@ -290,26 +337,41 @@ export const Maplibre = ({
                 longitude={clusterPoint.geometry.coordinates[0]}
                 latitude={clusterPoint.geometry.coordinates[1]}
                 pointCount={clusterPoint.properties.point_count || 0}
+                displayMode={displayMode}
                 representativeMarker={clusterPoint.properties.marker}
                 clusteredPhotos={clusterPoint.properties.clusteredPhotos}
+                clusteredLocations={clusterPoint.properties.clusteredLocations}
                 onClusterClick={handleClusterClick}
               />
             );
-          } else {
-            // Render individual marker
-            const { marker } = clusterPoint.properties;
-            if (!marker) return null;
+          }
 
+          if (clusterPoint.properties.location) {
+            const { location } = clusterPoint.properties;
             return (
-              <PhotoMarkerPin
-                key={marker.id}
-                marker={marker}
-                isSelected={selectedMarkerId === marker.id}
-                onClick={handleMarkerClick}
-                onClose={handleMarkerClose}
+              <LocationMarkerPin
+                key={location.id}
+                location={location}
+                isSelected={selectedLocationId === location.id}
+                onClick={handleLocationClick}
+                onClose={handleLocationClose}
               />
             );
           }
+
+          // Render individual marker
+          const { marker } = clusterPoint.properties;
+          if (!marker) return null;
+
+          return (
+            <PhotoMarkerPin
+              key={marker.id}
+              marker={marker}
+              isSelected={selectedMarkerId === marker.id}
+              onClick={handleMarkerClick}
+              onClose={handleMarkerClose}
+            />
+          );
         })}
 
         {/* GeoJSON Layer */}

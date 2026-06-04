@@ -1,246 +1,163 @@
-import { normalizeLongitude } from "~/lib/map-utils";
-import type { PhotoMarker } from "~/types/map";
+import Supercluster from "supercluster";
+
+import type { PhotoMarker, ShootingLocation } from "~/types/map";
 
 import type { ClusterPoint } from "./types";
 
-const HIGH_ZOOM_UNCLUSTERED_LIMIT = 300;
-const MIN_CLUSTER_THRESHOLD = 0.001;
+const CLUSTER_BBOX: [number, number, number, number] = [-180, -90, 180, 90];
+const CLUSTER_RADIUS = 48;
+const CLUSTER_MAX_ZOOM = 16;
 
-interface ClusterAccumulator {
-  markers: PhotoMarker[];
-  latSum: number;
-  longitudeSinSum: number;
-  longitudeCosSum: number;
-  centerLatitude: number;
-  centerLongitude: number;
-  centerWrappedLongitude: number;
-  cellKey: string;
-}
-
-const toWrappedLongitude = (longitude: number): number => {
-  const normalized = normalizeLongitude(longitude);
-  return normalized < 0 ? normalized + 360 : normalized;
+type PhotoPointProperties = {
+  kind: "photo";
+  marker: PhotoMarker;
 };
 
-const getClusterThreshold = (markersCount: number, zoom: number): number => {
-  const baseThreshold = Math.max(
-    MIN_CLUSTER_THRESHOLD,
-    0.01 / Math.pow(2, zoom - 10),
-  );
+type LocationPointProperties = {
+  kind: "location";
+  marker: PhotoMarker;
+  location: ShootingLocation;
+};
 
-  if (markersCount <= HIGH_ZOOM_UNCLUSTERED_LIMIT) {
-    return baseThreshold;
+type PointProperties = PhotoPointProperties | LocationPointProperties;
+type ClusterProperties = Record<string, never>;
+type PointFeature = Supercluster.PointFeature<PointProperties>;
+type ClusterFeature = Supercluster.ClusterFeature<ClusterProperties>;
+type IndexedFeature = ClusterFeature | PointFeature;
+
+const getClusterPointGeometry = (
+  feature: IndexedFeature,
+): ClusterPoint["geometry"] => {
+  const [longitude, latitude] = feature.geometry.coordinates;
+
+  if (typeof longitude !== "number" || typeof latitude !== "number") {
+    throw new TypeError("Cluster point is missing longitude or latitude.");
   }
-
-  return baseThreshold * Math.sqrt(markersCount / HIGH_ZOOM_UNCLUSTERED_LIMIT);
-};
-
-const getCellCoordinates = (
-  wrappedLongitude: number,
-  latitude: number,
-  threshold: number,
-) => ({
-  lng: Math.floor(wrappedLongitude / threshold),
-  lat: Math.floor(latitude / threshold),
-});
-
-const getCellKey = (
-  wrappedLongitude: number,
-  latitude: number,
-  threshold: number,
-) => {
-  const cell = getCellCoordinates(wrappedLongitude, latitude, threshold);
-  return `${cell.lng}:${cell.lat}`;
-};
-
-const getLongitudeCenter = (cluster: ClusterAccumulator): number =>
-  normalizeLongitude(
-    (Math.atan2(cluster.longitudeSinSum, cluster.longitudeCosSum) * 180) /
-      Math.PI,
-  );
-
-const getDistance = (
-  markerWrappedLongitude: number,
-  markerLatitude: number,
-  cluster: ClusterAccumulator,
-): number => {
-  const lngDiff = Math.abs(
-    markerWrappedLongitude - cluster.centerWrappedLongitude,
-  );
-  const wrappedLngDiff = Math.min(lngDiff, 360 - lngDiff);
-  const latDiff = markerLatitude - cluster.centerLatitude;
-
-  return Math.hypot(wrappedLngDiff, latDiff);
-};
-
-const addClusterToGrid = (
-  grid: Map<string, ClusterAccumulator[]>,
-  cluster: ClusterAccumulator,
-) => {
-  const bucket = grid.get(cluster.cellKey);
-  if (bucket) {
-    bucket.push(cluster);
-  } else {
-    grid.set(cluster.cellKey, [cluster]);
-  }
-};
-
-const updateClusterCell = (
-  grid: Map<string, ClusterAccumulator[]>,
-  cluster: ClusterAccumulator,
-  threshold: number,
-) => {
-  const nextCellKey = getCellKey(
-    cluster.centerWrappedLongitude,
-    cluster.centerLatitude,
-    threshold,
-  );
-
-  if (nextCellKey === cluster.cellKey) return;
-
-  const currentBucket = grid.get(cluster.cellKey);
-  const currentIndex = currentBucket?.indexOf(cluster) ?? -1;
-  if (currentBucket && currentIndex >= 0) {
-    currentBucket.splice(currentIndex, 1);
-  }
-
-  cluster.cellKey = nextCellKey;
-  addClusterToGrid(grid, cluster);
-};
-
-const addMarkerToCluster = (
-  grid: Map<string, ClusterAccumulator[]>,
-  cluster: ClusterAccumulator,
-  marker: PhotoMarker,
-  threshold: number,
-) => {
-  const longitudeRadians =
-    (normalizeLongitude(marker.longitude) * Math.PI) / 180;
-
-  cluster.markers.push(marker);
-  cluster.latSum += marker.latitude;
-  cluster.longitudeSinSum += Math.sin(longitudeRadians);
-  cluster.longitudeCosSum += Math.cos(longitudeRadians);
-  cluster.centerLatitude = cluster.latSum / cluster.markers.length;
-  cluster.centerLongitude = getLongitudeCenter(cluster);
-  cluster.centerWrappedLongitude = toWrappedLongitude(cluster.centerLongitude);
-
-  updateClusterCell(grid, cluster, threshold);
-};
-
-const createCluster = (
-  marker: PhotoMarker,
-  threshold: number,
-): ClusterAccumulator => {
-  const longitude = normalizeLongitude(marker.longitude);
-  const longitudeRadians = (longitude * Math.PI) / 180;
-  const wrappedLongitude = toWrappedLongitude(marker.longitude);
 
   return {
-    markers: [marker],
-    latSum: marker.latitude,
-    longitudeSinSum: Math.sin(longitudeRadians),
-    longitudeCosSum: Math.cos(longitudeRadians),
-    centerLatitude: marker.latitude,
-    centerLongitude: longitude,
-    centerWrappedLongitude: wrappedLongitude,
-    cellKey: getCellKey(wrappedLongitude, marker.latitude, threshold),
+    type: "Point",
+    coordinates: [longitude, latitude],
   };
 };
 
-const createSinglePoint = (marker: PhotoMarker): ClusterPoint => ({
+const isClusterFeature = (feature: IndexedFeature): feature is ClusterFeature =>
+  "cluster" in feature.properties && feature.properties.cluster === true;
+
+const createPhotoPoint = (marker: PhotoMarker): PointFeature => ({
   type: "Feature",
-  properties: { marker },
+  properties: {
+    kind: "photo",
+    marker,
+  },
   geometry: {
     type: "Point",
     coordinates: [marker.longitude, marker.latitude],
   },
 });
 
-/**
- * Grid-based clustering that avoids full pairwise marker scans.
- * @param markers Array of photo markers to cluster
- * @param zoom Current zoom level
- * @returns Array of cluster points
- */
+const createLocationPoint = (location: ShootingLocation): PointFeature => ({
+  type: "Feature",
+  properties: {
+    kind: "location",
+    marker: location.representativeMarker,
+    location,
+  },
+  geometry: {
+    type: "Point",
+    coordinates: [location.longitude, location.latitude],
+  },
+});
+
+const createIndex = (features: PointFeature[]) =>
+  new Supercluster<PointProperties, ClusterProperties>({
+    radius: CLUSTER_RADIUS,
+    maxZoom: CLUSTER_MAX_ZOOM,
+  }).load(features);
+
+const createSinglePoint = (feature: PointFeature): ClusterPoint => {
+  if (feature.properties.kind === "location") {
+    return {
+      type: "Feature",
+      properties: {
+        marker: feature.properties.marker,
+        location: feature.properties.location,
+      },
+      geometry: getClusterPointGeometry(feature),
+    };
+  }
+
+  return {
+    type: "Feature",
+    properties: {
+      marker: feature.properties.marker,
+    },
+    geometry: getClusterPointGeometry(feature),
+  };
+};
+
+const createClusterPoint = (
+  feature: ClusterFeature,
+  index: Supercluster<PointProperties, ClusterProperties>,
+): ClusterPoint => {
+  const leaves = index.getLeaves(
+    feature.properties.cluster_id,
+    Number.POSITIVE_INFINITY,
+  );
+  const markers = leaves.map((leaf) => leaf.properties.marker);
+  const locations = leaves
+    .map((leaf) =>
+      leaf.properties.kind === "location" ? leaf.properties.location : null,
+    )
+    .filter((location): location is ShootingLocation => location !== null);
+
+  return {
+    type: "Feature",
+    properties: {
+      cluster: true,
+      cluster_id: feature.properties.cluster_id,
+      point_count: feature.properties.point_count,
+      point_count_abbreviated: String(
+        feature.properties.point_count_abbreviated,
+      ),
+      marker: markers[0],
+      clusteredPhotos:
+        locations.length > 0
+          ? locations.flatMap((location) => location.markers)
+          : markers,
+      clusteredLocations: locations.length > 0 ? locations : undefined,
+    },
+    geometry: getClusterPointGeometry(feature),
+  };
+};
+
+const clusterPoints = (features: PointFeature[], zoom: number) => {
+  if (features.length === 0) return [];
+
+  const index = createIndex(features);
+  const clusterZoom = Math.max(
+    0,
+    Math.min(CLUSTER_MAX_ZOOM + 1, Math.floor(zoom)),
+  );
+
+  return index.getClusters(CLUSTER_BBOX, clusterZoom).map((feature) => {
+    if (isClusterFeature(feature)) {
+      return createClusterPoint(feature, index);
+    }
+
+    return createSinglePoint(feature);
+  });
+};
+
 export function clusterMarkers(
   markers: PhotoMarker[],
   zoom: number,
 ): ClusterPoint[] {
-  if (markers.length === 0) return [];
+  return clusterPoints(markers.map(createPhotoPoint), zoom);
+}
 
-  if (zoom >= 15 && markers.length <= HIGH_ZOOM_UNCLUSTERED_LIMIT) {
-    return markers.map(createSinglePoint);
-  }
-
-  const threshold = getClusterThreshold(markers.length, zoom);
-  const grid = new Map<string, ClusterAccumulator[]>();
-  const clusters: ClusterAccumulator[] = [];
-  const longitudeCellCount = Math.max(1, Math.ceil(360 / threshold));
-
-  const getNeighborClusters = (
-    wrappedLongitude: number,
-    latitude: number,
-  ): ClusterAccumulator[] => {
-    const cell = getCellCoordinates(wrappedLongitude, latitude, threshold);
-    const neighbors: ClusterAccumulator[] = [];
-
-    for (let lngOffset = -1; lngOffset <= 1; lngOffset += 1) {
-      for (let latOffset = -1; latOffset <= 1; latOffset += 1) {
-        const lngCell =
-          (cell.lng + lngOffset + longitudeCellCount) % longitudeCellCount;
-        const latCell = cell.lat + latOffset;
-        const bucket = grid.get(`${lngCell}:${latCell}`);
-        if (bucket) neighbors.push(...bucket);
-      }
-    }
-
-    return neighbors;
-  };
-
-  for (const marker of markers) {
-    const wrappedLongitude = toWrappedLongitude(marker.longitude);
-    let nearestCluster: ClusterAccumulator | null = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (const cluster of getNeighborClusters(
-      wrappedLongitude,
-      marker.latitude,
-    )) {
-      const distance = getDistance(wrappedLongitude, marker.latitude, cluster);
-      if (distance <= threshold && distance < nearestDistance) {
-        nearestCluster = cluster;
-        nearestDistance = distance;
-      }
-    }
-
-    if (nearestCluster) {
-      addMarkerToCluster(grid, nearestCluster, marker, threshold);
-    } else {
-      const cluster = createCluster(marker, threshold);
-      clusters.push(cluster);
-      addClusterToGrid(grid, cluster);
-    }
-  }
-
-  return clusters.map((cluster) => {
-    if (cluster.markers.length === 1) {
-      return createSinglePoint(cluster.markers[0]);
-    }
-
-    return {
-      type: "Feature",
-      properties: {
-        cluster: true,
-        point_count: cluster.markers.length,
-        point_count_abbreviated: cluster.markers.length.toString(),
-        marker: cluster.markers[0],
-        clusteredPhotos: cluster.markers,
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [cluster.centerLongitude, cluster.centerLatitude],
-      },
-    };
-  });
+export function clusterLocations(
+  locations: ShootingLocation[],
+  zoom: number,
+): ClusterPoint[] {
+  return clusterPoints(locations.map(createLocationPoint), zoom);
 }

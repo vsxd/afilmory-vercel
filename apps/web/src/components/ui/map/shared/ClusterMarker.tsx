@@ -17,6 +17,7 @@ export const ClusterMarker = ({
   longitude,
   latitude,
   pointCount,
+  displayMode = "photos",
   representativeMarker: _representativeMarker,
   clusteredPhotos = DEFAULT_CLUSTERED_PHOTOS,
   onClusterClick,
@@ -49,7 +50,12 @@ export const ClusterMarker = ({
             onKeyDown={handleClusterKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={t("explore.found.locations", { count: pointCount })}
+            aria-label={t(
+              displayMode === "locations"
+                ? "explore.cluster.locations"
+                : "explore.cluster.photos",
+              { count: pointCount },
+            )}
           >
             {/* Subtle pulse ring for attention */}
             <div

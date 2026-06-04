@@ -2,15 +2,21 @@ import * as React from "react";
 
 import { getInitialViewStateForMarkers } from "~/lib/map-utils";
 import { useMapAdapter } from "~/modules/map/map-context";
-import type { BaseMapProps, PhotoMarker } from "~/types/map";
+import type { BaseMapProps, PhotoMarker, ShootingLocation } from "~/types/map";
 
 interface GenericMapProps extends Omit<BaseMapProps, "handlers"> {
   /** Photo markers to display */
   markers?: PhotoMarker[];
+  /** Shooting locations to display */
+  locations?: ShootingLocation[];
   /** ID of the marker to select */
   selectedMarkerId?: string | null;
+  /** ID of the shooting location to select */
+  selectedLocationId?: string | null;
   /** Callback when marker is clicked */
   onMarkerClick?: (marker: PhotoMarker) => void;
+  /** Callback when shooting location is clicked */
+  onLocationClick?: (location: ShootingLocation) => void;
   /** Callback when GeoJSON feature is clicked */
   onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
   /** Callback for geolocation */
@@ -26,8 +32,12 @@ const DEFAULT_MARKERS: PhotoMarker[] = [];
  */
 export const GenericMap: React.FC<GenericMapProps> = ({
   markers = DEFAULT_MARKERS,
+  locations,
+  displayMode,
   selectedMarkerId,
+  selectedLocationId,
   onMarkerClick,
+  onLocationClick,
   onGeoJsonClick,
   onGeolocate,
   initialViewState,
@@ -48,10 +58,11 @@ export const GenericMap: React.FC<GenericMapProps> = ({
   const handlers = React.useMemo(
     () => ({
       onMarkerClick,
+      onLocationClick,
       onGeoJsonClick,
       onGeolocate,
     }),
-    [onMarkerClick, onGeoJsonClick, onGeolocate],
+    [onMarkerClick, onLocationClick, onGeoJsonClick, onGeolocate],
   );
 
   if (!adapter) {
@@ -64,7 +75,10 @@ export const GenericMap: React.FC<GenericMapProps> = ({
     <MapComponent
       {...props}
       markers={markers}
+      locations={locations}
+      displayMode={displayMode}
       selectedMarkerId={selectedMarkerId}
+      selectedLocationId={selectedLocationId}
       initialViewState={calculatedInitialViewState}
       autoFitBounds={autoFitBounds}
       handlers={handlers}

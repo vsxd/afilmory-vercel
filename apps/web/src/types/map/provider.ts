@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 
-import type { MapBounds, MapViewState, PhotoMarker } from "./core";
+import type {
+  MapBounds,
+  MapDisplayMode,
+  MapViewState,
+  PhotoMarker,
+  ShootingLocation,
+} from "./core";
 
 /**
  * Generic map provider interface
@@ -21,6 +27,7 @@ export interface MapProvider {
  */
 export interface MapHandlers {
   onMarkerClick?: (marker: PhotoMarker) => void;
+  onLocationClick?: (location: ShootingLocation) => void;
   onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
   onPopupClose?: () => void;
@@ -33,7 +40,10 @@ export interface BaseMapProps {
   id?: string;
   initialViewState?: MapViewState;
   markers?: PhotoMarker[];
+  locations?: ShootingLocation[];
+  displayMode?: MapDisplayMode;
   selectedMarkerId?: string | null;
+  selectedLocationId?: string | null;
   geoJsonData?: GeoJSON.FeatureCollection;
   className?: string;
   style?: React.CSSProperties;

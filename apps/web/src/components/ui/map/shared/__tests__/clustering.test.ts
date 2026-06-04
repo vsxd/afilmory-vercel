@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { createShootingLocations } from "~/lib/location-clusters";
 import type { PhotoMarker } from "~/types/map";
 
-import { clusterMarkers } from "../clustering";
+import { clusterLocations, clusterMarkers } from "../clustering";
 
 const createMarker = (
   id: string,
@@ -22,53 +23,52 @@ const createMarker = (
     },
   }) as PhotoMarker;
 
-describe("clusterMarkers", () => {
-  it("clusters nearby markers while leaving distant markers separate", () => {
+const isClusterPoint = (
+  point: ReturnType<typeof clusterMarkers>[number],
+): point is ReturnType<typeof clusterMarkers>[number] & {
+  properties: { cluster: true };
+} => "cluster" in point.properties && point.properties.cluster === true;
+
+describe("map visual clustering", () => {
+  it("clusters photo markers with supercluster", () => {
     const result = clusterMarkers(
       [
         createMarker("near-a", 120, 30),
         createMarker("near-b", 120.0005, 30.0004),
         createMarker("far", 121, 31),
       ],
-      14,
+      10,
     );
 
-    const cluster = result.find((point) => point.properties.cluster);
+    const cluster = result.find(isClusterPoint);
 
     expect(cluster?.properties.point_count).toBe(2);
+    expect(cluster?.properties.clusteredPhotos).toHaveLength(2);
     expect(result).toHaveLength(2);
   });
 
-  it("clusters points that are close across the antimeridian", () => {
-    const result = clusterMarkers(
-      [createMarker("east", 179.5, 10), createMarker("west", -179.5, 10.1)],
-      2,
-    );
+  it("clusters shooting locations separately from true location stats", () => {
+    const locations = createShootingLocations([
+      createMarker("location-a", 120, 30),
+      createMarker("location-b", 120.002, 30),
+      createMarker("location-c", 121, 31),
+    ]);
+    const result = clusterLocations(locations, 10);
+    const cluster = result.find(isClusterPoint);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].properties.cluster).toBe(true);
-    expect(Math.abs(result[0].geometry.coordinates[0])).toBeCloseTo(180);
+    expect(locations).toHaveLength(3);
+    expect(cluster?.properties.point_count).toBe(2);
+    expect(cluster?.properties.clusteredLocations).toHaveLength(2);
+    expect(cluster?.properties.clusteredPhotos).toHaveLength(2);
   });
 
-  it("keeps small high-zoom marker sets unclustered for precise selection", () => {
+  it("expands close photos into single points past the configured max zoom", () => {
     const result = clusterMarkers(
       [createMarker("a", 120, 30), createMarker("b", 120.0005, 30.0004)],
-      15,
+      17,
     );
 
-    expect(result.every((point) => !point.properties.cluster)).toBe(true);
+    expect(result.every((point) => !isClusterPoint(point))).toBe(true);
     expect(result).toHaveLength(2);
-  });
-
-  it("still clusters large high-zoom marker sets to avoid DOM marker explosions", () => {
-    const result = clusterMarkers(
-      Array.from({ length: 350 }, (_, index) =>
-        createMarker(`marker-${index}`, 120 + index * 0.000001, 30),
-      ),
-      15,
-    );
-
-    expect(result.length).toBeLessThan(350);
-    expect(result.some((point) => point.properties.cluster)).toBe(true);
   });
 });

@@ -1,12 +1,15 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { PhotoMarker, ShootingLocation } from "~/types/map";
+
 import { Maplibre } from "../MapLibre";
 
 let setProjectionMock: ReturnType<typeof vi.fn>;
 let fitBoundsMock: ReturnType<typeof vi.fn>;
 let flyToMock: ReturnType<typeof vi.fn>;
 let clusterMarkersMock: ReturnType<typeof vi.fn>;
+let clusterLocationsMock: ReturnType<typeof vi.fn>;
 
 vi.mock("react-map-gl/maplibre", async () => {
   const React = await import("react");
@@ -93,14 +96,70 @@ vi.mock("../shared", () => ({
       onClick={() => onClusterClick?.(longitude, latitude)}
     />
   ),
+  clusterLocations: (...args: unknown[]) => clusterLocationsMock(...args),
   clusterMarkers: (...args: unknown[]) => clusterMarkersMock(...args),
   DEFAULT_MARKERS: [],
   DEFAULT_STYLE: { width: "100%", height: "100%" },
   DEFAULT_VIEW_STATE: { longitude: -122.4, latitude: 37.8, zoom: 14 },
   GeoJsonLayer: () => null,
+  LocationMarkerPin: ({
+    location,
+    onClick,
+  }: {
+    location: ShootingLocation;
+    onClick?: (location: ShootingLocation) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="location-marker"
+      onClick={() => onClick?.(location)}
+    />
+  ),
   MapControls: () => null,
   PhotoMarkerPin: () => null,
 }));
+
+const createMarker = (
+  id: string,
+  latitude: number,
+  longitude: number,
+): PhotoMarker =>
+  ({
+    id,
+    latitude,
+    longitude,
+    photo: {
+      id,
+      title: id,
+      thumbnailUrl: "",
+      originalUrl: "",
+      thumbHash: null,
+    },
+  }) as PhotoMarker;
+
+const createLocation = (marker: PhotoMarker): ShootingLocation => ({
+  id: `location-${marker.id}`,
+  longitude: marker.longitude,
+  latitude: marker.latitude,
+  photoIds: [marker.id],
+  photoCount: 1,
+  representativeMarker: marker,
+  markers: [marker],
+  bounds: {
+    minLat: marker.latitude,
+    maxLat: marker.latitude,
+    minLng: marker.longitude,
+    maxLng: marker.longitude,
+    centerLat: marker.latitude,
+    centerLng: marker.longitude,
+    longitudeSpan: 0,
+    crossesAntimeridian: false,
+    bounds: [
+      [marker.longitude, marker.latitude],
+      [marker.longitude, marker.latitude],
+    ],
+  },
+});
 
 describe("Maplibre", () => {
   beforeEach(() => {
@@ -108,6 +167,7 @@ describe("Maplibre", () => {
     fitBoundsMock = vi.fn();
     flyToMock = vi.fn();
     clusterMarkersMock = vi.fn(() => []);
+    clusterLocationsMock = vi.fn(() => []);
   });
 
   afterEach(() => {
@@ -192,6 +252,7 @@ describe("Maplibre", () => {
       <Maplibre
         initialViewState={{ longitude: 120, latitude: 30, zoom: 5 }}
         autoFitBounds={false}
+        displayMode="photos"
         markers={[]}
         mapRef={mapRef}
       />,
@@ -204,5 +265,40 @@ describe("Maplibre", () => {
       zoom: 7,
       duration: 500,
     });
+  });
+
+  it("renders location pins and forwards location clicks in locations mode", () => {
+    const marker = createMarker("a", 30, 120);
+    const location = createLocation(marker);
+    const onLocationClick = vi.fn();
+
+    clusterLocationsMock.mockReturnValue([
+      {
+        type: "Feature",
+        properties: {
+          marker,
+          location,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [120, 30],
+        },
+      },
+    ]);
+
+    render(
+      <Maplibre
+        initialViewState={{ longitude: 120, latitude: 30, zoom: 8 }}
+        autoFitBounds={false}
+        displayMode="locations"
+        locations={[location]}
+        onLocationClick={onLocationClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("location-marker"));
+
+    expect(clusterLocationsMock).toHaveBeenCalledWith([location], 8);
+    expect(onLocationClick).toHaveBeenCalledWith(location);
   });
 });

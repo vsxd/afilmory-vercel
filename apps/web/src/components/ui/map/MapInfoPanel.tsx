@@ -6,16 +6,45 @@ import {
   calculateApproximateCoverageAreaKm2,
   normalizeLongitude,
 } from "~/lib/map-utils";
-import type { MapBounds } from "~/types/map";
+import type { MapBounds, MapDisplayMode } from "~/types/map";
 
 interface MapInfoPanelProps {
-  markersCount: number;
+  displayMode: MapDisplayMode;
+  locationsCount: number;
+  photosCount: number;
   bounds?: MapBounds | null;
+  onDisplayModeChange: (mode: MapDisplayMode) => void;
 }
 
-export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
+export const MapInfoPanel = ({
+  displayMode,
+  locationsCount,
+  photosCount,
+  bounds,
+  onDisplayModeChange,
+}: MapInfoPanelProps) => {
   const { t, i18n } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const primaryCountLabel =
+    displayMode === "locations"
+      ? t("explore.found.locations", { count: locationsCount })
+      : t("explore.found.photos", { count: photosCount });
+  const secondaryCountLabel =
+    displayMode === "locations"
+      ? t("explore.found.photosCompact", { count: photosCount })
+      : t("explore.found.locationsCompact", { count: locationsCount });
+  const modes = [
+    {
+      value: "locations",
+      label: t("explore.mode.locations"),
+      icon: "i-mingcute-map-pin-fill",
+    },
+    {
+      value: "photos",
+      label: t("explore.mode.photos"),
+      icon: "i-mingcute-camera-line",
+    },
+  ] satisfies Array<{ value: MapDisplayMode; label: string; icon: string }>;
   const areaLabel = useMemo(() => {
     if (!bounds) {
       return null;
@@ -88,12 +117,39 @@ export const MapInfoPanel = ({ markersCount, bounds }: MapInfoPanelProps) => {
                 <div className="bg-green/10 ring-green/20 flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 ring-inset">
                   <div className="bg-green h-1.5 w-1.5 rounded-full" />
                   <span className="text-text-secondary text-xs font-medium">
-                    {t("explore.found.locations", { count: markersCount })}
+                    {primaryCountLabel}
                   </span>
                 </div>
               </div>
+              <div className="text-text-tertiary mt-2 text-xs font-medium">
+                {secondaryCountLabel}
+              </div>
             </div>
           </m.div>
+
+          <div className="bg-fill-secondary/45 ring-fill-tertiary/25 mt-4 grid grid-cols-2 gap-1 rounded-xl p-1 ring-1 ring-inset">
+            {modes.map((mode) => {
+              const isActive = displayMode === mode.value;
+
+              return (
+                <button
+                  key={mode.value}
+                  type="button"
+                  className={`flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-[background-color,box-shadow,color] ${
+                    isActive
+                      ? "bg-fill-vibrant-secondary text-text shadow-sm"
+                      : "text-text-secondary hover:bg-fill-tertiary/70"
+                  }`}
+                  aria-pressed={isActive}
+                  title={mode.label}
+                  onClick={() => onDisplayModeChange(mode.value)}
+                >
+                  <i className={`${mode.icon} text-sm`} />
+                  <span className="truncate">{mode.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Coordinates Section - Collapsible */}

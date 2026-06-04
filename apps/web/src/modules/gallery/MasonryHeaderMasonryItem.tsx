@@ -9,7 +9,8 @@ import { siteConfig } from "~/config";
 import { photoLoader } from "~/data-runtime/photo-loader";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
-import { convertExifGPSToDecimal } from "~/lib/map-utils";
+import { createShootingLocations } from "~/lib/location-clusters";
+import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
@@ -26,13 +27,6 @@ const getPhotoLensName = (photo: PhotoManifest) => {
   if (!model) return null;
   const make = photo.exif?.LensMake?.trim();
   return make ? `${make} ${model}` : model;
-};
-
-const getPhotoLocationKey = (photo: PhotoManifest) => {
-  const gpsData = convertExifGPSToDecimal(photo.exif);
-  if (!gpsData) return null;
-
-  return `${gpsData.latitude.toFixed(4)},${gpsData.longitude.toFixed(4)}`;
 };
 
 const getGitHubUrl = (github: string | undefined) => {
@@ -69,7 +63,6 @@ export const MasonryHeaderMasonryItem = ({
     const photos = photoLoader.getPhotos();
     const cameraSet = new Set<string>();
     const lensSet = new Set<string>();
-    const locationSet = new Set<string>();
 
     for (const photo of photos) {
       const camera = getPhotoCameraName(photo);
@@ -77,10 +70,11 @@ export const MasonryHeaderMasonryItem = ({
 
       const lens = getPhotoLensName(photo);
       if (lens) lensSet.add(lens);
-
-      const location = getPhotoLocationKey(photo);
-      if (location) locationSet.add(location);
     }
+
+    const locationCount = createShootingLocations(
+      convertPhotosToMarkersFromEXIF(photos),
+    ).length;
 
     return [
       {
@@ -103,7 +97,7 @@ export const MasonryHeaderMasonryItem = ({
       },
       {
         id: "locations",
-        value: locationSet.size,
+        value: locationCount,
         label: t("gallery.library.stats.locations"),
         icon: "i-mingcute-map-pin-fill",
       },

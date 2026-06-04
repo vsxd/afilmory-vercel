@@ -37,6 +37,8 @@ export interface PhotoMarker {
   photo: PhotoManifestItem;
 }
 
+export type MapDisplayMode = "locations" | "photos";
+
 /**
  * Map bounds interface
  */
@@ -50,6 +52,17 @@ export interface MapBounds {
   longitudeSpan: number;
   crossesAntimeridian: boolean;
   bounds: [[number, number], [number, number]];
+}
+
+export interface ShootingLocation {
+  id: string;
+  longitude: number;
+  latitude: number;
+  photoIds: string[];
+  photoCount: number;
+  representativeMarker: PhotoMarker;
+  markers: PhotoMarker[];
+  bounds: MapBounds;
 }
 
 /**
