@@ -2,210 +2,142 @@
 
 ## 应用概述
 
-这是 Afilmory 的前端 SPA 应用，使用 React 19 + Vite 7 构建，提供现代化的照片浏览体验。
+`apps/web` 是 Afilmory 的静态 SPA 前端，使用 React 19 + Vite 7 构建。它不在运行时访问数据库或后端；照片数据来自构建注入的 manifest，站点配置来自 `window.__SITE_CONFIG__`。
 
 ## 技术栈
 
 ### 核心框架
 
-- **React 19** - 最新版本，包含 React Compiler
-- **TypeScript 5.9** - 类型安全
-- **Vite 7** - 快速构建工具
+- React 19 与 React Compiler
+- TypeScript 5.9
+- Vite 7
+- React Router 7
 
-### UI 框架
+### UI 与交互
 
-- **Tailwind CSS 4** - 原子化 CSS
-- **Radix UI** - 无障碍组件库
-- **Motion** (Framer Motion fork) - 动画库
+- Tailwind CSS 4
+- Radix UI
+- Motion
+- `@afilmory/ui`
+- `@afilmory/webgl-viewer`
 
-### 状态管理
+### 状态和数据
 
-- **Jotai** - 原子化状态管理
-- **TanStack Query** - 服务端状态和数据获取
-- **Zustand** - 轻量状态管理
+- Jotai
+- Zustand
+- TanStack Query
+- `apps/web/src/data-runtime/manifest-runtime.ts`
+- `apps/web/src/data-runtime/photo-loader.ts`
 
-### 路由
+### 国际化和地图
 
-- **React Router 7** - 类型安全的路由
+- i18next、react-i18next
+- 语言资源：`locales/app/*.json`
+- 资源注册：`apps/web/src/@types/resources.ts`
+- 支持语言：`apps/web/src/@types/constants.ts`
+- MapLibre GL、react-map-gl
 
-### 国际化
+## 当前项目结构
 
-- **i18next** - 多语言支持
-- **react-i18next** - React 集成
-
-### 地图
-
-- **MapLibre GL** - 开源地图库
-- **react-map-gl** - React 封装
-
-## 项目结构
-
-```
+```text
 apps/web/
+├── plugins/vite/
+│   ├── ast.ts
+│   ├── build-assets.ts         # 生成 OG 图片、feed.xml、sitemap.xml
+│   ├── data-inject.ts          # 注入 manifest loader 和 site config
+│   ├── deps.ts                 # vendor chunk 规则
+│   ├── locales-json.ts         # i18n JSON key 转换
+│   ├── photos-static.ts        # dev only /photos 本地映射
+│   └── rss.ts                  # RSS feed 生成
+├── public/
+│   ├── thumbnails/             # builder 生成的缩略图
+│   └── favicon / PWA icons
+├── scripts/
+│   ├── dev.ts                  # precheck + Vite dev server
+│   └── precheck.ts             # manifest 构建/复用逻辑
 ├── src/
-│   ├── pages/              # 页面组件
-│   │   ├── (root)/         # 主要页面
-│   │   │   ├── index/      # 首页（照片网格）
-│   │   │   ├── map/        # 地图视图
-│   │   │   └── about/      # 关于页面
-│   │   └── (debug)/        # 调试页面（CI 时删除）
-│   ├── components/         # 业务组件
-│   │   ├── feed/           # 照片流组件
-│   │   ├── map/            # 地图相关组件
-│   │   └── viewer/         # 照片查看器
-│   ├── lib/                # 工具和配置
-│   │   ├── i18n.ts         # 国际化配置
-│   │   ├── query-client.ts # TanStack Query 配置
-│   │   └── router.tsx      # 路由配置
-│   ├── data/               # 运行时数据辅助
-│   ├── data-runtime/       # manifest 读取与 PhotoLoader
-│   ├── hooks/              # 自定义 Hooks
-│   ├── store/              # 全局状态
-│   └── main.tsx            # 入口文件
-├── public/                 # 静态资源
-│   ├── photos/             # 照片（构建时生成）
-│   ├── thumbnails/         # 缩略图（构建时生成）
-│   ├── locales/            # 语言文件
-│   └── favicon.ico
-├── plugins/                # Vite 插件
-│   └── vite/
-│       ├── data-inject.ts          # 注入 manifest / site config
-│       ├── photos-static.ts        # 开发环境照片静态映射
-│       ├── build-assets.ts         # 生成 sitemap/feed/OG 图片
-│       └── __internal__/constants.ts
+│   ├── @types/                 # i18n resource/type constants
+│   ├── atoms/                  # Jotai atoms
+│   ├── components/             # common/gallery/photo-viewer UI
+│   ├── config/                 # runtime site config accessor
+│   ├── data-runtime/           # manifest runtime and PhotoLoader instance
+│   ├── hooks/
+│   ├── lib/
+│   ├── modules/gallery/
+│   ├── modules/map/
+│   ├── pages/
+│   │   ├── (main)/layout.tsx
+│   │   ├── (main)/photos/[photoId]/index.tsx
+│   │   ├── (data)/manifest.tsx
+│   │   ├── (debug)/blurhash.tsx
+│   │   ├── (debug)/webgl-preview.tsx
+│   │   └── explore/index.tsx
+│   ├── providers/
+│   ├── styles/
+│   ├── router.tsx              # import.meta.glob route builder
+│   └── main.tsx
 ├── index.html
-├── vite.config.ts
-└── package.json
+├── package.json
+└── vite.config.ts
 ```
+
+Production builds exclude `(debug)` and `(data)` route groups. Development keeps them available.
 
 ## 核心功能
 
-### 1. 照片网格 (Masonry Layout)
+### 照片网格
 
-使用 `masonic` 库实现瀑布流布局：
+- `MasonryRoot` 和 `modules/gallery/Masonic.tsx` 基于 Masonic 实现虚拟瀑布流。
+- 缩略图使用 `photo.thumbnailUrl`。
+- 占位和取色使用 `photo.thumbHash`。
+- 筛选状态通过 URL search params 与 Jotai 状态同步。
 
-```typescript
-import { Masonic } from 'masonic'
+### WebGL 图片查看器
 
-<Masonic
-  items={photos}
-  columnGutter={8}
-  columnWidth={250}
-  render={PhotoCard}
-/>
+真实组件名是 `WebGLImageViewer`：
+
+```tsx
+import { WebGLImageViewer } from "@afilmory/webgl-viewer";
+
+<WebGLImageViewer
+  src={photo.originalUrl}
+  sourceBlob={imageBlob}
+  width={photo.width}
+  height={photo.height}
+  onLoadingStateChange={handleLoadingState}
+  onImagePainted={handleImagePainted}
+  onError={handleError}
+/>;
 ```
 
-**特性**:
+前端包装层位于 `apps/web/src/components/ui/photo-viewer/ProgressiveImage.tsx`，会处理渐进加载、WebGL fallback、Live Photo/Motion Photo 视频和 HDR 标记。
 
-- 响应式列数
-- 虚拟滚动优化
-- 图片懒加载
-- Blurhash 占位图
+### 地图视图
 
-### 2. WebGL 图片查看器
+- 页面入口：`/explore`，文件为 `apps/web/src/pages/explore/index.tsx`。
+- 地图模块：`apps/web/src/modules/map`。
+- 经纬度来自 manifest 中的 EXIF GPS 字段和 `location` 字段。
 
-自定义 WebGL 组件 (`@afilmory/webgl-viewer`):
+### 数据加载
 
-```typescript
-import { WebGLViewer } from '@afilmory/webgl-viewer'
+Manifest runtime：
 
-<WebGLViewer
-  src={photo.url}
-  alt={photo.title}
-  maxZoom={5}
-  minZoom={0.5}
-/>
+- `dataInjectPlugin` 会注入 manifest source。
+- 开发默认内联 `window.__MANIFEST__`。
+- 生产默认生成 `assets/photos-manifest.<hash>.json` 并通过 `window.__MANIFEST_PROMISE__` fetch。
+- `AFILMORY_EMBED_MANIFEST=true|false` 可覆盖默认策略。
+
+PhotoLoader 用法：
+
+```ts
+import { photoLoader } from "~/data-runtime/photo-loader";
+
+const photos = photoLoader.getPhotos();
+const photo = photoLoader.getPhoto(photoId);
+const tags = photoLoader.getAllTags();
 ```
 
-**特性**:
-
-- GPU 加速渲染
-- 流畅缩放和平移
-- 手势支持（触摸屏）
-- 键盘快捷键
-
-### 3. 地图视图
-
-使用 MapLibre 展示带 GPS 信息的照片：
-
-```typescript
-import Map from 'react-map-gl/maplibre'
-import { Marker } from 'react-map-gl'
-
-<Map
-  mapStyle={mapStyle}
-  initialViewState={viewState}
->
-  {photos.map(photo => (
-    <Marker
-      key={photo.id}
-      longitude={photo.gps.longitude}
-      latitude={photo.gps.latitude}
-    >
-      <PhotoPin photo={photo} />
-    </Marker>
-  ))}
-</Map>
-```
-
-### 4. 数据加载
-
-使用 `PhotoLoader` 单例加载照片数据：
-
-```typescript
-import { PhotoLoader } from "@afilmory/data";
-
-const loader = PhotoLoader.getInstance();
-
-// 获取所有照片
-const photos = await loader.getAllPhotos();
-
-// 分页加载
-const page = await loader.getPhotos({ page: 1, pageSize: 20 });
-
-// 按标签过滤
-const tagged = await loader.getPhotosByTag("travel");
-
-// 搜索
-const results = await loader.searchPhotos("sunset");
-```
-
-## 设计系统
-
-### Glassmorphic Depth Design
-
-层次化的毛玻璃设计：
-
-```css
-/* Layer 1: 基础背景 */
-.layer-1 {
-  background: rgba(28, 28, 30, 0.8);
-  backdrop-filter: blur(20px);
-}
-
-/* Layer 2: 浮层 */
-.layer-2 {
-  background: rgba(44, 44, 46, 0.85);
-  backdrop-filter: blur(30px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-/* Layer 3: 强调层 */
-.layer-3 {
-  background: rgba(58, 58, 60, 0.9);
-  backdrop-filter: blur(40px);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
-}
-```
-
-### 主题色
-
-从 `site.config.ts` 或环境变量读取 `accentColor`，动态应用到：
-
-- 按钮和链接
-- 进度条
-- 选中状态
-- 悬停效果
+不要从 `@afilmory/data` 导入 `PhotoLoader`；该包只提供共享类型和 manifest 工具。
 
 ## 构建流程
 
@@ -215,14 +147,12 @@ const results = await loader.searchPhotos("sunset");
 pnpm dev
 ```
 
-启动 Vite 开发服务器在 http://localhost:1924
+根脚本会运行 `pnpm --filter @afilmory/web dev`，实际执行 `tsx scripts/dev.ts`：
 
-**特性**:
-
-- HMR 热更新
-- React Fast Refresh
-- TypeScript 类型检查
-- 代码审查工具
+1. 运行 `apps/web/scripts/precheck.ts`。
+2. 如果 S3 凭据完整，刷新 manifest。
+3. 如果缺少 S3 凭据但已有 `generated/photos-manifest.json`，复用现有 manifest。
+4. 启动 Vite dev server，默认端口 `1924`。
 
 ### 生产构建
 
@@ -230,274 +160,134 @@ pnpm dev
 pnpm build
 ```
 
-**构建步骤**:
+根脚本实际步骤：
 
-1. **数据构建**（根目录 `pnpm build:manifest`）
-   - builder 生成 `generated/photos-manifest.json`
-   - builder 更新 `apps/web/public/thumbnails`
+1. `pnpm exec tsx apps/web/scripts/precheck.ts`
+2. `pnpm build:packages`
+3. `pnpm build:web`
 
-2. **Vite 构建**（`pnpm build:web` / `vite build`）
-   - 代码分割和 Tree-shaking
-   - 资源优化和压缩
-   - 生成 source maps
+`pnpm build:web` 只运行 Vite build，要求 manifest 已存在。`buildAssetsPlugin` 会读取 manifest 并生成 `feed.xml`、`sitemap.xml` 和 OG 图片。
 
-3. **自定义插件处理**
-   - `dataInjectPlugin`: 注入 `window.__MANIFEST__` 和 `window.__SITE_CONFIG__`
-   - `photosStaticPlugin`: 复制照片资源
-   - `buildAssetsPlugin`: 生成 OG 图片、sitemap.xml 和 feed.xml
+### 输出
 
-4. **PWA 处理**
-   - 生成 Service Worker
-   - 生成 Web App Manifest
-
-**输出**:
-
-```
-dist/
+```text
+apps/web/dist/
 ├── index.html
 ├── assets/
-│   ├── index-[hash].js
-│   ├── index-[hash].css
-│   └── [chunk]-[hash].js
+│   ├── photos-manifest.<hash>.json
+│   └── vendor / app chunks
 ├── thumbnails/
-├── manifest.webmanifest
-├── sitemap.xml
 ├── feed.xml
-└── og-image-[timestamp].png
+├── sitemap.xml
+├── manifest.webmanifest
+└── assets/og-image-<timestamp>.png
 ```
 
-## Vite 插件
+## Vite 插件事实
 
-### 1. dataInjectPlugin
+### `dataInjectPlugin`
 
-将 `generated/photos-manifest.json` 注入到构建产物：
+- 读取 `generated/photos-manifest.json`。
+- 清理旧 manifest 中的 legacy `exif.Rating`。
+- 注入 `window.__SITE_CONFIG__`。
+- 根据 `AFILMORY_EMBED_MANIFEST` 和 serve/build 模式选择内联或外置 manifest。
+- 外置 manifest 会添加 preload link，并通过 `window.__MANIFEST_PROMISE__` 加载。
 
-```typescript
-export function dataInjectPlugin(): Plugin {
-  return {
-    name: "data-inject",
-    transformIndexHtml(html) {
-      const manifest = fs.readFileSync(
-        "generated/photos-manifest.json",
-        "utf-8",
-      );
-      return html.replace(
-        "</body>",
-        `<script>window.__MANIFEST__=${manifest}</script></body>`,
-      );
-    },
-  };
-}
-```
+### `photosStaticPlugin`
 
-### 2. photosStaticPlugin
+- 只在 dev server 中为 `/photos/*` 映射仓库根 `photos` 目录。
+- 不负责生产构建复制照片资源。
+- 若 `apps/web/public/photos` 已存在，会跳过以避免和 Vite 静态目录冲突。
 
-复制照片资源到构建目录：
+### `buildAssetsPlugin`
 
-```typescript
-export function photosStaticPlugin(): Plugin {
-  return {
-    name: "photos-static",
-    configureServer() {
-      // 开发环境下将 /photos/* 请求映射到本地 photos 目录
-    },
-  };
-}
-```
+- 构建期生成 Open Graph PNG。
+- 读取 manifest 生成 RSS feed 和 sitemap。
+- 将 meta tags 插入 `index.html`。
+- OG 图片由 `scripts/generate-og-image.ts` 使用 Sharp 和 SVG/text helpers 生成。
 
-### 3. buildAssetsPlugin
+### `createDependencyChunksPlugin`
 
-生成 Open Graph 预览图：
-
-```typescript
-export function buildAssetsPlugin(config: SiteConfig): Plugin {
-  return {
-    name: "build-assets",
-    async buildStart() {
-      // 使用 satori 生成 SVG
-      // 使用 resvg 转换为 PNG
-      // 生成 og-image / feed.xml / sitemap.xml
-    },
-  };
-}
-```
-
-## 性能优化
-
-### 代码分割
-
-```typescript
-// vite.config.ts
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-i18n": ["i18next", "react-i18next"],
-          "vendor-map": ["maplibre-gl", "react-map-gl"],
-          "vendor-image": ["heic-to"],
-        },
-      },
-    },
-  },
-});
-```
-
-### 图片懒加载
-
-```typescript
-import { useInView } from 'react-intersection-observer'
-
-function PhotoCard({ photo }) {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
-
-  return (
-    <div ref={ref}>
-      {inView && <img src={photo.thumbnail} />}
-    </div>
-  )
-}
-```
-
-### React Compiler
-
-项目启用了 React 19 Compiler，自动优化组件：
-
-```javascript
-// babel.config.js
-plugins: [["babel-plugin-react-compiler", ReactCompilerConfig]];
-```
+- 将 React、i18n、Motion、Map、HEIC、EXIF、state、UI、masonry 等依赖拆成稳定 vendor chunk。
+- 会阻止 vendor chunk 依赖 entry chunk，避免生产启动时出现 ESM bootstrap cycle。
 
 ## 国际化
 
-### 语言文件
+语言文件位置：
 
-```
-public/locales/
-├── en/
-│   └── common.json
-├── zh-CN/
-│   └── common.json
-└── ja/
-    └── common.json
-```
-
-### 使用方式
-
-```typescript
-import { useTranslation } from 'react-i18next'
-
-function Component() {
-  const { t } = useTranslation()
-
-  return <h1>{t('welcome')}</h1>
-}
+```text
+locales/app/
+├── en.json
+├── jp.json
+├── ko.json
+├── zh-CN.json
+├── zh-HK.json
+└── zh-TW.json
 ```
 
-### 添加新语言
+添加语言：
 
-1. 在 `public/locales/` 创建语言目录
-2. 复制 `common.json` 并翻译
-3. 在 `src/lib/i18n.ts` 中添加语言代码
-
-## 调试和开发
-
-### 调试页面
-
-开发环境包含调试页面 (`src/pages/(debug)`):
-
-- `/debug/photos` - 照片列表调试
-- `/debug/viewer` - 查看器调试
-- `/debug/map` - 地图调试
-
-**注意**: CI 环境会自动删除调试页面。
-
-### 代码审查
-
-开发时按 `Alt` 键点击组件可跳转到源码（code-inspector-plugin）。
-
-### React DevTools
-
-支持 React 19 DevTools，可以查看：
-
-- 组件树
-- Props 和 State
-- React Query 缓存
-- Jotai atoms
+1. 在 `locales/app` 添加 JSON 文件。
+2. 在 `apps/web/src/@types/resources.ts` 导入并注册。
+3. 在 `apps/web/src/@types/constants.ts` 添加语言代码。
 
 ## 常见任务
 
-### 添加新页面
+### 添加页面
 
-1. 在 `src/pages/(root)/` 创建目录
-2. 添加 `index.tsx` 和路由文件
-3. 在 `src/lib/router.tsx` 注册路由
+页面由 `apps/web/src/router.tsx` 通过 `import.meta.glob("./pages/**/*.tsx")` 自动收集。添加页面时创建 `apps/web/src/pages/.../index.tsx` 或路由文件即可；动态路由使用 `[param]` 命名。
 
-### 添加新组件
+### 添加组件
 
-```bash
-src/components/
-└── feature-name/
-    ├── index.tsx          # 组件入口
-    ├── component.tsx      # 主组件
-    ├── hooks.ts           # 自定义 hooks
-    └── styles.module.css  # 样式（如需要）
-```
+优先放在最接近使用场景的位置：
+
+- gallery 专用：`apps/web/src/modules/gallery`
+- map 专用：`apps/web/src/modules/map`
+- photo viewer 专用：`apps/web/src/components/ui/photo-viewer`
+- 可复用 UI：优先考虑 `packages/ui`
 
 ### 添加全局状态
 
-```typescript
-// src/store/app.ts
+```ts
 import { atom } from "jotai";
 
 export const viewModeAtom = atom<"grid" | "list">("grid");
 ```
 
-### 调用 API
+现有 atoms 位于 `apps/web/src/atoms`。
 
-```typescript
-import { useQuery } from "@tanstack/react-query";
+### 调试页面
 
-function usePhotos() {
-  return useQuery({
-    queryKey: ["photos"],
-    queryFn: async () => {
-      const loader = PhotoLoader.getInstance();
-      return loader.getAllPhotos();
-    },
-  });
-}
+开发环境可访问：
+
+- `/blurhash`
+- `/webgl-preview`
+- `/manifest`
+
+生产构建会排除 `(debug)` 和 `(data)` 路由组。
+
+## 环境变量和编译常量
+
+站点配置通过 `site.config.build.ts` 注入。Vite `define` 还提供：
+
+```ts
+APP_DEV_CWD;
+APP_NAME;
+BUILT_DATE;
+GIT_COMMIT_HASH;
 ```
 
-## 环境变量
+`BUILT_DATE` 是 ISO 字符串。
 
-构建时注入的变量（在 `vite.config.ts`）：
+## 开发注意事项
 
-```typescript
-define: {
-  APP_DEV_CWD: JSON.stringify(process.cwd()),
-  APP_NAME: JSON.stringify(PKG.name),
-  BUILT_DATE: JSON.stringify(new Date().toLocaleDateString()),
-  GIT_COMMIT_HASH: JSON.stringify(getGitHash()),
-}
-```
-
-使用：
-
-```typescript
-declare const GIT_COMMIT_HASH: string;
-declare const BUILT_DATE: string;
-
-console.log(`Build: ${BUILT_DATE} (${GIT_COMMIT_HASH})`);
-```
+- 不要在浏览器端直接导入 `env.ts` 或读取 `process.env`。
+- 不要假设生产构建一定有 `window.__MANIFEST__`；应通过 `loadManifestRuntime()` 或已有 provider 使用 manifest。
+- 原图来自 S3/CDN，生产构建只包含生成缩略图和静态 Web 资源。
+- code-inspector-plugin 只在 dev server 中启用，按 `Alt` 点击可跳转源码。
 
 ## 更多信息
 
 - [根目录 AGENTS.md](../../AGENTS.md) - 整体架构
-- [部署指南](../../DEPLOY_STATIC.md) - 部署说明
-- [Vite 文档](https://vitejs.dev/)
-- [React 19 文档](https://react.dev/)
+- [Vite 文档](https://vite.dev/)
+- [React 文档](https://react.dev/)

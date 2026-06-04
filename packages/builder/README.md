@@ -1,185 +1,154 @@
 # Afilmory Builder
 
-这是照片库构建系统的核心模块，采用模块化设计，将不同功能分离到各自的模块中。
+`@afilmory/builder` is the build-time photo processing engine for Afilmory Vercel. In the default site configuration it reads source photos from S3-compatible object storage, generates thumbnails and manifest data, and hands a static data set to the web app.
 
-## 架构概览
+## Current Architecture
 
-```
-src/core/
-├── types/          # 类型定义
-│   └── photo.ts    # 照片相关类型
-├── logger/         # 日志系统
-│   └── index.ts    # 统一日志器
-├── s3/             # S3 存储操作
-│   ├── client.ts   # S3 客户端配置
-│   └── operations.ts # S3 操作（上传、下载、列表）
-├── image/          # 图像处理
-│   ├── processor.ts # 图像预处理和元数据
-│   ├── blurhash.ts # Blurhash 生成
-│   ├── thumbnail.ts # 缩略图生成
-│   └── exif.ts     # EXIF 数据提取
-├── photo/          # 照片处理
-│   ├── info-extractor.ts # 照片信息提取
-│   ├── processor.ts # 照片处理主逻辑
-│   └── geocoding.ts # 反向地理编码
-├── manifest/       # Manifest 管理
-│   └── manager.ts  # Manifest 读写和管理
-├── worker/         # 并发处理
-│   └── pool.ts     # Worker 池管理
-├── builder/        # 主构建器
-│   └── index.ts    # 构建流程编排
-└── index.ts        # 模块入口
+```text
+src/
+├── builder/                 # AfilmoryBuilder orchestration
+├── cli.ts                   # Builder CLI used by pnpm build:manifest
+├── config/                  # define/load/resolve builder config
+├── constants/               # supported image formats
+├── core/
+│   ├── contracts/           # service, plugin, and processing contracts
+│   └── services/            # service registry passed into plugins/pipeline
+├── image/                   # EXIF, histogram, thumbnail, image preprocessing
+├── logger/                  # tagged consola loggers
+├── manifest/                # manifest read/write/migration/version helpers
+├── photo/                   # per-photo processing pipeline
+├── plugins/                 # storage, geocoding, thumbnail cache, repo sync
+├── s3/                      # S3 client construction
+├── storage/                 # storage interfaces, manager, S3 provider
+├── types/                   # public builder option/config/photo types
+├── utils/                   # backoff, clone, semaphore helpers
+└── worker/                  # worker pool and cluster pool
 ```
 
-## 模块说明
+The shared manifest and photo types are imported from `@afilmory/data`, with builder-specific options kept under `packages/builder/src/types`.
 
-### 1. 类型定义 (`types/`)
+## Default Site Configuration
 
-- `PhotoInfo`: 照片基本信息
-- `ImageMetadata`: 图像元数据
-- `PhotoManifestItem`: Manifest 项目
-- `ProcessPhotoResult`: 处理结果
-- `ThumbnailResult`: 缩略图生成结果
+The root `builder.config.ts` is the source of truth for this repository:
 
-### 2. 日志系统 (`logger/`)
+- `output.manifestPath`: `generated/photos-manifest.json`
+- `output.thumbnailsDir`: `apps/web/public/thumbnails`
+- `output.originalsDir`: `apps/web/public/originals`
+- `storage.provider`: `s3`
+- `storage.bucket`: `S3_BUCKET_NAME`
+- `storage.region`: `S3_REGION`, defaulted by `env.ts` to `us-east-1`
+- `storage.endpoint`: `S3_ENDPOINT`, defaulted by `env.ts`
+- `storage.customDomain`: optional CDN/public domain
+- `repo.enable`: true only when `REPO_URL` and `REPO_TOKEN` (or compatibility aliases) are present
 
-- 统一的日志管理
-- 支持不同模块的标签化日志
-- Worker 专用日志器
+The documented deployment path is S3-only. Some extension points and historical providers still exist in source, but they are not the supported static-site path for this repo.
 
-### 3. S3 存储操作 (`s3/`)
+## CLI Usage
 
-- **client.ts**: S3 客户端配置和连接
-- **operations.ts**: 图片下载、列表获取、URL 生成
+From the repository root:
 
-### 4. 图像处理 (`image/`)
+```bash
+pnpm build:manifest
+pnpm build:manifest -- --force
+pnpm build:manifest -- --force-thumbnails
+pnpm build:manifest -- --force-manifest
+pnpm build:manifest -- --config
+```
 
-- **processor.ts**: 图像预处理、HEIC 转换、元数据提取
-- **blurhash.ts**: Blurhash 生成算法
-- **thumbnail.ts**: 缩略图生成和管理
-- **exif.ts**: EXIF 数据提取和清理
+The root script sets `BUILDER_CONFIG_PATH=builder.config.ts` and runs the builder CLI through `tsx`.
 
-### 5. 照片处理 (`photo/`)
+Build modes:
 
-- **info-extractor.ts**: 从文件名和 EXIF 提取照片信息
-- **processor.ts**: 照片处理主流程，整合所有处理步骤
-- **geocoding.ts**: 反向地理编码，支持 Mapbox 和 Nominatim 提供者
+- `--force`: reprocess all photos.
+- `--force-thumbnails`: regenerate thumbnails and ThumbHash data.
+- `--force-manifest`: refresh manifest-derived metadata such as EXIF and tone analysis.
+- `--no-ui`: disable the TUI and use traditional log output.
 
-### 6. Manifest 管理 (`manifest/`)
+## Programmatic Usage
 
-- **manager.ts**: Manifest 文件的读取、保存、更新检测
+Use `defineBuilderConfig` for config files and `AfilmoryBuilder` for direct orchestration:
 
-### 7. 并发处理 (`worker/`)
+```ts
+import { AfilmoryBuilder, defineBuilderConfig } from "@afilmory/builder";
 
-- **pool.ts**: Worker 池管理，支持并发处理
+export default defineBuilderConfig(() => ({
+  storage: {
+    provider: "s3",
+    bucket: process.env.S3_BUCKET_NAME,
+    region: process.env.S3_REGION ?? "us-east-1",
+    endpoint: process.env.S3_ENDPOINT,
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  },
+  output: {
+    manifestPath: "generated/photos-manifest.json",
+    thumbnailsDir: "apps/web/public/thumbnails",
+    originalsDir: "apps/web/public/originals",
+  },
+}));
 
-### 8. 主构建器 (`builder/`)
-
-- **index.ts**: 整个构建流程的编排和协调
-
-## 使用方式
-
-### 基本使用
-
-```typescript
-import { buildManifest } from "./src/core/index.js";
-
-await buildManifest({
+const builder = new AfilmoryBuilder(resolvedConfig);
+await builder.buildManifest({
   isForceMode: false,
   isForceManifest: false,
   isForceThumbnails: false,
-  concurrencyLimit: 10,
 });
 ```
 
-### 单独使用模块
+Most repository workflows should use `pnpm build:manifest` instead of constructing the builder manually.
 
-```typescript
-import {
-  getImageFromS3,
-  generateThumbnailAndBlurhash,
-  extractExifData,
-} from "./src/core/index.js";
+## Processing Pipeline
 
-// 下载图片
-const buffer = await getImageFromS3("path/to/image.jpg");
+For each changed photo, the builder:
 
-// 生成缩略图
-const result = await generateThumbnailAndBlurhash(
-  buffer,
-  "photo-id",
-  1920,
-  1080,
-);
+1. Downloads the original source object through the configured storage manager.
+2. Preprocesses supported formats, including HEIC/HEIF/HIF and BMP conversion paths.
+3. Extracts image metadata with Sharp.
+4. Generates a 600px-wide JPEG thumbnail and ThumbHash placeholder data.
+5. Extracts EXIF with `exiftool-vendored`.
+6. Detects Ultra HDR gain map metadata and Motion Photo metadata.
+7. Detects Live Photo sidecar video pairs.
+8. Calculates histogram/tone analysis.
+9. Builds a `PhotoManifestItem`.
+10. Emits plugin lifecycle hooks and writes the final manifest.
 
-// 提取 EXIF
-const exif = await extractExifData(buffer);
+Existing manifest items are reused when the source object's modified time, size, and etag indicate no relevant change.
+
+## Manifest Output
+
+The builder writes an `AfilmoryManifest`:
+
+```ts
+type AfilmoryManifest = {
+  version: string;
+  data: PhotoManifestItem[];
+  cameras: CameraInfo[];
+  lenses: LensInfo[];
+};
 ```
 
-## 特性
+Photo items include `originalUrl`, `thumbnailUrl`, `thumbHash`, EXIF, tone analysis, optional location, optional `video`, and optional `isHDR`.
 
-### 1. 模块化设计
+## Plugins and Cache
 
-- 每个功能模块独立，便于测试和维护
-- 清晰的依赖关系
-- 易于扩展新功能
+Plugins are loaded automatically based on config and explicit `plugins` entries:
 
-### 2. 类型安全
+- S3 storage plugin for the default storage provider.
+- Optional geocoding plugin when configured.
+- Optional Git repo sync plugin when `repo.enable` is true.
+- Optional thumbnail storage support for cache-aware builds.
 
-- 完整的 TypeScript 类型定义
-- 编译时错误检查
+`REPO_URL`/`REPO_TOKEN` cache generated manifest/thumbnails in a Git repository. They do not change the source photo storage, which remains S3 for this project.
 
-### 3. 性能优化
+## Performance Notes
 
-- Worker 池并发处理
-- Sharp 实例复用
-- 增量更新支持
+- `system.processing.defaultConcurrency` controls logical processing concurrency.
+- Cluster mode is enabled by default in `builder.config.ts` through `system.observability.performance.worker.useClusterMode`.
+- S3 downloads use an internal semaphore and network timeout/retry settings.
+- Thumbnail, EXIF, and tone-analysis data are reused from the existing manifest where possible.
 
-### 4. 错误处理
+## Related Docs
 
-- 统一的错误处理机制
-- 详细的日志记录
-- 优雅的失败处理
-
-### 5. 配置灵活
-
-- 支持多种运行模式
-- 可配置的并发数
-- 环境变量配置
-
-### 6. 地理编码支持
-
-- 从 GPS 坐标提取位置信息
-- 支持 Mapbox 和 Nominatim 两种提供者
-- 智能缓存和速率限制
-- 自动重试和并发安全
-
-## 扩展指南
-
-### 添加新的图像处理功能
-
-1. 在 `image/` 目录下创建新模块
-2. 在 `index.ts` 中导出新功能
-3. 在 `photo/processor.ts` 中集成
-
-### 添加新的存储后端
-
-1. 在 `s3/` 目录下创建新的操作模块
-2. 实现相同的接口
-3. 在配置中切换
-
-### 自定义日志器
-
-```typescript
-import { logger } from "./src/core/index.js";
-
-const customLogger = logger.worker(1).withTag("CUSTOM");
-customLogger.info("自定义日志");
-```
-
-## 性能考虑
-
-- 使用 Worker 池避免过度并发
-- Sharp 实例复用减少内存开销
-- 增量更新减少不必要的处理
-- 缩略图和 Blurhash 缓存复用
+- [Photo pipeline](src/photo/README.md)
+- [S3 storage provider](src/storage/providers/README.md)
+- [Shared data types](../data/src/types.ts)

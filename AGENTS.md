@@ -2,162 +2,166 @@
 
 ## 项目概述
 
-Afilmory 是一个现代化的照片展示站点生成器，专注于照片展示的用户体验。它将照片处理和前端构建整合为一个完整的静态站点生成流程。
+Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构建期从 S3 兼容对象存储读取照片，生成 `generated/photos-manifest.json` 和缩略图；前端是 Vite + React SPA，通过构建注入的 manifest 与站点配置运行，不依赖数据库或运行时后端。
 
 ## 核心理念
 
-- **📸 照片优先**: 专注于照片展示的用户体验
-- **⚡ 静态优先**: 无需数据库和后端服务器，使用 JSON Manifest 作为数据源
-- **🚀 易于部署**: 专为 Vercel 优化，支持 S3 存储
-- **🎨 现代设计**: Glassmorphic 设计系统，React 19 + Tailwind CSS 4
+- **照片优先**: 以照片浏览、查看器、EXIF、地图和分享体验为核心。
+- **静态优先**: 运行时数据来自 JSON manifest 和静态资源。
+- **S3 优先**: 默认站点配置只支持 S3 兼容对象存储作为原图来源。
+- **易于部署**: 面向 Vercel，也可部署到任意静态托管平台。
+- **现代前端**: React 19、Vite 7、Tailwind CSS 4、Radix UI、Motion。
 
-## 技术架构
+## Monorepo 结构
 
-### Monorepo 结构
+项目使用 PNPM Workspace：
 
-项目使用 PNPM Workspace 管理多包结构：
+- **根目录**: 统一脚本、`builder.config.ts`、`site.config.ts`、`site.config.build.ts`、`vercel.json`、根 ESLint flat config。
+- **`apps/web`**: 前端 SPA 应用，Vite + React。
+- **`packages/builder`**: 构建期照片处理、EXIF、缩略图、manifest、插件和 S3 访问。
+- **`packages/data`**: 共享类型、manifest 解析和二进制工具。
+- **`packages/ui`**: 共享 UI 组件、hooks、portal、scroll area、ThumbHash 组件。
+- **`packages/webgl-viewer`**: WebGL 图片查看器包。
+- **`locales/app`**: i18n JSON 资源。
+- **`generated`**: 生成的 `photos-manifest.json`。
 
-- **根目录**: 包含整体构建脚本和配置
-- **`apps/web`**: 前端 SPA 应用 (Vite + React)
-- **`packages/builder`**: 核心照片处理逻辑 (Node.js)
-- **`packages/data`**: 数据类型定义与 manifest 解析工具
-- **`packages/ui`**: UI 组件库
-- **`packages/webgl-viewer`**: 高性能图片查看器
+## 关键依赖
 
-### 关键依赖
+- **构建工具**: Vite 7、TypeScript 5.9、TSX、tsdown。
+- **前端框架**: React 19、React Router 7。
+- **样式与 UI**: Tailwind CSS 4、Radix UI、Motion。
+- **状态管理**: Jotai、Zustand、TanStack Query。
+- **图片处理**: Sharp、heic-to、heic-convert、thumbhash。
+- **EXIF 处理**: `exiftool-vendored`，前端 raw EXIF 查看使用 `@uswriting/exiftool`。
+- **地图组件**: MapLibre GL、react-map-gl。
 
-- **构建工具**: Vite 7, TypeScript, TSX
-- **前端框架**: React 19, React Router 7
-- **样式方案**: Tailwind CSS 4, DaisyUI 5
-- **状态管理**: Jotai, TanStack Query
-- **图片处理**: Sharp, Heic-to (Node.js)
-- **EXIF 处理**: ExifTool-vendored
-- **地图组件**: MapLibre GL
+## 模块功能
 
-## 模块功能详解
+### Builder (`@afilmory/builder`)
 
-### 1. Builder (`@afilmory/builder`)
-照片处理的核心引擎。
-- **职责**: 扫描 S3/本地照片，提取 EXIF，生成缩略图，计算 Blurhash，输出 `generated/photos-manifest.json`。
-- **关键技术**: 
-    - `sharp`: 高性能图片处理
-    - `exiftool-vendored`: 强大的 EXIF 数据提取
-    - `heic-to`: HEIC 格式转换
+职责：
 
-### 2. Data (`@afilmory/data`)
-数据层抽象，作为类型定义的中心。
-- **职责**: 定义核心数据结构 (`PhotoManifestItem`, `PickedExif`) 并提供纯数据工具（如 manifest 解析）。
-- **重要性**: 所有包共享的类型定义都在 `src/types.ts` 中，避免了循环依赖。
+- 扫描 S3 兼容对象存储中的图片。
+- 提取 EXIF、检测 Live Photo/Motion Photo/HDR metadata。
+- 生成 600px 宽 JPEG 缩略图和 `thumbHash` 占位数据。
+- 计算影调分析、维护相机和镜头索引。
+- 输出 `generated/photos-manifest.json`，缩略图输出到 `apps/web/public/thumbnails`。
 
-### 3. Web (`@afilmory/web`)
-用户直接交互的前端应用。
-- **构建**: 这是一个纯静态 SPA，构建时注入 `site.config.ts` 配置。
-- **特性**: Masonry 布局，WebGL 查看器，PWA 支持，SSR (SSG) 友好的元数据注入。
-- **运行时数据**: 构建阶段从 `generated/photos-manifest.json` 注入 `window.__MANIFEST__`，前端运行时不直接读取构建脚本目录。
+当前默认站点配置在 `builder.config.ts` 中使用 `provider: "s3"`。源码中仍存在插件/扩展点，但项目文档和部署路径只面向 S3。
 
-## 软件工程重点关注点
+### Data (`@afilmory/data`)
 
-### 1. 构建流程
-- **两阶段构建**: 
-    1. `pnpm build:manifest`: builder 运行，生成数据。
-    2. `pnpm build:web`: vite 运行，打包前端。
-- **职责划分**:
-  - `pnpm build:manifest` 只负责生成 manifest 和缩略图。
-  - `pnpm build:web` 只负责打包前端。
-  - `pnpm build` 顺序执行以上两步。
-- **增量构建**: Builder 支持基于 Hash 的增量更新，避免重复处理照片。
+职责：
 
-### 2. 类型安全
-- 全面使用 TypeScript。
-- **架构**: 所有共享类型定义集中在 `@afilmory/data/types`，实现了：
-  - ✅ 类型定义单一来源
-  - ✅ 消除循环依赖
-  - ✅ 更好的类型复用
+- 定义 `AfilmoryManifest`、`PhotoManifestItem`、`PickedExif` 等共享类型。
+- 提供 `parseManifest`、`createEmptyManifest` 和 `u8array` 压缩/解压工具。
+- 作为 web、ui、builder 之间的类型来源，避免循环依赖。
 
-### 3. 配置管理
-- **环境变量**: `.env` 用于敏感信息 (S3 Keys)。
-- **静态配置**: `site.config.ts` 用于站点元数据。
-- **构建注入**: 环境变量在构建时注入到前端，前端运行时不依赖 `process.env`。
+### Web (`@afilmory/web`)
 
-### 4. 性能优化
-- **图片加载**: 缩略图 -> 预览图 -> 原图 (渐进式加载)。
-- **虚拟滚动**: 使用 `masonic` 处理大量照片的瀑布流。
-- **WebGL**: 使用 WebGL 加速大图浏览。
+职责：
 
-## 快速开始
+- 提供静态 SPA、瀑布流、WebGL 查看器、地图、RSS/sitemap/OG 资产。
+- 构建期通过 `site.config.build.ts` 合并环境变量和 `site.config.ts` 默认值，再注入 `window.__SITE_CONFIG__`。
+- 运行时通过 `window.__MANIFEST_PROMISE__` 加载 manifest。生产构建默认外置 `assets/photos-manifest.<hash>.json`，开发默认内联；`AFILMORY_EMBED_MANIFEST` 可覆盖。
 
-### 开发命令
+## 构建流程
+
+根脚本以 `package.json` 为准：
+
+- `pnpm dev`: 运行 `apps/web/scripts/precheck.ts`，再启动 Vite dev server。
+- `pnpm build`: 运行 `precheck`，再运行 `pnpm build:packages` 和 `pnpm build:web`。
+- `pnpm build:manifest`: 设置 `BUILDER_CONFIG_PATH=builder.config.ts` 并运行 builder CLI。
+- `pnpm build:packages`: 构建 `@afilmory/builder` 和 `@afilmory/webgl-viewer`。
+- `pnpm build:web`: 只构建前端，要求 manifest 已存在。
+- `pnpm preview`: 预览 `apps/web/dist`。
+
+`precheck` 行为：
+
+- S3 凭据完整时刷新 manifest。
+- S3 凭据缺失但 `generated/photos-manifest.json` 存在时复用现有 manifest。
+- builder 失败但存在 manifest 时降级复用并警告。
+- `SKIP_MANIFEST_BUILD=true` 会显式跳过 builder。
+
+Vercel 使用 `scripts/build-static.sh`。该脚本在 S3 凭据完整时运行 `pnpm build`；缺少凭据但已有 manifest 时运行 `pnpm build:web`，用于 Preview 构建。
+
+## 配置管理
+
+- **敏感配置**: `.env`，参考 `.env.template`。
+- **S3 必需变量**: `S3_BUCKET_NAME`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`。
+- **S3 默认值**: `S3_REGION` 默认 `us-east-1`，`S3_ENDPOINT` 默认 AWS S3 endpoint。
+- **站点默认值**: `site.config.ts`，该文件会被浏览器端导入，不能直接读取 `process.env`。
+- **构建期覆盖**: `site.config.build.ts` 读取 `env.ts` 并注入 `window.__SITE_CONFIG__`。
+- **远程缓存**: `REPO_URL`/`REPO_TOKEN` 可缓存 manifest 和缩略图，不是照片存储后端。
+
+## 运行时数据
+
+Manifest shape 来自 `@afilmory/data`：
+
+- 顶层字段：`version`、`data`、`cameras`、`lenses`。
+- 单张照片包含 `id`、`originalUrl`、`thumbnailUrl`、`thumbHash`、`s3Key`、`exif`、`toneAnalysis`、`location`、可选 `video` 和 `isHDR`。
+- `parseManifest` 会清理旧的 unsupported EXIF 字段并提供空 manifest fallback。
+
+前端运行时不要直接读取构建脚本目录。使用 `apps/web/src/data-runtime/manifest-runtime.ts` 和 `photo-loader.ts`。
+
+## 国际化
+
+- 语言 JSON 位于 `locales/app/*.json`。
+- 资源注册在 `apps/web/src/@types/resources.ts`。
+- 支持语言列表在 `apps/web/src/@types/constants.ts`。
+- `apps/web/plugins/vite/locales-json.ts` 会把扁平 key JSON 转成嵌套对象。
+
+## 代码质量
+
+- ESLint 使用根目录 `eslint.config.mjs` 的 flat config。
+- 常用检查：
 
 ```bash
-# 安装依赖
-pnpm install
-
-# 本地开发（不处理照片）
-pnpm dev
-
-# 处理照片并生成 manifest
-pnpm build:manifest
-
-# 构建完整静态站点（处理照片 + 构建前端）
+pnpm lint
+pnpm type-check
+pnpm test
 pnpm build
+```
 
-# 预览构建结果
+PR 前优先跑以上命令。文档-only 改动至少跑 Markdown 格式检查和 `git diff --check`。
+
+## 常见任务
+
+### 本地开发
+
+```bash
+pnpm install
+pnpm dev
+```
+
+开发服务器默认端口为 `1924`。
+
+### 处理照片并生成 manifest
+
+```bash
+pnpm build:manifest
+pnpm build:manifest -- --force
+pnpm build:manifest -- --force-thumbnails
+pnpm build:manifest -- --force-manifest
+```
+
+### 构建静态站点
+
+```bash
+pnpm build
 pnpm preview
 ```
 
-### 配置说明
+输出目录是 `apps/web/dist`。
 
-#### 1. S3 存储配置
-在 `.env` 文件中配置（参考 `.env.template`）：
-```env
-S3_BUCKET_NAME=your-bucket
-S3_REGION=us-east-1
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_ACCESS_KEY_ID=your-key
-S3_SECRET_ACCESS_KEY=your-secret
-```
+### 添加语言
 
-#### 2. 站点配置
-编辑 `site.config.ts` 或使用环境变量：
-```typescript
-export const siteConfig: SiteConfig = {
-  name: '我的照片集',
-  title: 'My Photos',
-  description: '记录生活',
-  url: 'https://your-site.vercel.app',
-  author: { name: 'Your Name' }
-}
-```
+1. 在 `locales/app` 添加 JSON 文件。
+2. 在 `apps/web/src/@types/resources.ts` 导入并注册。
+3. 在 `apps/web/src/@types/constants.ts` 添加语言代码。
 
-### 部署
+## 已知后续事项
 
-**Vercel 部署（推荐）**：
-```bash
-# 方式一：GitHub 集成（推荐）
-git push origin main
-
-# 方式二：CLI 部署
-vercel --prod
-```
-
-**本地构建后部署**：
-```bash
-pnpm build
-# 输出在 apps/web/dist，可部署到任何静态托管平台
-```
-
-## 常见问题
-
-### 构建慢？
-- 调整 `builder.config.ts` 中的 `defaultConcurrency` 参数
-- 后续构建是增量的，只处理变更的照片
-
-### 类型错误？
-- 确保所有包的依赖都已安装：`pnpm install`
-- 类型定义在 `@afilmory/data/types`，由 `exiftool-vendored` 提供支持
-
-## 待改进项目 (架构债)
-
-1. ~~**类型统一**: 将核心类型迁移到 `@afilmory/data`~~ ✅ 已完成
-2. ~~**依赖解耦**: 解除循环依赖~~ ✅ 已完成
-3. **Linting**: 统一各包的 ESLint 配置
+- `package.json` license 字段仍指向 `LICENSE.md`，但仓库实际文件是 `LICENSE`。
+- Builder CLI help 文本仍有旧路径示例。
+- `.env.template` 对 `S3_REGION` 的“必填”注释与 `env.ts` 默认值不完全一致。
