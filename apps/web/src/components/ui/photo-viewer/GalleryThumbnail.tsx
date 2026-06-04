@@ -42,7 +42,9 @@ export const GalleryThumbnail: FC<{
       setScrollContainerWidth(scrollContainer.clientWidth);
       const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          setScrollContainerWidth(entry.contentRect.width);
+          setScrollContainerWidth((prev) =>
+            prev === entry.contentRect.width ? prev : entry.contentRect.width,
+          );
         }
       });
       observer.observe(scrollContainer);
@@ -71,7 +73,7 @@ export const GalleryThumbnail: FC<{
       nextFrame(() => {
         scrollContainer.scrollTo({
           left: scrollLeft,
-          behavior: "smooth",
+          behavior: "auto",
         });
       });
     }
@@ -100,18 +102,16 @@ export const GalleryThumbnail: FC<{
     };
   }, []);
 
-  // Virtual scrolling optimization: only render thumbnails near the visible area
-  // Calculate the range of thumbnails to render
-  const renderRange = 30; // Render 30 items before and after current index, ~60 total
-  const startIndex = Math.max(0, currentIndex - renderRange);
-  const endIndex = Math.min(photos.length - 1, currentIndex + renderRange);
-
-  // Calculate placeholder widths
   const thumbnailWidth = isMobile
     ? thumbnailSize.mobile
     : thumbnailSize.desktop;
   const gapSize = isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop;
   const itemWidth = thumbnailWidth + gapSize;
+  const visibleThumbnailCount =
+    scrollContainerWidth > 0 ? Math.ceil(scrollContainerWidth / itemWidth) : 8;
+  const renderRange = Math.max(8, Math.ceil(visibleThumbnailCount / 2) + 6);
+  const startIndex = Math.max(0, currentIndex - renderRange);
+  const endIndex = Math.min(photos.length - 1, currentIndex + renderRange);
 
   const leftPlaceholderWidth = startIndex > 0 ? startIndex * itemWidth : 0;
   const rightPlaceholderWidth =
@@ -203,6 +203,10 @@ export const GalleryThumbnail: FC<{
               <img
                 src={photo.thumbnailUrl}
                 alt={photo.title || photo.id}
+                loading={index === currentIndex ? "eager" : "lazy"}
+                fetchPriority={index === currentIndex ? "high" : "low"}
+                decoding="async"
+                draggable={false}
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </button>

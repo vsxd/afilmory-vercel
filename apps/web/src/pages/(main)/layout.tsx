@@ -38,6 +38,10 @@ export const Component = () => {
 
   // const location = useLocation()
   const isMobile = useMobile();
+  const { isOpen: isPhotoViewerOpen } = usePhotoViewer();
+  const galleryHiddenClassName = isPhotoViewerOpen
+    ? "pointer-events-none invisible"
+    : undefined;
 
   const photos = usePhotos();
   const mobileScrollElement =
@@ -58,11 +62,17 @@ export const Component = () => {
 
         {isMobile ? (
           <ScrollElementContext value={mobileScrollElement}>
-            <MasonryRoot />
+            <div className={galleryHiddenClassName}>
+              <MasonryRoot />
+            </div>
           </ScrollElementContext>
         ) : (
           <ScrollArea
-            rootClassName={"h-svh w-full"}
+            rootClassName={
+              galleryHiddenClassName
+                ? `h-svh w-full ${galleryHiddenClassName}`
+                : "h-svh w-full"
+            }
             viewportClassName="size-full"
           >
             <MasonryRoot />

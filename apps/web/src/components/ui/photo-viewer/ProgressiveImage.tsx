@@ -32,6 +32,8 @@ const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
   height: `${PHOTO_VIEWER_FIT_SCALE * 100}%`,
   transform: "translate(-50%, -50%)",
 };
+const WEBGL_DEBUG_ENABLED =
+  import.meta.env.DEV && import.meta.env.VITE_AFILMORY_WEBGL_DEBUG === "true";
 
 export const ProgressiveImage = ({
   src,
@@ -275,7 +277,7 @@ export const ProgressiveImage = ({
               onLoadingStateChange={handleWebGLLoadingStateChange}
               onImagePainted={handleHighResRendered}
               onError={handleWebGLError}
-              debug={import.meta.env.DEV}
+              debug={WEBGL_DEBUG_ENABLED}
             />
           )}
         </div>
