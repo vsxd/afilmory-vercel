@@ -134,7 +134,7 @@ pinch?: {
 
 // 双击配置
 doubleClick?: {
-  step: number            // 缩放步长，默认 2
+  step: number            // 缩放步长，默认 2；toggle 模式为适屏倍率的倍数，zoom 模式为缩放因子
   disabled?: boolean      // 禁用双击，默认 false
   mode: 'toggle' | 'zoom' // 双击模式，默认 'toggle'
   animationTime: number   // 动画时长，默认 200ms

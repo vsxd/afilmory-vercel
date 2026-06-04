@@ -217,6 +217,119 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(lastZoomChange?.[1]).toBeCloseTo(1.1);
   });
 
+  it("uses the double-click step as the fitted zoom target in toggle mode", () => {
+    let now = 0;
+    let pendingFrame: FrameRequestCallback | undefined;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      pendingFrame = callback;
+      return 42;
+    });
+    const runPendingFrame = (timestamp: number) => {
+      const frame = pendingFrame;
+      expect(frame).toBeDefined();
+      if (!frame) {
+        throw new Error("Expected a pending animation frame");
+      }
+      pendingFrame = undefined;
+      now = timestamp;
+      frame(timestamp);
+    };
+
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+
+    const engine = createEngine(canvas, {
+      maxScale: 20,
+      doubleClick: { step: 2, mode: "toggle", animationTime: 200 },
+    });
+
+    void engine.loadImage("blob:photo", 1000, 1000);
+    expect(engine.getScale()).toBeCloseTo(0.1);
+
+    (
+      engine as unknown as {
+        performDoubleClickAction: (x: number, y: number) => void;
+      }
+    ).performDoubleClickAction(50, 50);
+
+    runPendingFrame(200);
+    expect(engine.getScale()).toBeCloseTo(0.2);
+
+    (
+      engine as unknown as {
+        performDoubleClickAction: (x: number, y: number) => void;
+      }
+    ).performDoubleClickAction(50, 50);
+
+    runPendingFrame(400);
+    expect(engine.getScale()).toBeCloseTo(0.1);
+  });
+
+  it("does not zoom past original size on double-click toggle", () => {
+    let now = 0;
+    let pendingFrame: FrameRequestCallback | undefined;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      pendingFrame = callback;
+      return 42;
+    });
+    const runPendingFrame = (timestamp: number) => {
+      const frame = pendingFrame;
+      expect(frame).toBeDefined();
+      if (!frame) {
+        throw new Error("Expected a pending animation frame");
+      }
+      pendingFrame = undefined;
+      now = timestamp;
+      frame(timestamp);
+    };
+
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 800,
+      width: 800,
+      height: 800,
+      toJSON: () => ({}),
+    });
+
+    const engine = createEngine(canvas, {
+      maxScale: 20,
+      doubleClick: { step: 2, mode: "toggle", animationTime: 200 },
+    });
+
+    void engine.loadImage("blob:photo", 1000, 1000);
+    expect(engine.getScale()).toBeCloseTo(0.8);
+
+    (
+      engine as unknown as {
+        performDoubleClickAction: (x: number, y: number) => void;
+      }
+    ).performDoubleClickAction(400, 400);
+
+    runPendingFrame(200);
+    expect(engine.getScale()).toBeCloseTo(1);
+  });
+
   it("sends the decoded image blob to the texture worker when available", () => {
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();

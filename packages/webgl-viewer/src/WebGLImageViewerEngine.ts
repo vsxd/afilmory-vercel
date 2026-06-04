@@ -61,7 +61,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private lastMouseY = 0;
   private lastTouchDistance = 0;
   private lastDoubleClickTime = 0;
-  private isOriginalSize = false;
+  private isDoubleClickZoomed = false;
 
   // 触摸双击检测
   private lastTouchTime = 0;
@@ -686,7 +686,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.scale = fitToScreenScale * this.config.initialScale;
     this.translateX = 0;
     this.translateY = 0;
-    this.isOriginalSize = false;
+    this.isDoubleClickZoomed = false;
   }
 
   private createMatrix(): Float32Array {
@@ -1543,7 +1543,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       const userMaxScale = fitToScreenScale * this.config.maxScale;
       const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale);
 
-      if (this.isOriginalSize) {
+      if (this.isDoubleClickZoomed) {
         const targetScale = Math.max(
           absoluteMinScale,
           Math.min(effectiveMaxScale, configuredFitScale),
@@ -1561,11 +1561,15 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
           targetTranslateY,
           this.config.doubleClick.animationTime,
         );
-        this.isOriginalSize = false;
+        this.isDoubleClickZoomed = false;
       } else {
+        const doubleClickZoomScale = Math.min(
+          originalSizeScale,
+          configuredFitScale * this.config.doubleClick.step,
+        );
         const targetScale = Math.max(
           absoluteMinScale,
-          Math.min(effectiveMaxScale, originalSizeScale),
+          Math.min(effectiveMaxScale, doubleClickZoomScale),
         );
         const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale;
         const zoomY =
@@ -1580,7 +1584,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
           targetTranslateY,
           this.config.doubleClick.animationTime,
         );
-        this.isOriginalSize = true;
+        this.isDoubleClickZoomed = true;
       }
     } else {
       this.zoomAt(x, y, this.config.doubleClick.step, true);
