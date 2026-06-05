@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createShootingLocations } from "~/lib/location-clusters";
-import type { PhotoMarker } from "~/types/map";
+import type { GeographicRegion, PhotoMarker } from "~/types/map";
 
-import { clusterLocations, clusterMarkers } from "../clustering";
+import { clusterMarkers, clusterRegions } from "../clustering";
 
 const createMarker = (
   id: string,
@@ -29,6 +28,41 @@ const isClusterPoint = (
   properties: { cluster: true };
 } => "cluster" in point.properties && point.properties.cluster === true;
 
+const createRegion = (
+  id: string,
+  longitude: number,
+  latitude: number,
+): GeographicRegion => {
+  const marker = createMarker(id, longitude, latitude);
+
+  return {
+    id,
+    level: "city",
+    label: id,
+    adminPath: { city: id },
+    longitude,
+    latitude,
+    photoIds: [id],
+    photoCount: 1,
+    representativeMarker: marker,
+    markers: [marker],
+    bounds: {
+      minLat: latitude,
+      maxLat: latitude,
+      minLng: longitude,
+      maxLng: longitude,
+      centerLat: latitude,
+      centerLng: longitude,
+      longitudeSpan: 0,
+      crossesAntimeridian: false,
+      bounds: [
+        [longitude, latitude],
+        [longitude, latitude],
+      ],
+    },
+  };
+};
+
 describe("map visual clustering", () => {
   it("clusters photo markers with supercluster", () => {
     const result = clusterMarkers(
@@ -47,18 +81,18 @@ describe("map visual clustering", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("clusters shooting locations separately from true location stats", () => {
-    const locations = createShootingLocations([
-      createMarker("location-a", 120, 30),
-      createMarker("location-b", 120.002, 30),
-      createMarker("location-c", 121, 31),
-    ]);
-    const result = clusterLocations(locations, 10);
+  it("clusters regions for visual map display", () => {
+    const regions = [
+      createRegion("region-a", 120, 30),
+      createRegion("region-b", 120.002, 30),
+      createRegion("region-c", 121, 31),
+    ];
+    const result = clusterRegions(regions, 10);
     const cluster = result.find(isClusterPoint);
 
-    expect(locations).toHaveLength(3);
+    expect(regions).toHaveLength(3);
     expect(cluster?.properties.point_count).toBe(2);
-    expect(cluster?.properties.clusteredLocations).toHaveLength(2);
+    expect(cluster?.properties.clusteredRegions).toHaveLength(2);
     expect(cluster?.properties.clusteredPhotos).toHaveLength(2);
   });
 

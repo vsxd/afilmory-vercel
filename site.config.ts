@@ -15,6 +15,7 @@ export interface SiteConfig {
   description: string
   url: string
   accentColor: string
+  language?: string
   author: Author
   social?: Social
   feed?: Feed
@@ -55,6 +56,7 @@ export const siteConfig: SiteConfig = {
   description: 'A personal photography website',
   url: 'https://afilmory.your.domain/',
   accentColor: '#007bff',
+  language: 'zh-CN',
   author: {
     name: 'Author',
     url: 'https://your.domain',

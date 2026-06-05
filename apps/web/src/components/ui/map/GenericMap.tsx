@@ -2,25 +2,27 @@ import * as React from "react";
 
 import { getInitialViewStateForMarkers } from "~/lib/map-utils";
 import { useMapAdapter } from "~/modules/map/map-context";
-import type { BaseMapProps, PhotoMarker, ShootingLocation } from "~/types/map";
+import type { BaseMapProps, GeographicRegion, PhotoMarker } from "~/types/map";
 
 interface GenericMapProps extends Omit<BaseMapProps, "handlers"> {
   /** Photo markers to display */
   markers?: PhotoMarker[];
-  /** Shooting locations to display */
-  locations?: ShootingLocation[];
+  /** Geographic regions to display */
+  regions?: GeographicRegion[];
   /** ID of the marker to select */
   selectedMarkerId?: string | null;
-  /** ID of the shooting location to select */
-  selectedLocationId?: string | null;
+  /** ID of the geographic region to select */
+  selectedRegionId?: string | null;
   /** Callback when marker is clicked */
   onMarkerClick?: (marker: PhotoMarker) => void;
-  /** Callback when shooting location is clicked */
-  onLocationClick?: (location: ShootingLocation) => void;
+  /** Callback when geographic region is clicked */
+  onRegionClick?: (region: GeographicRegion) => void;
   /** Callback when GeoJSON feature is clicked */
   onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
   /** Callback for geolocation */
   onGeolocate?: (longitude: number, latitude: number) => void;
+  /** Callback when map zoom changes */
+  onZoomChange?: (zoom: number) => void;
 }
 
 // Default empty array to avoid inline array creation
@@ -32,14 +34,15 @@ const DEFAULT_MARKERS: PhotoMarker[] = [];
  */
 export const GenericMap: React.FC<GenericMapProps> = ({
   markers = DEFAULT_MARKERS,
-  locations,
+  regions,
   displayMode,
   selectedMarkerId,
-  selectedLocationId,
+  selectedRegionId,
   onMarkerClick,
-  onLocationClick,
+  onRegionClick,
   onGeoJsonClick,
   onGeolocate,
+  onZoomChange,
   initialViewState,
   autoFitBounds = true,
   ...props
@@ -58,11 +61,12 @@ export const GenericMap: React.FC<GenericMapProps> = ({
   const handlers = React.useMemo(
     () => ({
       onMarkerClick,
-      onLocationClick,
+      onRegionClick,
       onGeoJsonClick,
       onGeolocate,
+      onZoomChange,
     }),
-    [onMarkerClick, onLocationClick, onGeoJsonClick, onGeolocate],
+    [onMarkerClick, onRegionClick, onGeoJsonClick, onGeolocate, onZoomChange],
   );
 
   if (!adapter) {
@@ -75,10 +79,10 @@ export const GenericMap: React.FC<GenericMapProps> = ({
     <MapComponent
       {...props}
       markers={markers}
-      locations={locations}
+      regions={regions}
       displayMode={displayMode}
       selectedMarkerId={selectedMarkerId}
-      selectedLocationId={selectedLocationId}
+      selectedRegionId={selectedRegionId}
       initialViewState={calculatedInitialViewState}
       autoFitBounds={autoFitBounds}
       handlers={handlers}

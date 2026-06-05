@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { migrateManifest } from "../manifest/migrate.js";
+import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
 
 describe("migrateManifest", () => {
   it("rejects unknown manifest versions instead of blessing incompatible data", () => {
@@ -29,7 +30,7 @@ describe("migrateManifest", () => {
       lenses: [],
     } as any);
 
-    expect(migrated.version).toBe("v8");
+    expect(migrated.version).toBe(CURRENT_MANIFEST_VERSION);
     expect(migrated.data[0].video).toEqual({
       type: "live-photo",
       videoUrl: "https://example.com/live.mov",

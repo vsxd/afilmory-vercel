@@ -4,36 +4,60 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@afilmory/ui";
+import { useSetAtom } from "jotai";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
+import { useNavigate } from "react-router";
 
-import type { ShootingLocation } from "~/types/map";
+import { gallerySettingAtom } from "~/atoms/app";
+import { getRegionDisplayName } from "~/lib/geo-regions";
+import type { GeographicRegion } from "~/types/map";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
 
-interface LocationMarkerPinProps {
-  location: ShootingLocation;
+interface RegionMarkerPinProps {
+  region: GeographicRegion;
   isSelected?: boolean;
-  onClick?: (location: ShootingLocation) => void;
+  onClick?: (region: GeographicRegion) => void;
   onClose?: () => void;
 }
 
-export const LocationMarkerPin = ({
-  location,
+const geoFilterKeyByLevel = {
+  country: "selectedGeoCountries",
+  region: "selectedGeoRegions",
+  city: "selectedGeoCities",
+  district: "selectedGeoDistricts",
+} as const;
+
+export const RegionMarkerPin = ({
+  region,
   isSelected = false,
   onClick,
   onClose,
-}: LocationMarkerPinProps) => {
+}: RegionMarkerPinProps) => {
   const { t } = useTranslation();
+  const setGallerySetting = useSetAtom(gallerySettingAtom);
+  const navigate = useNavigate();
+  const displayName = getRegionDisplayName(region);
 
   const handleClick = () => {
-    onClick?.(location);
+    onClick?.(region);
   };
 
   const handleClose = (event: React.MouseEvent) => {
     event.stopPropagation();
     onClose?.();
+  };
+
+  const handleFilterRegion = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const key = geoFilterKeyByLevel[region.level];
+    setGallerySetting((prev) => ({
+      ...prev,
+      [key]: Array.from(new Set([...prev[key], region.id])),
+    }));
+    navigate("/");
   };
 
   const handleMarkerKeyDown = (event: React.KeyboardEvent) => {
@@ -44,7 +68,7 @@ export const LocationMarkerPin = ({
   };
 
   return (
-    <Marker longitude={location.longitude} latitude={location.latitude}>
+    <Marker longitude={region.longitude} latitude={region.latitude}>
       <HoverCard
         open={isSelected ? true : undefined}
         openDelay={isSelected ? 0 : 300}
@@ -66,8 +90,9 @@ export const LocationMarkerPin = ({
             onKeyDown={handleMarkerKeyDown}
             role="button"
             tabIndex={0}
-            aria-label={t("explore.location.photos", {
-              count: location.photoCount,
+            aria-label={t("explore.region.photos", {
+              name: displayName,
+              count: region.photoCount,
             })}
           >
             {isSelected && (
@@ -88,7 +113,7 @@ export const LocationMarkerPin = ({
                 }`}
               />
               <div className="absolute -right-1 -bottom-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/75 px-1 text-[10px] font-semibold text-white ring-1 ring-white/30">
-                {location.photoCount}
+                {region.photoCount}
               </div>
             </div>
           </m.div>
@@ -107,7 +132,7 @@ export const LocationMarkerPin = ({
             isSelected ? (event) => event.preventDefault() : undefined
           }
         >
-          <div className="relative p-4">
+          <div className="relative space-y-3 p-4">
             {isSelected && (
               <GlassButton
                 className="absolute top-3 right-3 z-10 size-9"
@@ -118,7 +143,24 @@ export const LocationMarkerPin = ({
                 <i className="i-mingcute-close-line text-lg" />
               </GlassButton>
             )}
-            <ClusterPhotoGrid photos={location.markers} />
+            <div className="pr-10">
+              <div className="text-text text-sm font-semibold">
+                {displayName}
+              </div>
+              <div className="text-text-secondary mt-1 text-xs">
+                {t("explore.region.summary", {
+                  count: region.photoCount,
+                })}
+              </div>
+            </div>
+            <ClusterPhotoGrid photos={region.markers} />
+            <button
+              type="button"
+              onClick={handleFilterRegion}
+              className="focus-visible:ring-accent/45 bg-accent text-accent-foreground focus-visible:ring-offset-background h-9 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
+            >
+              {t("explore.region.filter")}
+            </button>
           </div>
         </HoverCardContent>
       </HoverCard>

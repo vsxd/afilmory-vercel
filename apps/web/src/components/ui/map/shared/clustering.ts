@@ -1,6 +1,6 @@
 import Supercluster from "supercluster";
 
-import type { PhotoMarker, ShootingLocation } from "~/types/map";
+import type { GeographicRegion, PhotoMarker } from "~/types/map";
 
 import type { ClusterPoint } from "./types";
 
@@ -13,13 +13,13 @@ type PhotoPointProperties = {
   marker: PhotoMarker;
 };
 
-type LocationPointProperties = {
-  kind: "location";
+type RegionPointProperties = {
+  kind: "region";
   marker: PhotoMarker;
-  location: ShootingLocation;
+  region: GeographicRegion;
 };
 
-type PointProperties = PhotoPointProperties | LocationPointProperties;
+type PointProperties = PhotoPointProperties | RegionPointProperties;
 type ClusterProperties = Record<string, never>;
 type PointFeature = Supercluster.PointFeature<PointProperties>;
 type ClusterFeature = Supercluster.ClusterFeature<ClusterProperties>;
@@ -55,16 +55,16 @@ const createPhotoPoint = (marker: PhotoMarker): PointFeature => ({
   },
 });
 
-const createLocationPoint = (location: ShootingLocation): PointFeature => ({
+const createRegionPoint = (region: GeographicRegion): PointFeature => ({
   type: "Feature",
   properties: {
-    kind: "location",
-    marker: location.representativeMarker,
-    location,
+    kind: "region",
+    marker: region.representativeMarker,
+    region,
   },
   geometry: {
     type: "Point",
-    coordinates: [location.longitude, location.latitude],
+    coordinates: [region.longitude, region.latitude],
   },
 });
 
@@ -75,12 +75,12 @@ const createIndex = (features: PointFeature[]) =>
   }).load(features);
 
 const createSinglePoint = (feature: PointFeature): ClusterPoint => {
-  if (feature.properties.kind === "location") {
+  if (feature.properties.kind === "region") {
     return {
       type: "Feature",
       properties: {
         marker: feature.properties.marker,
-        location: feature.properties.location,
+        region: feature.properties.region,
       },
       geometry: getClusterPointGeometry(feature),
     };
@@ -104,11 +104,11 @@ const createClusterPoint = (
     Number.POSITIVE_INFINITY,
   );
   const markers = leaves.map((leaf) => leaf.properties.marker);
-  const locations = leaves
+  const regions = leaves
     .map((leaf) =>
-      leaf.properties.kind === "location" ? leaf.properties.location : null,
+      leaf.properties.kind === "region" ? leaf.properties.region : null,
     )
-    .filter((location): location is ShootingLocation => location !== null);
+    .filter((region): region is GeographicRegion => region !== null);
 
   return {
     type: "Feature",
@@ -121,10 +121,10 @@ const createClusterPoint = (
       ),
       marker: markers[0],
       clusteredPhotos:
-        locations.length > 0
-          ? locations.flatMap((location) => location.markers)
+        regions.length > 0
+          ? regions.flatMap((region) => region.markers)
           : markers,
-      clusteredLocations: locations.length > 0 ? locations : undefined,
+      clusteredRegions: regions.length > 0 ? regions : undefined,
     },
     geometry: getClusterPointGeometry(feature),
   };
@@ -155,9 +155,9 @@ export function clusterMarkers(
   return clusterPoints(markers.map(createPhotoPoint), zoom);
 }
 
-export function clusterLocations(
-  locations: ShootingLocation[],
+export function clusterRegions(
+  regions: GeographicRegion[],
   zoom: number,
 ): ClusterPoint[] {
-  return clusterPoints(locations.map(createLocationPoint), zoom);
+  return clusterPoints(regions.map(createRegionPoint), zoom);
 }

@@ -5,29 +5,29 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
-import { createLocationMarkers } from "~/lib/location-clusters";
+import { createRegionMarkers } from "~/lib/geo-regions";
 import { getMapStyle } from "~/lib/map/style";
 import { calculateMapBounds } from "~/lib/map-utils";
 import type {
+  GeographicRegion,
   MapDisplayMode,
   PhotoMarker,
-  ShootingLocation,
 } from "~/types/map";
 
 import {
-  clusterLocations,
   ClusterMarker,
   clusterMarkers,
+  clusterRegions,
   DEFAULT_MARKERS,
   DEFAULT_STYLE,
   DEFAULT_VIEW_STATE,
   GeoJsonLayer,
-  LocationMarkerPin,
   MapControls,
   PhotoMarkerPin,
+  RegionMarkerPin,
 } from "./shared";
 
-const DEFAULT_LOCATIONS: ShootingLocation[] = [];
+const DEFAULT_REGIONS: GeographicRegion[] = [];
 
 export interface PureMaplibreProps {
   id?: string;
@@ -37,15 +37,16 @@ export interface PureMaplibreProps {
     zoom: number;
   };
   markers?: PhotoMarker[];
-  locations?: ShootingLocation[];
+  regions?: GeographicRegion[];
   displayMode?: MapDisplayMode;
   selectedMarkerId?: string | null;
-  selectedLocationId?: string | null;
+  selectedRegionId?: string | null;
   geoJsonData?: GeoJSON.FeatureCollection;
   onMarkerClick?: (marker: PhotoMarker) => void;
-  onLocationClick?: (location: ShootingLocation) => void;
+  onRegionClick?: (region: GeographicRegion) => void;
   onGeoJsonClick?: (event: any) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
+  onZoomChange?: (zoom: number) => void;
   onClusterClick?: (longitude: number, latitude: number) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -58,15 +59,16 @@ export const Maplibre = ({
   id,
   initialViewState = DEFAULT_VIEW_STATE,
   markers = DEFAULT_MARKERS,
-  locations = DEFAULT_LOCATIONS,
-  displayMode = "locations",
+  regions = DEFAULT_REGIONS,
+  displayMode = "regions",
   selectedMarkerId,
-  selectedLocationId,
+  selectedRegionId,
   geoJsonData,
   onMarkerClick,
-  onLocationClick,
+  onRegionClick,
   onGeoJsonClick,
   onGeolocate,
+  onZoomChange,
   onClusterClick,
   className = "w-full h-full",
   style = DEFAULT_STYLE,
@@ -80,8 +82,8 @@ export const Maplibre = ({
   const [hasInitialFitCompleted, setHasInitialFitCompleted] = useState(false);
   const fitMarkers = useMemo(
     () =>
-      displayMode === "locations" ? createLocationMarkers(locations) : markers,
-    [displayMode, locations, markers],
+      displayMode === "regions" ? createRegionMarkers(regions) : markers,
+    [displayMode, regions, markers],
   );
 
   // Handle marker click - only call the external callback
@@ -105,23 +107,23 @@ export const Maplibre = ({
     }
   }, [selectedMarkerId, onMarkerClick, markers]);
 
-  const handleLocationClick = useCallback(
-    (location: ShootingLocation) => {
-      onLocationClick?.(location);
+  const handleRegionClick = useCallback(
+    (region: GeographicRegion) => {
+      onRegionClick?.(region);
     },
-    [onLocationClick],
+    [onRegionClick],
   );
 
-  const handleLocationClose = useCallback(() => {
-    if (selectedLocationId && onLocationClick) {
-      const selectedLocation = locations.find(
-        (location) => location.id === selectedLocationId,
+  const handleRegionClose = useCallback(() => {
+    if (selectedRegionId && onRegionClick) {
+      const selectedRegion = regions.find(
+        (region) => region.id === selectedRegionId,
       );
-      if (selectedLocation) {
-        onLocationClick(selectedLocation);
+      if (selectedRegion) {
+        onRegionClick(selectedRegion);
       }
     }
-  }, [selectedLocationId, onLocationClick, locations]);
+  }, [selectedRegionId, onRegionClick, regions]);
 
   useEffect(() => {
     if (autoFitBounds || !syncViewStateOnInitialViewStateChange) {
@@ -135,15 +137,15 @@ export const Maplibre = ({
   // Clustered markers
   const clusteredMarkers = useMemo(
     () =>
-      displayMode === "locations"
-        ? clusterLocations(locations, currentZoom)
+      displayMode === "regions"
+        ? clusterRegions(regions, currentZoom)
         : clusterMarkers(markers, currentZoom),
-    [displayMode, locations, markers, currentZoom],
+    [displayMode, regions, markers, currentZoom],
   );
 
   useEffect(() => {
     setHasInitialFitCompleted(false);
-  }, [displayMode, fitMarkers]);
+  }, [displayMode]);
 
   const handleClusterClick = useCallback(
     (longitude: number, latitude: number) => {
@@ -315,13 +317,17 @@ export const Maplibre = ({
         {...viewState}
         style={{ width: "100%", height: "100%" }}
         mapStyle={getMapStyle()}
-        attributionControl={false}
+        attributionControl={{
+          compact: true,
+          customAttribution: "Geocoding © OpenStreetMap contributors",
+        }}
         interactiveLayerIds={geoJsonData ? ["data"] : undefined}
         onClick={onGeoJsonClick}
         onLoad={handleMapLoad}
         onMove={(evt) => {
           setCurrentZoom(evt.viewState.zoom);
           setViewState(evt.viewState);
+          onZoomChange?.(evt.viewState.zoom);
         }}
       >
         {/* Map Controls */}
@@ -340,21 +346,21 @@ export const Maplibre = ({
                 displayMode={displayMode}
                 representativeMarker={clusterPoint.properties.marker}
                 clusteredPhotos={clusterPoint.properties.clusteredPhotos}
-                clusteredLocations={clusterPoint.properties.clusteredLocations}
+                clusteredRegions={clusterPoint.properties.clusteredRegions}
                 onClusterClick={handleClusterClick}
               />
             );
           }
 
-          if (clusterPoint.properties.location) {
-            const { location } = clusterPoint.properties;
+          if (clusterPoint.properties.region) {
+            const { region } = clusterPoint.properties;
             return (
-              <LocationMarkerPin
-                key={location.id}
-                location={location}
-                isSelected={selectedLocationId === location.id}
-                onClick={handleLocationClick}
-                onClose={handleLocationClose}
+              <RegionMarkerPin
+                key={region.id}
+                region={region}
+                isSelected={selectedRegionId === region.id}
+                onClick={handleRegionClick}
+                onClose={handleRegionClose}
               />
             );
           }

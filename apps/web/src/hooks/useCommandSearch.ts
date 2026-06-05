@@ -5,11 +5,27 @@ const getLocationTokens = (
     locationName?: string | null;
     city?: string | null;
     country?: string | null;
+    admin?: {
+      country?: string | null;
+      countryCode?: string | null;
+      region?: string | null;
+      city?: string | null;
+      district?: string | null;
+    } | null;
   } | null,
 ) => {
   if (!location) return [];
 
-  const tokens = [location.locationName, location.city, location.country]
+  const tokens = [
+    location.locationName,
+    location.city,
+    location.country,
+    location.admin?.country,
+    location.admin?.countryCode,
+    location.admin?.region,
+    location.admin?.city,
+    location.admin?.district,
+  ]
     .map((token) => token?.trim())
     .filter(
       (token): token is string => typeof token === "string" && token.length > 0,

@@ -110,6 +110,17 @@ const MIGRATION_STEPS: MigrationStep[] = [
       return raw;
     },
   },
+  {
+    from: "v8",
+    to: "v9",
+    exec: (raw) => {
+      logger.main.info(
+        "🔄 迁移 v8 -> v9: 保留旧 location 字段，新增结构化 admin 字段由 geocoding 构建补全",
+      );
+      (raw as any).version = "v9";
+      return raw;
+    },
+  },
 ];
 
 export function migrateManifest(

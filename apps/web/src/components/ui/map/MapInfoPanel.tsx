@@ -6,37 +6,54 @@ import {
   calculateApproximateCoverageAreaKm2,
   normalizeLongitude,
 } from "~/lib/map-utils";
-import type { MapBounds, MapDisplayMode } from "~/types/map";
+import type {
+  GeographicRegionLevel,
+  MapBounds,
+  MapDisplayMode,
+} from "~/types/map";
 
 interface MapInfoPanelProps {
   displayMode: MapDisplayMode;
-  locationsCount: number;
+  regionsCount: number;
+  cityCount: number;
   photosCount: number;
+  regionLevel: GeographicRegionLevel;
+  isGpsFallback?: boolean;
   bounds?: MapBounds | null;
   onDisplayModeChange: (mode: MapDisplayMode) => void;
 }
 
 export const MapInfoPanel = ({
   displayMode,
-  locationsCount,
+  regionsCount,
+  cityCount,
   photosCount,
+  regionLevel,
+  isGpsFallback = false,
   bounds,
   onDisplayModeChange,
 }: MapInfoPanelProps) => {
   const { t, i18n } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const primaryCountLabel =
-    displayMode === "locations"
-      ? t("explore.found.locations", { count: locationsCount })
+    isGpsFallback
+      ? t("explore.found.photos", { count: photosCount })
+      : displayMode === "regions"
+      ? t("explore.found.regions", {
+          count: regionsCount,
+          level: t(`explore.region.level.${regionLevel}`),
+        })
       : t("explore.found.photos", { count: photosCount });
   const secondaryCountLabel =
-    displayMode === "locations"
+    isGpsFallback
+      ? t("explore.fallback.gpsOnly")
+      : displayMode === "regions"
       ? t("explore.found.photosCompact", { count: photosCount })
-      : t("explore.found.locationsCompact", { count: locationsCount });
+      : t("explore.found.citiesCompact", { count: cityCount });
   const modes = [
     {
-      value: "locations",
-      label: t("explore.mode.locations"),
+      value: "regions",
+      label: t("explore.mode.regions"),
       icon: "i-mingcute-map-pin-fill",
     },
     {
@@ -168,7 +185,7 @@ export const MapInfoPanel = ({
               <div className="mb-4 flex items-center gap-2.5">
                 <i className="i-mingcute-location-line text-text-secondary" />
                 <span className="text-text text-sm font-medium tracking-tight">
-                  {t("explore.shooting.range")}
+                  {t("explore.region.range")}
                 </span>
               </div>
 

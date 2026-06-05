@@ -2,7 +2,14 @@ import type { GallerySetting } from "~/atoms/app";
 
 export type GalleryFilterState = Pick<
   GallerySetting,
-  "selectedTags" | "selectedCameras" | "selectedLenses" | "tagFilterMode"
+  | "selectedTags"
+  | "selectedCameras"
+  | "selectedLenses"
+  | "selectedGeoCountries"
+  | "selectedGeoRegions"
+  | "selectedGeoCities"
+  | "selectedGeoDistricts"
+  | "tagFilterMode"
 >;
 
 const getSearchList = (searchParams: URLSearchParams, key: string) => {
@@ -51,6 +58,10 @@ export const getGalleryFiltersFromSearch = (
     selectedTags: getSearchList(searchParams, "tags"),
     selectedCameras: getSearchList(searchParams, "cameras"),
     selectedLenses: getSearchList(searchParams, "lenses"),
+    selectedGeoCountries: getSearchList(searchParams, "geo_country"),
+    selectedGeoRegions: getSearchList(searchParams, "geo_region"),
+    selectedGeoCities: getSearchList(searchParams, "geo_city"),
+    selectedGeoDistricts: getSearchList(searchParams, "geo_district"),
     tagFilterMode:
       tagModeFromSearchParams === "intersection" ? "intersection" : "union",
   };
@@ -64,6 +75,10 @@ export const applyGalleryFiltersToSearch = (
   setSearchList(searchParams, "tags", filters.selectedTags);
   setSearchList(searchParams, "cameras", filters.selectedCameras);
   setSearchList(searchParams, "lenses", filters.selectedLenses);
+  setSearchList(searchParams, "geo_country", filters.selectedGeoCountries);
+  setSearchList(searchParams, "geo_region", filters.selectedGeoRegions);
+  setSearchList(searchParams, "geo_city", filters.selectedGeoCities);
+  setSearchList(searchParams, "geo_district", filters.selectedGeoDistricts);
 
   if (filters.tagFilterMode === "intersection")
     searchParams.set("tag_mode", "intersection");
@@ -85,5 +100,9 @@ export const buildSingleTagFilterSearch = (tag: string): string =>
     selectedTags: [tag],
     selectedCameras: [],
     selectedLenses: [],
+    selectedGeoCountries: [],
+    selectedGeoRegions: [],
+    selectedGeoCities: [],
+    selectedGeoDistricts: [],
     tagFilterMode: "union",
   });

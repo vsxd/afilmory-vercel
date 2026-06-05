@@ -83,21 +83,19 @@ type VideoSource =
 
 ## Geocoding
 
-反向地理编码由 `plugins/geocoding.ts` 在构建生命周期中调用 `photo/geocoding.ts`。默认根配置未启用该插件；需要时在 `builder.config.ts` 中显式加入：
+反向地理编码由 `plugins/geocoding.ts` 在构建生命周期中调用 `photo/geocoding.ts`，运行时前端只读取 manifest 中已有的结构化行政区信息。根配置默认启用 Nominatim provider；如果不希望构建期访问外部 geocoding 服务，可以显式设置 `GEOCODING_ENABLED=false`。
 
-```ts
-import { defineBuilderConfig, geocodingPlugin } from "@afilmory/builder";
+当前支持：
 
-export default defineBuilderConfig(() => ({
-  plugins: [
-    geocodingPlugin({
-      enable: true,
-      provider: "auto",
-      mapboxToken: process.env.MAPBOX_TOKEN,
-    }),
-  ],
-}));
-```
+- `GEOCODING_ENABLED=true|false`：默认启用；设为 `false` 时关闭构建期反向地理编码。
+- `GEOCODING_PROVIDER=nominatim`：默认使用 Nominatim；也兼容 `mapbox` 和 `auto`。
+- `GEOCODING_LANGUAGE=zh-CN`：请求返回语言。
+- `GEOCODING_USER_AGENT`：Nominatim 请求必须配置可识别的 User-Agent。
+- `GEOCODING_CACHE_PATH=generated/geocoding-cache.json`：持久缓存路径，避免重复构建反复请求。
+- `GEOCODING_CACHE_PRECISION=4`：缓存坐标精度，约 11m 量级。
+- `GEOCODING_NOMINATIM_BASE_URL`：自建 Nominatim 或代理服务地址。
+
+公共 Nominatim 服务有明确使用政策：请求必须限速，默认插件按 `1 req/sec` 串行请求，并发送配置的 User-Agent。使用公共 OSM/Nominatim 数据时，页面或文档需要保留 OpenStreetMap attribution。
 
 ## Extending the Pipeline
 

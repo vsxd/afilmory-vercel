@@ -9,6 +9,10 @@ export interface GallerySetting {
   selectedTags: string[];
   selectedCameras: string[];
   selectedLenses: string[];
+  selectedGeoCountries: string[];
+  selectedGeoRegions: string[];
+  selectedGeoCities: string[];
+  selectedGeoDistricts: string[];
   tagFilterMode: "union" | "intersection";
   columns: number | "auto";
 }
@@ -19,6 +23,10 @@ export const gallerySettingAtom = atom<GallerySetting>({
   selectedTags: [],
   selectedCameras: [],
   selectedLenses: [],
+  selectedGeoCountries: [],
+  selectedGeoRegions: [],
+  selectedGeoCities: [],
+  selectedGeoDistricts: [],
   tagFilterMode: "union",
   columns: "auto",
 });

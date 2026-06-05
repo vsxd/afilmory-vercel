@@ -3,6 +3,7 @@ import { use, useCallback, useEffect, useMemo } from "react";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import { photoLoader } from "~/data-runtime/photo-loader";
+import { photoMatchesGeoFilters } from "~/lib/geo-regions";
 import { jotaiStore } from "~/lib/jotai";
 import { getPhotoDateString } from "~/lib/photo-date";
 import { PhotosContext } from "~/providers/photos-provider";
@@ -37,6 +38,10 @@ const filterAndSortPhotos = (
   selectedTags: string[],
   selectedCameras: string[],
   selectedLenses: string[],
+  selectedGeoCountries: string[],
+  selectedGeoRegions: string[],
+  selectedGeoCities: string[],
+  selectedGeoDistricts: string[],
   sortOrder: "asc" | "desc",
   tagFilterMode: "union" | "intersection" = "union",
 ) => {
@@ -79,6 +84,22 @@ const filterAndSortPhotos = (
       const lensDisplayName = lensMake ? `${lensMake} ${lensModel}` : lensModel;
       return selectedLenses.includes(lensDisplayName);
     });
+  }
+
+  if (
+    selectedGeoCountries.length > 0 ||
+    selectedGeoRegions.length > 0 ||
+    selectedGeoCities.length > 0 ||
+    selectedGeoDistricts.length > 0
+  ) {
+    filteredPhotos = filteredPhotos.filter((photo) =>
+      photoMatchesGeoFilters(photo, {
+        selectedGeoCountries,
+        selectedGeoRegions,
+        selectedGeoCities,
+        selectedGeoDistricts,
+      }),
+    );
   }
 
   // 然后排序
@@ -146,6 +167,10 @@ export const getFilteredPhotos = () => {
     currentGallerySetting.selectedTags,
     currentGallerySetting.selectedCameras,
     currentGallerySetting.selectedLenses,
+    currentGallerySetting.selectedGeoCountries,
+    currentGallerySetting.selectedGeoRegions,
+    currentGallerySetting.selectedGeoCities,
+    currentGallerySetting.selectedGeoDistricts,
     currentGallerySetting.sortOrder,
     currentGallerySetting.tagFilterMode,
   );
@@ -180,6 +205,10 @@ export const usePhotos = () => {
     selectedTags,
     selectedCameras,
     selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
     tagFilterMode,
   } = useAtomValue(gallerySettingAtom);
 
@@ -188,10 +217,24 @@ export const usePhotos = () => {
       selectedTags,
       selectedCameras,
       selectedLenses,
+      selectedGeoCountries,
+      selectedGeoRegions,
+      selectedGeoCities,
+      selectedGeoDistricts,
       sortOrder,
       tagFilterMode,
     );
-  }, [sortOrder, selectedTags, selectedCameras, selectedLenses, tagFilterMode]);
+  }, [
+    sortOrder,
+    selectedTags,
+    selectedCameras,
+    selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
+    tagFilterMode,
+  ]);
 
   return masonryItems;
 };

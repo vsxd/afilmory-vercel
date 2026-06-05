@@ -16,6 +16,10 @@ describe("gallery filter URL helpers", () => {
       selectedTags: ["street", "night"],
       selectedCameras: ["SONY ILCE-7C"],
       selectedLenses: ["FE 35mm"],
+      selectedGeoCountries: [],
+      selectedGeoRegions: [],
+      selectedGeoCities: [],
+      selectedGeoDistricts: [],
       tagFilterMode: "intersection",
     });
   });
@@ -26,6 +30,10 @@ describe("gallery filter URL helpers", () => {
         selectedTags: [],
         selectedCameras: ["SONY ILCE-7C"],
         selectedLenses: [],
+        selectedGeoCountries: [],
+        selectedGeoRegions: [],
+        selectedGeoCities: [],
+        selectedGeoDistricts: [],
         tagFilterMode: "union",
       }),
     ).toBe("?photoId=A7C09524&cameras=SONY+ILCE-7C");
@@ -40,7 +48,32 @@ describe("gallery filter URL helpers", () => {
       selectedTags: ["street", "night,city"],
       selectedCameras: ["SONY ILCE-7C"],
       selectedLenses: [],
+      selectedGeoCountries: [],
+      selectedGeoRegions: [],
+      selectedGeoCities: [],
+      selectedGeoDistricts: [],
       tagFilterMode: "union",
+    });
+  });
+
+  it("reads and writes geographic filters", () => {
+    const search = buildGalleryFilterSearch("", {
+      selectedTags: [],
+      selectedCameras: [],
+      selectedLenses: [],
+      selectedGeoCountries: ["country=cn"],
+      selectedGeoRegions: [],
+      selectedGeoCities: ["city:country=cn|city=hangzhou"],
+      selectedGeoDistricts: [],
+      tagFilterMode: "union",
+    });
+
+    expect(search).toBe(
+      "?geo_country=country%3Dcn&geo_city=city%3Acountry%3Dcn%7Ccity%3Dhangzhou",
+    );
+    expect(getGalleryFiltersFromSearch(search)).toMatchObject({
+      selectedGeoCountries: ["country=cn"],
+      selectedGeoCities: ["city:country=cn|city=hangzhou"],
     });
   });
 
@@ -70,6 +103,10 @@ describe("gallery filter URL helpers", () => {
           selectedTags: [],
           selectedCameras: [],
           selectedLenses: [],
+          selectedGeoCountries: [],
+          selectedGeoRegions: [],
+          selectedGeoCities: [],
+          selectedGeoDistricts: [],
           tagFilterMode: "union",
         },
       ),

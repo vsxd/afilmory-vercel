@@ -4,7 +4,7 @@ import * as React from "react";
 import { lazy } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
-import type { BaseMapProps, PhotoMarker, ShootingLocation } from "~/types/map";
+import type { BaseMapProps, GeographicRegion, PhotoMarker } from "~/types/map";
 
 import type { MapAdapter } from "./map-context";
 
@@ -39,10 +39,10 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   id,
   initialViewState,
   markers,
-  locations,
+  regions,
   displayMode,
   selectedMarkerId,
-  selectedLocationId,
+  selectedRegionId,
   geoJsonData,
   className,
   style,
@@ -77,9 +77,9 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
     [handlers],
   );
 
-  const handleLocationClick = React.useCallback(
-    (location: ShootingLocation) => {
-      handlers?.onLocationClick?.(location);
+  const handleRegionClick = React.useCallback(
+    (region: GeographicRegion) => {
+      handlers?.onRegionClick?.(region);
     },
     [handlers],
   );
@@ -92,20 +92,28 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
     [handlers],
   );
 
+  const handleZoomChange = React.useCallback(
+    (zoom: number) => {
+      handlers?.onZoomChange?.(zoom);
+    },
+    [handlers],
+  );
+
   return (
     <Maplibre
       id={id}
       initialViewState={initialViewState}
       markers={markers}
-      locations={locations}
+      regions={regions}
       displayMode={displayMode}
       selectedMarkerId={selectedMarkerId}
-      selectedLocationId={selectedLocationId}
+      selectedRegionId={selectedRegionId}
       geoJsonData={geoJsonData}
       onMarkerClick={handleMarkerClick}
-      onLocationClick={handleLocationClick}
+      onRegionClick={handleRegionClick}
       onGeoJsonClick={handleGeoJsonClick}
       onGeolocate={handleGeolocate}
+      onZoomChange={handleZoomChange}
       className={className}
       style={style}
       mapRef={mapRef}

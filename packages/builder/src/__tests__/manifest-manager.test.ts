@@ -9,6 +9,7 @@ import {
   loadExistingManifest,
   needsUpdate,
 } from "../manifest/manager.js";
+import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
 import { setBuilderOutputSettings } from "../output-paths.js";
 import type { PhotoManifestItem } from "../types/photo.js";
 
@@ -102,7 +103,7 @@ describe("loadExistingManifest", () => {
   it("creates a new manifest only when the file does not exist", async () => {
     const manifest = await loadExistingManifest();
 
-    expect(manifest.version).toBe("v8");
+    expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
     await expect(fs.access(manifestPath)).resolves.toBeUndefined();
   });
 

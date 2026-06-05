@@ -21,6 +21,7 @@ const envConfig: Partial<SiteConfig> = {
   description: env.SITE_DESCRIPTION,
   url: env.SITE_URL,
   accentColor: env.SITE_ACCENT_COLOR,
+  language: env.SITE_LANGUAGE,
   author: {
     name: env.AUTHOR_NAME || baseSiteConfig.author.name,
     url: env.AUTHOR_URL || baseSiteConfig.author.url,

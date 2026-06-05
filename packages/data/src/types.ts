@@ -39,10 +39,20 @@ export type AfilmoryManifest = {
 
 // --- Photo Types ---
 
+// 结构化行政区划信息。所有字段均为可选，因为不同国家/服务的行政层级不完全一致。
+export interface LocationAdminInfo {
+  country?: string;
+  countryCode?: string;
+  region?: string;
+  city?: string;
+  district?: string;
+}
+
 // 地理位置信息
 export interface LocationInfo {
   latitude: number;
   longitude: number;
+  admin?: LocationAdminInfo;
   country?: string;
   city?: string;
   locationName?: string;

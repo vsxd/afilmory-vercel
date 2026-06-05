@@ -24,6 +24,10 @@ const defaultGallerySetting: GallerySetting = {
   selectedTags: [],
   selectedCameras: [],
   selectedLenses: [],
+  selectedGeoCountries: [],
+  selectedGeoRegions: [],
+  selectedGeoCities: [],
+  selectedGeoDistricts: [],
   tagFilterMode: "union",
   columns: "auto",
 };

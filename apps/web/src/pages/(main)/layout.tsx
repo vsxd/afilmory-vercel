@@ -92,7 +92,14 @@ const useBrowserLayoutEffect =
 const restoreGalleryFilters = (
   filters: Pick<
     GallerySetting,
-    "selectedTags" | "selectedCameras" | "selectedLenses" | "tagFilterMode"
+    | "selectedTags"
+    | "selectedCameras"
+    | "selectedLenses"
+    | "selectedGeoCountries"
+    | "selectedGeoRegions"
+    | "selectedGeoCities"
+    | "selectedGeoDistricts"
+    | "tagFilterMode"
   >,
 ) => {
   jotaiStore.set(gallerySettingAtom, (prev) => ({
@@ -157,6 +164,10 @@ const useSyncStateToUrl = () => {
     selectedTags,
     selectedCameras,
     selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
     sortOrder,
     tagFilterMode,
   } = useAtomValue(gallerySettingAtom);
@@ -255,6 +266,10 @@ const useSyncStateToUrl = () => {
     selectedTags,
     selectedCameras,
     selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
     sortOrder,
     tagFilterMode,
   ]);
@@ -269,6 +284,10 @@ const useSyncStateToUrl = () => {
       selectedTags,
       selectedCameras,
       selectedLenses,
+      selectedGeoCountries,
+      selectedGeoRegions,
+      selectedGeoCities,
+      selectedGeoDistricts,
       tagFilterMode,
     });
 
@@ -294,6 +313,10 @@ const useSyncStateToUrl = () => {
     selectedTags,
     selectedCameras,
     selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
     tagFilterMode,
     setSearchParams,
   ]);

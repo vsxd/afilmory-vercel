@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
 import type {
+  GeographicRegion,
   MapBounds,
   MapDisplayMode,
   MapViewState,
   PhotoMarker,
-  ShootingLocation,
 } from "./core";
 
 /**
@@ -27,9 +27,10 @@ export interface MapProvider {
  */
 export interface MapHandlers {
   onMarkerClick?: (marker: PhotoMarker) => void;
-  onLocationClick?: (location: ShootingLocation) => void;
+  onRegionClick?: (region: GeographicRegion) => void;
   onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
+  onZoomChange?: (zoom: number) => void;
   onPopupClose?: () => void;
 }
 
@@ -40,16 +41,17 @@ export interface BaseMapProps {
   id?: string;
   initialViewState?: MapViewState;
   markers?: PhotoMarker[];
-  locations?: ShootingLocation[];
+  regions?: GeographicRegion[];
   displayMode?: MapDisplayMode;
   selectedMarkerId?: string | null;
-  selectedLocationId?: string | null;
+  selectedRegionId?: string | null;
   geoJsonData?: GeoJSON.FeatureCollection;
   className?: string;
   style?: React.CSSProperties;
   theme?: "light" | "dark";
   showGeocoder?: boolean;
   handlers?: MapHandlers;
+  onZoomChange?: (zoom: number) => void;
   autoFitBounds?: boolean;
   syncViewStateOnInitialViewStateChange?: boolean;
 }

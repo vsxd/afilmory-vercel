@@ -37,7 +37,8 @@ export interface PhotoMarker {
   photo: PhotoManifestItem;
 }
 
-export type MapDisplayMode = "locations" | "photos";
+export type MapDisplayMode = "regions" | "photos";
+export type GeographicRegionLevel = "country" | "region" | "city" | "district";
 
 /**
  * Map bounds interface
@@ -54,8 +55,17 @@ export interface MapBounds {
   bounds: [[number, number], [number, number]];
 }
 
-export interface ShootingLocation {
+export interface GeographicRegion {
   id: string;
+  level: GeographicRegionLevel;
+  label: string;
+  adminPath: {
+    country?: string;
+    countryCode?: string;
+    region?: string;
+    city?: string;
+    district?: string;
+  };
   longitude: number;
   latitude: number;
   photoIds: string[];

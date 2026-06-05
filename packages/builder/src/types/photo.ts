@@ -3,6 +3,7 @@ export type {
   FujiRecipe,
   HistogramData,
   ImageMetadata,
+  LocationAdminInfo,
   LocationInfo,
   PhotoInfo,
   PhotoManifestItem,

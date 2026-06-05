@@ -2,7 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { defineBuilderConfig } from '@afilmory/builder'
+import { defineBuilderConfig, geocodingPlugin } from '@afilmory/builder'
 
 import { env } from './env.js'
 
@@ -20,6 +20,12 @@ const missingS3Vars = Object.entries(requiredS3Vars)
 
 const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || ''
 const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || ''
+const geocodingLanguage = env.GEOCODING_LANGUAGE || env.SITE_LANGUAGE || 'zh-CN'
+const geocodingCachePath =
+  env.GEOCODING_CACHE_PATH || path.resolve(__dirname, 'generated/geocoding-cache.json')
+const geocodingUserAgent =
+  env.GEOCODING_USER_AGENT ||
+  `afilmory-vercel/0.1 (${env.SITE_URL || 'https://github.com/vsxd/afilmory-vercel'})`
 
 if (missingS3Vars.length > 0) {
   throw new Error(`Missing required S3 environment variables: ${missingS3Vars.join(', ')}`)
@@ -99,5 +105,16 @@ export default defineBuilderConfig(() => ({
       },
     },
   },
-  plugins: [],
+  plugins: [
+    geocodingPlugin({
+      enable: env.GEOCODING_ENABLED !== 'false',
+      provider: env.GEOCODING_PROVIDER || 'nominatim',
+      mapboxToken: env.MAPBOX_TOKEN,
+      nominatimBaseUrl: env.GEOCODING_NOMINATIM_BASE_URL,
+      nominatimUserAgent: geocodingUserAgent,
+      cachePath: geocodingCachePath,
+      cachePrecision: env.GEOCODING_CACHE_PRECISION,
+      language: geocodingLanguage,
+    }),
+  ],
 }))

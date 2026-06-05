@@ -28,6 +28,7 @@ export const env = createEnv({
     SITE_DESCRIPTION: z.string().optional(),
     SITE_URL: z.string().optional(),
     SITE_ACCENT_COLOR: z.string().optional(),
+    SITE_LANGUAGE: z.string().optional(),
 
     // 作者信息(可选)
     AUTHOR_NAME: z.string().optional(),
@@ -46,6 +47,16 @@ export const env = createEnv({
     // 地图配置(可选)
     MAP_STYLE: z.string().optional(), // 'builtin' or custom
     MAP_PROJECTION: z.enum(['globe', 'mercator']).optional(),
+
+    // 构建期反向地理编码（可选）
+    GEOCODING_ENABLED: z.string().default('true'),
+    GEOCODING_PROVIDER: z.enum(['nominatim', 'mapbox', 'auto']).optional(),
+    GEOCODING_LANGUAGE: z.string().optional(),
+    GEOCODING_USER_AGENT: z.string().optional(),
+    GEOCODING_CACHE_PATH: z.string().optional(),
+    GEOCODING_CACHE_PRECISION: z.coerce.number().optional(),
+    GEOCODING_NOMINATIM_BASE_URL: z.string().optional(),
+    MAPBOX_TOKEN: z.string().optional(),
   },
   runtimeEnv: process.env,
   isServer: typeof window === 'undefined',

@@ -51,8 +51,8 @@ export const ClusterMarker = ({
             role="button"
             tabIndex={0}
             aria-label={t(
-              displayMode === "locations"
-                ? "explore.cluster.locations"
+              displayMode === "regions"
+                ? "explore.cluster.regions"
                 : "explore.cluster.photos",
               { count: pointCount },
             )}

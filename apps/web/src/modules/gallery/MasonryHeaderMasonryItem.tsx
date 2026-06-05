@@ -9,7 +9,10 @@ import { siteConfig } from "~/config";
 import { photoLoader } from "~/data-runtime/photo-loader";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
-import { createShootingLocations } from "~/lib/location-clusters";
+import {
+  createGeographicRegions,
+  getRegionDisplayName,
+} from "~/lib/geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -57,7 +60,11 @@ export const MasonryHeaderMasonryItem = ({
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
     gallerySetting.selectedCameras.length > 0 ||
-    gallerySetting.selectedLenses.length > 0;
+    gallerySetting.selectedLenses.length > 0 ||
+    gallerySetting.selectedGeoCountries.length > 0 ||
+    gallerySetting.selectedGeoRegions.length > 0 ||
+    gallerySetting.selectedGeoCities.length > 0 ||
+    gallerySetting.selectedGeoDistricts.length > 0;
 
   const libraryStats = useMemo(() => {
     const photos = photoLoader.getPhotos();
@@ -72,9 +79,9 @@ export const MasonryHeaderMasonryItem = ({
       if (lens) lensSet.add(lens);
     }
 
-    const locationCount = createShootingLocations(
-      convertPhotosToMarkersFromEXIF(photos),
-    ).length;
+    const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
+    const cityCount = createGeographicRegions(photoMarkers, "city").length;
+    const hasCityData = cityCount > 0;
 
     return [
       {
@@ -96,16 +103,50 @@ export const MasonryHeaderMasonryItem = ({
         icon: "aperture",
       },
       {
-        id: "locations",
-        value: locationCount,
-        label: t("gallery.library.stats.locations"),
-        icon: "i-mingcute-map-pin-fill",
+        id: hasCityData ? "cities" : "gps",
+        value: hasCityData ? cityCount : photoMarkers.length,
+        label: hasCityData
+          ? t("gallery.library.stats.cities")
+          : t("gallery.library.stats.gpsPhotos"),
+        icon: hasCityData
+          ? "i-mingcute-building-5-line"
+          : "i-mingcute-location-fill",
       },
     ];
   }, [t]);
 
-  const filterChips = useMemo(
-    () => [
+  const filterChips = useMemo(() => {
+    const photoMarkers = convertPhotosToMarkersFromEXIF(
+      photoLoader.getPhotos(),
+    );
+    const regionLabelMaps = {
+      country: new Map(
+        createGeographicRegions(photoMarkers, "country").map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      region: new Map(
+        createGeographicRegions(photoMarkers, "region").map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      city: new Map(
+        createGeographicRegions(photoMarkers, "city").map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      district: new Map(
+        createGeographicRegions(photoMarkers, "district").map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+    };
+
+    return [
       ...gallerySetting.selectedTags.map((tag) => ({
         id: `tag-${tag}`,
         label: tag,
@@ -121,6 +162,26 @@ export const MasonryHeaderMasonryItem = ({
         label: lens,
         icon: "lens" as const,
       })),
+      ...gallerySetting.selectedGeoCountries.map((id) => ({
+        id: `geo-country-${id}`,
+        label: regionLabelMaps.country.get(id) ?? id,
+        icon: "location" as const,
+      })),
+      ...gallerySetting.selectedGeoRegions.map((id) => ({
+        id: `geo-region-${id}`,
+        label: regionLabelMaps.region.get(id) ?? id,
+        icon: "location" as const,
+      })),
+      ...gallerySetting.selectedGeoCities.map((id) => ({
+        id: `geo-city-${id}`,
+        label: regionLabelMaps.city.get(id) ?? id,
+        icon: "location" as const,
+      })),
+      ...gallerySetting.selectedGeoDistricts.map((id) => ({
+        id: `geo-district-${id}`,
+        label: regionLabelMaps.district.get(id) ?? id,
+        icon: "location" as const,
+      })),
       ...(gallerySetting.selectedTags.length > 1
         ? [
             {
@@ -133,15 +194,18 @@ export const MasonryHeaderMasonryItem = ({
             },
           ]
         : []),
-    ],
-    [
-      gallerySetting.selectedCameras,
-      gallerySetting.selectedLenses,
-      gallerySetting.selectedTags,
-      gallerySetting.tagFilterMode,
-      t,
-    ],
-  );
+    ];
+  }, [
+    gallerySetting.selectedCameras,
+    gallerySetting.selectedGeoCities,
+    gallerySetting.selectedGeoCountries,
+    gallerySetting.selectedGeoDistricts,
+    gallerySetting.selectedGeoRegions,
+    gallerySetting.selectedLenses,
+    gallerySetting.selectedTags,
+    gallerySetting.tagFilterMode,
+    t,
+  ]);
 
   useEffect(() => {
     const element = statsGridRef.current;
@@ -282,6 +346,12 @@ export const MasonryHeaderMasonryItem = ({
                   {chip.icon === "lens" && (
                     <MageLens
                       className="shrink-0 text-[11px] sm:text-xs"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {chip.icon === "location" && (
+                    <i
+                      className="i-mingcute-location-line shrink-0 text-[11px] sm:text-xs"
                       aria-hidden="true"
                     />
                   )}

@@ -19,6 +19,11 @@ import {
 } from "~/hooks/usePhotoViewer";
 import { MageLens } from "~/icons";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
+import {
+  createGeographicRegions,
+  getRegionDisplayName,
+} from "~/lib/geo-regions";
+import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 
 // Command types
@@ -60,7 +65,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const activeFilterCount =
     gallerySetting.selectedTags.length +
     gallerySetting.selectedCameras.length +
-    gallerySetting.selectedLenses.length;
+    gallerySetting.selectedLenses.length +
+    gallerySetting.selectedGeoCountries.length +
+    gallerySetting.selectedGeoRegions.length +
+    gallerySetting.selectedGeoCities.length +
+    gallerySetting.selectedGeoDistricts.length;
 
   const hasFilters = activeFilterCount > 0;
 
@@ -82,9 +91,53 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       selectedTags: [],
       selectedCameras: [],
       selectedLenses: [],
+      selectedGeoCountries: [],
+      selectedGeoRegions: [],
+      selectedGeoCities: [],
+      selectedGeoDistricts: [],
       tagFilterMode: "union",
     }));
   }, [setGallerySetting]);
+
+  const geoRegions = useMemo(() => {
+    const markers = convertPhotosToMarkersFromEXIF(allPhotos);
+    return {
+      country: createGeographicRegions(markers, "country"),
+      region: createGeographicRegions(markers, "region"),
+      city: createGeographicRegions(markers, "city"),
+      district: createGeographicRegions(markers, "district"),
+    };
+  }, []);
+
+  const regionLabelMaps = useMemo(
+    () => ({
+      country: new Map(
+        geoRegions.country.map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      region: new Map(
+        geoRegions.region.map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      city: new Map(
+        geoRegions.city.map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+      district: new Map(
+        geoRegions.district.map((region) => [
+          region.id,
+          getRegionDisplayName(region),
+        ]),
+      ),
+    }),
+    [geoRegions],
+  );
 
   const activeFilterChips = useMemo(
     () => [
@@ -124,11 +177,64 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ),
           })),
       })),
+      ...gallerySetting.selectedGeoCountries.map((id) => ({
+        id: `geo-country-${id}`,
+        label: regionLabelMaps.country.get(id) ?? id,
+        icon: "i-mingcute-world-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoCountries: prev.selectedGeoCountries.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
+      ...gallerySetting.selectedGeoRegions.map((id) => ({
+        id: `geo-region-${id}`,
+        label: regionLabelMaps.region.get(id) ?? id,
+        icon: "i-mingcute-map-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoRegions: prev.selectedGeoRegions.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
+      ...gallerySetting.selectedGeoCities.map((id) => ({
+        id: `geo-city-${id}`,
+        label: regionLabelMaps.city.get(id) ?? id,
+        icon: "i-mingcute-building-5-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoCities: prev.selectedGeoCities.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
+      ...gallerySetting.selectedGeoDistricts.map((id) => ({
+        id: `geo-district-${id}`,
+        label: regionLabelMaps.district.get(id) ?? id,
+        icon: "i-mingcute-location-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoDistricts: prev.selectedGeoDistricts.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
     ],
     [
       gallerySetting.selectedCameras,
+      gallerySetting.selectedGeoCities,
+      gallerySetting.selectedGeoCountries,
+      gallerySetting.selectedGeoDistricts,
+      gallerySetting.selectedGeoRegions,
       gallerySetting.selectedLenses,
       gallerySetting.selectedTags,
+      regionLabelMaps,
       setGallerySetting,
     ],
   );
@@ -240,6 +346,91 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       });
     }
 
+    const geoCommandGroups = [
+      {
+        regions: geoRegions.country,
+        selected: gallerySetting.selectedGeoCountries,
+        label: t("action.geo.country.filter"),
+        icon: "i-mingcute-world-line",
+        keywords: ["country", "geo", "region", "filter"],
+        toggle: (id: string) =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoCountries: prev.selectedGeoCountries.includes(id)
+              ? prev.selectedGeoCountries.filter((item) => item !== id)
+              : [...prev.selectedGeoCountries, id],
+          })),
+      },
+      {
+        regions: geoRegions.region,
+        selected: gallerySetting.selectedGeoRegions,
+        label: t("action.geo.region.filter"),
+        icon: "i-mingcute-map-line",
+        keywords: ["region", "state", "province", "geo", "filter"],
+        toggle: (id: string) =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoRegions: prev.selectedGeoRegions.includes(id)
+              ? prev.selectedGeoRegions.filter((item) => item !== id)
+              : [...prev.selectedGeoRegions, id],
+          })),
+      },
+      {
+        regions: geoRegions.city,
+        selected: gallerySetting.selectedGeoCities,
+        label: t("action.geo.city.filter"),
+        icon: "i-mingcute-building-5-line",
+        keywords: ["city", "geo", "filter"],
+        toggle: (id: string) =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoCities: prev.selectedGeoCities.includes(id)
+              ? prev.selectedGeoCities.filter((item) => item !== id)
+              : [...prev.selectedGeoCities, id],
+          })),
+      },
+      {
+        regions: geoRegions.district,
+        selected: gallerySetting.selectedGeoDistricts,
+        label: t("action.geo.district.filter"),
+        icon: "i-mingcute-location-line",
+        keywords: ["district", "county", "geo", "filter"],
+        toggle: (id: string) =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoDistricts: prev.selectedGeoDistricts.includes(id)
+              ? prev.selectedGeoDistricts.filter((item) => item !== id)
+              : [...prev.selectedGeoDistricts, id],
+          })),
+      },
+    ];
+
+    geoCommandGroups.forEach((group) => {
+      group.regions.forEach((region) => {
+        const isActive = group.selected.includes(region.id);
+        const title = getRegionDisplayName(region);
+        cmds.push({
+          id: `geo-${region.level}-${region.id}`,
+          type: "filter",
+          title,
+          subtitle: group.label,
+          icon: group.icon,
+          active: isActive,
+          action: () => group.toggle(region.id),
+          keywords: [
+            ...group.keywords,
+            title,
+            region.label,
+            region.adminPath.country,
+            region.adminPath.region,
+            region.adminPath.city,
+            region.adminPath.district,
+          ].filter(Boolean) as string[],
+          badge: region.photoCount,
+        });
+      });
+    });
+
     // Tag filter mode toggle
     if (allTags.length > 0) {
       const isUnionMode = gallerySetting.tagFilterMode === "union";
@@ -271,6 +462,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             selectedTags: [],
             selectedCameras: [],
             selectedLenses: [],
+            selectedGeoCountries: [],
+            selectedGeoRegions: [],
+            selectedGeoCities: [],
+            selectedGeoDistricts: [],
             tagFilterMode: "union",
           }));
         },
@@ -332,6 +527,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   }, [
     t,
     gallerySetting,
+    geoRegions,
     query,
     navigate,
     onClose,

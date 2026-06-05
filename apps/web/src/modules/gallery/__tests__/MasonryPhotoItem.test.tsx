@@ -13,6 +13,10 @@ let gallerySetting = {
   selectedTags: [],
   selectedCameras: ["SONY ILCE-7C"],
   selectedLenses: [],
+  selectedGeoCountries: [],
+  selectedGeoRegions: [],
+  selectedGeoCities: [],
+  selectedGeoDistricts: [],
   tagFilterMode: "union" as const,
 };
 
@@ -115,6 +119,10 @@ describe("MasonryPhotoItem", () => {
       selectedTags: [],
       selectedCameras: ["SONY ILCE-7C"],
       selectedLenses: [],
+      selectedGeoCountries: [],
+      selectedGeoRegions: [],
+      selectedGeoCities: [],
+      selectedGeoDistricts: [],
       tagFilterMode: "union",
     };
   });

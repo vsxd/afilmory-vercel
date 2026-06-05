@@ -12,9 +12,10 @@ import {
 import { photoLoader } from "~/data-runtime/photo-loader";
 import { debugLog } from "~/lib/debug-log";
 import {
-  createLocationMarkers,
-  createShootingLocations,
-} from "~/lib/location-clusters";
+  createGeographicRegions,
+  createRegionMarkers,
+  getRegionLevelForZoom,
+} from "~/lib/geo-regions";
 import {
   calculateMapBounds,
   convertExifGPSToDecimal,
@@ -23,10 +24,11 @@ import {
 } from "~/lib/map-utils";
 import { MapProvider } from "~/modules/map/MapProvider";
 import type {
+  GeographicRegion,
+  GeographicRegionLevel,
   MapBounds,
   MapDisplayMode,
   PhotoMarker,
-  ShootingLocation,
 } from "~/types/map";
 
 export const MapSection = () => {
@@ -41,15 +43,22 @@ const MapSectionContent = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const displayMode: MapDisplayMode =
-    searchParams.get("mode") === "photos" ? "photos" : "locations";
+    searchParams.get("mode") === "photos" ? "photos" : "regions";
 
   // Photo markers state and loading logic
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [markers, setMarkers] = useState<PhotoMarker[]>([]);
-  const [shootingLocations, setShootingLocations] = useState<
-    ShootingLocation[]
-  >([]);
+  const [regionsByLevel, setRegionsByLevel] = useState<
+    Record<GeographicRegionLevel, GeographicRegion[]>
+  >({
+    country: [],
+    region: [],
+    city: [],
+    district: [],
+  });
+  const [regionLevel, setRegionLevel] =
+    useState<GeographicRegionLevel>("country");
 
   // Track if this is the initial load to control auto fit bounds
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -71,6 +80,7 @@ const MapSectionContent = () => {
       }
 
       newSearchParams.set("mode", "photos");
+      newSearchParams.delete("regionId");
       newSearchParams.delete("locationId");
       setSearchParams(newSearchParams, { replace: true });
 
@@ -80,23 +90,24 @@ const MapSectionContent = () => {
     [searchParams, setSearchParams],
   );
 
-  const handleLocationClick = useCallback(
-    (location: ShootingLocation) => {
+  const handleRegionClick = useCallback(
+    (region: GeographicRegion) => {
       const newSearchParams = new URLSearchParams(searchParams);
-      const currentLocationId = searchParams.get("locationId");
+      const currentRegionId = searchParams.get("regionId");
       const currentPhotoId = searchParams.get("photoId");
-      const isCurrentLocation =
-        currentLocationId === location.id ||
-        (currentPhotoId ? location.photoIds.includes(currentPhotoId) : false);
+      const isCurrentRegion =
+        currentRegionId === region.id ||
+        (currentPhotoId ? region.photoIds.includes(currentPhotoId) : false);
 
-      if (isCurrentLocation) {
-        newSearchParams.delete("locationId");
+      if (isCurrentRegion) {
+        newSearchParams.delete("regionId");
       } else {
-        newSearchParams.set("locationId", location.id);
+        newSearchParams.set("regionId", region.id);
       }
 
       newSearchParams.delete("photoId");
       newSearchParams.delete("mode");
+      newSearchParams.delete("locationId");
       setSearchParams(newSearchParams, { replace: true });
       setIsInitialLoad(false);
     },
@@ -109,6 +120,7 @@ const MapSectionContent = () => {
 
       if (nextMode === "photos") {
         newSearchParams.set("mode", "photos");
+        newSearchParams.delete("regionId");
         newSearchParams.delete("locationId");
       } else {
         newSearchParams.delete("mode");
@@ -120,15 +132,42 @@ const MapSectionContent = () => {
     [searchParams, setSearchParams],
   );
 
-  const locationMarkers = useMemo(
-    () => createLocationMarkers(shootingLocations),
-    [shootingLocations],
+  const hasRegionData = useMemo(
+    () => Object.values(regionsByLevel).some((regions) => regions.length > 0),
+    [regionsByLevel],
   );
-  const activeMarkers = displayMode === "locations" ? locationMarkers : markers;
+  const hasGpsFallback = !hasRegionData && markers.length > 0;
+  const isMapGpsFallback = displayMode === "regions" && hasGpsFallback;
+  const activeRegions = regionsByLevel[regionLevel];
+  const regionMarkers = useMemo(
+    () => createRegionMarkers(activeRegions),
+    [activeRegions],
+  );
+  const effectiveMapMode: MapDisplayMode = isMapGpsFallback
+    ? "photos"
+    : displayMode;
+  const activeMarkers =
+    effectiveMapMode === "regions" ? regionMarkers : markers;
   const bounds = useMemo<MapBounds | null>(() => {
     if (activeMarkers.length === 0) return null;
     return calculateMapBounds(activeMarkers);
   }, [activeMarkers]);
+
+  useEffect(() => {
+    if (
+      !searchParams.has("locationId") &&
+      searchParams.get("mode") !== "locations"
+    ) {
+      return;
+    }
+
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete("locationId");
+    if (newSearchParams.get("mode") === "locations") {
+      newSearchParams.delete("mode");
+    }
+    setSearchParams(newSearchParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Load photo markers effect
   useEffect(() => {
@@ -141,7 +180,12 @@ const MapSectionContent = () => {
         const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
 
         setMarkers(photoMarkers);
-        setShootingLocations(createShootingLocations(photoMarkers));
+        setRegionsByLevel({
+          country: createGeographicRegions(photoMarkers, "country"),
+          region: createGeographicRegions(photoMarkers, "region"),
+          city: createGeographicRegions(photoMarkers, "city"),
+          district: createGeographicRegions(photoMarkers, "district"),
+        });
         debugLog(`Found ${photoMarkers.length} photos with GPS coordinates`);
       } catch (err) {
         const error =
@@ -159,27 +203,33 @@ const MapSectionContent = () => {
   }, [setMarkers]);
 
   // Parse URL parameters and map photo selections into the active display mode.
-  const { latitude, longitude, zoom, selectedPhotoId, selectedLocationId } =
+  const { latitude, longitude, zoom, selectedPhotoId, selectedRegionId } =
     useMemo(() => {
       const photoIdParam = searchParams.get("photoId");
-      const locationIdParam = searchParams.get("locationId");
+      const regionIdParam = searchParams.get("regionId");
 
-      if (displayMode === "locations") {
-        const selectedLocation =
-          shootingLocations.find(
-            (location) => location.id === locationIdParam,
-          ) ??
-          shootingLocations.find((location) =>
-            photoIdParam ? location.photoIds.includes(photoIdParam) : false,
+      if (effectiveMapMode === "regions") {
+        const allRegions = Object.values(regionsByLevel).flat();
+        const selectedRegion =
+          allRegions.find((region) => region.id === regionIdParam) ??
+          allRegions.find((region) =>
+            photoIdParam ? region.photoIds.includes(photoIdParam) : false,
           );
 
-        if (selectedLocation) {
+        if (selectedRegion) {
           return {
-            latitude: selectedLocation.latitude,
-            longitude: selectedLocation.longitude,
-            zoom: 15,
+            latitude: selectedRegion.latitude,
+            longitude: selectedRegion.longitude,
+            zoom:
+              selectedRegion.level === "country"
+                ? 4
+                : selectedRegion.level === "region"
+                  ? 7
+                  : selectedRegion.level === "city"
+                    ? 10
+                    : 13,
             selectedPhotoId: null,
-            selectedLocationId: selectedLocation.id,
+            selectedRegionId: selectedRegion.id,
           };
         }
 
@@ -188,7 +238,7 @@ const MapSectionContent = () => {
           longitude: null,
           zoom: null,
           selectedPhotoId: null,
-          selectedLocationId: locationIdParam,
+          selectedRegionId: regionIdParam,
         };
       }
 
@@ -206,7 +256,7 @@ const MapSectionContent = () => {
             longitude: gpsData.longitude,
             zoom: 15, // Default zoom when coordinates derived from photo
             selectedPhotoId: photoIdParam,
-            selectedLocationId: null,
+            selectedRegionId: null,
           };
         }
       }
@@ -216,9 +266,9 @@ const MapSectionContent = () => {
         longitude: null,
         zoom: null,
         selectedPhotoId: photoIdParam,
-        selectedLocationId: null,
+        selectedRegionId: null,
       };
-    }, [displayMode, markers, searchParams, shootingLocations]);
+    }, [effectiveMapMode, markers, regionsByLevel, searchParams]);
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {
@@ -231,9 +281,11 @@ const MapSectionContent = () => {
       };
     }
 
-    // Fall back to markers-based view state
-    return getInitialViewStateForMarkers(activeMarkers);
-  }, [activeMarkers, latitude, longitude, zoom]);
+    // Fall back to GPS photo bounds when region data has not been generated yet.
+    return getInitialViewStateForMarkers(
+      activeMarkers.length > 0 ? activeMarkers : markers,
+    );
+  }, [activeMarkers, latitude, longitude, markers, zoom]);
 
   // Show loading state
   if (isLoading) {
@@ -265,8 +317,11 @@ const MapSectionContent = () => {
       {/* Map info panel */}
       <MapInfoPanel
         displayMode={displayMode}
-        locationsCount={shootingLocations.length}
+        regionsCount={activeRegions.length}
+        cityCount={regionsByLevel.city.length}
         photosCount={markers.length}
+        regionLevel={regionLevel}
+        isGpsFallback={hasGpsFallback}
         bounds={bounds}
         onDisplayModeChange={handleDisplayModeChange}
       />
@@ -280,21 +335,27 @@ const MapSectionContent = () => {
       >
         <GenericMap
           markers={markers}
-          locations={shootingLocations}
-          displayMode={displayMode}
+          regions={activeRegions}
+          displayMode={effectiveMapMode}
           initialViewState={initialViewState}
           autoFitBounds={
             isInitialLoad && latitude === null && longitude === null
           }
           syncViewStateOnInitialViewStateChange={Boolean(
-            selectedPhotoId || selectedLocationId,
+            selectedPhotoId || selectedRegionId,
           )}
-          selectedMarkerId={displayMode === "photos" ? selectedPhotoId : null}
-          selectedLocationId={
-            displayMode === "locations" ? selectedLocationId : null
+          selectedMarkerId={
+            effectiveMapMode === "photos" ? selectedPhotoId : null
+          }
+          selectedRegionId={
+            effectiveMapMode === "regions" ? selectedRegionId : null
           }
           onMarkerClick={handleMarkerClick}
-          onLocationClick={handleLocationClick}
+          onRegionClick={handleRegionClick}
+          onZoomChange={(zoomValue) => {
+            setRegionLevel(getRegionLevelForZoom(zoomValue));
+            setIsInitialLoad(false);
+          }}
           className="h-full w-full"
         />
       </m.div>

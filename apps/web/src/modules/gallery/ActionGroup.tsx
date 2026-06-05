@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import { gallerySettingAtom, isCommandPaletteOpenAtom } from "~/atoms/app";
 
 import { ResponsiveActionButton } from "./components/ActionButton";
+import { FilterPanel } from "./panels/FilterPanel";
 import { ViewPanel } from "./panels/ViewPanel";
 
 export const ActionGroup = () => {
@@ -22,7 +23,11 @@ export const ActionGroup = () => {
   const filterCount =
     gallerySetting.selectedTags.length +
     gallerySetting.selectedCameras.length +
-    gallerySetting.selectedLenses.length;
+    gallerySetting.selectedLenses.length +
+    gallerySetting.selectedGeoCountries.length +
+    gallerySetting.selectedGeoRegions.length +
+    gallerySetting.selectedGeoCities.length +
+    gallerySetting.selectedGeoDistricts.length;
 
   return (
     <div className="flex items-center justify-center gap-3">
@@ -44,6 +49,15 @@ export const ActionGroup = () => {
           </span>
         )}
       </Button>
+
+      <ResponsiveActionButton
+        icon="i-mingcute-filter-3-line"
+        title={t("action.filter.title")}
+        badge={filterCount > 0 ? filterCount : undefined}
+        contentClassName="bg-material-thick border-fill-tertiary w-[28rem] max-w-[calc(100vw-2rem)] rounded-2xl border p-0 shadow-xl backdrop-blur-2xl"
+      >
+        <FilterPanel />
+      </ResponsiveActionButton>
 
       {/* 地图探索按钮 */}
       <Button

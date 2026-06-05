@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import type { EmitPluginEventFn } from "../core/contracts/execution-context.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import type { Logger } from "../logger/index.js";
@@ -29,6 +32,8 @@ interface GeocodingPluginOptions {
   provider?: "mapbox" | "nominatim" | "auto";
   mapboxToken?: string;
   nominatimBaseUrl?: string;
+  nominatimUserAgent?: string;
+  cachePath?: string;
   cachePrecision?: number;
   /**
    * Preferred languages for geocoding results (BCP47). Accepts comma-separated string or array.
@@ -40,7 +45,11 @@ type GeocodingPluginOptionsResolved = Required<
 > &
   Pick<
     GeocodingPluginOptions,
-    "mapboxToken" | "nominatimBaseUrl" | "cachePrecision"
+    | "mapboxToken"
+    | "nominatimBaseUrl"
+    | "nominatimUserAgent"
+    | "cachePath"
+    | "cachePrecision"
   > & {
     language: string | null;
   };
@@ -49,6 +58,8 @@ interface ResolvedGeocodingSettings {
   provider: "mapbox" | "nominatim" | "auto";
   mapboxToken?: string;
   nominatimBaseUrl?: string;
+  nominatimUserAgent?: string;
+  cachePath?: string;
   cachePrecision: number;
   language: string | null;
 }
@@ -57,6 +68,8 @@ interface GeocodingState {
   provider: GeocodingProvider | null;
   providerKey: string | null;
   cache: Map<string, LocationInfo | null>;
+  loadedCachePath: string | null;
+  cacheDirty: boolean;
 }
 
 interface LocationResolutionResult {
@@ -89,9 +102,11 @@ function resolveSettings(
 ): GeocodingPluginOptionsResolved {
   return {
     enable: options.enable ?? false,
-    provider: options.provider ?? "auto",
+    provider: options.provider ?? "nominatim",
     mapboxToken: options.mapboxToken,
     nominatimBaseUrl: options.nominatimBaseUrl,
+    nominatimUserAgent: options.nominatimUserAgent,
+    cachePath: options.cachePath,
     cachePrecision: normalizeCachePrecision(
       options.cachePrecision ?? DEFAULT_CACHE_PRECISION,
     ),
@@ -109,13 +124,15 @@ function getOrCreateState(runShared: Map<string, unknown>): GeocodingState {
     provider: null,
     providerKey: null,
     cache: new Map(),
+    loadedCachePath: null,
+    cacheDirty: false,
   };
   runShared.set(RUN_STATE_KEY, next);
   return next;
 }
 
 function buildProviderKey(settings: ResolvedGeocodingSettings): string {
-  return `${settings.provider}:${settings.mapboxToken ?? ""}:${settings.nominatimBaseUrl ?? ""}:${settings.language ?? ""}`;
+  return `${settings.provider}:${settings.mapboxToken ?? ""}:${settings.nominatimBaseUrl ?? ""}:${settings.nominatimUserAgent ?? ""}:${settings.language ?? ""}`;
 }
 
 function ensureProvider(
@@ -130,6 +147,8 @@ function ensureProvider(
 
   if (state.providerKey && state.providerKey !== providerKey) {
     state.cache.clear();
+    state.loadedCachePath = null;
+    state.cacheDirty = false;
   }
 
   const provider = createGeocodingProvider(
@@ -137,6 +156,7 @@ function ensureProvider(
     settings.mapboxToken,
     settings.nominatimBaseUrl,
     settings.language ?? undefined,
+    settings.nominatimUserAgent,
   );
 
   if (!provider) {
@@ -183,9 +203,90 @@ async function ensurePhotoContext<T>(
 function buildCacheKey(
   latitude: number,
   longitude: number,
-  precision: number,
+  settings: ResolvedGeocodingSettings,
 ): string {
-  return `${latitude.toFixed(precision)},${longitude.toFixed(precision)}`;
+  return [
+    settings.provider,
+    settings.nominatimBaseUrl ?? "",
+    settings.language ?? "",
+    latitude.toFixed(settings.cachePrecision),
+    longitude.toFixed(settings.cachePrecision),
+  ].join("|");
+}
+
+type PersistentCacheFile = {
+  version: 1;
+  updatedAt: string;
+  entries: Record<string, LocationInfo | null>;
+};
+
+function normalizeCachePath(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? path.resolve(trimmed) : null;
+}
+
+async function ensurePersistentCacheLoaded(
+  state: GeocodingState,
+  cachePath: string | null,
+  logger: LocationLogger,
+) {
+  if (!cachePath || state.loadedCachePath === cachePath) return;
+
+  state.cache.clear();
+  state.loadedCachePath = cachePath;
+  state.cacheDirty = false;
+
+  try {
+    const raw = await fs.readFile(cachePath, "utf-8");
+    const parsed = JSON.parse(raw) as Partial<PersistentCacheFile>;
+    const entries =
+      parsed && typeof parsed === "object" && parsed.entries
+        ? parsed.entries
+        : {};
+
+    for (const [key, value] of Object.entries(entries)) {
+      if (value === null || (value && typeof value === "object")) {
+        state.cache.set(key, value);
+      }
+    }
+
+    logger.info(`📍 已载入地理编码缓存：${state.cache.size} 条`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    logger.warn("读取地理编码缓存失败，将继续使用空缓存", error);
+  }
+}
+
+async function savePersistentCacheIfNeeded(
+  state: GeocodingState,
+  cachePath: string | null,
+  logger: LocationLogger,
+) {
+  if (!cachePath || !state.cacheDirty) return;
+
+  const entries: Record<string, LocationInfo | null> = {};
+  for (const [key, value] of state.cache.entries()) {
+    entries[key] = value;
+  }
+
+  await fs.mkdir(path.dirname(cachePath), { recursive: true });
+  await fs.writeFile(
+    cachePath,
+    JSON.stringify(
+      {
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        entries,
+      } satisfies PersistentCacheFile,
+      null,
+      2,
+    ),
+  );
+  state.cacheDirty = false;
+  logger.info(`📍 已保存地理编码缓存：${Object.keys(entries).length} 条`);
 }
 
 async function resolveLocationForItem(
@@ -195,8 +296,12 @@ async function resolveLocationForItem(
   settings: ResolvedGeocodingSettings,
   provider: GeocodingProvider,
   shouldOverwriteExisting: boolean,
+  logger: LocationLogger,
 ): Promise<LocationResolutionResult> {
-  if (item.location && !shouldOverwriteExisting) {
+  const cachePath = normalizeCachePath(settings.cachePath);
+  await ensurePersistentCacheLoaded(state, cachePath, logger);
+
+  if (item.location?.admin && !shouldOverwriteExisting) {
     return { attempted: false, updated: false };
   }
 
@@ -215,7 +320,7 @@ async function resolveLocationForItem(
     return { attempted: false, updated: false };
   }
 
-  const cacheKey = buildCacheKey(latitude, longitude, settings.cachePrecision);
+  const cacheKey = buildCacheKey(latitude, longitude, settings);
   const cached = state.cache.get(cacheKey);
   if (cached !== undefined) {
     if (cached) {
@@ -230,6 +335,7 @@ async function resolveLocationForItem(
 
   const location = await extractLocationFromGPS(latitude, longitude, provider);
   state.cache.set(cacheKey, location ?? null);
+  state.cacheDirty = true;
 
   if (location) {
     item.location = location;
@@ -257,6 +363,8 @@ export default function geocodingPlugin(
           provider: normalizedOptions.provider,
           mapboxToken: normalizedOptions.mapboxToken,
           nominatimBaseUrl: normalizedOptions.nominatimBaseUrl,
+          nominatimUserAgent: normalizedOptions.nominatimUserAgent,
+          cachePath: normalizedOptions.cachePath,
           cachePrecision:
             normalizedOptions.cachePrecision ?? DEFAULT_CACHE_PRECISION,
           language: normalizedOptions.language,
@@ -279,8 +387,8 @@ export default function geocodingPlugin(
 
         if (!normalizedOptions.enable) return;
 
-        // 当已有位置信息且未强制刷新时，不重复调用地理编码
-        if (item.location && !shouldOverwriteExisting) {
+        // 当已有结构化行政位置信息且未强制刷新时，不重复调用地理编码
+        if (item.location?.admin && !shouldOverwriteExisting) {
           return;
         }
 
@@ -314,6 +422,7 @@ export default function geocodingPlugin(
               currentSettings,
               provider,
               shouldOverwriteExisting,
+              locationLogger,
             );
           },
         );
@@ -359,7 +468,7 @@ export default function geocodingPlugin(
 
             for (const item of payload.manifest) {
               if (!item) continue;
-              if (item.location) continue;
+              if (item.location?.admin && !shouldOverwriteExisting) continue;
 
               const { attempted: didAttempt, updated: didUpdate } =
                 await resolveLocationForItem(
@@ -369,6 +478,7 @@ export default function geocodingPlugin(
                   currentSettings,
                   provider,
                   shouldOverwriteExisting,
+                  locationLogger,
                 );
 
               if (didAttempt) {
@@ -384,6 +494,12 @@ export default function geocodingPlugin(
                 `📍 为 ${attempted} 张缺失位置信息的照片尝试补全，成功 ${updated} 张`,
               );
             }
+
+            await savePersistentCacheIfNeeded(
+              state,
+              normalizeCachePath(currentSettings.cachePath),
+              locationLogger,
+            );
           },
         );
       },

@@ -3,7 +3,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import type { LocationInfo, PickedExif } from "../types/photo.js";
+import type {
+  LocationAdminInfo,
+  LocationInfo,
+  PickedExif,
+} from "../types/photo.js";
 import { sleep } from "../utils/backoff.js";
 import { getGlobalLoggers } from "./logger-adapter.js";
 
@@ -175,6 +179,44 @@ export interface GeocodingProvider {
   reverseGeocode: (lat: number, lon: number) => Promise<LocationInfo | null>;
 }
 
+const cleanString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeCountryCode = (value: unknown): string | undefined => {
+  const code = cleanString(value);
+  return code ? code.toUpperCase() : undefined;
+};
+
+const firstString = (...values: unknown[]): string | undefined => {
+  for (const value of values) {
+    const normalized = cleanString(value);
+    if (normalized) return normalized;
+  }
+  return undefined;
+};
+
+const createLocationInfo = ({
+  latitude,
+  longitude,
+  admin,
+  locationName,
+}: {
+  latitude: number;
+  longitude: number;
+  admin: LocationAdminInfo;
+  locationName?: string;
+}): LocationInfo => ({
+  latitude,
+  longitude,
+  admin,
+  country: admin.country,
+  city: admin.city ?? admin.district ?? admin.region,
+  locationName,
+});
+
 /**
  * Mapbox 地理编码提供者
  * 高精度商业地理编码服务，支持全球范围和多语言
@@ -236,35 +278,33 @@ export class MapboxGeocodingProvider implements GeocodingProvider {
         const properties = feature.properties || {};
         const context = properties.context || {};
 
-        // 提取国家信息
-        const country = context.country?.name;
+        const admin: LocationAdminInfo = {
+          country: cleanString(context.country?.name),
+          countryCode: normalizeCountryCode(
+            context.country?.country_code ?? context.country?.country_code_alpha_2,
+          ),
+          region: cleanString(context.region?.name),
+          city: firstString(context.place?.name, context.locality?.name),
+          district: firstString(
+            context.district?.name,
+            context.neighborhood?.name,
+          ),
+        };
 
-        // 提取城市信息 - 拼接多个层级（从小到大）
-        const cityParts = [
-          context.locality?.name,
-          context.neighborhood?.name,
-          context.district?.name,
-          context.place?.name,
-          context.region?.name,
-        ].filter(Boolean);
+        const locationName = firstString(
+          properties.full_address,
+          properties.place_formatted,
+          properties.name,
+        );
 
-        // 去重并拼接（保持顺序，最多取2个层级）
-        const uniqueCityParts = [...new Set(cityParts)].slice(0, 2);
-        const city =
-          uniqueCityParts.length > 0 ? uniqueCityParts.join(", ") : undefined;
+        log.success(`成功获取位置: ${admin.city}, ${admin.country}`);
 
-        // 构建位置名称
-        const locationName = properties.place_formatted || properties.name;
-
-        log.success(`成功获取位置: ${city}, ${country}`);
-
-        return {
+        return createLocationInfo({
           latitude: lat,
           longitude: lon,
-          country,
-          city,
+          admin,
           locationName,
-        };
+        });
       } catch (error) {
         const isLastAttempt = attempt === this.maxRetries;
         if (isLastAttempt) {
@@ -297,16 +337,21 @@ export class MapboxGeocodingProvider implements GeocodingProvider {
 export class NominatimGeocodingProvider implements GeocodingProvider {
   private readonly baseUrl: string;
   private readonly language: string | null;
-  private readonly userAgent = "afilmory/1.0";
+  private readonly userAgent: string;
   private readonly rateLimitMs = 1000; // Nominatim 要求至少1秒间隔
   private readonly rateLimiter: SequentialRateLimiter;
   private readonly interprocessKey: string;
   private readonly maxRetries = 3;
   private readonly retryBaseDelayMs = 1000;
 
-  constructor(baseUrl?: string, language?: string | null) {
+  constructor(
+    baseUrl?: string,
+    language?: string | null,
+    userAgent?: string | null,
+  ) {
     this.baseUrl = baseUrl || "https://nominatim.openstreetmap.org";
     this.language = language ?? null;
+    this.userAgent = cleanString(userAgent) ?? "afilmory/1.0";
     this.rateLimiter = getGlobalRateLimiter(
       `nominatim:${this.baseUrl}`,
       this.rateLimitMs,
@@ -353,39 +398,40 @@ export class NominatimGeocodingProvider implements GeocodingProvider {
 
         const address = data.address || {};
 
-        // 提取国家信息
-        const country = address.country || address.country_code?.toUpperCase();
+        const admin: LocationAdminInfo = {
+          country: firstString(address.country, address.country_code),
+          countryCode: normalizeCountryCode(address.country_code),
+          region: firstString(
+            address.state,
+            address.province,
+            address.region,
+          ),
+          city: firstString(
+            address.city,
+            address.town,
+            address.village,
+            address.municipality,
+          ),
+          district: firstString(
+            address.city_district,
+            address.district,
+            address.county,
+            address.borough,
+            address.suburb,
+            address.neighbourhood,
+          ),
+        };
 
-        // 提取城市信息 - 拼接多个层级（从小到大）
-        const cityParts = [
-          address.village,
-          address.hamlet,
-          address.neighbourhood,
-          address.suburb,
-          address.district,
-          address.city,
-          address.town,
-          address.county,
-          address.state,
-        ].filter(Boolean);
+        const locationName = cleanString(data.display_name);
 
-        // 去重并拼接（保持顺序，最多取2个层级）
-        const uniqueCityParts = [...new Set(cityParts)].slice(0, 2);
-        const city =
-          uniqueCityParts.length > 0 ? uniqueCityParts.join(", ") : undefined;
+        log.success(`成功获取位置: ${admin.city}, ${admin.country}`);
 
-        // 构建位置名称
-        const locationName = data.display_name;
-
-        log.success(`成功获取位置: ${city}, ${country}`);
-
-        return {
+        return createLocationInfo({
           latitude: lat,
           longitude: lon,
-          country,
-          city,
+          admin,
           locationName,
-        };
+        });
       } catch (error) {
         const isLastAttempt = attempt === this.maxRetries;
         if (isLastAttempt) {
@@ -423,6 +469,7 @@ export function createGeocodingProvider(
   mapboxToken?: string,
   nominatimBaseUrl?: string,
   language?: string | null,
+  userAgent?: string | null,
 ): GeocodingProvider | null {
   // 如果指定了 Mapbox 或自动模式且有 token，使用 Mapbox
   if ((provider === "mapbox" || provider === "auto") && mapboxToken) {
@@ -431,7 +478,11 @@ export function createGeocodingProvider(
 
   // 使用 Nominatim
   if (provider === "nominatim" || provider === "auto") {
-    return new NominatimGeocodingProvider(nominatimBaseUrl, language);
+    return new NominatimGeocodingProvider(
+      nominatimBaseUrl,
+      language,
+      userAgent,
+    );
   }
 
   return null;
