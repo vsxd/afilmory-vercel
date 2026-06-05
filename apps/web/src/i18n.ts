@@ -37,7 +37,7 @@ i18n
       convertDetectedLanguage: normalizeDetectedLanguage,
       order: ["navigator", "htmlTag"],
     },
-    nonExplicitSupportedLngs: true,
+    nonExplicitSupportedLngs: false,
     resources,
     supportedLngs: currentSupportedLanguages,
   })
