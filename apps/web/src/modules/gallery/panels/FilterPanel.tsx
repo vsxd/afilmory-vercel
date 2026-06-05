@@ -46,7 +46,7 @@ const FilterSection = ({
         <i className={icon} />
         <h4>{title}</h4>
       </div>
-      <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
+      <div className="flex flex-wrap gap-2">
         {items.map((item) => {
           const isActive = selected.includes(item.id);
 
