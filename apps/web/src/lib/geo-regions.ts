@@ -52,6 +52,30 @@ const TRADITIONAL_ONLY_CHARS =
   "國蘭倫蘇廣東門灣縣區臺後龍義烏寧廈宮麗橋澤羅漢愛約爾貝";
 const SIMPLIFIED_ONLY_SET = new Set(Array.from(SIMPLIFIED_ONLY_CHARS));
 const TRADITIONAL_ONLY_SET = new Set(Array.from(TRADITIONAL_ONLY_CHARS));
+const CHINA_DIRECT_ADMIN_REGION_KEYS = new Set([
+  "beijing",
+  "北京市",
+  "shanghai",
+  "上海市",
+  "tianjin",
+  "天津市",
+  "chongqing",
+  "重庆市",
+  "hong kong",
+  "香港",
+  "香港特别行政区",
+  "香港特別行政區",
+  "macau",
+  "macao",
+  "澳门",
+  "澳門",
+  "澳门特别行政区",
+  "澳門特別行政區",
+]);
+const SUB_CITY_ADMIN_PATTERN =
+  /\b(?:district|county|borough|sub-?district|new area|community)\b/i;
+const SUB_CITY_ADMIN_SUFFIX_PATTERN =
+  /(?:区|區|县|縣|街道|新区|新區|社区|社區|乡|鄉|镇|鎮)$/;
 
 const prefersTraditionalChinese = (language: string | undefined): boolean => {
   if (!language) return false;
@@ -116,6 +140,102 @@ const getLanguageCandidates = (language?: string): string[] => {
   candidates.push("en");
 
   return Array.from(new Set(candidates));
+};
+
+const isChinaAdmin = (admin: LocationAdminInfo): boolean =>
+  normalizeKey(admin.countryCode) === "cn" ||
+  normalizeKey(admin.country) === "china" ||
+  normalizeValue(admin.country) === "中国" ||
+  normalizeValue(admin.country) === "中國";
+
+const isChinaDirectAdminRegion = (admin: LocationAdminInfo): boolean => {
+  const region = normalizeValue(admin.region);
+  return Boolean(
+    region && CHINA_DIRECT_ADMIN_REGION_KEYS.has(region.toLocaleLowerCase()),
+  );
+};
+
+const looksLikeSubCityAdmin = (value: string | undefined): boolean => {
+  const normalized = normalizeValue(value);
+  if (!normalized) return false;
+  return (
+    SUB_CITY_ADMIN_PATTERN.test(normalized) ||
+    SUB_CITY_ADMIN_SUFFIX_PATTERN.test(normalized)
+  );
+};
+
+const getLocalizedLocationName = (
+  location: PhotoManifestItem["location"],
+  language?: string,
+): string | undefined => {
+  if (!location) return undefined;
+
+  for (const locale of getLanguageCandidates(language)) {
+    const localizedName = normalizeValue(location.locationNameI18n?.[locale]);
+    if (localizedName) return localizedName;
+  }
+
+  return normalizeValue(location.locationName);
+};
+
+const extractCityFromLocationName = (
+  location: PhotoManifestItem["location"],
+  admin: LocationAdminInfo,
+  language?: string,
+): string | undefined => {
+  const locationName = getLocalizedLocationName(location, language);
+  const region = normalizeValue(admin.region);
+  if (!locationName || !region) return undefined;
+
+  const parts = locationName
+    .split(",")
+    .map((part) => normalizeValue(part))
+    .filter((part): part is string => Boolean(part));
+  const regionIndex = parts.findLastIndex(
+    (part) => normalizeKey(part) === normalizeKey(region),
+  );
+  if (regionIndex <= 0) return undefined;
+
+  return parts
+    .slice(0, regionIndex)
+    .reverse()
+    .find(
+      (part) =>
+        normalizeKey(part) !== normalizeKey(admin.city) &&
+        normalizeKey(part) !== normalizeKey(admin.district),
+    );
+};
+
+const getCityLevelAdmin = (
+  photo: PhotoManifestItem,
+  admin: LocationAdminInfo,
+  language?: string,
+): LocationAdminInfo => {
+  if (!isChinaAdmin(admin)) return admin;
+
+  if (isChinaDirectAdminRegion(admin)) {
+    return {
+      ...admin,
+      city: normalizeValue(admin.region) ?? normalizeValue(admin.city),
+    };
+  }
+
+  if (!looksLikeSubCityAdmin(admin.city)) return admin;
+
+  const city = extractCityFromLocationName(photo.location, admin, language);
+  return city ? { ...admin, city } : admin;
+};
+
+const getPhotoAdminForLevel = (
+  photo: PhotoManifestItem,
+  level: GeographicRegionLevel,
+  language?: string,
+): LocationAdminInfo | null => {
+  const admin = language
+    ? getPhotoAdmin(photo, language)
+    : getPhotoAdminKey(photo);
+  if (!admin) return null;
+  return level === "city" ? getCityLevelAdmin(photo, admin, language) : admin;
 };
 
 const normalizeAdmin = (
@@ -233,12 +353,11 @@ export const buildGeoRegionId = (
 export const getPhotoRegionIds = (
   photo: PhotoManifestItem,
 ): Partial<Record<GeographicRegionLevel, string>> => {
-  const admin = getPhotoAdminKey(photo);
-  if (!admin) return {};
-
   return GEOGRAPHIC_REGION_LEVELS.reduce<
     Partial<Record<GeographicRegionLevel, string>>
   >((ids, level) => {
+    const admin = getPhotoAdminForLevel(photo, level);
+    if (!admin) return ids;
     const id = buildGeoRegionId(admin, level);
     if (id) ids[level] = id;
     return ids;
@@ -264,7 +383,7 @@ export function createGeographicRegions(
   >();
 
   for (const marker of markers) {
-    const adminKey = getPhotoAdminKey(marker.photo);
+    const adminKey = getPhotoAdminForLevel(marker.photo, level);
     if (!adminKey) continue;
 
     const id = buildGeoRegionId(adminKey, level);
@@ -335,8 +454,9 @@ export function getRegionDisplayName(
   region: GeographicRegion,
   language?: string,
 ): string {
-  const displayAdmin = getPhotoAdmin(
+  const displayAdmin = getPhotoAdminForLevel(
     region.representativeMarker.photo,
+    region.level,
     language,
   );
   const displayPath = displayAdmin

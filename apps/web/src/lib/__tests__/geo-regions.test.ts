@@ -117,6 +117,96 @@ describe("createGeographicRegions", () => {
     expect(new Set(regions.map((region) => region.id)).size).toBe(2);
   });
 
+  it("rolls China municipality districts up to the municipality city level", () => {
+    const photos = [
+      createPhoto("a", 29.56, 106.59, {
+        country: "China",
+        countryCode: "CN",
+        region: "Chongqing",
+        city: "Nan'an District",
+        district: "Haitangxi",
+      }),
+      createPhoto("b", 29.57, 106.58, {
+        country: "China",
+        countryCode: "CN",
+        region: "Chongqing",
+        city: "Yuzhong District",
+        district: "Chaotianmen",
+      }),
+    ];
+
+    const regions = createGeographicRegions(
+      convertPhotosToMarkersFromEXIF(photos),
+      "city",
+    );
+
+    expect(regions).toHaveLength(1);
+    expect(regions[0]).toMatchObject({
+      id: "city:country=cn|region=chongqing|city=chongqing",
+      label: "Chongqing",
+      photoIds: ["a", "b"],
+    });
+    expect(getRegionDisplayName(regions[0], "en")).toBe("China / Chongqing");
+  });
+
+  it("rolls district-like China city fields up to the city from the full address", () => {
+    const hefeiAdmin: LocationAdminInfo = {
+      country: "China",
+      countryCode: "CN",
+      region: "Anhui",
+      city: "Shushan District",
+      district: "Hefei High-Tech Industrial Development Zone",
+    };
+    const baoheAdmin: LocationAdminInfo = {
+      country: "China",
+      countryCode: "CN",
+      region: "Anhui",
+      city: "Baohe District",
+      district: "Changqing Subdistrict",
+    };
+    const hefeiAdminZh: LocationAdminInfo = {
+      country: "中国",
+      countryCode: "CN",
+      region: "安徽省",
+      city: "蜀山区",
+      district: "合肥高新技术产业开发区",
+    };
+
+    const photos = [
+      createPhoto("a", 31.84, 117.16, hefeiAdmin, {
+        admin: hefeiAdmin,
+        adminKey: hefeiAdmin,
+        adminI18n: {
+          en: hefeiAdmin,
+          "zh-CN": hefeiAdminZh,
+        },
+        locationName: "Road, Shushan District, Hefei, Anhui, 230088, China",
+        locationNameI18n: {
+          en: "Road, Shushan District, Hefei, Anhui, 230088, China",
+          "zh-CN": "道路, 蜀山区, 合肥市, 安徽省, 230088, 中国",
+        },
+      }),
+      createPhoto("b", 31.85, 117.17, baoheAdmin, {
+        locationName:
+          "Road, Changqing Subdistrict, Baohe District, Hefei, Anhui, China",
+      }),
+    ];
+
+    const regions = createGeographicRegions(
+      convertPhotosToMarkersFromEXIF(photos),
+      "city",
+    );
+
+    expect(regions).toHaveLength(1);
+    expect(regions[0].id).toBe("city:country=cn|region=anhui|city=hefei");
+    expect(getRegionDisplayName(regions[0], "en")).toBe(
+      "China / Anhui / Hefei",
+    );
+    expect(getRegionDisplayName(regions[0], "zh-CN")).toBe(
+      "中国 / 安徽省 / 合肥市",
+    );
+  });
+
   it("skips photos without structured or legacy location data", () => {
     const photos = [
       createPhoto("a", 30, 120),
