@@ -1,6 +1,42 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+  isStaleRuntimeError,
+  recoverFromStaleRuntimeError,
+  recoverStaleRuntime,
+} from "~/lib/stale-runtime-recovery";
+
 export const BootstrapError = ({ error }: { error: unknown }) => {
   const message =
     error instanceof Error ? error.message : "Unknown startup error";
+  const recoveryRef = useRef(false);
+  const [isRecovering, setIsRecovering] = useState(false);
+
+  const retryAfterCleanup = useCallback(async () => {
+    setIsRecovering(true);
+    await recoverStaleRuntime({ force: true });
+  }, []);
+
+  useEffect(() => {
+    if (!isStaleRuntimeError(error)) {
+      return;
+    }
+    if (recoveryRef.current) {
+      return;
+    }
+
+    recoveryRef.current = true;
+    setIsRecovering(true);
+    void recoverFromStaleRuntimeError(error).then((result) => {
+      if (!result.reloadRequested) {
+        setIsRecovering(false);
+      }
+    });
+  }, [error]);
+
+  if (isRecovering) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
@@ -15,7 +51,7 @@ export const BootstrapError = ({ error }: { error: unknown }) => {
         <div className="mt-6 flex gap-3">
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => void retryAfterCleanup()}
             className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-white/90"
           >
             Retry

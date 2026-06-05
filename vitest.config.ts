@@ -54,6 +54,16 @@ export default defineConfig({
               find: /^~\//,
               replacement: `${fileURLToPath(new URL('apps/web/src', import.meta.url))}/`,
             },
+            {
+              find: '@pkg',
+              replacement: fileURLToPath(new URL('apps/web/package.json', import.meta.url)),
+            },
+            {
+              find: 'virtual:pwa-register',
+              replacement: fileURLToPath(
+                new URL('apps/web/src/test/stubs/pwa-register.ts', import.meta.url),
+              ),
+            },
           ],
         },
         test: {

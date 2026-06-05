@@ -24,6 +24,10 @@ if (import.meta.env.DEV) {
   void import("./lib/dev-service-worker-cleanup").then(
     ({ cleanupStaleDevServiceWorker }) => cleanupStaleDevServiceWorker(),
   );
+} else {
+  void import("./lib/register-service-worker").then(
+    ({ registerProductionServiceWorker }) => registerProductionServiceWorker(),
+  );
 }
 
 markStartup("main-module-ready");
