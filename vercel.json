@@ -76,6 +76,15 @@
       ]
     },
     {
+      "source": "/(sw\\.js|registerSW\\.js|workbox-.*\\.js)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/(feed\\.xml|sitemap\\.xml)",
       "headers": [
         {
@@ -85,7 +94,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|xml|json|webmanifest)",
+      "source": "/(.*)\\.(css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot|xml|json|webmanifest)",
       "headers": [
         {
           "key": "Cache-Control",

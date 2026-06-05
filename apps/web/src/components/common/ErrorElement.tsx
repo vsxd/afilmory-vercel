@@ -1,7 +1,11 @@
 import { Button } from "@afilmory/ui";
 import { repository } from "@pkg";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
+
+const DYNAMIC_IMPORT_ERROR_PREFIX =
+  "Failed to fetch dynamically imported module";
+const STALE_APP_RELOAD_FLAG = "afilmory:stale-import-cleanup-reloaded";
 
 export function ErrorElement() {
   const error = useRouteError();
@@ -21,15 +25,21 @@ export function ErrorElement() {
 
   const reloadRef = useRef(false);
   const [isReloading, setIsReloading] = useState(false);
+  const recoverFromStaleRuntime = useCallback(async () => {
+    setIsReloading(true);
+    await cleanupStaleRuntimeState();
+    reloadWithCacheBust();
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    if (!message.startsWith("Failed to fetch dynamically imported module")) {
+    if (!isDynamicImportError(message)) {
+      clearReloadAttempt();
       return;
     }
-    if (window.sessionStorage.getItem("reload") === "1") {
+    if (hasReloadAttempted()) {
       return;
     }
     if (reloadRef.current) {
@@ -38,8 +48,10 @@ export function ErrorElement() {
 
     reloadRef.current = true;
     setIsReloading(true);
-    window.sessionStorage.setItem("reload", "1");
-    window.location.reload();
+    markReloadAttempted();
+    void cleanupStaleRuntimeState().finally(() => {
+      reloadWithCacheBust();
+    });
   }, [message]);
 
   if (isReloading) {
@@ -100,7 +112,7 @@ export function ErrorElement() {
           {/* Action buttons */}
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
             <Button
-              onClick={() => (window.location.href = "/")}
+              onClick={() => void recoverFromStaleRuntime()}
               className="bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 h-10 flex-1 border-0 font-medium transition-colors"
             >
               Reload Application
@@ -123,7 +135,7 @@ export function ErrorElement() {
                 `Error: ${message}`,
               )}&body=${encodeURIComponent(
                 `### Error\n\n${message}\n\n### Stack\n\n\`\`\`\n${stack}\n\`\`\``,
-              )}&label=bug`}
+              )}&labels=bug`}
               target="_blank"
               rel="noreferrer noopener"
               className="text-text-secondary hover:text-text inline-flex items-center text-sm transition-colors"
@@ -142,4 +154,88 @@ export function ErrorElement() {
       </div>
     </div>
   );
+}
+
+function isDynamicImportError(message: string): boolean {
+  return message.startsWith(DYNAMIC_IMPORT_ERROR_PREFIX);
+}
+
+async function cleanupStaleRuntimeState(): Promise<void> {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return;
+  }
+
+  await Promise.all([unregisterServiceWorkers(), deleteRuntimeCaches()]);
+}
+
+async function unregisterServiceWorkers(): Promise<void> {
+  const { serviceWorker } = navigator;
+  if (!serviceWorker?.getRegistrations) return;
+
+  try {
+    const registrations = await serviceWorker.getRegistrations();
+    await Promise.all(
+      registrations.map((registration) => registration.unregister()),
+    );
+  } catch (error) {
+    console.warn("[recovery] Failed to unregister service workers.", error);
+  }
+}
+
+async function deleteRuntimeCaches(): Promise<void> {
+  if (!("caches" in window)) return;
+
+  try {
+    const names = await window.caches.keys();
+    await Promise.all(
+      names
+        .filter(isAfilmoryRuntimeCacheName)
+        .map((name) => window.caches.delete(name)),
+    );
+  } catch (error) {
+    console.warn("[recovery] Failed to delete runtime caches.", error);
+  }
+}
+
+function isAfilmoryRuntimeCacheName(name: string): boolean {
+  return (
+    name === "google-fonts-cache" ||
+    name === "gstatic-fonts-cache" ||
+    name === "images-cache" ||
+    name === "s3-images-cache" ||
+    name.startsWith("workbox-") ||
+    name.includes("precache")
+  );
+}
+
+function reloadWithCacheBust(): void {
+  if (typeof window === "undefined") return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("__afilmory_refresh", Date.now().toString());
+  window.location.replace(url);
+}
+
+function hasReloadAttempted(): boolean {
+  try {
+    return window.sessionStorage.getItem(STALE_APP_RELOAD_FLAG) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markReloadAttempted(): void {
+  try {
+    window.sessionStorage.setItem(STALE_APP_RELOAD_FLAG, "1");
+  } catch {
+    // Ignore restricted storage in private or hardened browser profiles.
+  }
+}
+
+function clearReloadAttempt(): void {
+  try {
+    window.sessionStorage.removeItem(STALE_APP_RELOAD_FLAG);
+  } catch {
+    // Ignore restricted storage in private or hardened browser profiles.
+  }
 }

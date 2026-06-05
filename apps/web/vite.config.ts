@@ -64,7 +64,10 @@ const staticWebBuildPlugins: PluginOption[] = [
       ],
     },
     workbox: {
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
       maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
+      skipWaiting: true,
       // 优化预缓存策略：只缓存关键资源
       globPatterns: [
         "**/*.{js,css,html}", // 核心资源
