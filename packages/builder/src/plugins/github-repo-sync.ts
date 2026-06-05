@@ -140,8 +140,9 @@ export default function githubRepoSyncPlugin(
         }
 
         if (!result.hasUpdates) {
-          context.logger.main.info("💡 没有更新需要推送到远程仓库");
-          return;
+          context.logger.main.info(
+            "💡 没有照片增删改，继续检查 manifest / cache 变更",
+          );
         }
 
         await pushUpdatesToRemoteRepo({
@@ -211,6 +212,18 @@ async function createInitialManifestContent(): Promise<string> {
   );
 }
 
+function createInitialGeocodingCacheContent(): string {
+  return JSON.stringify(
+    {
+      version: 2,
+      updatedAt: new Date(0).toISOString(),
+      entries: {},
+    },
+    null,
+    2,
+  );
+}
+
 async function removePathIfPresent(targetPath: string): Promise<void> {
   try {
     const stat = await fs.lstat(targetPath);
@@ -266,8 +279,16 @@ export async function prepareRepositoryLayout({
   await assertAssetsGitDirIsSafe(assetsGitDir);
 
   const { manifestPath, thumbnailsDir } = getBuilderOutputSettings();
+  const geocodingCachePath = path.resolve(
+    path.dirname(manifestPath),
+    "geocoding-cache.json",
+  );
   const thumbnailsSourceDir = path.resolve(assetsGitDir, "thumbnails");
   const manifestSourcePath = path.resolve(assetsGitDir, "photos-manifest.json");
+  const geocodingCacheSourcePath = path.resolve(
+    assetsGitDir,
+    "geocoding-cache.json",
+  );
 
   if (!existsSync(thumbnailsSourceDir)) {
     logger.main.info("📁 创建 thumbnails 目录...");
@@ -282,16 +303,32 @@ export async function prepareRepositoryLayout({
     );
   }
 
+  if (!existsSync(geocodingCacheSourcePath)) {
+    logger.main.info("📄 创建初始 geocoding cache 文件...");
+    await fs.writeFile(
+      geocodingCacheSourcePath,
+      createInitialGeocodingCacheContent(),
+    );
+  }
+
   await replacePathWithSymlink(thumbnailsDir, thumbnailsSourceDir);
   await replacePathWithSymlink(manifestPath, manifestSourcePath);
+  await replacePathWithSymlink(geocodingCachePath, geocodingCacheSourcePath);
 }
 
 export async function restoreLocalOutputLayout({
   logger,
 }: OutputLayoutOptions): Promise<void> {
   const { manifestPath, thumbnailsDir } = getBuilderOutputSettings();
+  const geocodingCachePath = path.resolve(
+    path.dirname(manifestPath),
+    "geocoding-cache.json",
+  );
   const manifestContent = await fs
     .readFile(manifestPath, "utf-8")
+    .catch(() => null);
+  const geocodingCacheContent = await fs
+    .readFile(geocodingCachePath, "utf-8")
     .catch(() => null);
   const thumbnailsSnapshot = await snapshotDirectory(thumbnailsDir);
 
@@ -313,6 +350,13 @@ export async function restoreLocalOutputLayout({
     await fs.writeFile(
       manifestPath,
       manifestContent ?? (await createInitialManifestContent()),
+    );
+
+    await removePathIfPresent(geocodingCachePath);
+    await fs.mkdir(path.dirname(geocodingCachePath), { recursive: true });
+    await fs.writeFile(
+      geocodingCachePath,
+      geocodingCacheContent ?? createInitialGeocodingCacheContent(),
     );
   } finally {
     if (thumbnailsSnapshot) {

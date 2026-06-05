@@ -91,6 +91,7 @@ describe("GitHub repo sync layout recovery", () => {
   let tmpDir: string;
   let assetsGitDir: string;
   let manifestPath: string;
+  let geocodingCachePath: string;
   let thumbnailsDir: string;
 
   beforeEach(async () => {
@@ -101,6 +102,7 @@ describe("GitHub repo sync layout recovery", () => {
     );
     assetsGitDir = path.join(tmpDir, "assets-git");
     manifestPath = path.join(tmpDir, "generated", "photos-manifest.json");
+    geocodingCachePath = path.join(tmpDir, "generated", "geocoding-cache.json");
     thumbnailsDir = path.join(tmpDir, "public", "thumbnails");
 
     setBuilderOutputSettings({
@@ -119,22 +121,34 @@ describe("GitHub repo sync layout recovery", () => {
     await fs.mkdir(path.dirname(manifestPath), { recursive: true });
     await fs.mkdir(path.dirname(thumbnailsDir), { recursive: true });
     await fs.symlink(path.join(tmpDir, "missing-manifest.json"), manifestPath);
+    await fs.symlink(
+      path.join(tmpDir, "missing-geocoding-cache.json"),
+      geocodingCachePath,
+    );
     await fs.symlink(path.join(tmpDir, "missing-thumbnails"), thumbnailsDir);
 
     await seedRepoAssets(assetsGitDir);
     await prepareRepositoryLayout({ assetsGitDir, logger });
 
     expect((await fs.lstat(manifestPath)).isSymbolicLink()).toBe(true);
+    expect((await fs.lstat(geocodingCachePath)).isSymbolicLink()).toBe(true);
     expect((await fs.lstat(thumbnailsDir)).isSymbolicLink()).toBe(true);
     expect(await fs.readlink(manifestPath)).toBe(
       path.join(assetsGitDir, "photos-manifest.json"),
+    );
+    expect(await fs.readlink(geocodingCachePath)).toBe(
+      path.join(assetsGitDir, "geocoding-cache.json"),
     );
     expect(await fs.readlink(thumbnailsDir)).toBe(
       path.join(assetsGitDir, "thumbnails"),
     );
 
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
+    const geocodingCache = JSON.parse(
+      await fs.readFile(geocodingCachePath, "utf-8"),
+    );
     expect(manifest.data).toHaveLength(1);
+    expect(geocodingCache).toMatchObject({ version: 2, entries: {} });
     await expect(
       fs.readFile(path.join(thumbnailsDir, "photo.jpg"), "utf-8"),
     ).resolves.toBe("thumb");
@@ -148,9 +162,12 @@ describe("GitHub repo sync layout recovery", () => {
     await restoreLocalOutputLayout({ logger });
 
     const manifestStat = await fs.lstat(manifestPath);
+    const geocodingCacheStat = await fs.lstat(geocodingCachePath);
     const thumbnailsStat = await fs.lstat(thumbnailsDir);
     expect(manifestStat.isSymbolicLink()).toBe(false);
     expect(manifestStat.isFile()).toBe(true);
+    expect(geocodingCacheStat.isSymbolicLink()).toBe(false);
+    expect(geocodingCacheStat.isFile()).toBe(true);
     expect(thumbnailsStat.isSymbolicLink()).toBe(false);
     expect(thumbnailsStat.isDirectory()).toBe(true);
 
@@ -161,6 +178,10 @@ describe("GitHub repo sync layout recovery", () => {
       cameras: [],
       lenses: [],
     });
+    const geocodingCache = JSON.parse(
+      await fs.readFile(geocodingCachePath, "utf-8"),
+    );
+    expect(geocodingCache).toMatchObject({ version: 2, entries: {} });
     await expect(fs.readdir(thumbnailsDir)).resolves.toEqual([]);
   });
 
@@ -171,12 +192,18 @@ describe("GitHub repo sync layout recovery", () => {
     await restoreLocalOutputLayout({ logger });
 
     const manifestStat = await fs.lstat(manifestPath);
+    const geocodingCacheStat = await fs.lstat(geocodingCachePath);
     const thumbnailsStat = await fs.lstat(thumbnailsDir);
     expect(manifestStat.isSymbolicLink()).toBe(false);
+    expect(geocodingCacheStat.isSymbolicLink()).toBe(false);
     expect(thumbnailsStat.isSymbolicLink()).toBe(false);
 
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
+    const geocodingCache = JSON.parse(
+      await fs.readFile(geocodingCachePath, "utf-8"),
+    );
     expect(manifest.data).toHaveLength(1);
+    expect(geocodingCache).toMatchObject({ version: 2, entries: {} });
     await expect(
       fs.readFile(path.join(thumbnailsDir, "photo.jpg"), "utf-8"),
     ).resolves.toBe("thumb");
@@ -192,8 +219,10 @@ describe("GitHub repo sync layout recovery", () => {
     await restoreLocalOutputLayout({ logger });
 
     const manifestStat = await fs.lstat(manifestPath);
+    const geocodingCacheStat = await fs.lstat(geocodingCachePath);
     const thumbnailsStat = await fs.lstat(thumbnailsDir);
     expect(manifestStat.isSymbolicLink()).toBe(false);
+    expect(geocodingCacheStat.isSymbolicLink()).toBe(false);
     expect(thumbnailsStat.isSymbolicLink()).toBe(false);
 
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
@@ -203,6 +232,10 @@ describe("GitHub repo sync layout recovery", () => {
       cameras: [],
       lenses: [],
     });
+    const geocodingCache = JSON.parse(
+      await fs.readFile(geocodingCachePath, "utf-8"),
+    );
+    expect(geocodingCache).toMatchObject({ version: 2, entries: {} });
     await expect(
       fs.readFile(path.join(thumbnailsDir, "photo.jpg"), "utf-8"),
     ).resolves.toBe("thumb");
