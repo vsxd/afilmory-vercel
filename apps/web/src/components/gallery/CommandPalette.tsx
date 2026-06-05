@@ -102,7 +102,9 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     const markers = convertPhotosToMarkersFromEXIF(allPhotos);
     return {
       country: createGeographicRegions(markers, "country"),
+      region: createGeographicRegions(markers, "region"),
       city: createGeographicRegions(markers, "city"),
+      district: createGeographicRegions(markers, "district"),
     };
   }, []);
 
@@ -114,8 +116,20 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           getRegionDisplayName(region, i18n.language),
         ]),
       ),
+      region: new Map(
+        geoRegions.region.map((region) => [
+          region.id,
+          getRegionDisplayName(region, i18n.language),
+        ]),
+      ),
       city: new Map(
         geoRegions.city.map((region) => [
+          region.id,
+          getRegionDisplayName(region, i18n.language),
+        ]),
+      ),
+      district: new Map(
+        geoRegions.district.map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
         ]),
@@ -174,6 +188,18 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ),
           })),
       })),
+      ...gallerySetting.selectedGeoRegions.map((id) => ({
+        id: `geo-region-${id}`,
+        label: regionLabelMaps.region.get(id) ?? id,
+        icon: "i-mingcute-map-pin-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoRegions: prev.selectedGeoRegions.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
       ...gallerySetting.selectedGeoCities.map((id) => ({
         id: `geo-city-${id}`,
         label: regionLabelMaps.city.get(id) ?? id,
@@ -186,11 +212,25 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ),
           })),
       })),
+      ...gallerySetting.selectedGeoDistricts.map((id) => ({
+        id: `geo-district-${id}`,
+        label: regionLabelMaps.district.get(id) ?? id,
+        icon: "i-mingcute-map-pin-line",
+        onRemove: () =>
+          setGallerySetting((prev) => ({
+            ...prev,
+            selectedGeoDistricts: prev.selectedGeoDistricts.filter(
+              (selectedId) => selectedId !== id,
+            ),
+          })),
+      })),
     ],
     [
       gallerySetting.selectedCameras,
       gallerySetting.selectedGeoCities,
       gallerySetting.selectedGeoCountries,
+      gallerySetting.selectedGeoDistricts,
+      gallerySetting.selectedGeoRegions,
       gallerySetting.selectedLenses,
       gallerySetting.selectedTags,
       regionLabelMaps,

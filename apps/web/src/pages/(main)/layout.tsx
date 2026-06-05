@@ -280,6 +280,7 @@ const useSyncStateToUrl = () => {
 
     const searchParams = new URLSearchParams(location.search);
     const hasLegacyRating = searchParams.has("rating");
+    const hasLegacyRegionId = searchParams.has("regionId");
     const newer = applyGalleryFiltersToSearch(searchParams, {
       selectedTags,
       selectedCameras,
@@ -294,14 +295,22 @@ const useSyncStateToUrl = () => {
     // Remove legacy rating filters; the static gallery does not support starring.
     newer.delete("rating");
 
-    if (newer.toString() === searchParams.toString() && !hasLegacyRating) {
+    if (
+      newer.toString() === searchParams.toString() &&
+      !hasLegacyRating &&
+      !hasLegacyRegionId
+    ) {
       if (pendingUrlRestoreSearch === location.search) {
         pendingUrlRestoreSearch = null;
       }
       return;
     }
 
-    if (pendingUrlRestoreSearch === location.search && !hasLegacyRating) {
+    if (
+      pendingUrlRestoreSearch === location.search &&
+      !hasLegacyRating &&
+      !hasLegacyRegionId
+    ) {
       return;
     }
 

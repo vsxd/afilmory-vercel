@@ -62,31 +62,50 @@ describe("gallery filter URL helpers", () => {
       selectedCameras: [],
       selectedLenses: [],
       selectedGeoCountries: ["country=cn"],
-      selectedGeoRegions: [],
+      selectedGeoRegions: ["region:country=cn|region=anhui"],
       selectedGeoCities: ["city:country=cn|city=hangzhou"],
-      selectedGeoDistricts: [],
+      selectedGeoDistricts: ["district:country=cn|city=hangzhou|district=xihu"],
       tagFilterMode: "union",
     });
 
     expect(search).toBe(
-      "?geo_country=country%3Dcn&geo_city=city%3Acountry%3Dcn%7Ccity%3Dhangzhou",
+      "?geo_country=country%3Dcn&geo_region=region%3Acountry%3Dcn%7Cregion%3Danhui&geo_city=city%3Acountry%3Dcn%7Ccity%3Dhangzhou&geo_district=district%3Acountry%3Dcn%7Ccity%3Dhangzhou%7Cdistrict%3Dxihu",
     );
     expect(getGalleryFiltersFromSearch(search)).toMatchObject({
       selectedGeoCountries: ["country=cn"],
+      selectedGeoRegions: ["region:country=cn|region=anhui"],
       selectedGeoCities: ["city:country=cn|city=hangzhou"],
+      selectedGeoDistricts: ["district:country=cn|city=hangzhou|district=xihu"],
     });
   });
 
-  it("drops legacy region and district geographic filters", () => {
+  it("restores legacy explore regionId filters on gallery routes", () => {
     expect(
       getGalleryFiltersFromSearch(
-        "?geo_region=region%3Acountry%3Dcn%7Cregion%3Dzhejiang&geo_district=district%3Acountry%3Dcn%7Ccity%3Dhangzhou%7Cdistrict%3Dxihu",
+        "?regionId=region%3Acountry%3Dcn%7Cregion%3Danhui",
       ),
     ).toMatchObject({
-      selectedGeoRegions: [],
-      selectedGeoDistricts: [],
+      selectedGeoRegions: ["region:country=cn|region=anhui"],
     });
 
+    expect(
+      buildGalleryFilterSearch(
+        "?regionId=region%3Acountry%3Dcn%7Cregion%3Danhui",
+        {
+          selectedTags: [],
+          selectedCameras: [],
+          selectedLenses: [],
+          selectedGeoCountries: [],
+          selectedGeoRegions: ["region:country=cn|region=anhui"],
+          selectedGeoCities: [],
+          selectedGeoDistricts: [],
+          tagFilterMode: "union",
+        },
+      ),
+    ).toBe("?geo_region=region%3Acountry%3Dcn%7Cregion%3Danhui");
+  });
+
+  it("keeps explicit region and district geographic filters shareable", () => {
     expect(
       buildGalleryFilterSearch("?geo_region=legacy&geo_district=legacy", {
         selectedTags: [],
@@ -98,7 +117,7 @@ describe("gallery filter URL helpers", () => {
         selectedGeoDistricts: ["legacy"],
         tagFilterMode: "union",
       }),
-    ).toBe("");
+    ).toBe("?geo_region=legacy&geo_district=legacy");
   });
 
   it("builds a single tag search with reserved URL characters encoded", () => {

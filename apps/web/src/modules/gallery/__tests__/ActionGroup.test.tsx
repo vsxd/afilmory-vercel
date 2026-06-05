@@ -4,7 +4,7 @@ import { createStore } from "jotai/vanilla";
 import type { ComponentPropsWithoutRef, PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isCommandPaletteOpenAtom } from "~/atoms/app";
+import { gallerySettingAtom, isCommandPaletteOpenAtom } from "~/atoms/app";
 
 import { ActionGroup } from "../ActionGroup";
 
@@ -19,7 +19,9 @@ vi.mock("@afilmory/ui", () => ({
   ),
   clsxm: (...values: unknown[]) => values.filter(Boolean).join(" "),
   DropdownMenu: ({ children }: PropsWithChildren) => <>{children}</>,
-  DropdownMenuContent: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  DropdownMenuContent: ({ children }: PropsWithChildren) => (
+    <div>{children}</div>
+  ),
   DropdownMenuTrigger: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
@@ -27,12 +29,12 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) =>
       (
-        {
+        ({
           "action.search.unified.title": "Search & Filter",
           "action.map.explore": "Map Explore",
           "action.view.title": "View",
           "action.view.subtitle": "Layout and ordering",
-        } as Record<string, string>
+        }) as Record<string, string>
       )[key] ?? key,
   }),
 }));
@@ -72,5 +74,24 @@ describe("ActionGroup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search & Filter" }));
 
     expect(screen.getByTestId("command-palette-open").textContent).toBe("true");
+  });
+
+  it("counts hidden region and district filters in the search badge", () => {
+    const store = createStore();
+    store.set(gallerySettingAtom, (prev) => ({
+      ...prev,
+      selectedGeoRegions: ["region:country=cn|region=anhui"],
+      selectedGeoDistricts: ["district:country=cn|city=hangzhou|district=xihu"],
+    }));
+
+    render(
+      <Provider store={store}>
+        <ActionGroup />
+      </Provider>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Search & Filter" }).textContent,
+    ).toContain("2");
   });
 });

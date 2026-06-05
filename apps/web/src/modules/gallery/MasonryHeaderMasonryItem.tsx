@@ -62,7 +62,9 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedCameras.length > 0 ||
     gallerySetting.selectedLenses.length > 0 ||
     gallerySetting.selectedGeoCountries.length > 0 ||
-    gallerySetting.selectedGeoCities.length > 0;
+    gallerySetting.selectedGeoRegions.length > 0 ||
+    gallerySetting.selectedGeoCities.length > 0 ||
+    gallerySetting.selectedGeoDistricts.length > 0;
 
   const libraryStats = useMemo(() => {
     const photos = photoLoader.getPhotos();
@@ -124,8 +126,20 @@ export const MasonryHeaderMasonryItem = ({
           getRegionDisplayName(region, i18n.language),
         ]),
       ),
+      region: new Map(
+        createGeographicRegions(photoMarkers, "region").map((region) => [
+          region.id,
+          getRegionDisplayName(region, i18n.language),
+        ]),
+      ),
       city: new Map(
         createGeographicRegions(photoMarkers, "city").map((region) => [
+          region.id,
+          getRegionDisplayName(region, i18n.language),
+        ]),
+      ),
+      district: new Map(
+        createGeographicRegions(photoMarkers, "district").map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
         ]),
@@ -153,9 +167,19 @@ export const MasonryHeaderMasonryItem = ({
         label: regionLabelMaps.country.get(id) ?? id,
         icon: "location" as const,
       })),
+      ...gallerySetting.selectedGeoRegions.map((id) => ({
+        id: `geo-region-${id}`,
+        label: regionLabelMaps.region.get(id) ?? id,
+        icon: "location" as const,
+      })),
       ...gallerySetting.selectedGeoCities.map((id) => ({
         id: `geo-city-${id}`,
         label: regionLabelMaps.city.get(id) ?? id,
+        icon: "location" as const,
+      })),
+      ...gallerySetting.selectedGeoDistricts.map((id) => ({
+        id: `geo-district-${id}`,
+        label: regionLabelMaps.district.get(id) ?? id,
         icon: "location" as const,
       })),
       ...(gallerySetting.selectedTags.length > 1
@@ -175,6 +199,8 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedCameras,
     gallerySetting.selectedGeoCities,
     gallerySetting.selectedGeoCountries,
+    gallerySetting.selectedGeoDistricts,
+    gallerySetting.selectedGeoRegions,
     gallerySetting.selectedLenses,
     gallerySetting.selectedTags,
     gallerySetting.tagFilterMode,

@@ -24,7 +24,9 @@ export const ActionGroup = () => {
     gallerySetting.selectedCameras.length +
     gallerySetting.selectedLenses.length +
     gallerySetting.selectedGeoCountries.length +
-    gallerySetting.selectedGeoCities.length;
+    gallerySetting.selectedGeoRegions.length +
+    gallerySetting.selectedGeoCities.length +
+    gallerySetting.selectedGeoDistricts.length;
 
   return (
     <div className="flex items-center justify-center gap-3">
