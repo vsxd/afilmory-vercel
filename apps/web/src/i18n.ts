@@ -7,11 +7,24 @@ import { currentSupportedLanguages } from "./@types/constants";
 import { resources } from "./@types/resources";
 import { siteConfig } from "./config";
 import { jotaiStore } from "./lib/jotai";
+import {
+  getFallbackLanguages,
+  normalizeDetectedLanguage,
+  resolveSupportedLanguage,
+} from "./lib/language";
 
 const i18n = i18next.createInstance();
-const defaultLanguage = siteConfig.language || "en";
-const fallbackLanguages =
-  defaultLanguage === "en" ? ["en"] : [defaultLanguage, "en"];
+const fallbackLanguages = getFallbackLanguages(siteConfig.language);
+
+const syncDocumentLanguage = (language: string | undefined) => {
+  if (typeof document === "undefined") return;
+
+  const resolvedLanguage =
+    resolveSupportedLanguage(language) ??
+    resolveSupportedLanguage(fallbackLanguages[0]) ??
+    "en";
+  document.documentElement.lang = resolvedLanguage;
+};
 
 i18n
   .use(LanguageDetector)
@@ -21,12 +34,20 @@ i18n
     defaultNS: "app",
     detection: {
       caches: [],
+      convertDetectedLanguage: normalizeDetectedLanguage,
       order: ["navigator", "htmlTag"],
     },
     nonExplicitSupportedLngs: true,
     resources,
     supportedLngs: currentSupportedLanguages,
+  })
+  .then(() => {
+    syncDocumentLanguage(i18n.resolvedLanguage ?? i18n.language);
   });
+
+i18n.on("languageChanged", (language) => {
+  syncDocumentLanguage(language);
+});
 
 export const i18nAtom = atom(i18n);
 
