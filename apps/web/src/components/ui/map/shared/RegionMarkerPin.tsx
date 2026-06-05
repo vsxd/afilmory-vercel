@@ -11,7 +11,7 @@ import { Marker } from "react-map-gl/maplibre";
 import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
-import { getRegionDisplayName } from "~/lib/geo-regions";
+import { buildGeoRegionId, getRegionDisplayName } from "~/lib/geo-regions";
 import type { GeographicRegion } from "~/types/map";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
@@ -23,12 +23,33 @@ interface RegionMarkerPinProps {
   onClose?: () => void;
 }
 
-const geoFilterKeyByLevel = {
-  country: "selectedGeoCountries",
-  region: "selectedGeoRegions",
-  city: "selectedGeoCities",
-  district: "selectedGeoDistricts",
-} as const;
+const getGalleryFilterTarget = (region: GeographicRegion) => {
+  if (region.level === "country") {
+    return {
+      key: "selectedGeoCountries",
+      id: region.id,
+    } as const;
+  }
+
+  if (region.level === "city") {
+    return {
+      key: "selectedGeoCities",
+      id: region.id,
+    } as const;
+  }
+
+  if (region.level === "district") {
+    const cityId = buildGeoRegionId(region.adminPath, "city");
+    if (cityId) {
+      return {
+        key: "selectedGeoCities",
+        id: cityId,
+      } as const;
+    }
+  }
+
+  return null;
+};
 
 export const RegionMarkerPin = ({
   region,
@@ -36,10 +57,11 @@ export const RegionMarkerPin = ({
   onClick,
   onClose,
 }: RegionMarkerPinProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const setGallerySetting = useSetAtom(gallerySettingAtom);
   const navigate = useNavigate();
-  const displayName = getRegionDisplayName(region);
+  const displayName = getRegionDisplayName(region, i18n.language);
+  const filterTarget = getGalleryFilterTarget(region);
 
   const handleClick = () => {
     onClick?.(region);
@@ -52,10 +74,13 @@ export const RegionMarkerPin = ({
 
   const handleFilterRegion = (event: React.MouseEvent) => {
     event.stopPropagation();
-    const key = geoFilterKeyByLevel[region.level];
+    if (!filterTarget) return;
+
     setGallerySetting((prev) => ({
       ...prev,
-      [key]: Array.from(new Set([...prev[key], region.id])),
+      [filterTarget.key]: Array.from(
+        new Set([...prev[filterTarget.key], filterTarget.id]),
+      ),
     }));
     navigate("/");
   };
@@ -154,13 +179,15 @@ export const RegionMarkerPin = ({
               </div>
             </div>
             <ClusterPhotoGrid photos={region.markers} />
-            <button
-              type="button"
-              onClick={handleFilterRegion}
-              className="focus-visible:ring-accent/45 bg-accent text-accent-foreground focus-visible:ring-offset-background h-9 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
-            >
-              {t("explore.region.filter")}
-            </button>
+            {filterTarget && (
+              <button
+                type="button"
+                onClick={handleFilterRegion}
+                className="focus-visible:ring-accent/45 bg-accent text-accent-foreground focus-visible:ring-offset-background h-9 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
+              >
+                {t("explore.region.filter")}
+              </button>
+            )}
           </div>
         </HoverCardContent>
       </HoverCard>

@@ -119,6 +119,51 @@ describe("manifest", () => {
       expect(input.data[0]?.exif).toHaveProperty("Rating", 5);
     });
 
+    it("should preserve multilingual location fields", () => {
+      const input = {
+        version: CURRENT_MANIFEST_VERSION,
+        data: [
+          {
+            id: "photo-1",
+            location: {
+              latitude: 41.4031,
+              longitude: 2.174,
+              admin: {
+                country: "Spain",
+                countryCode: "ES",
+                region: "Catalonia",
+              },
+              adminKey: {
+                country: "Spain",
+                countryCode: "ES",
+                region: "Catalonia",
+              },
+              adminI18n: {
+                en: {
+                  country: "Spain",
+                  countryCode: "ES",
+                  region: "Catalonia",
+                },
+                "zh-CN": {
+                  country: "西班牙",
+                  countryCode: "ES",
+                  region: "加泰罗尼亚",
+                },
+              },
+              locationNameI18n: {
+                en: "Catalonia, Spain",
+                "zh-CN": "加泰罗尼亚, 西班牙",
+              },
+            },
+          },
+        ],
+      };
+
+      const result = parseManifest(input);
+
+      expect(result.data[0]?.location).toEqual(input.data[0].location);
+    });
+
     it("should preserve malformed photo entries while stripping supported legacy exif fields", () => {
       const input = {
         version: CURRENT_MANIFEST_VERSION,

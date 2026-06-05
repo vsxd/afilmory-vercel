@@ -24,6 +24,14 @@ export const PhotoMarkerPin = ({
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
+  const latitudeDirection =
+    marker.latitudeRef === "S"
+      ? t("explore.coordinates.south")
+      : t("explore.coordinates.north");
+  const longitudeDirection =
+    marker.longitudeRef === "W"
+      ? t("explore.coordinates.west")
+      : t("explore.coordinates.east");
 
   const handleClick = () => {
     onClick?.(marker);
@@ -202,10 +210,10 @@ export const PhotoMarkerPin = ({
                     <i className="i-mingcute-location-line text-sm" />
                     <span className="font-mono">
                       <span>{Math.abs(marker.latitude).toFixed(4)}°</span>
-                      <span>{marker.latitudeRef || "N"}</span>
+                      <span>{latitudeDirection}</span>
                       <span>, </span>
                       <span>{Math.abs(marker.longitude).toFixed(4)}°</span>
-                      <span>{marker.longitudeRef || "E"}</span>
+                      <span>{longitudeDirection}</span>
                     </span>
                   </div>
                   {marker.altitude !== undefined && (

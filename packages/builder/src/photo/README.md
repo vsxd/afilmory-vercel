@@ -89,7 +89,8 @@ type VideoSource =
 
 - `GEOCODING_ENABLED=true|false`：默认启用；设为 `false` 时关闭构建期反向地理编码。
 - `GEOCODING_PROVIDER=nominatim`：默认使用 Nominatim；也兼容 `mapbox` 和 `auto`。
-- `GEOCODING_LANGUAGE=zh-CN`：请求返回语言。
+- `GEOCODING_LOCALES=en,zh-CN`：构建期预计算的地理名称语言列表；`en` 会自动加入并作为稳定区域 ID 的 canonical locale。
+- `GEOCODING_LANGUAGE`：旧配置兼容；未设置 `GEOCODING_LOCALES` 时才读取。
 - `GEOCODING_USER_AGENT`：Nominatim 请求必须配置可识别的 User-Agent。
 - `GEOCODING_CACHE_PATH=generated/geocoding-cache.json`：持久缓存路径，避免重复构建反复请求。
 - `GEOCODING_CACHE_PRECISION=4`：缓存坐标精度，约 11m 量级。

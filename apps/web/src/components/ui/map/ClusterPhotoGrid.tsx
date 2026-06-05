@@ -23,8 +23,16 @@ export const ClusterPhotoGrid = ({
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
+  const latitudeDirection =
+    primaryPhoto?.latitudeRef === "S"
+      ? t("explore.coordinates.south")
+      : t("explore.coordinates.north");
+  const longitudeDirection =
+    primaryPhoto?.longitudeRef === "W"
+      ? t("explore.coordinates.west")
+      : t("explore.coordinates.east");
   const locationLabel = primaryPhoto
-    ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${primaryPhoto.latitudeRef || "N"}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${primaryPhoto.longitudeRef || "E"}`
+    ? `${Math.abs(primaryPhoto.latitude).toFixed(4)}°${latitudeDirection}, ${Math.abs(primaryPhoto.longitude).toFixed(4)}°${longitudeDirection}`
     : null;
   const dateRangeLabel = (() => {
     const dates = photos

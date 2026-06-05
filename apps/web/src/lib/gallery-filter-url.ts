@@ -59,9 +59,9 @@ export const getGalleryFiltersFromSearch = (
     selectedCameras: getSearchList(searchParams, "cameras"),
     selectedLenses: getSearchList(searchParams, "lenses"),
     selectedGeoCountries: getSearchList(searchParams, "geo_country"),
-    selectedGeoRegions: getSearchList(searchParams, "geo_region"),
+    selectedGeoRegions: [],
     selectedGeoCities: getSearchList(searchParams, "geo_city"),
-    selectedGeoDistricts: getSearchList(searchParams, "geo_district"),
+    selectedGeoDistricts: [],
     tagFilterMode:
       tagModeFromSearchParams === "intersection" ? "intersection" : "union",
   };
@@ -76,9 +76,9 @@ export const applyGalleryFiltersToSearch = (
   setSearchList(searchParams, "cameras", filters.selectedCameras);
   setSearchList(searchParams, "lenses", filters.selectedLenses);
   setSearchList(searchParams, "geo_country", filters.selectedGeoCountries);
-  setSearchList(searchParams, "geo_region", filters.selectedGeoRegions);
   setSearchList(searchParams, "geo_city", filters.selectedGeoCities);
-  setSearchList(searchParams, "geo_district", filters.selectedGeoDistricts);
+  searchParams.delete("geo_region");
+  searchParams.delete("geo_district");
 
   if (filters.tagFilterMode === "intersection")
     searchParams.set("tag_mode", "intersection");

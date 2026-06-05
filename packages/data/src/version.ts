@@ -1,3 +1,3 @@
 import type { ManifestVersion } from "./types";
 
-export const CURRENT_MANIFEST_VERSION: ManifestVersion = "v9";
+export const CURRENT_MANIFEST_VERSION: ManifestVersion = "v10";

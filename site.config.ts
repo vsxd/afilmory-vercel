@@ -56,7 +56,7 @@ export const siteConfig: SiteConfig = {
   description: 'A personal photography website',
   url: 'https://afilmory.your.domain/',
   accentColor: '#007bff',
-  language: 'zh-CN',
+  language: 'en',
   author: {
     name: 'Author',
     url: 'https://your.domain',

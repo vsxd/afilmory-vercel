@@ -2,6 +2,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
@@ -76,6 +77,7 @@ export const Maplibre = ({
   autoFitBounds = true,
   syncViewStateOnInitialViewStateChange = true,
 }: PureMaplibreProps) => {
+  const { t } = useTranslation();
   const [currentZoom, setCurrentZoom] = useState(initialViewState.zoom);
   const [viewState, setViewState] = useState(initialViewState);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -319,7 +321,7 @@ export const Maplibre = ({
         mapStyle={getMapStyle()}
         attributionControl={{
           compact: true,
-          customAttribution: "Geocoding © OpenStreetMap contributors",
+          customAttribution: t("explore.attribution.geocoding"),
         }}
         interactiveLayerIds={geoJsonData ? ["data"] : undefined}
         onClick={onGeoJsonClick}

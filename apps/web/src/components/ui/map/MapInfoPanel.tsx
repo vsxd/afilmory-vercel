@@ -74,11 +74,19 @@ export const MapInfoPanel = ({
   }, [bounds, i18n.language]);
 
   const formatLatitude = (latitude: number) =>
-    `${Math.abs(latitude).toFixed(6)}° ${latitude >= 0 ? "N" : "S"}`;
+    `${Math.abs(latitude).toFixed(6)}° ${t(
+      latitude >= 0
+        ? "explore.coordinates.north"
+        : "explore.coordinates.south",
+    )}`;
   const formatLongitude = (longitude: number) => {
     const normalizedLongitude = normalizeLongitude(longitude);
 
-    return `${Math.abs(normalizedLongitude).toFixed(6)}° ${normalizedLongitude >= 0 ? "E" : "W"}`;
+    return `${Math.abs(normalizedLongitude).toFixed(6)}° ${t(
+      normalizedLongitude >= 0
+        ? "explore.coordinates.east"
+        : "explore.coordinates.west",
+    )}`;
   };
 
   return (
@@ -199,13 +207,17 @@ export const MapInfoPanel = ({
                   </div>
                   <div className="space-y-1">
                     <div className="text-text flex items-center justify-between">
-                      <span className="text-xs font-medium">Lat</span>
+                      <span className="text-xs font-medium">
+                        {t("explore.coordinates.latitude")}
+                      </span>
                       <span className="font-mono text-sm tabular-nums">
                         {formatLatitude(bounds.minLat)}
                       </span>
                     </div>
                     <div className="text-text flex items-center justify-between">
-                      <span className="text-xs font-medium">Lng</span>
+                      <span className="text-xs font-medium">
+                        {t("explore.coordinates.longitude")}
+                      </span>
                       <span className="font-mono text-sm tabular-nums">
                         {formatLongitude(bounds.minLng)}
                       </span>
@@ -221,13 +233,17 @@ export const MapInfoPanel = ({
                   </div>
                   <div className="space-y-1">
                     <div className="text-text flex items-center justify-between">
-                      <span className="text-xs font-medium">Lat</span>
+                      <span className="text-xs font-medium">
+                        {t("explore.coordinates.latitude")}
+                      </span>
                       <span className="font-mono text-sm tabular-nums">
                         {formatLatitude(bounds.maxLat)}
                       </span>
                     </div>
                     <div className="text-text flex items-center justify-between">
-                      <span className="text-xs font-medium">Lng</span>
+                      <span className="text-xs font-medium">
+                        {t("explore.coordinates.longitude")}
+                      </span>
                       <span className="font-mono text-sm tabular-nums">
                         {formatLongitude(bounds.maxLng)}
                       </span>

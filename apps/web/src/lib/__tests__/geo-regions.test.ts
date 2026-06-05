@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGeoRegionId,
   createGeographicRegions,
+  getRegionDisplayName,
   photoMatchesGeoFilters,
 } from "../geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "../map-utils";
@@ -13,6 +14,7 @@ const createPhoto = (
   latitude: number,
   longitude: number,
   admin?: LocationAdminInfo,
+  locationOverrides?: Partial<NonNullable<PhotoManifestItem["location"]>>,
 ): PhotoManifestItem => ({
   id,
   title: id,
@@ -45,7 +47,10 @@ const createPhoto = (
     GPSLongitudeRef: longitude < 0 ? "W" : "E",
   },
   toneAnalysis: null,
-  location: admin ? { latitude, longitude, admin } : null,
+  location:
+    admin || locationOverrides
+      ? { latitude, longitude, admin, ...locationOverrides }
+      : null,
 });
 
 describe("createGeographicRegions", () => {
@@ -151,6 +156,69 @@ describe("createGeographicRegions", () => {
     expect(Math.abs(regions[0].longitude)).toBeGreaterThan(179.9);
     expect(regions[0].bounds.crossesAntimeridian).toBe(true);
   });
+
+  it("collapses Nominatim simplified and traditional aliases for display", () => {
+    const photos = [
+      createPhoto("a", 51.51, -0.08, {
+        country: "英国;英國",
+        countryCode: "GB",
+        region: "英格兰;英格蘭",
+        city: "倫敦市;伦敦市",
+      }),
+    ];
+
+    const regions = createGeographicRegions(
+      convertPhotosToMarkersFromEXIF(photos),
+      "city",
+    );
+
+    expect(getRegionDisplayName(regions[0], "zh-CN")).toBe(
+      "英国 / 英格兰 / 伦敦市",
+    );
+    expect(getRegionDisplayName(regions[0], "zh-HK")).toBe(
+      "英國 / 英格蘭 / 倫敦市",
+    );
+  });
+
+  it("keeps region ids language-independent while localizing display names", () => {
+    const englishAdmin: LocationAdminInfo = {
+      country: "Spain",
+      countryCode: "ES",
+      region: "Catalonia",
+      city: "Barcelona",
+    };
+    const chineseAdmin: LocationAdminInfo = {
+      country: "西班牙",
+      countryCode: "ES",
+      region: "加泰罗尼亚",
+      city: "巴塞罗那",
+    };
+
+    const photos = [
+      createPhoto("a", 41.4031, 2.174, englishAdmin, {
+        admin: englishAdmin,
+        adminKey: englishAdmin,
+        adminI18n: {
+          en: englishAdmin,
+          "zh-CN": chineseAdmin,
+        },
+        country: "Spain",
+        city: "Barcelona",
+      }),
+    ];
+
+    const regions = createGeographicRegions(
+      convertPhotosToMarkersFromEXIF(photos),
+      "region",
+    );
+
+    expect(regions).toHaveLength(1);
+    expect(regions[0].id).toBe("region:country=es|region=catalonia");
+    expect(getRegionDisplayName(regions[0], "en")).toBe("Spain / Catalonia");
+    expect(getRegionDisplayName(regions[0], "zh-CN")).toBe(
+      "西班牙 / 加泰罗尼亚",
+    );
+  });
 });
 
 describe("photoMatchesGeoFilters", () => {
@@ -192,4 +260,3 @@ describe("photoMatchesGeoFilters", () => {
     ).toBe(false);
   });
 });
-

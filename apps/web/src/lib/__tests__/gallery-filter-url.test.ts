@@ -77,6 +77,30 @@ describe("gallery filter URL helpers", () => {
     });
   });
 
+  it("drops legacy region and district geographic filters", () => {
+    expect(
+      getGalleryFiltersFromSearch(
+        "?geo_region=region%3Acountry%3Dcn%7Cregion%3Dzhejiang&geo_district=district%3Acountry%3Dcn%7Ccity%3Dhangzhou%7Cdistrict%3Dxihu",
+      ),
+    ).toMatchObject({
+      selectedGeoRegions: [],
+      selectedGeoDistricts: [],
+    });
+
+    expect(
+      buildGalleryFilterSearch("?geo_region=legacy&geo_district=legacy", {
+        selectedTags: [],
+        selectedCameras: [],
+        selectedLenses: [],
+        selectedGeoCountries: [],
+        selectedGeoRegions: ["legacy"],
+        selectedGeoCities: [],
+        selectedGeoDistricts: ["legacy"],
+        tagFilterMode: "union",
+      }),
+    ).toBe("");
+  });
+
   it("builds a single tag search with reserved URL characters encoded", () => {
     const search = buildSingleTagFilterSearch("night & city#1");
 

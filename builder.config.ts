@@ -1,34 +1,38 @@
-import os from 'node:os'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { defineBuilderConfig, geocodingPlugin } from '@afilmory/builder'
+import { defineBuilderConfig, geocodingPlugin } from "@afilmory/builder";
 
-import { env } from './env.js'
+import { env } from "./env.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const requiredS3Vars = {
   S3_ACCESS_KEY_ID: env.S3_ACCESS_KEY_ID,
   S3_SECRET_ACCESS_KEY: env.S3_SECRET_ACCESS_KEY,
   S3_BUCKET_NAME: env.S3_BUCKET_NAME,
-}
+};
 
 const missingS3Vars = Object.entries(requiredS3Vars)
   .filter(([, value]) => !value)
-  .map(([key]) => key)
+  .map(([key]) => key);
 
-const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || ''
-const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || ''
-const geocodingLanguage = env.GEOCODING_LANGUAGE || env.SITE_LANGUAGE || 'zh-CN'
+const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || "";
+const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || "";
+const geocodingLocales =
+  env.GEOCODING_LOCALES || env.GEOCODING_LANGUAGE || "en,zh-CN";
 const geocodingCachePath =
-  env.GEOCODING_CACHE_PATH || path.resolve(__dirname, 'generated/geocoding-cache.json')
+  env.GEOCODING_CACHE_PATH ||
+  path.resolve(__dirname, "generated/geocoding-cache.json");
 const geocodingUserAgent =
   env.GEOCODING_USER_AGENT ||
-  `afilmory-vercel/0.1 (${env.SITE_URL || 'https://github.com/vsxd/afilmory-vercel'})`
+  `afilmory-vercel/0.1 (${env.SITE_URL || "https://github.com/vsxd/afilmory-vercel"})`;
 
 if (missingS3Vars.length > 0) {
-  throw new Error(`Missing required S3 environment variables: ${missingS3Vars.join(', ')}`)
+  throw new Error(
+    `Missing required S3 environment variables: ${missingS3Vars.join(", ")}`,
+  );
 }
 
 /**
@@ -46,9 +50,9 @@ if (missingS3Vars.length > 0) {
  */
 export default defineBuilderConfig(() => ({
   output: {
-    manifestPath: path.resolve(__dirname, 'generated/photos-manifest.json'),
-    thumbnailsDir: path.resolve(__dirname, 'apps/web/public/thumbnails'),
-    originalsDir: path.resolve(__dirname, 'apps/web/public/originals'),
+    manifestPath: path.resolve(__dirname, "generated/photos-manifest.json"),
+    thumbnailsDir: path.resolve(__dirname, "apps/web/public/thumbnails"),
+    originalsDir: path.resolve(__dirname, "apps/web/public/originals"),
   },
 
   // 远程仓库缓存 - 根据环境变量自动启用
@@ -60,7 +64,7 @@ export default defineBuilderConfig(() => ({
 
   // 使用 S3 存储
   storage: {
-    provider: 's3',
+    provider: "s3",
     bucket: env.S3_BUCKET_NAME,
     region: env.S3_REGION,
     endpoint: env.S3_ENDPOINT,
@@ -76,7 +80,7 @@ export default defineBuilderConfig(() => ({
     requestTimeoutMs: 20_000,
     idleTimeoutMs: 10_000,
     totalTimeoutMs: 60_000,
-    retryMode: 'standard',
+    retryMode: "standard",
     maxAttempts: 3,
     downloadConcurrency: 8,
   },
@@ -92,14 +96,14 @@ export default defineBuilderConfig(() => ({
       showDetailedStats: true,
       logging: {
         verbose: false,
-        level: 'info',
+        level: "info",
         outputToFile: false,
       },
       performance: {
         worker: {
           workerCount: os.cpus().length * 2,
           timeout: 30_000,
-          useClusterMode: true,
+          useClusterMode: env.BUILDER_USE_CLUSTER_MODE !== "false",
           workerConcurrency: 2,
         },
       },
@@ -107,14 +111,15 @@ export default defineBuilderConfig(() => ({
   },
   plugins: [
     geocodingPlugin({
-      enable: env.GEOCODING_ENABLED !== 'false',
-      provider: env.GEOCODING_PROVIDER || 'nominatim',
+      enable: env.GEOCODING_ENABLED !== "false",
+      provider: env.GEOCODING_PROVIDER || "nominatim",
       mapboxToken: env.MAPBOX_TOKEN,
       nominatimBaseUrl: env.GEOCODING_NOMINATIM_BASE_URL,
       nominatimUserAgent: geocodingUserAgent,
       cachePath: geocodingCachePath,
       cachePrecision: env.GEOCODING_CACHE_PRECISION,
-      language: geocodingLanguage,
+      locales: geocodingLocales,
+      language: env.GEOCODING_LANGUAGE,
     }),
   ],
-}))
+}));

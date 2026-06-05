@@ -68,4 +68,59 @@ describe("NominatimGeocodingProvider", () => {
       "User-Agent": "afilmory-test/1.0 (test@example.com)",
     });
   });
+
+  it("normalizes Nominatim semicolon-separated localized aliases", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      return new Response(
+        JSON.stringify({
+          display_name:
+            "107, Fenchurch Street, 倫敦市;伦敦市, 英格兰;英格蘭, 英国;英國",
+          address: {
+            country: "英国;英國",
+            country_code: "gb",
+            state: "英格兰;英格蘭",
+            city: "倫敦市;伦敦市",
+          },
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const simplifiedProvider = new NominatimGeocodingProvider(
+      "https://nominatim.test",
+      "zh-CN,en",
+      "afilmory-test/1.0 (test@example.com)",
+    );
+
+    const simplifiedLocation = await simplifiedProvider.reverseGeocode(
+      51.51,
+      -0.08,
+    );
+
+    expect(simplifiedLocation?.admin).toMatchObject({
+      country: "英国",
+      countryCode: "GB",
+      region: "英格兰",
+      city: "伦敦市",
+    });
+
+    const traditionalProvider = new NominatimGeocodingProvider(
+      "https://nominatim.test",
+      "zh-HK,en",
+      "afilmory-test/1.0 (test@example.com)",
+    );
+
+    const traditionalLocation = await traditionalProvider.reverseGeocode(
+      51.51,
+      -0.08,
+    );
+
+    expect(traditionalLocation?.admin).toMatchObject({
+      country: "英國",
+      countryCode: "GB",
+      region: "英格蘭",
+      city: "倫敦市",
+    });
+  });
 });

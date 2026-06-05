@@ -1,3 +1,4 @@
+import { clsxm } from "@afilmory/ui";
 import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -71,7 +72,17 @@ const FilterSection = ({
 };
 
 export const FilterPanel = () => {
-  const { t } = useTranslation();
+  return <FilterPanelContent />;
+};
+
+export const FilterPanelContent = ({
+  showHeader = true,
+  className,
+}: {
+  showHeader?: boolean;
+  className?: string;
+}) => {
+  const { t, i18n } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
 
   const geoItems = useMemo(() => {
@@ -79,16 +90,14 @@ export const FilterPanel = () => {
     const toItems = (level: Parameters<typeof createGeographicRegions>[1]) =>
       createGeographicRegions(markers, level).map((region) => ({
         id: region.id,
-        label: getRegionDisplayName(region),
+        label: getRegionDisplayName(region, i18n.language),
       }));
 
     return {
       countries: toItems("country"),
-      regions: toItems("region"),
       cities: toItems("city"),
-      districts: toItems("district"),
     };
-  }, []);
+  }, [i18n.language]);
 
   const resetFilters = () => {
     setGallerySetting((prev) => ({
@@ -105,31 +114,38 @@ export const FilterPanel = () => {
   };
 
   return (
-    <div className="pb-safe lg:pb-safe-2 max-h-[min(70vh,42rem)] w-full overflow-y-auto px-4 pt-4 pb-5">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="bg-accent/10 border-accent/15 text-accent flex size-10 shrink-0 items-center justify-center rounded-xl border">
-            <i className="i-mingcute-filter-3-line text-lg" />
+    <div
+      className={clsxm(
+        "pb-safe lg:pb-safe-2 max-h-[min(70vh,42rem)] w-full overflow-y-auto px-4 pt-4 pb-5",
+        className,
+      )}
+    >
+      {showHeader && (
+        <header className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="bg-accent/10 border-accent/15 text-accent flex size-10 shrink-0 items-center justify-center rounded-xl border">
+              <i className="i-mingcute-filter-3-line text-lg" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-text text-sm font-semibold">
+                {t("action.filter.title")}
+              </h3>
+              <p className="text-text-secondary mt-0.5 text-xs">
+                {t("action.filter.subtitle")}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-text text-sm font-semibold">
-              {t("action.filter.title")}
-            </h3>
-            <p className="text-text-secondary mt-0.5 text-xs">
-              {t("action.filter.subtitle")}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={resetFilters}
-          className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2"
-        >
-          {t("action.search.clear")}
-        </button>
-      </header>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2"
+          >
+            {t("action.search.clear")}
+          </button>
+        </header>
+      )}
 
-      <div className="mt-5 space-y-5">
+      <div className={clsxm("space-y-5", showHeader && "mt-5")}>
         <FilterSection
           title={t("action.tag.filter")}
           icon="i-mingcute-tag-line"
@@ -185,18 +201,6 @@ export const FilterPanel = () => {
           }
         />
         <FilterSection
-          title={t("action.geo.region.filter")}
-          icon="i-mingcute-map-line"
-          items={geoItems.regions}
-          selected={gallerySetting.selectedGeoRegions}
-          onToggle={(id) =>
-            setGallerySetting((prev) => ({
-              ...prev,
-              selectedGeoRegions: toggleValue(prev.selectedGeoRegions, id),
-            }))
-          }
-        />
-        <FilterSection
           title={t("action.geo.city.filter")}
           icon="i-mingcute-building-5-line"
           items={geoItems.cities}
@@ -208,20 +212,7 @@ export const FilterPanel = () => {
             }))
           }
         />
-        <FilterSection
-          title={t("action.geo.district.filter")}
-          icon="i-mingcute-location-line"
-          items={geoItems.districts}
-          selected={gallerySetting.selectedGeoDistricts}
-          onToggle={(id) =>
-            setGallerySetting((prev) => ({
-              ...prev,
-              selectedGeoDistricts: toggleValue(prev.selectedGeoDistricts, id),
-            }))
-          }
-        />
       </div>
     </div>
   );
 };
-

@@ -185,6 +185,66 @@ const cleanString = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const TRADITIONAL_LANGUAGE_PATTERN = /^zh-(?:hant|tw|hk|mo)\b/i;
+const SIMPLIFIED_LANGUAGE_PATTERN = /^zh-(?:hans|cn|sg)\b/i;
+const SIMPLIFIED_ONLY_CHARS =
+  "国兰伦苏广东门湾县区台后龙义乌宁厦宫丽桥泽罗汉爱约尔贝";
+const TRADITIONAL_ONLY_CHARS =
+  "國蘭倫蘇廣東門灣縣區臺後龍義烏寧廈宮麗橋澤羅漢愛約爾貝";
+const SIMPLIFIED_ONLY_SET = new Set(Array.from(SIMPLIFIED_ONLY_CHARS));
+const TRADITIONAL_ONLY_SET = new Set(Array.from(TRADITIONAL_ONLY_CHARS));
+
+const prefersTraditionalChinese = (language: string | null): boolean => {
+  if (!language) return false;
+  return (
+    TRADITIONAL_LANGUAGE_PATTERN.test(language) &&
+    !SIMPLIFIED_LANGUAGE_PATTERN.test(language)
+  );
+};
+
+const getScriptScore = (value: string, preferredTraditional: boolean): number => {
+  let simplifiedScore = 0;
+  let traditionalScore = 0;
+
+  for (const character of value) {
+    if (SIMPLIFIED_ONLY_SET.has(character)) simplifiedScore += 1;
+    if (TRADITIONAL_ONLY_SET.has(character)) traditionalScore += 1;
+  }
+
+  return preferredTraditional
+    ? traditionalScore - simplifiedScore
+    : simplifiedScore - traditionalScore;
+};
+
+const selectLocalizedAlias = (
+  value: string,
+  language: string | null,
+): string => {
+  const aliases = value
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (aliases.length <= 1) return value;
+
+  const preferredTraditional = prefersTraditionalChinese(language);
+  return aliases
+    .map((alias, index) => ({
+      alias,
+      index,
+      score: getScriptScore(alias, preferredTraditional),
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0].alias;
+};
+
+const cleanLocalizedAdminString = (
+  value: unknown,
+  language: string | null,
+): string | undefined => {
+  const cleaned = cleanString(value);
+  return cleaned ? selectLocalizedAlias(cleaned, language) : undefined;
+};
+
 const normalizeCountryCode = (value: unknown): string | undefined => {
   const code = cleanString(value);
   return code ? code.toUpperCase() : undefined;
@@ -193,6 +253,17 @@ const normalizeCountryCode = (value: unknown): string | undefined => {
 const firstString = (...values: unknown[]): string | undefined => {
   for (const value of values) {
     const normalized = cleanString(value);
+    if (normalized) return normalized;
+  }
+  return undefined;
+};
+
+const firstLocalizedAdminString = (
+  language: string | null,
+  ...values: unknown[]
+): string | undefined => {
+  for (const value of values) {
+    const normalized = cleanLocalizedAdminString(value, language);
     if (normalized) return normalized;
   }
   return undefined;
@@ -216,6 +287,30 @@ const createLocationInfo = ({
   city: admin.city ?? admin.district ?? admin.region,
   locationName,
 });
+
+export const normalizeLocationInfoAdminAliases = (
+  location: LocationInfo,
+  language: string | null,
+): LocationInfo => {
+  const admin = location.admin ?? {};
+  const normalizedAdmin: LocationAdminInfo = {
+    country: cleanLocalizedAdminString(
+      admin.country ?? location.country,
+      language,
+    ),
+    countryCode: normalizeCountryCode(admin.countryCode),
+    region: cleanLocalizedAdminString(admin.region, language),
+    city: cleanLocalizedAdminString(admin.city ?? location.city, language),
+    district: cleanLocalizedAdminString(admin.district, language),
+  };
+
+  return createLocationInfo({
+    latitude: location.latitude,
+    longitude: location.longitude,
+    admin: normalizedAdmin,
+    locationName: location.locationName,
+  });
+};
 
 /**
  * Mapbox 地理编码提供者
@@ -399,20 +494,27 @@ export class NominatimGeocodingProvider implements GeocodingProvider {
         const address = data.address || {};
 
         const admin: LocationAdminInfo = {
-          country: firstString(address.country, address.country_code),
+          country: firstLocalizedAdminString(
+            this.language,
+            address.country,
+            address.country_code,
+          ),
           countryCode: normalizeCountryCode(address.country_code),
-          region: firstString(
+          region: firstLocalizedAdminString(
+            this.language,
             address.state,
             address.province,
             address.region,
           ),
-          city: firstString(
+          city: firstLocalizedAdminString(
+            this.language,
             address.city,
             address.town,
             address.village,
             address.municipality,
           ),
-          district: firstString(
+          district: firstLocalizedAdminString(
+            this.language,
             address.city_district,
             address.district,
             address.county,

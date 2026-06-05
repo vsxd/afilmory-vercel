@@ -1,23 +1,33 @@
+import type { LocationAdminInfo } from "@afilmory/data";
+
 import type { photoLoader } from "~/data-runtime/photo-loader";
 
 const getLocationTokens = (
   location?: {
     locationName?: string | null;
+    locationNameI18n?: Record<string, string | null | undefined> | null;
     city?: string | null;
     country?: string | null;
-    admin?: {
-      country?: string | null;
-      countryCode?: string | null;
-      region?: string | null;
-      city?: string | null;
-      district?: string | null;
-    } | null;
+    admin?: LocationAdminInfo | null;
+    adminI18n?: Record<string, LocationAdminInfo | null | undefined> | null;
+    adminKey?: LocationAdminInfo | null;
   } | null,
 ) => {
   if (!location) return [];
 
+  const localizedAdminTokens = Object.values(location.adminI18n ?? {}).flatMap(
+    (admin) => [
+      admin?.country,
+      admin?.countryCode,
+      admin?.region,
+      admin?.city,
+      admin?.district,
+    ],
+  );
+
   const tokens = [
     location.locationName,
+    ...Object.values(location.locationNameI18n ?? {}),
     location.city,
     location.country,
     location.admin?.country,
@@ -25,6 +35,12 @@ const getLocationTokens = (
     location.admin?.region,
     location.admin?.city,
     location.admin?.district,
+    location.adminKey?.country,
+    location.adminKey?.countryCode,
+    location.adminKey?.region,
+    location.adminKey?.city,
+    location.adminKey?.district,
+    ...localizedAdminTokens,
   ]
     .map((token) => token?.trim())
     .filter(

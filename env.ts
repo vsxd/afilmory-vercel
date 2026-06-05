@@ -1,19 +1,19 @@
-import 'dotenv-expand/config'
+import "dotenv-expand/config";
 
-import { createEnv } from '@t3-oss/env-core'
-import { z } from 'zod'
+import { createEnv } from "@t3-oss/env-core";
+import { z } from "zod";
 
 export const env = createEnv({
   server: {
     // S3 存储配置（必填，项目仅支持 S3 存储）
-    S3_REGION: z.string().default('us-east-1'),
+    S3_REGION: z.string().default("us-east-1"),
     // 构建前端时允许为空，builder 会在运行时做严格校验
-    S3_ACCESS_KEY_ID: z.string().default(''),
-    S3_SECRET_ACCESS_KEY: z.string().default(''),
-    S3_ENDPOINT: z.string().default('https://s3.us-east-1.amazonaws.com'),
-    S3_BUCKET_NAME: z.string().default(''),
-    S3_PREFIX: z.string().default(''),
-    S3_CUSTOM_DOMAIN: z.string().default(''),
+    S3_ACCESS_KEY_ID: z.string().default(""),
+    S3_SECRET_ACCESS_KEY: z.string().default(""),
+    S3_ENDPOINT: z.string().default("https://s3.us-east-1.amazonaws.com"),
+    S3_BUCKET_NAME: z.string().default(""),
+    S3_PREFIX: z.string().default(""),
+    S3_CUSTOM_DOMAIN: z.string().default(""),
     S3_EXCLUDE_REGEX: z.string().optional(),
 
     // 远程仓库缓存配置（可选）
@@ -46,18 +46,22 @@ export const env = createEnv({
 
     // 地图配置(可选)
     MAP_STYLE: z.string().optional(), // 'builtin' or custom
-    MAP_PROJECTION: z.enum(['globe', 'mercator']).optional(),
+    MAP_PROJECTION: z.enum(["globe", "mercator"]).optional(),
 
     // 构建期反向地理编码（可选）
-    GEOCODING_ENABLED: z.string().default('true'),
-    GEOCODING_PROVIDER: z.enum(['nominatim', 'mapbox', 'auto']).optional(),
+    GEOCODING_ENABLED: z.string().default("true"),
+    GEOCODING_PROVIDER: z.enum(["nominatim", "mapbox", "auto"]).optional(),
+    GEOCODING_LOCALES: z.string().optional(),
     GEOCODING_LANGUAGE: z.string().optional(),
     GEOCODING_USER_AGENT: z.string().optional(),
     GEOCODING_CACHE_PATH: z.string().optional(),
     GEOCODING_CACHE_PRECISION: z.coerce.number().optional(),
     GEOCODING_NOMINATIM_BASE_URL: z.string().optional(),
     MAPBOX_TOKEN: z.string().optional(),
+
+    // Builder 性能配置（可选）
+    BUILDER_USE_CLUSTER_MODE: z.string().optional(),
   },
   runtimeEnv: process.env,
-  isServer: typeof window === 'undefined',
-})
+  isServer: typeof window === "undefined",
+});

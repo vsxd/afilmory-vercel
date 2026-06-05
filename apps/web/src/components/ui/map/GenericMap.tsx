@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 
 import { getInitialViewStateForMarkers } from "~/lib/map-utils";
 import { useMapAdapter } from "~/modules/map/map-context";
@@ -47,6 +48,7 @@ export const GenericMap: React.FC<GenericMapProps> = ({
   autoFitBounds = true,
   ...props
 }) => {
+  const { t } = useTranslation();
   const adapter = useMapAdapter();
   // Calculate initial view state from markers (only if autoFitBounds is disabled)
   const calculatedInitialViewState = React.useMemo(() => {
@@ -70,7 +72,7 @@ export const GenericMap: React.FC<GenericMapProps> = ({
   );
 
   if (!adapter) {
-    return <div>Map provider not available</div>;
+    return <div>{t("explore.map.providerUnavailable")}</div>;
   }
 
   const { MapComponent } = adapter;

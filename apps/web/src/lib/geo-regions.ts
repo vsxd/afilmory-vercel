@@ -44,14 +44,124 @@ const normalizeValue = (value: string | undefined): string | undefined => {
 const normalizeKey = (value: string | undefined): string | undefined =>
   normalizeValue(value)?.toLocaleLowerCase("en-US");
 
+const TRADITIONAL_LANGUAGE_PATTERN = /^zh-(?:hant|tw|hk|mo)\b/i;
+const SIMPLIFIED_LANGUAGE_PATTERN = /^zh-(?:hans|cn|sg)\b/i;
+const SIMPLIFIED_ONLY_CHARS =
+  "国兰伦苏广东门湾县区台后龙义乌宁厦宫丽桥泽罗汉爱约尔贝";
+const TRADITIONAL_ONLY_CHARS =
+  "國蘭倫蘇廣東門灣縣區臺後龍義烏寧廈宮麗橋澤羅漢愛約爾貝";
+const SIMPLIFIED_ONLY_SET = new Set(Array.from(SIMPLIFIED_ONLY_CHARS));
+const TRADITIONAL_ONLY_SET = new Set(Array.from(TRADITIONAL_ONLY_CHARS));
+
+const prefersTraditionalChinese = (language: string | undefined): boolean => {
+  if (!language) return false;
+  return (
+    TRADITIONAL_LANGUAGE_PATTERN.test(language) &&
+    !SIMPLIFIED_LANGUAGE_PATTERN.test(language)
+  );
+};
+
+const getScriptScore = (
+  value: string,
+  preferredTraditional: boolean,
+): number => {
+  let simplifiedScore = 0;
+  let traditionalScore = 0;
+
+  for (const character of value) {
+    if (SIMPLIFIED_ONLY_SET.has(character)) simplifiedScore += 1;
+    if (TRADITIONAL_ONLY_SET.has(character)) traditionalScore += 1;
+  }
+
+  return preferredTraditional
+    ? traditionalScore - simplifiedScore
+    : simplifiedScore - traditionalScore;
+};
+
+const selectLocalizedAlias = (value: string, language?: string): string => {
+  const aliases = value
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (aliases.length <= 1) return value;
+
+  const preferredTraditional = prefersTraditionalChinese(language);
+  return aliases
+    .map((alias, index) => ({
+      alias,
+      index,
+      score: getScriptScore(alias, preferredTraditional),
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0].alias;
+};
+
+const normalizeDisplayValue = (
+  value: string | undefined,
+  language?: string,
+): string | undefined => {
+  const normalized = normalizeValue(value);
+  return normalized ? selectLocalizedAlias(normalized, language) : undefined;
+};
+
+const getLanguageCandidates = (language?: string): string[] => {
+  const normalized = language?.trim();
+  const candidates = normalized ? [normalized] : [];
+  const primary = normalized?.split("-")[0];
+
+  if (primary && primary !== normalized) candidates.push(primary);
+  if (primary === "ja") candidates.push("jp");
+  if (primary === "jp") candidates.push("ja");
+  if (primary === "zh" && normalized !== "zh-CN") candidates.push("zh-CN");
+  candidates.push("en");
+
+  return Array.from(new Set(candidates));
+};
+
+const normalizeAdmin = (
+  admin: LocationAdminInfo | undefined,
+  location?: PhotoManifestItem["location"],
+): LocationAdminInfo | null => {
+  const normalizedAdmin: LocationAdminInfo = {
+    country: normalizeValue(admin?.country ?? location?.country),
+    countryCode: normalizeValue(admin?.countryCode),
+    region: normalizeValue(admin?.region),
+    city: normalizeValue(admin?.city ?? location?.city),
+    district: normalizeValue(admin?.district),
+  };
+
+  return Object.values(normalizedAdmin).some(Boolean) ? normalizedAdmin : null;
+};
+
 export const getPhotoAdmin = (
+  photo: PhotoManifestItem,
+  language?: string,
+): LocationAdminInfo | null => {
+  const { location } = photo;
+  if (!location) return null;
+
+  for (const locale of getLanguageCandidates(language)) {
+    const localizedAdmin = normalizeAdmin(location.adminI18n?.[locale]);
+    if (localizedAdmin) return localizedAdmin;
+  }
+
+  return normalizeAdmin(location.admin ?? {}, location);
+};
+
+export const getPhotoAdminKey = (
   photo: PhotoManifestItem,
 ): LocationAdminInfo | null => {
   const { location } = photo;
   if (!location) return null;
 
+  const adminKey = normalizeAdmin(location.adminKey);
+  if (adminKey) return adminKey;
+
+  const canonicalAdmin = normalizeAdmin(location.adminI18n?.en);
+  if (canonicalAdmin) return canonicalAdmin;
+
   const admin = location.admin ?? {};
-  const normalizedAdmin: LocationAdminInfo = {
+  const legacyAdmin: LocationAdminInfo = {
     country: normalizeValue(admin.country ?? location.country),
     countryCode: normalizeValue(admin.countryCode),
     region: normalizeValue(admin.region),
@@ -59,7 +169,7 @@ export const getPhotoAdmin = (
     district: normalizeValue(admin.district),
   };
 
-  return Object.values(normalizedAdmin).some(Boolean) ? normalizedAdmin : null;
+  return Object.values(legacyAdmin).some(Boolean) ? legacyAdmin : null;
 };
 
 const getLevelValue = (
@@ -123,7 +233,7 @@ export const buildGeoRegionId = (
 export const getPhotoRegionIds = (
   photo: PhotoManifestItem,
 ): Partial<Record<GeographicRegionLevel, string>> => {
-  const admin = getPhotoAdmin(photo);
+  const admin = getPhotoAdminKey(photo);
   if (!admin) return {};
 
   return GEOGRAPHIC_REGION_LEVELS.reduce<
@@ -154,11 +264,11 @@ export function createGeographicRegions(
   >();
 
   for (const marker of markers) {
-    const admin = getPhotoAdmin(marker.photo);
-    if (!admin) continue;
+    const adminKey = getPhotoAdminKey(marker.photo);
+    if (!adminKey) continue;
 
-    const id = buildGeoRegionId(admin, level);
-    const adminPath = getRegionAdminPath(admin, level);
+    const id = buildGeoRegionId(adminKey, level);
+    const adminPath = getRegionAdminPath(adminKey, level);
     if (!id || !adminPath) continue;
 
     const existing = groups.get(id);
@@ -168,7 +278,7 @@ export function createGeographicRegions(
     }
 
     groups.set(id, {
-      label: createRegionLabel(admin, level),
+      label: createRegionLabel(adminKey, level),
       adminPath,
       markers: [marker],
     });
@@ -215,26 +325,44 @@ export function createRegionMarker(region: GeographicRegion): PhotoMarker {
   };
 }
 
-export function createRegionMarkers(regions: GeographicRegion[]): PhotoMarker[] {
+export function createRegionMarkers(
+  regions: GeographicRegion[],
+): PhotoMarker[] {
   return regions.map(createRegionMarker);
 }
 
-export function getRegionDisplayName(region: GeographicRegion): string {
+export function getRegionDisplayName(
+  region: GeographicRegion,
+  language?: string,
+): string {
+  const displayAdmin = getPhotoAdmin(
+    region.representativeMarker.photo,
+    language,
+  );
+  const displayPath = displayAdmin
+    ? getRegionAdminPath(displayAdmin, region.level)
+    : null;
+  const adminPath = displayPath ?? region.adminPath;
   const parts = [
-    region.adminPath.country,
-    region.adminPath.region,
-    region.adminPath.city,
-    region.adminPath.district,
+    adminPath.country,
+    adminPath.region,
+    adminPath.city,
+    adminPath.district,
   ]
-    .flatMap((part) => (part ? [part] : []))
+    .flatMap((part) => {
+      const normalized = normalizeDisplayValue(part, language);
+      return normalized ? [normalized] : [];
+    })
     .filter((part, index, array) => array.indexOf(part) === index);
 
-  return parts.length > 0 ? parts.join(" / ") : region.label;
+  return (
+    parts.join(" / ") ||
+    normalizeDisplayValue(region.label, language) ||
+    region.label
+  );
 }
 
-export const getRegionLevelForZoom = (
-  zoom: number,
-): GeographicRegionLevel => {
+export const getRegionLevelForZoom = (zoom: number): GeographicRegionLevel => {
   if (zoom < 4) return "country";
   if (zoom < 7) return "region";
   if (zoom < 10) return "city";
@@ -247,10 +375,8 @@ export const photoMatchesGeoFilters = (
 ): boolean => {
   const regionIds = getPhotoRegionIds(photo);
 
-  const matchesLevel = (
-    selectedIds: string[],
-    level: GeographicRegionLevel,
-  ) => selectedIds.length === 0 || selectedIds.includes(regionIds[level] ?? "");
+  const matchesLevel = (selectedIds: string[], level: GeographicRegionLevel) =>
+    selectedIds.length === 0 || selectedIds.includes(regionIds[level] ?? "");
 
   return (
     matchesLevel(filters.selectedGeoCountries, "country") &&

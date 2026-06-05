@@ -53,9 +53,12 @@ export interface LocationInfo {
   latitude: number;
   longitude: number;
   admin?: LocationAdminInfo;
+  adminI18n?: Record<string, LocationAdminInfo>;
+  adminKey?: LocationAdminInfo;
   country?: string;
   city?: string;
   locationName?: string;
+  locationNameI18n?: Record<string, string>;
 }
 
 // 影调类型定义

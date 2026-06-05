@@ -25,6 +25,7 @@ import {
 } from "~/lib/geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
+import { FilterPanelContent } from "~/modules/gallery/panels/FilterPanel";
 
 // Command types
 type CommandType = "search" | "filter" | "action" | "photo";
@@ -52,7 +53,7 @@ const allLenses = photoLoader.getAllLenses();
 const allPhotos = photoLoader.getPhotos();
 
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
   const navigate = useNavigate();
   const openViewer = useOpenPhotoViewer();
@@ -67,9 +68,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     gallerySetting.selectedCameras.length +
     gallerySetting.selectedLenses.length +
     gallerySetting.selectedGeoCountries.length +
-    gallerySetting.selectedGeoRegions.length +
-    gallerySetting.selectedGeoCities.length +
-    gallerySetting.selectedGeoDistricts.length;
+    gallerySetting.selectedGeoCities.length;
 
   const hasFilters = activeFilterCount > 0;
 
@@ -103,9 +102,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     const markers = convertPhotosToMarkersFromEXIF(allPhotos);
     return {
       country: createGeographicRegions(markers, "country"),
-      region: createGeographicRegions(markers, "region"),
       city: createGeographicRegions(markers, "city"),
-      district: createGeographicRegions(markers, "district"),
     };
   }, []);
 
@@ -114,29 +111,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       country: new Map(
         geoRegions.country.map((region) => [
           region.id,
-          getRegionDisplayName(region),
-        ]),
-      ),
-      region: new Map(
-        geoRegions.region.map((region) => [
-          region.id,
-          getRegionDisplayName(region),
+          getRegionDisplayName(region, i18n.language),
         ]),
       ),
       city: new Map(
         geoRegions.city.map((region) => [
           region.id,
-          getRegionDisplayName(region),
-        ]),
-      ),
-      district: new Map(
-        geoRegions.district.map((region) => [
-          region.id,
-          getRegionDisplayName(region),
+          getRegionDisplayName(region, i18n.language),
         ]),
       ),
     }),
-    [geoRegions],
+    [geoRegions, i18n.language],
   );
 
   const activeFilterChips = useMemo(
@@ -189,18 +174,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ),
           })),
       })),
-      ...gallerySetting.selectedGeoRegions.map((id) => ({
-        id: `geo-region-${id}`,
-        label: regionLabelMaps.region.get(id) ?? id,
-        icon: "i-mingcute-map-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoRegions: prev.selectedGeoRegions.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
       ...gallerySetting.selectedGeoCities.map((id) => ({
         id: `geo-city-${id}`,
         label: regionLabelMaps.city.get(id) ?? id,
@@ -213,25 +186,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             ),
           })),
       })),
-      ...gallerySetting.selectedGeoDistricts.map((id) => ({
-        id: `geo-district-${id}`,
-        label: regionLabelMaps.district.get(id) ?? id,
-        icon: "i-mingcute-location-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoDistricts: prev.selectedGeoDistricts.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
     ],
     [
       gallerySetting.selectedCameras,
       gallerySetting.selectedGeoCities,
       gallerySetting.selectedGeoCountries,
-      gallerySetting.selectedGeoDistricts,
-      gallerySetting.selectedGeoRegions,
       gallerySetting.selectedLenses,
       gallerySetting.selectedTags,
       regionLabelMaps,
@@ -362,20 +321,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           })),
       },
       {
-        regions: geoRegions.region,
-        selected: gallerySetting.selectedGeoRegions,
-        label: t("action.geo.region.filter"),
-        icon: "i-mingcute-map-line",
-        keywords: ["region", "state", "province", "geo", "filter"],
-        toggle: (id: string) =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoRegions: prev.selectedGeoRegions.includes(id)
-              ? prev.selectedGeoRegions.filter((item) => item !== id)
-              : [...prev.selectedGeoRegions, id],
-          })),
-      },
-      {
         regions: geoRegions.city,
         selected: gallerySetting.selectedGeoCities,
         label: t("action.geo.city.filter"),
@@ -389,26 +334,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               : [...prev.selectedGeoCities, id],
           })),
       },
-      {
-        regions: geoRegions.district,
-        selected: gallerySetting.selectedGeoDistricts,
-        label: t("action.geo.district.filter"),
-        icon: "i-mingcute-location-line",
-        keywords: ["district", "county", "geo", "filter"],
-        toggle: (id: string) =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoDistricts: prev.selectedGeoDistricts.includes(id)
-              ? prev.selectedGeoDistricts.filter((item) => item !== id)
-              : [...prev.selectedGeoDistricts, id],
-          })),
-      },
     ];
 
     geoCommandGroups.forEach((group) => {
       group.regions.forEach((region) => {
         const isActive = group.selected.includes(region.id);
-        const title = getRegionDisplayName(region);
+        const title = getRegionDisplayName(region, i18n.language);
         cmds.push({
           id: `geo-${region.level}-${region.id}`,
           type: "filter",
@@ -535,29 +466,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     openViewer,
     updateTagFilterMode,
     hasFilters,
+    i18n.language,
   ]);
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
     if (!query.trim()) {
-      // Show all filters when no query - group by type
-      const activeFilters = commands.filter((cmd) => cmd.active);
-      const allFilters = commands.filter((cmd) => cmd.type === "filter");
-
-      // Prioritize active filters, then show all available filters
-      const uniqueFilters = new Map<string, Command>();
-
-      // First add active filters
-      activeFilters.forEach((cmd) => uniqueFilters.set(cmd.id, cmd));
-
-      // Then add remaining filters
-      allFilters.forEach((cmd) => {
-        if (!uniqueFilters.has(cmd.id)) {
-          uniqueFilters.set(cmd.id, cmd);
-        }
-      });
-
-      return Array.from(uniqueFilters.values()).slice(0, 30);
+      return [];
     }
 
     return commands
@@ -615,9 +530,16 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   if (!isOpen) return null;
 
+  const isBrowsingFilters = !query.trim();
+  const availableFilterCount =
+    allTags.length +
+    allCameras.length +
+    allLenses.length +
+    geoRegions.country.length +
+    geoRegions.city.length;
   const resultSummary = query.trim()
     ? t("action.search.command-count", { count: filteredCommands.length })
-    : t("action.search.showing-filters", { count: filteredCommands.length });
+    : t("action.search.showing-filters", { count: availableFilterCount });
 
   return (
     <div
@@ -771,7 +693,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           ref={listRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-2"
         >
-          {filteredCommands.length === 0 ? (
+          {isBrowsingFilters ? (
+            <FilterPanelContent
+              showHeader={false}
+              className="max-h-none overflow-visible px-4 pt-2 pb-5"
+            />
+          ) : filteredCommands.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <i className="i-mingcute-search-line text-text-quaternary mb-3 text-4xl" />
               <p className="text-text-secondary text-sm">
