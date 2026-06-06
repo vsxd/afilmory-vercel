@@ -26,4 +26,6 @@ onlyBuiltDependencies:
 
 overrides:
   defu: 6.1.7
+  eslint-config-hyoban>eslint-plugin-react-hooks: 7.1.1
   next: 16.2.3
+  workbox-build>source-map: 0.7.6
