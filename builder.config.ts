@@ -53,6 +53,7 @@ export default defineBuilderConfig(() => ({
     manifestPath: path.resolve(__dirname, "generated/photos-manifest.json"),
     thumbnailsDir: path.resolve(__dirname, "apps/web/public/thumbnails"),
     originalsDir: path.resolve(__dirname, "apps/web/public/originals"),
+    geocodingCachePath,
   },
 
   // 远程仓库缓存 - 根据环境变量自动启用

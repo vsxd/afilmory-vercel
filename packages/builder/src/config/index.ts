@@ -119,6 +119,12 @@ function applyOutputOverrides(
   ) {
     target.originalsDir = overrides.originalsDir;
   }
+  if (
+    typeof overrides.geocodingCachePath === "string" &&
+    overrides.geocodingCachePath.length > 0
+  ) {
+    target.geocodingCachePath = overrides.geocodingCachePath;
+  }
 }
 
 function normalizeBuilderConfig(

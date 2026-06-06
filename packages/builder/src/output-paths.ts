@@ -9,10 +9,20 @@ export const monorepoRoot = path.resolve(__dirname, "../../..");
 export const webAppDir = path.join(monorepoRoot, "apps/web");
 
 export function createDefaultOutputSettings(): BuilderOutputSettings {
+  const manifestPath = path.join(
+    monorepoRoot,
+    "generated",
+    "photos-manifest.json",
+  );
+
   return {
-    manifestPath: path.join(monorepoRoot, "generated", "photos-manifest.json"),
+    manifestPath,
     thumbnailsDir: path.join(webAppDir, "public", "thumbnails"),
     originalsDir: path.join(webAppDir, "public", "originals"),
+    geocodingCachePath: path.join(
+      path.dirname(manifestPath),
+      "geocoding-cache.json",
+    ),
   };
 }
 
@@ -22,10 +32,16 @@ export function createDefaultOutputSettings(): BuilderOutputSettings {
 let currentOutputSettings: BuilderOutputSettings | null = null;
 
 export function setBuilderOutputSettings(output: BuilderOutputSettings): void {
+  const manifestPath = path.resolve(output.manifestPath);
+
   currentOutputSettings = {
-    manifestPath: path.resolve(output.manifestPath),
+    manifestPath,
     thumbnailsDir: path.resolve(output.thumbnailsDir),
     originalsDir: path.resolve(output.originalsDir),
+    geocodingCachePath: path.resolve(
+      output.geocodingCachePath ??
+        path.join(path.dirname(manifestPath), "geocoding-cache.json"),
+    ),
   };
 }
 
