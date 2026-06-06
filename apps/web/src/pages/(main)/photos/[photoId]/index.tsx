@@ -19,16 +19,9 @@ export const Component = () => {
   // 直接根据 photoId 从 Context 的照片列表中查找照片和索引
   const photoIndex = useMemo(() => {
     if (!photoId) {
-      console.warn("[PhotoDetail] photoId is missing from URL params");
       return -1;
     }
     if (!photos || photos.length === 0) {
-      console.warn("[PhotoDetail] Photos array is empty or not loaded yet", {
-        photosLength: photos?.length || 0,
-        photoId,
-        hasManifest:
-          typeof window !== "undefined" && Boolean(window.__AFILMORY__?.manifest),
-      });
       return -1;
     }
     const index = photos.findIndex((photo) => photo?.id === photoId);
@@ -92,14 +85,6 @@ export const Component = () => {
 
   // 如果照片不存在，显示 NotFound
   if (!currentPhoto || photoIndex === -1) {
-    if (typeof window !== "undefined") {
-      console.error("[PhotoDetail] Photo not found:", {
-        requestedPhotoId: photoId,
-        photosLength: photos?.length || 0,
-        hasManifest: Boolean(window.__AFILMORY__?.manifest),
-        photoIds: photos?.slice(0, 10).map((p) => p?.id) || [],
-      });
-    }
     return <NotFound />;
   }
 

@@ -1,5 +1,8 @@
+export const isDebugLogEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_AFILMORY_DEBUG === "true";
+
 export function debugLog(...args: unknown[]): void {
-  if (!import.meta.env.DEV) {
+  if (!isDebugLogEnabled) {
     return;
   }
 

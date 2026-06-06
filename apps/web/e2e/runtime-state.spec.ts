@@ -23,6 +23,7 @@ function collectRuntimeDiagnostics(page: Page): string[] {
   page.on("console", (message) => {
     const text = message.text();
     const type = message.type();
+    const isAppWarningOrError = type === "error" || type === "warning";
     const isKnownRuntimeWarning =
       /HydrateFallback|non-boolean attribute|mask is not defined|localStorage is not available/.test(
         text,
@@ -32,8 +33,22 @@ function collectRuntimeDiagnostics(page: Page): string[] {
       /AJAXError: signal is aborted without reason.*tiles\.basemaps\.cartocdn\.com\/gl\/.+\/sprite\.json/.test(
         text,
       );
+    const isKnownBrowserGpuWarning =
+      type === "warning" &&
+      /GL Driver Message .*GPU stall due to ReadPixels/.test(text);
+    const isKnownAfilmoryDebugOutput =
+      type === "info" &&
+      /\[PhotoRepository\]|import\.meta\.glob keys|routeObject:|LRU Cache:|Map: Selected|Found \d+ photos with GPS coordinates|ExifTool loaded|Registered image converter strategy|Detected file type|Found suitable conversion strategy|No strategy found|Converting image|Regular image cache|Processing Motion Photo|Motion Photo video|Falling back to regular image processing|Using cached|Converting MOV|Video cache|Target format|conversion completed|Starting simple transmux conversion/.test(
+        text,
+      );
 
-    if ((type === "error" && !isKnownExternalAbort) || isKnownRuntimeWarning) {
+    if (
+      (isAppWarningOrError &&
+        !isKnownExternalAbort &&
+        !isKnownBrowserGpuWarning) ||
+      isKnownRuntimeWarning ||
+      isKnownAfilmoryDebugOutput
+    ) {
       diagnostics.push(`${type}: ${text}`);
     }
   });

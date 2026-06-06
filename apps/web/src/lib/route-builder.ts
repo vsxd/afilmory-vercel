@@ -1,7 +1,7 @@
 import { get, omit } from "es-toolkit/compat";
 import type { RouteObject } from "react-router";
 
-import { debugLog } from "./debug-log";
+import { debugLog, isDebugLogEnabled } from "./debug-log";
 
 type NestedStructure = { [key: string]: NestedStructure };
 
@@ -222,7 +222,9 @@ export function buildGlobRoutes(
   }
 
   dtsRoutes("./pages/", routeObject, paths);
-  debugLog("routeObject:", JSON.stringify(routeObject, null, 2));
+  if (isDebugLogEnabled) {
+    debugLog("routeObject:", JSON.stringify(routeObject, null, 2));
+  }
   return routeObject;
 }
 
