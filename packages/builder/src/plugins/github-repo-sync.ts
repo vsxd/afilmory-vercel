@@ -263,6 +263,18 @@ export async function syncRemoteCacheRepository({
       ...getGitAuthenticationExecaOptions(gitEnv),
       stdio: "inherit",
     })`git pull --rebase --autostash`;
+    const unmergedPaths = await getUnmergedPaths(assetsGitDir);
+    if (unmergedPaths.length > 0) {
+      logger.main.warn(
+        `⚠️ git pull 后仍存在冲突文件，尝试 fresh clone fallback：${unmergedPaths.join(", ")}`,
+      );
+      await replaceRepositoryWithFreshClone({
+        assetsGitDir,
+        gitEnv,
+        logger,
+        repoUrl: repoConfig.url,
+      });
+    }
   } catch (error) {
     logger.main.warn("⚠️ git pull 快速路径失败，尝试 fresh clone fallback");
     logger.main.warn(error instanceof Error ? error.message : String(error));
@@ -834,6 +846,12 @@ async function getNonCacheStagedPaths(cwd: string): Promise<string[]> {
     $({ cwd, stdio: "pipe" })`git diff --cached --name-only`,
   );
   return paths.filter((filePath) => !isCacheGitPath(filePath));
+}
+
+async function getUnmergedPaths(cwd: string): Promise<string[]> {
+  return await getGitPathList(
+    $({ cwd, stdio: "pipe" })`git diff --name-only --diff-filter=U`,
+  );
 }
 
 async function getNonCacheAheadPaths(

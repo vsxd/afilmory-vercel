@@ -548,6 +548,64 @@ describe("GitHub repo sync git integration", () => {
     expect(backups).toHaveLength(1);
   });
 
+  it("uses a fresh clone fallback when pull autostash leaves conflicts", async () => {
+    await cloneCacheRemote(remoteDir, assetsGitDir);
+
+    await fs.writeFile(
+      path.join(seedDir, "photos-manifest.json"),
+      JSON.stringify(
+        {
+          version: CURRENT_MANIFEST_VERSION,
+          data: [{ id: "remote-manifest" }],
+          cameras: [],
+          lenses: [],
+        },
+        null,
+        2,
+      ),
+    );
+    await git(seedDir, "add", "photos-manifest.json");
+    await git(seedDir, "commit", "-m", "update remote manifest");
+    await git(seedDir, "push", "origin", "main");
+
+    await fs.writeFile(
+      path.join(assetsGitDir, "photos-manifest.json"),
+      JSON.stringify(
+        {
+          version: CURRENT_MANIFEST_VERSION,
+          data: [{ id: "local-dirty-manifest" }],
+          cameras: [],
+          lenses: [],
+        },
+        null,
+        2,
+      ),
+    );
+
+    await syncRemoteCacheRepository({
+      assetsGitDir,
+      logger,
+      repoConfig: { enable: true, url: remoteDir, token: "token" },
+    });
+
+    const status = await execa("git", ["status", "--porcelain"], {
+      cwd: assetsGitDir,
+    });
+    const manifest = JSON.parse(
+      await fs.readFile(
+        path.join(assetsGitDir, "photos-manifest.json"),
+        "utf-8",
+      ),
+    );
+    const backups = (await fs.readdir(webAppDir)).filter((entry) =>
+      entry.startsWith(`${assetsGitDirName}.backup-`),
+    );
+
+    expect(status.stdout.trim()).toBe("");
+    expect(manifest.data).toEqual([{ id: "remote-manifest" }]);
+    expect(backups).toHaveLength(1);
+  });
+
   it("stages and pushes only cache paths", async () => {
     await cloneCacheRemote(remoteDir, assetsGitDir);
     await fs.writeFile(
