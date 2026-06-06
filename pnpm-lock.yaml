@@ -237,8 +237,8 @@ importers:
         specifier: 2.7.1
         version: 2.7.1(@types/react@19.2.2)(react@19.2.0)
       react-router:
-        specifier: 7.14.0
-        version: 7.14.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        specifier: 7.17.0
+        version: 7.17.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react-use-measure:
         specifier: 2.1.7
         version: 2.1.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -9510,10 +9510,10 @@ packages:
       }
     engines: { node: ">= 6" }
 
-  protocol-buffers-schema@3.6.0:
+  protocol-buffers-schema@3.6.1:
     resolution:
       {
-        integrity: sha512-TdDRD+/QNdrCGCE7v8340QyuXd4kIWIgapsE2+n/SaGiSSbomYl4TjHlvIoCWRpE7wFt02EpB35VVA2ImcBVqw==,
+        integrity: sha512-VG2K63Igkiv9p76tk1lilczEK1cT+kCjKtkdhw1dQZV3k3IXJbd3o6Ho8b9zJZaHSnT2hKe4I+ObmX9w6m5SmQ==,
       }
 
   punycode@2.3.1:
@@ -9669,10 +9669,10 @@ packages:
       "@types/react":
         optional: true
 
-  react-router@7.14.0:
+  react-router@7.17.0:
     resolution:
       {
-        integrity: sha512-m/xR9N4LQLmAS0ZhkY2nkPA1N7gQ5TUVa5n8TgANuDTARbn1gt+zLPXEm7W0XDTbrQ2AJSJKhoa6yx1D8BcpxQ==,
+        integrity: sha512-FDELK7rTMlCHO5+reyXsPlmfr7N1F91lPHsWYfMEGQm/KQ+F4JFM8jGoeQDmDvdTs93Fw9aSilH+uKRb4/jXvQ==,
       }
     engines: { node: ">=20.0.0" }
     peerDependencies:
@@ -17953,7 +17953,7 @@ snapshots:
       kleur: 3.0.3
       sisteransi: 1.0.5
 
-  protocol-buffers-schema@3.6.0: {}
+  protocol-buffers-schema@3.6.1: {}
 
   punycode@2.3.1: {}
 
@@ -18038,7 +18038,7 @@ snapshots:
     optionalDependencies:
       "@types/react": 19.2.2
 
-  react-router@7.14.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  react-router@7.17.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       cookie: 1.1.1
       react: 19.2.0
@@ -18178,7 +18178,7 @@ snapshots:
 
   resolve-protobuf-schema@2.1.0:
     dependencies:
-      protocol-buffers-schema: 3.6.0
+      protocol-buffers-schema: 3.6.1
 
   resolve@1.22.11:
     dependencies:
