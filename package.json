@@ -22,11 +22,14 @@
     "prepare": "simple-git-hooks",
     "preview": "pnpm --filter @afilmory/web serve",
     "test": "pnpm --filter @afilmory/data test && pnpm --filter @afilmory/ui test && pnpm --filter @afilmory/builder test && pnpm --filter @afilmory/webgl-viewer test && pnpm --filter @afilmory/web test",
+    "test:e2e": "env -u NO_COLOR NODE_OPTIONS=--disable-warning=DEP0205 playwright test",
+    "test:e2e:install": "env -u NO_COLOR NODE_OPTIONS=--disable-warning=DEP0205 playwright install chromium",
     "type-check": "pnpm --filter @afilmory/data type-check && pnpm --filter @afilmory/ui type-check && pnpm --filter @afilmory/builder type-check && pnpm --filter @afilmory/webgl-viewer type-check && pnpm --filter @afilmory/web type-check"
   },
   "devDependencies": {
     "@afilmory/builder": "workspace:*",
     "@afilmory/ui": "workspace:*",
+    "@playwright/test": "1.60.0",
     "@t3-oss/env-core": "catalog:",
     "@testing-library/react": "^16.3.2",
     "@types/node": "24.9.2",

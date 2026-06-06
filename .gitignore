@@ -5,6 +5,8 @@ dist
 dist-ssr
 *.local
 *.tsbuildinfo
+playwright-report
+test-results
 
 # 配置文件
 .env
