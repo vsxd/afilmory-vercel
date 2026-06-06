@@ -23,3 +23,7 @@ catalog:
 onlyBuiltDependencies:
   - esbuild
   - puppeteer
+
+overrides:
+  defu: 6.1.7
+  next: 16.2.3
