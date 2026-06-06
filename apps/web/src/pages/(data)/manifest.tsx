@@ -2,7 +2,7 @@ import { Button, ScrollArea } from "@afilmory/ui";
 import { useMemo, useState } from "react";
 
 import { NotFound } from "~/components/common/NotFound";
-import { photoLoader } from "~/data-runtime/photo-loader";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 
 const JSON_TOKEN_REGEX =
   /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
@@ -207,8 +207,9 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
 const ManifestInspectorPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"stats" | "raw">("stats");
+  const photoRepository = usePhotoRepository();
 
-  const photos = photoLoader.getPhotos();
+  const photos = photoRepository.getPhotos();
   const manifestData = {
     version: "v6",
     data: photos,

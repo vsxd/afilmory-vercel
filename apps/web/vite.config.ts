@@ -20,6 +20,7 @@ import { dataInjectPlugin } from "./plugins/vite/data-inject";
 import { createDependencyChunksPlugin } from "./plugins/vite/deps";
 import { localesJsonPlugin } from "./plugins/vite/locales-json";
 import { photosStaticPlugin } from "./plugins/vite/photos-static";
+import { AFILMORY_RUNTIME_CACHE_NAMES } from "./src/runtime/cache-names";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -94,7 +95,7 @@ const staticWebBuildPlugins: PluginOption[] = [
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
           handler: "CacheFirst",
           options: {
-            cacheName: "google-fonts-cache",
+            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[0],
             expiration: {
               maxEntries: 10,
               maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
@@ -105,7 +106,7 @@ const staticWebBuildPlugins: PluginOption[] = [
           urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
           handler: "CacheFirst",
           options: {
-            cacheName: "gstatic-fonts-cache",
+            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[1],
             expiration: {
               maxEntries: 10,
               maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
@@ -117,7 +118,7 @@ const staticWebBuildPlugins: PluginOption[] = [
           urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif)$/,
           handler: "StaleWhileRevalidate",
           options: {
-            cacheName: "images-cache",
+            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[2],
             expiration: {
               maxEntries: 150, // 增加缓存条目
               maxAgeSeconds: 60 * 60 * 24 * 30, // 30 天
@@ -132,7 +133,7 @@ const staticWebBuildPlugins: PluginOption[] = [
           urlPattern: /^https?:\/\/.*\.(s3|amazonaws|cloudfront|cdn)\..*/i,
           handler: "CacheFirst",
           options: {
-            cacheName: "s3-images-cache",
+            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[3],
             expiration: {
               maxEntries: 200,
               maxAgeSeconds: 60 * 60 * 24 * 90, // 90 天，S3 图片很少变化
@@ -231,7 +232,7 @@ export default defineConfig(async ({ command }) => {
           patterns: ["motion", "framer-motion", "motion-dom", "motion-utils"],
         },
         { name: "swiper", patterns: ["swiper"] },
-        { name: "state", patterns: ["jotai", "zustand", "@tanstack/*"] },
+        { name: "state", patterns: ["jotai", "@tanstack/*"] },
         {
           name: "ui",
           patterns: [

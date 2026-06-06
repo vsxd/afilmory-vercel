@@ -111,11 +111,7 @@ export const MasonryPhotoItem = memo(
         });
       };
 
-      const navigateToPhoto =
-        typeof window !== "undefined"
-          ? (window.router?.navigate ?? routeNavigate)
-          : routeNavigate;
-      const navigationResult = navigateToPhoto({
+      const navigationResult = routeNavigate({
         pathname: buildPhotoDetailPathname(data.id),
         search: buildGalleryFilterSearch(location.search, gallerySetting),
       }) as void | PromiseLike<void>;

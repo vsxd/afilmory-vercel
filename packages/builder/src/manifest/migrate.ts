@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { logger } from "../logger/index.js";
-import { getBuilderOutputSettings } from "../output-paths.js";
+import { getScopedBuilderOutputSettings } from "../output-paths.js";
 import type { AfilmoryManifest } from "../types/manifest.js";
 import type { ManifestVersion } from "./version.js";
 import { CURRENT_MANIFEST_VERSION } from "./version.js";
@@ -174,7 +174,7 @@ export async function migrateManifestFileIfNeeded(
   parsed: AfilmoryManifest,
 ): Promise<AfilmoryManifest | null> {
   try {
-    const { manifestPath } = getBuilderOutputSettings();
+    const { manifestPath } = getScopedBuilderOutputSettings();
     if (parsed?.version === CURRENT_MANIFEST_VERSION) return null;
     const migrated = migrateManifest(parsed, CURRENT_MANIFEST_VERSION);
     await fs.mkdir(path.dirname(manifestPath), { recursive: true });

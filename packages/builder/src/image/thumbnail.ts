@@ -3,8 +3,8 @@ import path from "node:path";
 
 import sharp from "sharp";
 
-import { getBuilderOutputSettings } from "../output-paths.js";
-import { getGlobalLoggers } from "../photo/logger-adapter.js";
+import { getScopedBuilderOutputSettings } from "../output-paths.js";
+import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { ThumbnailResult } from "../types/photo.js";
 import { generateBlurhash } from "./blurhash.js";
 
@@ -14,7 +14,7 @@ const THUMBNAIL_WIDTH = 600;
 
 // 获取缩略图路径信息
 function getThumbnailPaths(photoId: string) {
-  const { thumbnailsDir } = getBuilderOutputSettings();
+  const { thumbnailsDir } = getScopedBuilderOutputSettings();
   const filename = `${photoId}.jpg`;
   const thumbnailPath = path.join(thumbnailsDir, filename);
   const thumbnailUrl = getThumbnailPublicUrl(photoId);
@@ -50,7 +50,7 @@ function createSuccessResult(
 
 // 确保缩略图目录存在
 async function ensureThumbnailDir(): Promise<void> {
-  const { thumbnailsDir } = getBuilderOutputSettings();
+  const { thumbnailsDir } = getScopedBuilderOutputSettings();
   await fs.mkdir(thumbnailsDir, { recursive: true });
 }
 
@@ -71,7 +71,7 @@ async function processExistingThumbnail(
 ): Promise<ThumbnailResult | null> {
   const { thumbnailPath, thumbnailUrl } = getThumbnailPaths(photoId);
 
-  const thumbnailLog = getGlobalLoggers().thumbnail;
+  const thumbnailLog = getPhotoProcessingLoggers().thumbnail;
   thumbnailLog.info(`复用现有缩略图：${photoId}`);
 
   try {
@@ -92,7 +92,7 @@ async function generateNewThumbnail(
 ): Promise<ThumbnailResult> {
   const { thumbnailPath, thumbnailUrl } = getThumbnailPaths(photoId);
 
-  const log = getGlobalLoggers().thumbnail;
+  const log = getPhotoProcessingLoggers().thumbnail;
   log.info(`生成缩略图：${photoId}`);
   const startTime = Date.now();
 
@@ -133,7 +133,7 @@ export async function generateThumbnailAndBlurhash(
   photoId: string,
   forceRegenerate = false,
 ): Promise<ThumbnailResult> {
-  const thumbnailLog = getGlobalLoggers().thumbnail;
+  const thumbnailLog = getPhotoProcessingLoggers().thumbnail;
 
   try {
     await ensureThumbnailDir();

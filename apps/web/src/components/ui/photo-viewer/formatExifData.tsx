@@ -4,8 +4,7 @@ import type { FujiRecipe, PickedExif } from "@afilmory/data";
 import { EllipsisHorizontalTextWithTooltip } from "@afilmory/ui";
 import type { FC } from "react";
 
-import { i18nAtom } from "~/i18n";
-import { jotaiStore } from "~/lib/jotai";
+import { getI18n } from "~/i18n";
 
 const hasExifValue = <T,>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined;
@@ -45,7 +44,7 @@ const translateExifValue = (
 ): string | null => {
   if (value === null || value === undefined) return null;
 
-  const i18n = jotaiStore.get(i18nAtom);
+  const i18n = getI18n();
   const translationKey = getTranslationKey(category, value);
 
   if (!translationKey) return cleanExifValue(String(value));
@@ -103,7 +102,7 @@ const translateSceneCaptureType = createTranslator("scene.capture.type");
 const translateWhiteBalanceFineTune = (value: string | null): string | null => {
   if (!value) return null;
 
-  const i18n = jotaiStore.get(i18nAtom);
+  const i18n = getI18n();
   const redTranslation = i18n.t("exif.white.balance.red");
   const blueTranslation = i18n.t("exif.white.balance.blue");
 
@@ -525,7 +524,7 @@ export const Row: FC<{
 
 const formatDateTime = (date: Date | null | undefined) => {
   if (!date || Number.isNaN(date.getTime())) return "";
-  const i18n = jotaiStore.get(i18nAtom);
+  const i18n = getI18n();
   const datetimeFormatter = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: "short",
     timeStyle: "medium",

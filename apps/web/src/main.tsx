@@ -9,16 +9,10 @@ import { RouterProvider } from "react-router";
 import { BootstrapError } from "./components/common/BootstrapError";
 import { BootstrapReady } from "./components/common/BootstrapReady";
 import { loadManifestRuntime } from "./data-runtime/manifest-runtime";
-import { initializePhotoLoader } from "./data-runtime/photo-loader";
 import { installCriticalRoutePreloads } from "./lib/critical-route-preload";
 import { markStartup } from "./lib/startup-metrics";
-import { router } from "./router";
-
-declare global {
-  interface Window {
-    __AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__?: () => void;
-  }
-}
+import { createAppRouter } from "./router";
+import { createAppRuntime } from "./runtime/app-runtime";
 
 if (import.meta.env.DEV) {
   void import("./lib/dev-service-worker-cleanup").then(
@@ -60,12 +54,9 @@ async function bootstrap() {
   try {
     markStartup("manifest-start");
     markStartup("critical-routes-start");
-    window.__AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__?.();
     const criticalRoutePreload = installCriticalRoutePreloads(
       criticalRoutePreloadModules,
     );
-    window.__AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__ =
-      criticalRoutePreload.cleanup;
     const criticalRoutesReady = criticalRoutePreload.ready.then(() => {
       markStartup("critical-routes-ready");
     });
@@ -91,12 +82,13 @@ async function bootstrap() {
             .length
         : undefined,
     });
-    initializePhotoLoader(
-      manifest as Awaited<ReturnType<typeof loadManifestRuntime>>,
-    );
-    markStartup("photo-loader-ready");
+    const runtime = createAppRuntime({
+      manifest: manifest as Awaited<ReturnType<typeof loadManifestRuntime>>,
+    });
+    runtime.criticalRoutePreloadCleanup = criticalRoutePreload.cleanup;
+    markStartup("photo-repository-ready");
     markStartup("react-render-start");
-    renderApp(<RouterProvider router={router} />);
+    renderApp(<RouterProvider router={createAppRouter(runtime)} />);
   } catch (error) {
     console.error("[bootstrap] Failed to initialize application:", error);
     renderApp(<BootstrapError error={error} />);

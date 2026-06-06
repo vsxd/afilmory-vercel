@@ -27,7 +27,7 @@ export const Component = () => {
         photosLength: photos?.length || 0,
         photoId,
         hasManifest:
-          typeof window !== "undefined" && window.__MANIFEST__ !== undefined,
+          typeof window !== "undefined" && Boolean(window.__AFILMORY__?.manifest),
       });
       return -1;
     }
@@ -96,7 +96,7 @@ export const Component = () => {
       console.error("[PhotoDetail] Photo not found:", {
         requestedPhotoId: photoId,
         photosLength: photos?.length || 0,
-        hasManifest: window.__MANIFEST__ !== undefined,
+        hasManifest: Boolean(window.__AFILMORY__?.manifest),
         photoIds: photos?.slice(0, 10).map((p) => p?.id) || [],
       });
     }

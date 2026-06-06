@@ -171,3 +171,11 @@ export async function convertMovToMp4(
     return fallbackResult;
   }
 }
+
+export function clearVideoConversionCache(): void {
+  videoCache.clear();
+}
+
+export function getVideoConversionCacheSize(): number {
+  return videoCache.size();
+}

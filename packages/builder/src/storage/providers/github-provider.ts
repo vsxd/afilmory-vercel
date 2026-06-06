@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { getGlobalLoggers } from "@afilmory/builder/photo/logger-adapter.js";
+import { getPhotoProcessingLoggers } from "@afilmory/builder/photo/logger-adapter.js";
 
 import { SUPPORTED_FORMATS } from "../../constants/index.js";
 import type {
@@ -113,7 +113,7 @@ export class GitHubStorageProvider implements StorageProvider {
   }
 
   async getFile(key: string): Promise<Buffer | null> {
-    const logger = getGlobalLoggers().s3;
+    const logger = getPhotoProcessingLoggers().s3;
 
     try {
       logger.info(`下载文件：${key}`);

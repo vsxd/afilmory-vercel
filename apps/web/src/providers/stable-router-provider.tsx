@@ -1,5 +1,5 @@
+import { useSetAtom } from "jotai";
 import { useEffect, useLayoutEffect } from "react";
-import type { NavigateFunction } from "react-router";
 import {
   useLocation,
   useNavigate,
@@ -7,30 +7,10 @@ import {
   useSearchParams,
 } from "react-router";
 
-import { setNavigate, setRoute } from "~/atoms/route";
-
-declare global {
-  interface Window {
-    router?: {
-      navigate: NavigateFunction;
-    };
-  }
-}
+import { navigateAtom, routeAtom } from "~/atoms/route";
 
 const useSafeLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-function getWindowRouter(): Window["router"] | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  window.router ??= {
-    navigate() {},
-  };
-
-  return window.router;
-}
 
 /**
  * Why this.
@@ -44,14 +24,10 @@ export const StableRouterProvider = () => {
   const params = useParams();
   const nav = useNavigate();
   const location = useLocation();
+  const setRoute = useSetAtom(routeAtom);
+  const setNavigate = useSetAtom(navigateAtom);
 
-  // NOTE: This is a hack to expose the navigate function to the window object, avoid to import `router` circular issue.
   useSafeLayoutEffect(() => {
-    const browserRouter = getWindowRouter();
-    if (browserRouter) {
-      browserRouter.navigate = nav;
-    }
-
     setRoute({
       params,
       searchParams,

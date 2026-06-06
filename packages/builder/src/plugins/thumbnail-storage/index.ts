@@ -1,4 +1,4 @@
-import { StorageManager } from "../../storage/index.js";
+import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
 import type { BuilderPlugin } from "../types.js";
 import type { ThumbnailPluginData } from "./shared.js";
@@ -137,7 +137,7 @@ export default function thumbnailStoragePlugin(
         if (!options.storageConfig) {
           services.storage.getManager().addExcludePrefix(remotePrefix);
         } else {
-          externalStorageManager = new StorageManager(uploadableConfig);
+          externalStorageManager = services.storage.createManager(uploadableConfig);
         }
       },
       afterPhotoProcess: async ({ services, payload, runShared, logger }) => {

@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 
 import { useCommandPaletteShortcut } from "./hooks/useCommandPaletteShortcut";
 import { RootProviders } from "./providers/root-providers";
+import type { AppRuntime } from "./runtime/app-runtime";
 
 const CommandPalette = lazy(() =>
   import("./components/gallery/CommandPalette").then((m) => ({
@@ -10,9 +11,9 @@ const CommandPalette = lazy(() =>
   })),
 );
 
-function App() {
+function App({ runtime }: { runtime: AppRuntime }) {
   return (
-    <RootProviders>
+    <RootProviders runtime={runtime}>
       <div className="overflow-hidden lg:h-svh">
         <Outlet />
         <CommandPaletteContainer />

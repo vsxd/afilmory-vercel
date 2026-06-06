@@ -6,7 +6,6 @@ import { initReactI18next } from "react-i18next";
 import { currentSupportedLanguages } from "./@types/constants";
 import { resources } from "./@types/resources";
 import { siteConfig } from "./config";
-import { jotaiStore } from "./lib/jotai";
 import {
   getFallbackLanguages,
   normalizeDetectedLanguage,
@@ -52,5 +51,5 @@ i18n.on("languageChanged", (language) => {
 export const i18nAtom = atom(i18n);
 
 export const getI18n = () => {
-  return jotaiStore.get(i18nAtom);
+  return i18n;
 };

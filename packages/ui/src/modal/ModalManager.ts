@@ -1,48 +1,88 @@
-import { atom } from "jotai";
+import { createContext, use, useMemo } from "react";
 
-import { modalStore } from "./store";
 import type { ModalComponent, ModalContentConfig, ModalItem } from "./types";
 
-export const modalItemsAtom = atom<ModalItem[]>([]);
+type ModalListener = () => void;
 
-const modalCloseRegistry = new Map<string, () => void>();
+export class ModalManager {
+  private items: ModalItem[] = [];
+  private listeners = new Set<ModalListener>();
+  private closeRegistry = new Map<string, () => void>();
 
-export const Modal = {
   present<P = unknown>(
     Component: ModalComponent<P>,
     props?: P,
     modalContent?: ModalContentConfig,
   ): string {
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    const items = modalStore.get(modalItemsAtom);
-    modalStore.set(modalItemsAtom, [
-      ...items,
+    this.items = [
+      ...this.items,
       { id, component: Component as ModalComponent<any>, props, modalContent },
-    ]);
+    ];
+    this.emit();
     return id;
-  },
+  }
 
   dismiss(id: string): void {
-    const closer = modalCloseRegistry.get(id);
+    const closer = this.closeRegistry.get(id);
     if (closer) {
       closer();
       return;
     }
-    // Fallback: remove immediately if closer not registered yet
-    const items = modalStore.get(modalItemsAtom);
-    modalStore.set(
-      modalItemsAtom,
-      items.filter((m) => m.id !== id),
-    );
-  },
+    this.remove(id);
+  }
 
-  /** Internal: used by container to manage close hooks */
-  __registerCloser(id: string, fn: () => void) {
-    modalCloseRegistry.set(id, fn);
-  },
-  __unregisterCloser(id: string) {
-    modalCloseRegistry.delete(id);
-  },
-};
+  getSnapshot = (): ModalItem[] => this.items;
+
+  remove(id: string): void {
+    const nextItems = this.items.filter((item) => item.id !== id);
+    if (nextItems === this.items || nextItems.length === this.items.length) {
+      return;
+    }
+    this.items = nextItems;
+    this.emit();
+  }
+
+  registerCloser(id: string, fn: () => void): () => void {
+    this.closeRegistry.set(id, fn);
+    return () => this.closeRegistry.delete(id);
+  }
+
+  subscribe = (listener: ModalListener): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  private emit(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+}
+
+export function createModalManager(): ModalManager {
+  return new ModalManager();
+}
+
+export const ModalManagerContext = createContext<ModalManager | null>(null);
+
+export function useModalManager(): ModalManager {
+  const manager = use(ModalManagerContext);
+  if (!manager) {
+    throw new Error("ModalManager is not initialized. Render ModalProvider first.");
+  }
+  return manager;
+}
+
+export function useModal() {
+  const manager = useModalManager();
+  return useMemo(
+    () => ({
+      dismiss: manager.dismiss.bind(manager),
+      present: manager.present.bind(manager),
+    }),
+    [manager],
+  );
+}
 
 export { type ModalItem } from "./types";

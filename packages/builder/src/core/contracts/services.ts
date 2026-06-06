@@ -9,6 +9,7 @@ import type {
 import type { PhotoManifestItem } from "../../types/photo.js";
 
 export interface StorageService {
+  createManager: (config: StorageConfig) => StorageManager;
   getConfig: () => StorageConfig;
   getManager: () => StorageManager;
   registerProvider: (name: string, factory: StorageProviderFactory) => void;

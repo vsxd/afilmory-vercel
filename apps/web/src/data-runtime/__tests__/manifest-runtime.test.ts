@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AfilmoryBrowserRuntime } from "~/runtime/browser-runtime";
+
 import { loadManifestRuntime } from "../manifest-runtime";
 
 const originalFetch = globalThis.fetch;
@@ -7,26 +9,30 @@ const originalFetch = globalThis.fetch;
 describe("loadManifestRuntime", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    delete (globalThis as typeof globalThis & { __MANIFEST__?: unknown })
-      .__MANIFEST__;
-    delete (globalThis as typeof globalThis & { __MANIFEST_URL__?: string })
-      .__MANIFEST_URL__;
     delete (
       globalThis as typeof globalThis & {
-        __MANIFEST_PROMISE__?: Promise<unknown>;
+        __AFILMORY__?: AfilmoryBrowserRuntime;
       }
-    ).__MANIFEST_PROMISE__;
+    ).__AFILMORY__;
     globalThis.fetch = originalFetch;
   });
 
   it("returns the injected inline manifest without fetching", async () => {
     (
-      globalThis as typeof globalThis & { __MANIFEST__?: unknown }
-    ).__MANIFEST__ = {
-      version: "v6",
-      data: [{ id: "1", tags: [] }],
-      cameras: [],
-      lenses: [],
+      globalThis as typeof globalThis & {
+        __AFILMORY__?: AfilmoryBrowserRuntime;
+      }
+    ).__AFILMORY__ = {
+      version: 1,
+      manifest: {
+        mode: "inline",
+        data: {
+          version: "v6",
+          data: [{ id: "1", tags: [] }],
+          cameras: [],
+          lenses: [],
+        },
+      },
     };
     const fetchSpy = vi.fn();
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
@@ -40,14 +46,21 @@ describe("loadManifestRuntime", () => {
   it("uses the prestarted manifest promise when available", async () => {
     (
       globalThis as typeof globalThis & {
-        __MANIFEST_PROMISE__?: Promise<unknown>;
+        __AFILMORY__?: AfilmoryBrowserRuntime;
       }
-    ).__MANIFEST_PROMISE__ = Promise.resolve({
-      version: "v6",
-      data: [{ id: "2", tags: [] }],
-      cameras: [],
-      lenses: [],
-    });
+    ).__AFILMORY__ = {
+      version: 1,
+      manifest: {
+        mode: "external",
+        url: "/assets/photos-manifest.json",
+        promise: Promise.resolve({
+          version: "v6",
+          data: [{ id: "2", tags: [] }],
+          cameras: [],
+          lenses: [],
+        }),
+      },
+    };
 
     const manifest = await loadManifestRuntime();
 
@@ -56,8 +69,16 @@ describe("loadManifestRuntime", () => {
 
   it("fetches the external manifest when only a URL is injected", async () => {
     (
-      globalThis as typeof globalThis & { __MANIFEST_URL__?: string }
-    ).__MANIFEST_URL__ = "/assets/photos-manifest.json";
+      globalThis as typeof globalThis & {
+        __AFILMORY__?: AfilmoryBrowserRuntime;
+      }
+    ).__AFILMORY__ = {
+      version: 1,
+      manifest: {
+        mode: "external",
+        url: "/assets/photos-manifest.json",
+      },
+    };
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -80,8 +101,16 @@ describe("loadManifestRuntime", () => {
 
   it("clears the cached promise after a failed fetch so retries can succeed", async () => {
     (
-      globalThis as typeof globalThis & { __MANIFEST_URL__?: string }
-    ).__MANIFEST_URL__ = "/assets/photos-manifest.json";
+      globalThis as typeof globalThis & {
+        __AFILMORY__?: AfilmoryBrowserRuntime;
+      }
+    ).__AFILMORY__ = {
+      version: 1,
+      manifest: {
+        mode: "external",
+        url: "/assets/photos-manifest.json",
+      },
+    };
     const fetchSpy = vi
       .fn()
       .mockResolvedValueOnce({

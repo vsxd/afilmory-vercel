@@ -5,7 +5,7 @@ import type {
 } from "@afilmory/builder/types/photo.js";
 import type sharp from "sharp";
 
-import { getGlobalLoggers } from "../photo/logger-adapter.js";
+import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 
 /**
  * 计算图片的直方图
@@ -16,7 +16,7 @@ import { getGlobalLoggers } from "../photo/logger-adapter.js";
 async function calculateHistogram(
   sharpInstance: sharp.Sharp,
 ): Promise<HistogramData | null> {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
 
   try {
     log?.info("开始计算图片直方图");
@@ -81,7 +81,7 @@ async function calculateHistogram(
  * @returns 影调分析结果
  */
 function analyzeTone(histogram: HistogramData): ToneAnalysis {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
 
   try {
     log?.info("开始分析图片影调");

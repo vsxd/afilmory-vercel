@@ -1,6 +1,4 @@
-import type { LocationAdminInfo } from "@afilmory/data";
-
-import type { photoLoader } from "~/data-runtime/photo-loader";
+import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/data";
 
 const getLocationTokens = (
   location?: {
@@ -78,7 +76,7 @@ export const fuzzyMatch = (text: string, query: string): boolean => {
 
 // Search photos utility
 export const searchPhotos = (
-  photos: ReturnType<typeof photoLoader.getPhotos>,
+  photos: PhotoManifestItem[],
   query: string,
 ) => {
   const lowerQuery = query.trim().toLowerCase();

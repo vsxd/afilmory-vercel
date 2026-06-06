@@ -4,7 +4,7 @@ import path, { basename } from "node:path";
 import type { _Object } from "@aws-sdk/client-s3";
 
 import { logger } from "../logger/index.js";
-import { getBuilderOutputSettings } from "../output-paths.js";
+import { getScopedBuilderOutputSettings } from "../output-paths.js";
 import type {
   AfilmoryManifest,
   CameraInfo,
@@ -15,7 +15,7 @@ import { migrateManifestFileIfNeeded } from "./migrate.js";
 import { CURRENT_MANIFEST_VERSION } from "./version.js";
 
 export async function loadExistingManifest(): Promise<AfilmoryManifest> {
-  const { manifestPath } = getBuilderOutputSettings();
+  const { manifestPath } = getScopedBuilderOutputSettings();
   let manifestContent: string;
 
   try {
@@ -94,7 +94,7 @@ export async function saveManifest(
   cameras: CameraInfo[] = [],
   lenses: LensInfo[] = [],
 ): Promise<void> {
-  const { manifestPath } = getBuilderOutputSettings();
+  const { manifestPath } = getScopedBuilderOutputSettings();
   // 按日期排序（最新的在前）
   const sortedManifest = [...items].sort(
     (a, b) => new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
@@ -125,7 +125,7 @@ export async function saveManifest(
 export async function handleDeletedPhotos(
   items: PhotoManifestItem[],
 ): Promise<number> {
-  const { thumbnailsDir } = getBuilderOutputSettings();
+  const { thumbnailsDir } = getScopedBuilderOutputSettings();
   logger.main.info("🔍 检查已删除的图片...");
   if (items.length === 0) {
     // Clear all thumbnails

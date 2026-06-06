@@ -2,9 +2,29 @@ import type { ExtractAtomValue, getDefaultStore } from "jotai";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback } from "react";
-import { shallow } from "zustand/shallow";
 
 import { viewportAtom } from "../atoms/viewport";
+
+const shallowEqual = <T,>(a: T, b: T): boolean => {
+  if (Object.is(a, b)) return true;
+  if (
+    !a ||
+    !b ||
+    typeof a !== "object" ||
+    typeof b !== "object" ||
+    Array.isArray(a) !== Array.isArray(b)
+  ) {
+    return false;
+  }
+
+  const aEntries = Object.entries(a);
+  const bEntries = Object.entries(b);
+  if (aEntries.length !== bEntries.length) return false;
+
+  return aEntries.every(([key, value]) =>
+    Object.is(value, (b as Record<string, unknown>)[key]),
+  );
+};
 
 export const useViewport = <T>(
   selector: (value: ExtractAtomValue<typeof viewportAtom>) => T,
@@ -13,7 +33,7 @@ export const useViewport = <T>(
     selectAtom(
       viewportAtom,
       useCallback((atomValue) => selector(atomValue), [selector]),
-      shallow,
+      shallowEqual,
     ),
   );
 

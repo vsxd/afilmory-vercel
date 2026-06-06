@@ -84,6 +84,10 @@ vi.mock("~/hooks/usePhotoViewer", () => ({
   usePhotos: () => [],
 }));
 
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => ({ id: "ssr-runtime" }),
+}));
+
 vi.mock("~/modules/gallery/MasonryRoot", () => ({
   MasonryRoot: () => <div>masonry</div>,
 }));

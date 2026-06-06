@@ -1,7 +1,6 @@
-import { i18nAtom } from "~/i18n";
+import { getI18n } from "~/i18n";
 import { isSafari } from "~/lib/device-viewport";
 import type { LoadingCallbacks } from "~/lib/image-loader-manager";
-import { jotaiStore } from "~/lib/jotai";
 import { LRUCache } from "~/lib/lru-cache";
 
 import type { ConversionResult, ImageConverterStrategy } from "../type";
@@ -47,7 +46,7 @@ export class HeicConverterStrategy implements ImageConverterStrategy {
 
     try {
       // 获取国际化文案
-      const i18n = jotaiStore.get(i18nAtom);
+      const i18n = getI18n();
 
       // 更新转换状态
       onLoadingStateUpdate?.({

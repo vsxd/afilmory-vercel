@@ -8,6 +8,7 @@ import { serialize } from "node:v8";
 import type { Logger } from "../logger/index.js";
 import { logger } from "../logger/index.js";
 import type { BuilderConfig } from "../types/config.js";
+import type { BuilderOptions } from "../types/options.js";
 import type { TaskCompletedPayload } from "./pool.js";
 
 const WORKER_SHUTDOWN_GRACE_MS = 5_000;
@@ -18,11 +19,12 @@ export interface ClusterPoolOptions<T> {
   workerEnv?: Record<string, string>; // 传递给 worker 的环境变量
   workerConcurrency?: number; // 每个 worker 内部的并发数
   // 新增：传递给 worker 的共享数据
-  sharedData?: {
+ sharedData?: {
     existingManifestMap: Map<string, any>;
     livePhotoMap: Map<string, any>;
     imageObjects: any[];
     builderConfig: BuilderConfig;
+    builderOptions: BuilderOptions;
     photoIdCollisionKeys?: string[];
   };
   onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void;
@@ -296,6 +298,8 @@ export class ClusterPool<T> extends EventEmitter {
           livePhotoMap: this.sharedData.livePhotoMap,
           imageObjects: this.sharedData.imageObjects,
           builderConfig: this.sharedData.builderConfig,
+          builderOptions: this.sharedData.builderOptions,
+          photoIdCollisionKeys: this.sharedData.photoIdCollisionKeys,
         });
 
         // 将 Buffer 转换为数组以通过 IPC 传输

@@ -1,26 +1,25 @@
+import type { PhotoManifestItem } from "@afilmory/data";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { use, useCallback, useEffect, useMemo } from "react";
 
+import type { GallerySetting } from "~/atoms/app";
 import { gallerySettingAtom } from "~/atoms/app";
-import { photoLoader } from "~/data-runtime/photo-loader";
 import { photoMatchesGeoFilters } from "~/lib/geo-regions";
-import { jotaiStore } from "~/lib/jotai";
 import { getPhotoDateString } from "~/lib/photo-date";
 import { PhotosContext } from "~/providers/photos-provider";
+import type { AppRuntime } from "~/runtime/app-runtime";
+import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
 
 const openAtom = atom(false);
 const currentIndexAtom = atom(0);
 const triggerElementAtom = atom<HTMLElement | null>(null);
 const viewerSourceModeAtom = atom<ViewerSourceMode | null>(null);
 const viewerSourcePhotoIdsAtom = atom<string[] | null>(null);
-let bodyScrollLockCount = 0;
-let bodyOverflowBeforeLock: string | null = null;
 
 type ViewerSourceMode = "filtered" | "all";
 
-const getAllPhotos = () => photoLoader.getPhotos();
 const sortPhotos = (
-  photos: ReturnType<typeof getAllPhotos>,
+  photos: PhotoManifestItem[],
   sortOrder: "asc" | "desc",
 ) => {
   return photos.toSorted((a, b) => {
@@ -33,25 +32,34 @@ const sortPhotos = (
   });
 };
 
-// 抽取照片筛选和排序逻辑为独立函数
-const filterAndSortPhotos = (
-  selectedTags: string[],
-  selectedCameras: string[],
-  selectedLenses: string[],
-  selectedGeoCountries: string[],
-  selectedGeoRegions: string[],
-  selectedGeoCities: string[],
-  selectedGeoDistricts: string[],
-  sortOrder: "asc" | "desc",
-  tagFilterMode: "union" | "intersection" = "union",
+export const filterAndSortPhotos = (
+  photos: PhotoManifestItem[],
+  gallerySetting: Pick<
+    GallerySetting,
+    | "selectedTags"
+    | "selectedCameras"
+    | "selectedLenses"
+    | "selectedGeoCountries"
+    | "selectedGeoRegions"
+    | "selectedGeoCities"
+    | "selectedGeoDistricts"
+    | "sortOrder"
+    | "tagFilterMode"
+  >,
 ) => {
-  // 每次都动态获取最新的照片数据，而不是使用模块级别的缓存
-  // 这样可以确保在静态部署时，即使模块加载时 manifest 还未完全初始化，
-  // 后续调用时也能获取到正确的数据
-  const data = photoLoader.getPhotos();
-
   // 根据 tags、cameras 和 lenses 筛选
-  let filteredPhotos = data;
+  let filteredPhotos = photos;
+  const {
+    selectedTags,
+    selectedCameras,
+    selectedLenses,
+    selectedGeoCountries,
+    selectedGeoRegions,
+    selectedGeoCities,
+    selectedGeoDistricts,
+    sortOrder,
+    tagFilterMode = "union",
+  } = gallerySetting;
 
   // Tags 筛选：根据模式进行并集或交集筛选
   if (selectedTags.length > 0) {
@@ -108,12 +116,15 @@ const filterAndSortPhotos = (
   return sortedPhotos;
 };
 
-const getAllPhotosForViewer = (sortOrder: "asc" | "desc") => {
-  return sortPhotos(getAllPhotos(), sortOrder);
+const getAllPhotosForViewer = (
+  photos: PhotoManifestItem[],
+  sortOrder: "asc" | "desc",
+) => {
+  return sortPhotos(photos, sortOrder);
 };
 
-const getPhotosByIds = (photoIds: string[]) => {
-  const photoMap = new Map(getAllPhotos().map((photo) => [photo.id, photo]));
+const getPhotosByIds = (photos: PhotoManifestItem[], photoIds: string[]) => {
+  const photoMap = new Map(photos.map((photo) => [photo.id, photo]));
   return photoIds.flatMap((photoId) => {
     const photo = photoMap.get(photoId);
     return photo ? [photo] : [];
@@ -135,13 +146,14 @@ const resolveViewerSourceMode = (
 
 const resolveViewerPhotos = (
   photoId: string | null | undefined,
-  filteredPhotos: ReturnType<typeof getFilteredPhotos>,
+  allPhotos: PhotoManifestItem[],
+  filteredPhotos: PhotoManifestItem[],
   sortOrder: "asc" | "desc",
   viewerSourceMode?: ViewerSourceMode | null,
   viewerSourcePhotoIds?: string[] | null,
 ) => {
   if (viewerSourcePhotoIds?.length) {
-    const sourcePhotos = getPhotosByIds(viewerSourcePhotoIds);
+    const sourcePhotos = getPhotosByIds(allPhotos, viewerSourcePhotoIds);
     if (!photoId || sourcePhotos.some((photo) => photo.id === photoId)) {
       return sourcePhotos;
     }
@@ -155,39 +167,35 @@ const resolveViewerPhotos = (
       : (viewerSourceMode ?? resolveViewerSourceMode(photoId, filteredPhotos));
 
   return sourceMode === "all"
-    ? getAllPhotosForViewer(sortOrder)
+    ? getAllPhotosForViewer(allPhotos, sortOrder)
     : filteredPhotos;
 };
 
-// 提供一个 getter 函数供非 UI 组件使用
-export const getFilteredPhotos = () => {
-  // 直接从 jotaiStore 中读取当前状态
-  const currentGallerySetting = jotaiStore.get(gallerySettingAtom);
+export const getFilteredPhotos = (runtime: AppRuntime) => {
+  const currentGallerySetting = runtime.store.get(gallerySettingAtom);
   return filterAndSortPhotos(
-    currentGallerySetting.selectedTags,
-    currentGallerySetting.selectedCameras,
-    currentGallerySetting.selectedLenses,
-    currentGallerySetting.selectedGeoCountries,
-    currentGallerySetting.selectedGeoRegions,
-    currentGallerySetting.selectedGeoCities,
-    currentGallerySetting.selectedGeoDistricts,
-    currentGallerySetting.sortOrder,
-    currentGallerySetting.tagFilterMode,
+    runtime.photoRepository.getPhotos(),
+    currentGallerySetting,
   );
 };
 
-export const getViewerPhotos = (photoId?: string | null) => {
-  const { sortOrder } = jotaiStore.get(gallerySettingAtom);
-  const filteredPhotos = getFilteredPhotos();
-  const viewerSourceMode = jotaiStore.get(openAtom)
-    ? jotaiStore.get(viewerSourceModeAtom)
+export const getViewerPhotos = (
+  runtime: AppRuntime,
+  photoId?: string | null,
+) => {
+  const { sortOrder } = runtime.store.get(gallerySettingAtom);
+  const allPhotos = runtime.photoRepository.getPhotos();
+  const filteredPhotos = getFilteredPhotos(runtime);
+  const viewerSourceMode = runtime.store.get(openAtom)
+    ? runtime.store.get(viewerSourceModeAtom)
     : null;
-  const viewerSourcePhotoIds = jotaiStore.get(openAtom)
-    ? jotaiStore.get(viewerSourcePhotoIdsAtom)
+  const viewerSourcePhotoIds = runtime.store.get(openAtom)
+    ? runtime.store.get(viewerSourcePhotoIdsAtom)
     : null;
 
   return resolveViewerPhotos(
     photoId,
+    allPhotos,
     filteredPhotos,
     sortOrder,
     viewerSourceMode,
@@ -195,46 +203,21 @@ export const getViewerPhotos = (photoId?: string | null) => {
   );
 };
 
-export const getViewerSourceMode = (photoId?: string | null) => {
-  return resolveViewerSourceMode(photoId, getFilteredPhotos());
+export const getViewerSourceMode = (
+  runtime: AppRuntime,
+  photoId?: string | null,
+) => {
+  return resolveViewerSourceMode(photoId, getFilteredPhotos(runtime));
 };
 
 export const usePhotos = () => {
-  const {
-    sortOrder,
-    selectedTags,
-    selectedCameras,
-    selectedLenses,
-    selectedGeoCountries,
-    selectedGeoRegions,
-    selectedGeoCities,
-    selectedGeoDistricts,
-    tagFilterMode,
-  } = useAtomValue(gallerySettingAtom);
+  const gallerySetting = useAtomValue(gallerySettingAtom);
+  const photoRepository = usePhotoRepository();
+  const allPhotos = photoRepository.getPhotos();
 
   const masonryItems = useMemo(() => {
-    return filterAndSortPhotos(
-      selectedTags,
-      selectedCameras,
-      selectedLenses,
-      selectedGeoCountries,
-      selectedGeoRegions,
-      selectedGeoCities,
-      selectedGeoDistricts,
-      sortOrder,
-      tagFilterMode,
-    );
-  }, [
-    sortOrder,
-    selectedTags,
-    selectedCameras,
-    selectedLenses,
-    selectedGeoCountries,
-    selectedGeoRegions,
-    selectedGeoCities,
-    selectedGeoDistricts,
-    tagFilterMode,
-  ]);
+    return filterAndSortPhotos(allPhotos, gallerySetting);
+  }, [allPhotos, gallerySetting]);
 
   return masonryItems;
 };
@@ -245,17 +228,21 @@ export const useViewerPhotos = (photoId?: string | null) => {
   const viewerSourceMode = useAtomValue(viewerSourceModeAtom);
   const viewerSourcePhotoIds = useAtomValue(viewerSourcePhotoIdsAtom);
   const filteredPhotos = usePhotos();
+  const photoRepository = usePhotoRepository();
+  const allPhotos = photoRepository.getPhotos();
 
   return useMemo(
     () =>
       resolveViewerPhotos(
         photoId,
+        allPhotos,
         filteredPhotos,
         sortOrder,
         isOpen ? viewerSourceMode : null,
         isOpen ? viewerSourcePhotoIds : null,
       ),
     [
+      allPhotos,
       filteredPhotos,
       isOpen,
       photoId,
@@ -276,26 +263,15 @@ export const useContextPhotos = () => {
 
 export const usePhotoViewerBodyScrollLock = () => {
   const isOpen = useAtomValue(openAtom);
+  const runtime = useAfilmoryRuntime();
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    if (bodyScrollLockCount === 0) {
-      bodyOverflowBeforeLock = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-    }
-    bodyScrollLockCount += 1;
-
-    return () => {
-      bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1);
-      if (bodyScrollLockCount === 0) {
-        document.body.style.overflow = bodyOverflowBeforeLock ?? "";
-        bodyOverflowBeforeLock = null;
-      }
-    };
-  }, [isOpen]);
+    return runtime.bodyScrollLock.lock();
+  }, [isOpen, runtime]);
 };
 
 export const useOpenPhotoViewer = () => {
@@ -339,6 +315,7 @@ export const usePhotoViewer = (photoCount?: number) => {
     viewerSourcePhotoIdsAtom,
   );
   const openViewer = useOpenPhotoViewer();
+  const runtime = useAfilmoryRuntime();
 
   const closeViewer = useCallback(() => {
     setIsOpen(false);
@@ -357,13 +334,19 @@ export const usePhotoViewer = (photoCount?: number) => {
       const maxPhotoCount =
         (photoCount ?? viewerSourcePhotoIds?.length) ||
         (viewerSourceMode === "all"
-          ? getAllPhotos().length
-          : getFilteredPhotos().length);
+          ? runtime.photoRepository.getPhotos().length
+          : getFilteredPhotos(runtime).length);
       if (index >= 0 && index < maxPhotoCount) {
         setCurrentIndex(index);
       }
     },
-    [photoCount, setCurrentIndex, viewerSourceMode, viewerSourcePhotoIds],
+    [
+      photoCount,
+      runtime,
+      setCurrentIndex,
+      viewerSourceMode,
+      viewerSourcePhotoIds,
+    ],
   );
 
   return {

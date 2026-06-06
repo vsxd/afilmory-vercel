@@ -1,9 +1,9 @@
 import { ScrollArea, Thumbhash } from "@afilmory/ui";
 
-import { photoLoader } from "~/data-runtime/photo-loader";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 
 export const Component = () => {
-  const photos = photoLoader.getPhotos();
+  const photos = usePhotoRepository().getPhotos();
 
   return (
     <ScrollArea rootClassName="h-screen">

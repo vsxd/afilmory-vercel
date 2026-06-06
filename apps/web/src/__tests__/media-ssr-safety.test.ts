@@ -9,14 +9,6 @@ vi.mock("~/i18n", () => ({
   i18nAtom: Symbol("i18nAtom"),
 }));
 
-vi.mock("~/lib/jotai", () => ({
-  jotaiStore: {
-    get: () => ({
-      t: (key: string) => key,
-    }),
-  },
-}));
-
 const removeGlobal = (name: "document" | "navigator") => {
   Object.defineProperty(globalThis, name, {
     configurable: true,

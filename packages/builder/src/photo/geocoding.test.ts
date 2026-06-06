@@ -10,7 +10,7 @@ const locationLogger = vi.hoisted(() => ({
 }));
 
 vi.mock("./logger-adapter.js", () => ({
-  getGlobalLoggers: () => ({ location: locationLogger }),
+  getPhotoProcessingLoggers: () => ({ location: locationLogger }),
 }));
 
 describe("NominatimGeocodingProvider", () => {

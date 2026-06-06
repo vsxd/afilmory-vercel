@@ -5,14 +5,14 @@ import heicConvert from "heic-convert";
 import sharp from "sharp";
 
 import { HEIC_FORMATS } from "../constants/index.js";
-import { getGlobalLoggers } from "../photo/logger-adapter.js";
+import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { ImageMetadata } from "../types/photo.js";
 
 // 获取图片元数据（复用 Sharp 实例）
 export async function getImageMetadataWithSharp(
   sharpInstance: sharp.Sharp,
 ): Promise<ImageMetadata | null> {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
 
   try {
     const metadata = await sharpInstance.metadata();
@@ -53,7 +53,7 @@ export async function getImageMetadataWithSharp(
 
 // 转换 HEIC/HEIF 格式到 JPEG
 export async function convertHeicToJpeg(heicBuffer: Buffer): Promise<Buffer> {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
 
   try {
     log.info(
@@ -83,7 +83,7 @@ export async function preprocessImageBuffer(
   buffer: Buffer,
   key: string,
 ): Promise<Buffer> {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
   const ext = path.extname(key).toLowerCase();
 
   // 如果是 HEIC/HEIF 格式，先转换为 JPEG
@@ -114,7 +114,7 @@ export function isBitmap(buf: Buffer): boolean {
 export async function convertBmpToJpegSharpInstance(
   bmpBuffer: Buffer,
 ): Promise<sharp.Sharp> {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
 
   try {
     log.info(`开始 BMP → JPEG 转换 (${Math.round(bmpBuffer.length / 1024)}KB)`);

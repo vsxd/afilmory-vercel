@@ -1,6 +1,7 @@
 import { ScrollArea, ScrollElementContext } from "@afilmory/ui";
-import { useAtomValue } from "jotai";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import type { RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import {
   Outlet,
   useLocation,
@@ -25,16 +26,25 @@ import {
   applyGalleryFiltersToSearch,
   getGalleryFiltersFromSearch,
 } from "~/lib/gallery-filter-url";
-import { jotaiStore } from "~/lib/jotai";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { getSafeReturnTo, syncPhotoDetailSearch } from "~/lib/return-to";
 import { MasonryRoot } from "~/modules/gallery/MasonryRoot";
 import { PhotosProvider } from "~/providers/photos-provider";
+import { useAfilmoryRuntime } from "~/runtime/app-runtime";
+
+type UrlRestoreState = {
+  isRestored: boolean;
+  pendingUrlRestoreSearch: string | null;
+};
 
 export const Component = () => {
   usePhotoViewerBodyScrollLock();
-  useStateRestoreFromUrl();
-  useSyncStateToUrl();
+  const urlRestoreStateRef = useRef<UrlRestoreState>({
+    isRestored: false,
+    pendingUrlRestoreSearch: null,
+  });
+  useStateRestoreFromUrl(urlRestoreStateRef);
+  useSyncStateToUrl(urlRestoreStateRef);
 
   // const location = useLocation()
   const isMobile = useMobile();
@@ -85,32 +95,39 @@ export const Component = () => {
   );
 };
 
-let isRestored = false;
-let pendingUrlRestoreSearch: string | null = null;
 const useBrowserLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
-const restoreGalleryFilters = (
-  filters: Pick<
-    GallerySetting,
-    | "selectedTags"
-    | "selectedCameras"
-    | "selectedLenses"
-    | "selectedGeoCountries"
-    | "selectedGeoRegions"
-    | "selectedGeoCities"
-    | "selectedGeoDistricts"
-    | "tagFilterMode"
-  >,
-) => {
-  jotaiStore.set(gallerySettingAtom, (prev) => ({
-    ...prev,
-    ...filters,
-  }));
+
+const useRestoreGalleryFilters = () => {
+  const setGallerySetting = useSetAtom(gallerySettingAtom);
+  return useCallback(
+    (
+      filters: Pick<
+        GallerySetting,
+        | "selectedTags"
+        | "selectedCameras"
+        | "selectedLenses"
+        | "selectedGeoCountries"
+        | "selectedGeoRegions"
+        | "selectedGeoCities"
+        | "selectedGeoDistricts"
+        | "tagFilterMode"
+      >,
+    ) => {
+      setGallerySetting((prev) => ({
+        ...prev,
+        ...filters,
+      }));
+    },
+    [setGallerySetting],
+  );
 };
 
-const useStateRestoreFromUrl = () => {
+const useStateRestoreFromUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
   const { currentIndex, goToIndex, isOpen, openViewer } = usePhotoViewer();
   const { photoId } = useParams();
+  const runtime = useAfilmoryRuntime();
+  const restoreGalleryFilters = useRestoreGalleryFilters();
   const viewerStateRef = useRef({
     currentIndex,
     goToIndex,
@@ -125,8 +142,8 @@ const useStateRestoreFromUrl = () => {
   }, [currentIndex, goToIndex, isOpen, openViewer]);
 
   useBrowserLayoutEffect(() => {
-    isRestored = true;
-    pendingUrlRestoreSearch = location.search;
+    urlRestoreStateRef.current.isRestored = true;
+    urlRestoreStateRef.current.pendingUrlRestoreSearch = location.search;
 
     // 恢复筛选设置
     const galleryFilters = getGalleryFiltersFromSearch(location.search);
@@ -136,7 +153,7 @@ const useStateRestoreFromUrl = () => {
     // 如果 URL 中有 photoId，打开查看器
     // 找到对应的照片索引，确保 currentIndex 和 URL 保持一致
     if (photoId) {
-      const photos = getViewerPhotos(photoId);
+      const photos = getViewerPhotos(runtime, photoId);
       const index = photos.findIndex((photo) => photo.id === photoId);
       if (index !== -1) {
         const viewerState = viewerStateRef.current;
@@ -146,16 +163,18 @@ const useStateRestoreFromUrl = () => {
           }
         } else {
           viewerState.openViewer(index, {
-            sourceMode: getViewerSourceMode(photoId),
+            sourceMode: getViewerSourceMode(runtime, photoId),
             sourcePhotoIds: photos.map((photo) => photo.id),
           });
         }
       }
     }
-  }, [location.search, photoId]);
+  }, [location.search, photoId, restoreGalleryFilters, runtime, urlRestoreStateRef]);
 };
 
-const useSyncStateToUrl = () => {
+const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
+  const runtime = useAfilmoryRuntime();
+  const restoreGalleryFilters = useRestoreGalleryFilters();
   const wasOpenRef = useRef(false);
   const closeReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -189,7 +208,7 @@ const useSyncStateToUrl = () => {
   );
 
   useEffect(() => {
-    if (!isRestored) return;
+    if (!urlRestoreStateRef.current.isRestored) return;
 
     const isPhotoDetailPath = /^\/photos\/[^/]+$/.test(location.pathname);
 
@@ -208,7 +227,7 @@ const useSyncStateToUrl = () => {
         closeReturnTimerRef.current = null;
       }
       wasOpenRef.current = true;
-      const photos = getViewerPhotos(photoId);
+      const photos = getViewerPhotos(runtime, photoId);
       // 确保 currentIndex 在有效范围内，避免筛选条件变化时数组越界
       if (currentIndex >= 0 && currentIndex < photos.length) {
         const targetPhotoId = photos[currentIndex].id;
@@ -263,6 +282,8 @@ const useSyncStateToUrl = () => {
     navigate,
     navigationType,
     photoId,
+    restoreGalleryFilters,
+    runtime,
     selectedTags,
     selectedCameras,
     selectedLenses,
@@ -272,10 +293,11 @@ const useSyncStateToUrl = () => {
     selectedGeoDistricts,
     sortOrder,
     tagFilterMode,
+    urlRestoreStateRef,
   ]);
 
   useEffect(() => {
-    if (!isRestored) return;
+    if (!urlRestoreStateRef.current.isRestored) return;
     if (!isOpen && /^\/photos\/[^/]+$/.test(location.pathname)) return;
 
     const searchParams = new URLSearchParams(location.search);
@@ -300,14 +322,14 @@ const useSyncStateToUrl = () => {
       !hasLegacyRating &&
       !hasLegacyRegionId
     ) {
-      if (pendingUrlRestoreSearch === location.search) {
-        pendingUrlRestoreSearch = null;
+      if (urlRestoreStateRef.current.pendingUrlRestoreSearch === location.search) {
+        urlRestoreStateRef.current.pendingUrlRestoreSearch = null;
       }
       return;
     }
 
     if (
-      pendingUrlRestoreSearch === location.search &&
+      urlRestoreStateRef.current.pendingUrlRestoreSearch === location.search &&
       !hasLegacyRating &&
       !hasLegacyRegionId
     ) {
@@ -328,5 +350,6 @@ const useSyncStateToUrl = () => {
     selectedGeoDistricts,
     tagFilterMode,
     setSearchParams,
+    urlRestoreStateRef,
   ]);
 };

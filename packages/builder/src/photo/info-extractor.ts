@@ -2,14 +2,14 @@ import path from "node:path";
 
 import type { PhotoInfo, PickedExif } from "../types/photo.js";
 import { getPhotoExecutionContext } from "./execution-context.js";
-import { getGlobalLoggers } from "./logger-adapter.js";
+import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 // 从文件名提取照片信息
 export function extractPhotoInfo(
   key: string,
   exifData?: PickedExif | null,
 ): PhotoInfo {
-  const log = getGlobalLoggers().image;
+  const log = getPhotoProcessingLoggers().image;
   const { normalizeStorageKey } = getPhotoExecutionContext();
 
   log.info(`提取照片信息：${key}`);

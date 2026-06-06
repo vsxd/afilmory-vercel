@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "../dialog";
 import { Input } from "../form/Input";
-import { Modal } from "../modal";
 import type { ModalComponent, ModalComponentProps } from "../modal/types";
 
 type InputPromptVariant = "danger" | "info";
@@ -27,7 +26,6 @@ export type InputPromptOptions = {
 };
 
 export const InputPrompt: ModalComponent<InputPromptOptions> = ({
-  modalId,
   dismiss,
   title,
   description,
@@ -57,7 +55,7 @@ export const InputPrompt: ModalComponent<InputPromptOptions> = ({
       await onConfirm?.(inputValue);
     } finally {
       setSubmitting(false);
-      Modal.dismiss(modalId);
+      dismiss();
     }
   };
 

@@ -17,13 +17,8 @@ vi.mock("@afilmory/ui", () => ({
 }));
 
 vi.mock("~/i18n", () => ({
+  getI18n: () => mockI18n,
   i18nAtom: Symbol("i18n"),
-}));
-
-vi.mock("~/lib/jotai", () => ({
-  jotaiStore: {
-    get: () => mockI18n,
-  },
 }));
 
 describe("formatExifData", () => {

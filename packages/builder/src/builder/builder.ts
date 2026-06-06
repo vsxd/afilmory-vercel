@@ -9,7 +9,7 @@ import {
   saveManifest,
 } from "../manifest/manager.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
-import { setBuilderOutputSettings } from "../output-paths.js";
+import { runWithBuilderOutputSettings } from "../output-paths.js";
 import { createPhotoId, findPhotoIdCollisionKeys } from "../photo/id.js";
 import type { PhotoProcessorOptions } from "../photo/processor.js";
 import { processPhoto } from "../photo/processor.js";
@@ -20,9 +20,11 @@ import type {
   BuilderPluginESMImporter,
   BuilderPluginEventPayloads,
 } from "../plugins/types.js";
-import type { StorageProviderFactory } from "../storage/factory.js";
-import type { StorageConfig } from "../storage/index.js";
-import { StorageFactory, StorageManager } from "../storage/index.js";
+import type {StorageConfig, StorageProviderFactory, StorageRegistry} from "../storage/index.js";
+import {
+  createStorageRegistry,
+  StorageManager
+} from "../storage/index.js";
 import type { BuilderConfig, UserBuilderSettings } from "../types/config.js";
 import type {
   AfilmoryManifest,
@@ -50,10 +52,11 @@ export class AfilmoryBuilder {
   private readonly pluginReferences: BuilderPluginConfigEntry[];
   private photoIdCollisionKeys = new Set<string>();
   private readonly servicesInstance: BuilderServices;
+  private readonly storageRegistry: StorageRegistry;
 
   constructor(config: BuilderConfig) {
     this.config = config;
-    setBuilderOutputSettings(config.output);
+    this.storageRegistry = createStorageRegistry();
 
     this.pluginReferences = this.resolvePluginReferences();
 
@@ -66,6 +69,7 @@ export class AfilmoryBuilder {
       logger,
       getStorageConfig: () => this.getStorageConfig(),
       getStorageManager: () => this.getStorageManager(),
+      createStorageManager: (config) => this.createStorageManager(config),
       registerStorageProvider: (name, factory) =>
         this.registerStorageProvider(name, factory),
       hasPhotoIdCollision: (key) => this.hasPhotoIdCollision(key),
@@ -81,14 +85,16 @@ export class AfilmoryBuilder {
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {
-    try {
-      await this.ensurePluginsReady();
-      this.ensureStorageManager();
-      return await this.#buildManifest(options);
-    } catch (error) {
-      logger.main.error("❌ 构建 manifest 失败：", error);
-      throw error;
-    }
+    return await runWithBuilderOutputSettings(this.config.output, async () => {
+      try {
+        await this.ensurePluginsReady();
+        this.ensureStorageManager();
+        return await this.#buildManifest(options);
+      } catch (error) {
+        logger.main.error("❌ 构建 manifest 失败：", error);
+        throw error;
+      }
+    });
   }
   /**
    * 构建照片清单
@@ -335,16 +341,12 @@ export class AfilmoryBuilder {
             workerConcurrency:
               this.config.system.observability.performance.worker
                 .workerConcurrency,
-            workerEnv: {
-              FORCE_MODE: processorOptions.isForceMode.toString(),
-              FORCE_MANIFEST: processorOptions.isForceManifest.toString(),
-              FORCE_THUMBNAILS: processorOptions.isForceThumbnails.toString(),
-            },
             sharedData: {
               existingManifestMap,
               livePhotoMap,
               imageObjects: tasksToProcess,
               builderConfig: this.getConfig(),
+              builderOptions: options,
               photoIdCollisionKeys: Array.from(this.photoIdCollisionKeys),
             },
             onTaskCompleted: handleTaskCompleted,
@@ -618,7 +620,7 @@ export class AfilmoryBuilder {
     provider: string,
     factory: StorageProviderFactory,
   ): void {
-    StorageFactory.registerProvider(provider, factory);
+    this.storageRegistry.registerProvider(provider, factory);
 
     if (this.getStorageConfig().provider === provider) {
       this.storageManager = null;
@@ -741,10 +743,14 @@ export class AfilmoryBuilder {
 
   private ensureStorageManager(): StorageManager {
     if (!this.storageManager) {
-      this.storageManager = new StorageManager(this.getStorageConfig());
+      this.storageManager = this.createStorageManager(this.getStorageConfig());
     }
 
     return this.storageManager;
+  }
+
+  private createStorageManager(config: StorageConfig): StorageManager {
+    return new StorageManager(config, this.storageRegistry);
   }
 
   private getUserSettings(): UserBuilderSettings {

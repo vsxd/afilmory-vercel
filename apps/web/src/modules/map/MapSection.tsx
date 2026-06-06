@@ -9,7 +9,6 @@ import {
   MapInfoPanel,
   MapLoadingState,
 } from "~/components/ui/map";
-import { photoLoader } from "~/data-runtime/photo-loader";
 import { debugLog } from "~/lib/debug-log";
 import {
   createGeographicRegions,
@@ -23,6 +22,7 @@ import {
   getInitialViewStateForMarkers,
 } from "~/lib/map-utils";
 import { MapProvider } from "~/modules/map/MapProvider";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 import type {
   GeographicRegion,
   GeographicRegionLevel,
@@ -42,6 +42,7 @@ export const MapSection = () => {
 const MapSectionContent = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const photoRepository = usePhotoRepository();
   const displayMode: MapDisplayMode =
     searchParams.get("mode") === "photos" ? "photos" : "regions";
 
@@ -176,7 +177,7 @@ const MapSectionContent = () => {
       setError(null);
 
       try {
-        const photos = photoLoader.getPhotos();
+        const photos = photoRepository.getPhotos();
         const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
 
         setMarkers(photoMarkers);
@@ -200,7 +201,7 @@ const MapSectionContent = () => {
     };
 
     loadPhotoMarkersData();
-  }, [setMarkers]);
+  }, [photoRepository, setMarkers]);
 
   // Parse URL parameters and map photo selections into the active display mode.
   const { latitude, longitude, zoom, selectedPhotoId, selectedRegionId } =
@@ -247,7 +248,7 @@ const MapSectionContent = () => {
         const gpsData = marker
           ? { latitude: marker.latitude, longitude: marker.longitude }
           : convertExifGPSToDecimal(
-              photoLoader.getPhoto(photoIdParam)?.exif ?? null,
+              photoRepository.getPhoto(photoIdParam)?.exif ?? null,
             );
 
         if (gpsData) {
@@ -268,7 +269,7 @@ const MapSectionContent = () => {
         selectedPhotoId: photoIdParam,
         selectedRegionId: null,
       };
-    }, [effectiveMapMode, markers, regionsByLevel, searchParams]);
+    }, [effectiveMapMode, markers, photoRepository, regionsByLevel, searchParams]);
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {

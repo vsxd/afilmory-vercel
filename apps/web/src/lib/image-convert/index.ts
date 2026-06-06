@@ -2,10 +2,9 @@
  * 图像转换策略模式实现
  * 支持多种浏览器原生不支持的图片格式转换
  */
-import { i18nAtom } from "~/i18n";
+import { getI18n } from "~/i18n";
 import { debugLog } from "~/lib/debug-log";
 import { detectFileTypeFromBlob } from "~/lib/file-type";
-import { jotaiStore } from "~/lib/jotai";
 
 import type { LoadingCallbacks } from "../image-loader-manager";
 import type { PipelineOptions } from "./pipeline";
@@ -146,7 +145,7 @@ export class ImageConverterManager {
     }
 
     if (onLoadingStateUpdate && isPipelineSaturated) {
-      const i18n = jotaiStore.get(i18nAtom);
+      const i18n = getI18n();
       onLoadingStateUpdate({
         isConverting: true,
         isQueueWaiting: true,

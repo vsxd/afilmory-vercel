@@ -9,7 +9,7 @@ import type {
   PickedExif,
 } from "../types/photo.js";
 import { sleep } from "../utils/backoff.js";
-import { getGlobalLoggers } from "./logger-adapter.js";
+import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 const getBackoffDelay = (attempt: number, baseDelay: number): number => {
   const exponential = baseDelay * 2 ** (attempt - 1);
@@ -147,30 +147,25 @@ class SequentialRateLimiter {
   }
 }
 
-interface RateLimiterRegistryGlobal {
-  __afilmoryGeocodingRateLimiters?: Map<string, SequentialRateLimiter>;
-}
+const geocodingRateLimiters = new Map<string, SequentialRateLimiter>();
 
-const getGlobalRateLimiter = (
+const getRateLimiter = (
   key: string,
   intervalMs: number,
 ): SequentialRateLimiter => {
-  const globalObject = globalThis as typeof globalThis &
-    RateLimiterRegistryGlobal;
-
-  if (!globalObject.__afilmoryGeocodingRateLimiters) {
-    globalObject.__afilmoryGeocodingRateLimiters = new Map();
-  }
-
-  const existing = globalObject.__afilmoryGeocodingRateLimiters.get(key);
+  const existing = geocodingRateLimiters.get(key);
   if (existing) {
     return existing;
   }
 
   const limiter = new SequentialRateLimiter(intervalMs);
-  globalObject.__afilmoryGeocodingRateLimiters.set(key, limiter);
+  geocodingRateLimiters.set(key, limiter);
   return limiter;
 };
+
+export function resetGeocodingRateLimitersForTests(): void {
+  geocodingRateLimiters.clear();
+}
 
 /**
  * 地理编码提供者接口
@@ -329,7 +324,7 @@ export class MapboxGeocodingProvider implements GeocodingProvider {
   constructor(accessToken: string, language?: string | null) {
     this.accessToken = accessToken;
     this.language = language ?? null;
-    this.rateLimiter = getGlobalRateLimiter(
+    this.rateLimiter = getRateLimiter(
       `mapbox:${accessToken}`,
       this.rateLimitMs,
     );
@@ -337,7 +332,7 @@ export class MapboxGeocodingProvider implements GeocodingProvider {
   }
 
   async reverseGeocode(lat: number, lon: number): Promise<LocationInfo | null> {
-    const log = getGlobalLoggers().location;
+    const log = getPhotoProcessingLoggers().location;
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -447,7 +442,7 @@ export class NominatimGeocodingProvider implements GeocodingProvider {
     this.baseUrl = baseUrl || "https://nominatim.openstreetmap.org";
     this.language = language ?? null;
     this.userAgent = cleanString(userAgent) ?? "afilmory/1.0";
-    this.rateLimiter = getGlobalRateLimiter(
+    this.rateLimiter = getRateLimiter(
       `nominatim:${this.baseUrl}`,
       this.rateLimitMs,
     );
@@ -455,7 +450,7 @@ export class NominatimGeocodingProvider implements GeocodingProvider {
   }
 
   async reverseGeocode(lat: number, lon: number): Promise<LocationInfo | null> {
-    const log = getGlobalLoggers().location;
+    const log = getPhotoProcessingLoggers().location;
 
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -599,7 +594,7 @@ export function parseGPSCoordinates(exif: PickedExif): {
   latitude?: number;
   longitude?: number;
 } {
-  const log = getGlobalLoggers().location;
+  const log = getPhotoProcessingLoggers().location;
 
   try {
     let latitude: number | undefined;
@@ -642,7 +637,7 @@ export async function extractLocationFromGPS(
   longitude: number,
   provider: GeocodingProvider,
 ): Promise<LocationInfo | null> {
-  const log = getGlobalLoggers().location;
+  const log = getPhotoProcessingLoggers().location;
 
   // 验证坐标范围
   if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {

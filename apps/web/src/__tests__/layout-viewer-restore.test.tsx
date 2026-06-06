@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Component } from "../pages/(main)/layout";
 
 const hoisted = vi.hoisted(() => ({
-  jotaiStoreSet: vi.fn(),
+  runtime: { id: "test-runtime" },
+  setGallerySetting: vi.fn(),
 }));
 
 const visiblePhoto = { id: "visible-photo" };
@@ -61,14 +62,9 @@ vi.mock("jotai", async (importOriginal) => {
   return {
     ...actual,
     useAtomValue: () => gallerySetting,
+    useSetAtom: () => hoisted.setGallerySetting,
   };
 });
-
-vi.mock("~/lib/jotai", () => ({
-  jotaiStore: {
-    set: hoisted.jotaiStoreSet,
-  },
-}));
 
 vi.mock("react-router", () => ({
   Outlet: () => null,
@@ -113,6 +109,10 @@ vi.mock("~/providers/photos-provider", () => ({
   PhotosProvider: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => hoisted.runtime,
+}));
+
 describe("main layout viewer URL restore", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -152,7 +152,10 @@ describe("main layout viewer URL restore", () => {
     render(<Component />);
 
     await waitFor(() => {
-      expect(getViewerPhotos).toHaveBeenCalledWith("hidden-photo");
+      expect(getViewerPhotos).toHaveBeenCalledWith(
+        expect.any(Object),
+        "hidden-photo",
+      );
     });
 
     expect(openViewer).not.toHaveBeenCalled();
@@ -165,7 +168,10 @@ describe("main layout viewer URL restore", () => {
     const { rerender } = render(<Component />);
 
     await waitFor(() => {
-      expect(getViewerPhotos).toHaveBeenCalledWith("hidden-photo");
+      expect(getViewerPhotos).toHaveBeenCalledWith(
+        expect.any(Object),
+        "hidden-photo",
+      );
     });
 
     vi.clearAllMocks();
@@ -205,7 +211,10 @@ describe("main layout viewer URL restore", () => {
       });
     });
 
-    expect(getViewerSourceMode).toHaveBeenCalledWith("visible-photo");
+    expect(getViewerSourceMode).toHaveBeenCalledWith(
+      expect.any(Object),
+      "visible-photo",
+    );
     expect(goToIndex).not.toHaveBeenCalled();
   });
 
@@ -248,7 +257,10 @@ describe("main layout viewer URL restore", () => {
     const { rerender } = render(<Component />);
 
     await waitFor(() => {
-      expect(getViewerPhotos).toHaveBeenCalledWith("visible-photo");
+      expect(getViewerPhotos).toHaveBeenCalledWith(
+        expect.any(Object),
+        "visible-photo",
+      );
     });
 
     vi.clearAllMocks();
@@ -295,7 +307,10 @@ describe("main layout viewer URL restore", () => {
 
     const { rerender } = render(<Component />);
 
-    expect(getViewerPhotos).toHaveBeenCalledWith("visible-photo");
+    expect(getViewerPhotos).toHaveBeenCalledWith(
+      expect.any(Object),
+      "visible-photo",
+    );
 
     vi.clearAllMocks();
     viewerState = {
@@ -313,8 +328,8 @@ describe("main layout viewer URL restore", () => {
       { pathname: "/", search: "?cameras=SONY+ILCE-7C" },
       { replace: true },
     );
-    expect(hoisted.jotaiStoreSet).toHaveBeenCalledTimes(1);
-    const applyReturnedFilters = hoisted.jotaiStoreSet.mock.calls[0]?.[1];
+    expect(hoisted.setGallerySetting).toHaveBeenCalledTimes(1);
+    const applyReturnedFilters = hoisted.setGallerySetting.mock.calls[0]?.[0];
     expect(typeof applyReturnedFilters).toBe("function");
     expect(
       applyReturnedFilters({
@@ -369,7 +384,10 @@ describe("main layout viewer URL restore", () => {
 
     const { rerender } = render(<Component />);
 
-    expect(getViewerPhotos).toHaveBeenCalledWith("visible-photo");
+    expect(getViewerPhotos).toHaveBeenCalledWith(
+      expect.any(Object),
+      "visible-photo",
+    );
 
     vi.clearAllMocks();
     viewerState = {

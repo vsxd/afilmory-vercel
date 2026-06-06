@@ -2,7 +2,7 @@ import type { _Object } from "@aws-sdk/client-s3";
 
 import type { StorageManager } from "../storage/index.js";
 import type { StorageObject } from "../storage/interfaces.js";
-import { getGlobalLoggers } from "./logger-adapter.js";
+import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 export interface LivePhotoResult {
   isLivePhoto: boolean;
@@ -22,7 +22,7 @@ export async function processLivePhoto(
   livePhotoMap: Map<string, _Object | StorageObject>,
   storageManager: StorageManager,
 ): Promise<LivePhotoResult> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
   const livePhotoVideo = livePhotoMap.get(photoKey);
   const isLivePhoto = !!livePhotoVideo;
 

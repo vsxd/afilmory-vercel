@@ -18,6 +18,7 @@ export * from "./select";
 export * from "./sonner";
 export * from "./switch";
 export * from "./thumbhash";
+export { resetThumbhashCache } from "./thumbhash/cache";
 export * from "./tooltip";
 export * from "./typography";
 

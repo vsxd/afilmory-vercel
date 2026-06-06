@@ -1,39 +1,67 @@
-import { useAtomValue } from "jotai";
 import { AnimatePresence } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import type { PropsWithChildren } from "react";
+import {
+  use,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useEventCallback } from "usehooks-ts";
 
 import { clsxm } from "../utils/cn";
 import { Spring } from "../utils/spring";
 import { Dialog, DialogContent } from "./Dialog";
-import type { ModalItem } from "./ModalManager";
-import { Modal, modalItemsAtom } from "./ModalManager";
-import { modalStore } from "./store";
+import type { ModalItem, ModalManager } from "./ModalManager";
+import { createModalManager, ModalManagerContext } from "./ModalManager";
 import type { ModalComponent } from "./types";
 
-export function ModalContainer() {
-  const items = useAtomValue(modalItemsAtom, { store: modalStore });
+export function ModalProvider({ children }: PropsWithChildren) {
+  const manager = useMemo(() => createModalManager(), []);
 
   return (
-    <div id="global-modal-container">
+    <ModalManagerContext value={manager}>
+      {children}
+      <ModalContainer manager={manager} />
+    </ModalManagerContext>
+  );
+}
+
+export function ModalContainer({ manager }: { manager?: ModalManager }) {
+  const contextManager = use(ModalManagerContext);
+  const modalManager = manager ?? contextManager;
+  if (!modalManager) {
+    throw new Error("ModalManager is not initialized. Render ModalProvider first.");
+  }
+  const items = useSyncExternalStore(
+    modalManager.subscribe,
+    modalManager.getSnapshot,
+    modalManager.getSnapshot,
+  );
+
+  return (
+    <div id="modal-container">
       <AnimatePresence initial={false}>
         {items.map((item) => (
-          <ModalWrapper key={item.id} item={item} />
+          <ModalWrapper key={item.id} item={item} manager={modalManager} />
         ))}
       </AnimatePresence>
     </div>
   );
 }
 
-function ModalWrapper({ item }: { item: ModalItem }) {
+function ModalWrapper({
+  item,
+  manager,
+}: {
+  item: ModalItem;
+  manager: ModalManager;
+}) {
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    Modal.__registerCloser(item.id, () => setOpen(false));
-    return () => {
-      Modal.__unregisterCloser(item.id);
-    };
-  }, [item.id]);
+    return manager.registerCloser(item.id, () => setOpen(false));
+  }, [item.id, manager]);
 
   const dismiss = useMemo(
     () => () => {
@@ -49,11 +77,7 @@ function ModalWrapper({ item }: { item: ModalItem }) {
   // After exit animation, remove from store
   const handleAnimationComplete = useEventCallback(() => {
     if (!open) {
-      const items = modalStore.get(modalItemsAtom);
-      modalStore.set(
-        modalItemsAtom,
-        items.filter((m) => m.id !== item.id),
-      );
+      manager.remove(item.id);
     }
   });
 

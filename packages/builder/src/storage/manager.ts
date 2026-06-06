@@ -1,4 +1,5 @@
-import { StorageFactory } from "./factory.js";
+import type {StorageRegistry} from "./factory.js";
+import { StorageFactory  } from "./factory.js";
 import type {
   StorageConfig,
   StorageObject,
@@ -9,9 +10,11 @@ import type {
 export class StorageManager {
   private provider: StorageProvider;
   private readonly excludeFilters: Array<(key: string) => boolean> = [];
+  private readonly registry?: StorageRegistry;
 
-  constructor(config: StorageConfig) {
-    this.provider = StorageFactory.createProvider(config);
+  constructor(config: StorageConfig, registry?: StorageRegistry) {
+    this.registry = registry;
+    this.provider = this.createProvider(config);
   }
 
   private applyExcludes<T extends StorageObject>(objects: T[]): T[] {
@@ -117,6 +120,12 @@ export class StorageManager {
    * @param config 新的存储配置
    */
   switchProvider(config: StorageConfig): void {
-    this.provider = StorageFactory.createProvider(config);
+    this.provider = this.createProvider(config);
+  }
+
+  private createProvider(config: StorageConfig): StorageProvider {
+    return this.registry
+      ? this.registry.createProvider(config)
+      : StorageFactory.createProvider(config);
   }
 }

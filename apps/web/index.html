@@ -46,7 +46,14 @@
           return payload
         }
 
-        window.__AFILMORY_STARTUP__ = { marks, mark: record, flush, snapshot }
+        window.__AFILMORY__ = Object.assign({ version: 1 }, window.__AFILMORY__)
+        window.__AFILMORY__.startup = {
+          marks,
+          markedNames: [],
+          mark: record,
+          flush,
+          snapshot,
+        }
         record('html-head')
 
         try {
@@ -85,8 +92,9 @@
       }
     </style>
     <script id="config">
-      window.__CONFIG__ = {}
-      window.__SITE_CONFIG__ = {}
+      window.__AFILMORY__ = Object.assign({ version: 1 }, window.__AFILMORY__, {
+        config: { features: {}, site: {} },
+      })
     </script>
     <script id="manifest"></script>
   </head>

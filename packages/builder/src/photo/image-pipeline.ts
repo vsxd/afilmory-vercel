@@ -24,7 +24,7 @@ import { detectGainMap } from "./gainmap-detector.js";
 import { createPhotoId } from "./id.js";
 import { extractPhotoInfo } from "./info-extractor.js";
 import { processLivePhoto } from "./live-photo-handler.js";
-import { getGlobalLoggers } from "./logger-adapter.js";
+import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 import { detectMotionPhoto } from "./motion-photo-detector.js";
 
 export interface ProcessedImageData {
@@ -49,7 +49,7 @@ export interface PhotoProcessingContext {
 export async function preprocessImage(
   photoKey: string,
 ): Promise<{ rawBuffer: Buffer; processedBuffer: Buffer } | null> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
   const { storageManager } = getPhotoExecutionContext();
 
   try {
@@ -87,7 +87,7 @@ export async function processImageWithSharp(
   imageBuffer: Buffer,
   photoKey: string,
 ): Promise<ProcessedImageData | null> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
 
   try {
     // 创建 Sharp 实例，复用于多个操作
@@ -161,7 +161,7 @@ export async function executePhotoProcessingPipeline(
 ): Promise<PhotoManifestItem | null> {
   const { photoKey, obj, existingItem, livePhotoMap, options } = context;
   const { storageManager } = getPhotoExecutionContext();
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
   // Generate the actual photo ID with digest suffix
   const photoId = generatePhotoId(photoKey, existingItem);
 
@@ -308,7 +308,7 @@ export async function processPhotoWithPipeline(
 }> {
   const { photoKey, existingItem, obj, options } = context;
   const { emitPluginEvent } = getPhotoExecutionContext();
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
 
   const photoId = generatePhotoId(photoKey, existingItem);
 

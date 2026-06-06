@@ -113,7 +113,6 @@ describe("MasonryPhotoItem", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    window.router = { navigate };
     contextPhotos = [photo];
     gallerySetting = {
       selectedTags: [],
@@ -155,21 +154,6 @@ describe("MasonryPhotoItem", () => {
     fireEvent.click(getByRole("button", { name: "A7C01202" }));
 
     expect(openViewer).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/photos/photo-1",
-      search: "?cameras=SONY+ILCE-7C",
-    });
-  });
-
-  it("falls back to route hook navigation before the window router is installed", () => {
-    delete window.router;
-
-    const { getByRole } = render(
-      <MasonryPhotoItem data={photo} width={300} index={0} />,
-    );
-
-    fireEvent.click(getByRole("button", { name: "A7C01202" }));
-
     expect(navigate).toHaveBeenCalledWith({
       pathname: "/photos/photo-1",
       search: "?cameras=SONY+ILCE-7C",

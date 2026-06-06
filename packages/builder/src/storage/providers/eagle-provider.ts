@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { SUPPORTED_FORMATS } from "@afilmory/builder/constants/index.js";
-import { getGlobalLoggers } from "@afilmory/builder/photo/logger-adapter.js";
+import { getPhotoProcessingLoggers } from "@afilmory/builder/photo/logger-adapter.js";
 
 import { logger } from "../../logger/index.js";
-import { getBuilderOutputSettings } from "../../output-paths.js";
+import { getScopedBuilderOutputSettings } from "../../output-paths.js";
 import type {
   EagleConfig,
   EagleRule,
@@ -64,7 +64,7 @@ function createDefaultEagleConfig(): Required<EagleConfig> {
   return {
     provider: "eagle",
     libraryPath: "",
-    distPath: getBuilderOutputSettings().originalsDir,
+    distPath: getScopedBuilderOutputSettings().originalsDir,
     baseUrl: "/originals/",
     include: [],
     exclude: [],
@@ -135,7 +135,7 @@ export class EagleStorageProvider implements StorageProvider {
   }
 
   async getFile(key: string): Promise<Buffer | null> {
-    const logger = getGlobalLoggers().s3;
+    const logger = getPhotoProcessingLoggers().s3;
     await this.initialize();
 
     const imageInfoPath = path.resolve(

@@ -1,9 +1,8 @@
 import type { VideoSource } from "~/components/ui/photo-viewer/types";
-import { i18nAtom } from "~/i18n";
+import { getI18n } from "~/i18n";
 import { debugLog } from "~/lib/debug-log";
 import { detectFileTypeFromBlob } from "~/lib/file-type";
 import { imageConverterManager } from "~/lib/image-convert";
-import { jotaiStore } from "~/lib/jotai";
 import { LRUCache } from "~/lib/lru-cache";
 import { extractMotionPhotoVideo } from "~/lib/motion-photo-extractor";
 import { convertMovToMp4, needsVideoConversion } from "~/lib/video-converter";
@@ -351,7 +350,7 @@ export class ImageLoaderManager {
     callbacks: LoadingCallbacks = {},
   ): Promise<VideoProcessResult> {
     const { onLoadingStateUpdate } = callbacks;
-    const i18n = jotaiStore.get(i18nAtom);
+    const i18n = getI18n();
 
     this.currentVideoAbortController?.abort();
     this.currentVideoAbortController = new AbortController();
@@ -556,7 +555,7 @@ export class ImageLoaderManager {
 
     debugLog("Converting MOV video to MP4...");
 
-    const i18n = jotaiStore.get(i18nAtom);
+    const i18n = getI18n();
 
     const result = await convertMovToMp4(
       livePhotoVideoUrl,

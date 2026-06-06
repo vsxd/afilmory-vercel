@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { GallerySetting } from "~/atoms/app";
 import { gallerySettingAtom } from "~/atoms/app";
-import { initializePhotoLoader } from "~/data-runtime/photo-loader";
 import {
   getFilteredPhotos,
   getViewerPhotos,
@@ -16,7 +15,9 @@ import {
   usePhotoViewerBodyScrollLock,
   useViewerPhotos,
 } from "~/hooks/usePhotoViewer";
-import { jotaiStore } from "~/lib/jotai";
+import type { AppRuntime } from "~/runtime/app-runtime";
+import { createAppRuntime } from "~/runtime/app-runtime";
+import { AfilmoryRuntimeProvider } from "~/runtime/app-runtime-provider";
 
 const defaultGallerySetting: GallerySetting = {
   sortBy: "date",
@@ -82,8 +83,14 @@ const manifest: AfilmoryManifest = {
   ],
 };
 
+let runtime: AppRuntime;
+
 const wrapper = ({ children }: { children: React.ReactNode }) =>
-  React.createElement(Provider, { store: jotaiStore }, children);
+  React.createElement(
+    AfilmoryRuntimeProvider,
+    { runtime },
+    React.createElement(Provider, { store: runtime.store }, children),
+  );
 
 describe("viewer photo resolution", () => {
   afterEach(() => {
@@ -92,8 +99,8 @@ describe("viewer photo resolution", () => {
   });
 
   beforeEach(() => {
-    initializePhotoLoader(manifest);
-    jotaiStore.set(gallerySettingAtom, defaultGallerySetting);
+    runtime = createAppRuntime({ manifest });
+    runtime.store.set(gallerySettingAtom, defaultGallerySetting);
 
     const { result, unmount } = renderHook(() => usePhotoViewer(), { wrapper });
     act(() => {
@@ -103,26 +110,26 @@ describe("viewer photo resolution", () => {
   });
 
   it("keeps the filtered viewer set when the requested photo is still visible", () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
 
-    const filteredPhotos = getFilteredPhotos();
-    const viewerPhotos = getViewerPhotos("visible-photo");
+    const filteredPhotos = getFilteredPhotos(runtime);
+    const viewerPhotos = getViewerPhotos(runtime, "visible-photo");
 
     expect(filteredPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
     expect(viewerPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
   });
 
   it("falls back to the full photo set when the requested photo is excluded by filters", () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
 
-    const filteredPhotos = getFilteredPhotos();
-    const viewerPhotos = getViewerPhotos("hidden-photo");
+    const filteredPhotos = getFilteredPhotos(runtime);
+    const viewerPhotos = getViewerPhotos(runtime, "hidden-photo");
 
     expect(filteredPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
     expect(viewerPhotos.map((photo) => photo.id)).toEqual([
@@ -135,13 +142,13 @@ describe("viewer photo resolution", () => {
   });
 
   it("preserves the active sort order when falling back to the full photo set", () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       sortOrder: "asc",
       selectedTags: ["keep"],
     });
 
-    const viewerPhotos = getViewerPhotos("hidden-photo");
+    const viewerPhotos = getViewerPhotos(runtime, "hidden-photo");
 
     expect(viewerPhotos.map((photo) => photo.id)).toEqual([
       "hidden-photo",
@@ -164,7 +171,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("keeps an all-photos viewer session stable after navigating to a visible filtered photo", async () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -180,7 +187,7 @@ describe("viewer photo resolution", () => {
 
     act(() => {
       result.current.viewer.openViewer(1, {
-        sourceMode: getViewerSourceMode("hidden-photo"),
+        sourceMode: getViewerSourceMode(runtime, "hidden-photo"),
       });
     });
 
@@ -220,7 +227,7 @@ describe("viewer photo resolution", () => {
       viewerResult.current.openViewer(1, { sourceMode: "filtered" });
     });
 
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -233,7 +240,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("keeps goToIndex bounded by the filtered viewer count when no explicit photoCount is provided", () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -249,7 +256,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("keeps a filtered viewer session on its opened photo ids even if filters momentarily clear", () => {
-    jotaiStore.set(gallerySettingAtom, {
+    runtime.store.set(gallerySettingAtom, {
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -272,7 +279,7 @@ describe("viewer photo resolution", () => {
       });
     });
 
-    jotaiStore.set(gallerySettingAtom, defaultGallerySetting);
+    runtime.store.set(gallerySettingAtom, defaultGallerySetting);
     rerender({ photoId: "visible-photo" });
 
     expect(result.current.map((photo) => photo.id)).toEqual(["visible-photo"]);

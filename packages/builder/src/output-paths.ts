@@ -1,7 +1,10 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { BuilderOutputSettings } from "./types/config.js";
+
+export type { BuilderOutputSettings } from "./types/config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,15 +29,14 @@ export function createDefaultOutputSettings(): BuilderOutputSettings {
   };
 }
 
-// Singleton — must be initialised exactly once via setBuilderOutputSettings()
-// before any call to getBuilderOutputSettings(). AfilmoryBuilder constructor
-// handles this. Do NOT instantiate multiple builders in the same process.
-let currentOutputSettings: BuilderOutputSettings | null = null;
+const outputSettingsStorage = new AsyncLocalStorage<BuilderOutputSettings>();
 
-export function setBuilderOutputSettings(output: BuilderOutputSettings): void {
+export function normalizeBuilderOutputSettings(
+  output: BuilderOutputSettings,
+): BuilderOutputSettings {
   const manifestPath = path.resolve(output.manifestPath);
 
-  currentOutputSettings = {
+  return {
     manifestPath,
     thumbnailsDir: path.resolve(output.thumbnailsDir),
     originalsDir: path.resolve(output.originalsDir),
@@ -45,12 +47,22 @@ export function setBuilderOutputSettings(output: BuilderOutputSettings): void {
   };
 }
 
-export function getBuilderOutputSettings(): BuilderOutputSettings {
-  if (!currentOutputSettings) {
+export function runWithBuilderOutputSettings<T>(
+  output: BuilderOutputSettings,
+  callback: () => T | Promise<T>,
+): T | Promise<T> {
+  return outputSettingsStorage.run(
+    normalizeBuilderOutputSettings(output),
+    callback,
+  );
+}
+
+export function getScopedBuilderOutputSettings(): BuilderOutputSettings {
+  const outputSettings = outputSettingsStorage.getStore();
+  if (!outputSettings) {
     throw new Error(
-      "[builder] Output settings have not been initialised. " +
-        "Ensure AfilmoryBuilder is constructed before accessing output paths.",
+      "[builder] Output settings are not available in the current builder runtime.",
     );
   }
-  return currentOutputSettings;
+  return outputSettings;
 }

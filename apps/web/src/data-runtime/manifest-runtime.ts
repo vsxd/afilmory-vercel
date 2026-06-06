@@ -1,17 +1,12 @@
 import type { AfilmoryManifest } from "@afilmory/data";
 import { parseManifest } from "@afilmory/data";
 
+import {
+  ensureBrowserRuntime,
+  setRuntimeManifest,
+} from "~/runtime/browser-runtime";
+
 const MANIFEST_REQUEST_TIMEOUT_MS = 15_000;
-
-type ManifestRuntimeGlobals = typeof globalThis & {
-  __MANIFEST__?: unknown;
-  __MANIFEST_URL__?: string;
-  __MANIFEST_PROMISE__?: Promise<unknown>;
-};
-
-function getManifestGlobals(): ManifestRuntimeGlobals {
-  return globalThis as ManifestRuntimeGlobals;
-}
 
 async function fetchManifest(url: string): Promise<unknown> {
   const controller =
@@ -52,39 +47,43 @@ async function fetchManifest(url: string): Promise<unknown> {
 
 function coerceManifest(input: unknown): AfilmoryManifest {
   const manifest = parseManifest(input);
-  const globals = getManifestGlobals();
-  globals.__MANIFEST__ = manifest;
-  globals.__MANIFEST_PROMISE__ = Promise.resolve(manifest);
+  setRuntimeManifest(manifest);
   return manifest;
 }
 
 export async function loadManifestRuntime(): Promise<AfilmoryManifest> {
-  const globals = getManifestGlobals();
+  const runtime = ensureBrowserRuntime();
+  const manifestRuntime = runtime.manifest;
 
-  if (globals.__MANIFEST__) {
-    return coerceManifest(globals.__MANIFEST__);
+  if (!manifestRuntime) {
+    throw new Error("No manifest source was injected into the page.");
   }
 
-  const existingPromise = globals.__MANIFEST_PROMISE__;
+  if ("data" in manifestRuntime && manifestRuntime.data) {
+    return coerceManifest(manifestRuntime.data);
+  }
+
+  const existingPromise = manifestRuntime.promise;
   if (existingPromise) {
     try {
       return coerceManifest(await existingPromise);
     } catch (error) {
-      globals.__MANIFEST_PROMISE__ = undefined;
+      manifestRuntime.promise = undefined;
       throw error;
     }
   }
 
-  const manifestUrl = globals.__MANIFEST_URL__;
+  const manifestUrl =
+    manifestRuntime.mode === "external" ? manifestRuntime.url : undefined;
   if (!manifestUrl) {
     throw new Error("No manifest source was injected into the page.");
   }
 
   const manifestPromise = fetchManifest(manifestUrl).catch((error) => {
-    globals.__MANIFEST_PROMISE__ = undefined;
+    manifestRuntime.promise = undefined;
     throw error;
   });
-  globals.__MANIFEST_PROMISE__ = manifestPromise;
+  manifestRuntime.promise = manifestPromise;
 
   return coerceManifest(await manifestPromise);
 }

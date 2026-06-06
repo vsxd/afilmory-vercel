@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import { siteConfig } from "~/config";
-import { photoLoader } from "~/data-runtime/photo-loader";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
 import {
@@ -14,6 +13,7 @@ import {
   getRegionDisplayName,
 } from "~/lib/geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
@@ -50,6 +50,8 @@ export const MasonryHeaderMasonryItem = ({
   const { t, i18n } = useTranslation();
   const gallerySetting = useAtomValue(gallerySettingAtom);
   const visiblePhotos = useContextPhotos();
+  const photoRepository = usePhotoRepository();
+  const photos = photoRepository.getPhotos();
   const visiblePhotoCount = visiblePhotos.length;
   const githubUrl = getGitHubUrl(siteConfig.social?.github);
   const statsGridRef = useRef<HTMLDivElement>(null);
@@ -67,7 +69,6 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedGeoDistricts.length > 0;
 
   const libraryStats = useMemo(() => {
-    const photos = photoLoader.getPhotos();
     const cameraSet = new Set<string>();
     const lensSet = new Set<string>();
 
@@ -113,12 +114,10 @@ export const MasonryHeaderMasonryItem = ({
           : "i-mingcute-location-fill",
       },
     ];
-  }, [t]);
+  }, [photos, t]);
 
   const filterChips = useMemo(() => {
-    const photoMarkers = convertPhotosToMarkersFromEXIF(
-      photoLoader.getPhotos(),
-    );
+    const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
     const regionLabelMaps = {
       country: new Map(
         createGeographicRegions(photoMarkers, "country").map((region) => [
@@ -205,6 +204,7 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedTags,
     gallerySetting.tagFilterMode,
     i18n.language,
+    photos,
     t,
   ]);
 

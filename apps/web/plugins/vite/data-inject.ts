@@ -79,11 +79,12 @@ function escapeInlineScriptJson(json: string): string {
     .replaceAll("\u2029", "\\u2029");
 }
 
-function buildInlineScriptAssignment(
-  name: "__MANIFEST__" | "__SITE_CONFIG__",
-  json: string,
-): string {
-  return `window.${name} = ${escapeInlineScriptJson(json)};`;
+function ensureRuntimeScript(): string {
+  return `window.__AFILMORY__ = Object.assign({ version: 1 }, window.__AFILMORY__);`;
+}
+
+function buildRuntimeAssignment(path: string, json: string): string {
+  return `${ensureRuntimeScript()}window.__AFILMORY__.${path} = ${escapeInlineScriptJson(json)};`;
 }
 
 // ── site-config helpers ───────────────────────────────────────────────────────
@@ -93,22 +94,27 @@ const INJECTED_SCRIPT_ID = "config-runtime";
 const MANIFEST_DEV_PUBLIC_PATH = "/__afilmory/photos-manifest.json";
 
 function buildInlineManifestScriptContent(manifestJson: string): string {
-  const manifestAssignment = buildInlineScriptAssignment(
-    "__MANIFEST__",
-    manifestJson,
-  );
-  return `${manifestAssignment}window.__MANIFEST_PROMISE__ = Promise.resolve(window.__MANIFEST__);`;
+  return [
+    ensureRuntimeScript(),
+    `window.__AFILMORY__.manifest = {`,
+    `  mode: 'inline',`,
+    `  data: ${escapeInlineScriptJson(manifestJson)},`,
+    `};`,
+    `window.__AFILMORY__.manifest.promise = Promise.resolve(window.__AFILMORY__.manifest.data);`,
+  ].join("");
 }
 
 function buildExternalManifestScriptContent(manifestUrl: string): string {
   const safeUrl = JSON.stringify(manifestUrl);
 
   return [
-    `window.__MANIFEST_URL__ = ${safeUrl};`,
-    `window.__MANIFEST_PROMISE__ ??= (() => {`,
+    ensureRuntimeScript(),
+    `window.__AFILMORY__.manifest = window.__AFILMORY__.manifest?.mode === 'external' ? window.__AFILMORY__.manifest : { mode: 'external', url: ${safeUrl} };`,
+    `window.__AFILMORY__.manifest.url = ${safeUrl};`,
+    `window.__AFILMORY__.manifest.promise ??= (() => {`,
     `  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;`,
     `  const timeoutId = window.setTimeout(() => controller?.abort(), 15000);`,
-    `  return fetch(window.__MANIFEST_URL__, {`,
+    `  return fetch(window.__AFILMORY__.manifest.url, {`,
     `    credentials: 'same-origin',`,
     `    cache: 'force-cache',`,
     `    signal: controller ? controller.signal : undefined,`,
@@ -131,10 +137,12 @@ export function dataInjectPlugin(): Plugin {
   let embedManifest: boolean | undefined;
   let emittedManifestAssetFileName: string | null = null;
 
-  const siteConfigPayload = JSON.stringify(siteConfig);
-  const siteConfigScriptContent = buildInlineScriptAssignment(
-    "__SITE_CONFIG__",
-    siteConfigPayload,
+  const siteConfigScriptContent = buildRuntimeAssignment(
+    "config",
+    JSON.stringify({
+      features: {},
+      site: siteConfig,
+    }),
   );
   const parser = new DOMParser();
   const getBuildManifestAssetPublicPath = () => {

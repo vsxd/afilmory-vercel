@@ -4,16 +4,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { gallerySettingAtom } from "~/atoms/app";
-import { photoLoader } from "~/data-runtime/photo-loader";
 import {
   createGeographicRegions,
   getRegionDisplayName,
 } from "~/lib/geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
-
-const allTags = photoLoader.getAllTags();
-const allCameras = photoLoader.getAllCameras();
-const allLenses = photoLoader.getAllLenses();
+import { usePhotoRepository } from "~/runtime/app-runtime";
 
 type FilterItem = {
   id: string;
@@ -86,9 +82,20 @@ export const FilterPanelContent = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
+  const photoRepository = usePhotoRepository();
+  const allTags = useMemo(() => photoRepository.getAllTags(), [photoRepository]);
+  const allCameras = useMemo(
+    () => photoRepository.getAllCameras(),
+    [photoRepository],
+  );
+  const allLenses = useMemo(
+    () => photoRepository.getAllLenses(),
+    [photoRepository],
+  );
+  const allPhotos = photoRepository.getPhotos();
 
   const geoItems = useMemo(() => {
-    const markers = convertPhotosToMarkersFromEXIF(photoLoader.getPhotos());
+    const markers = convertPhotosToMarkersFromEXIF(allPhotos);
     const toItems = (level: Parameters<typeof createGeographicRegions>[1]) =>
       createGeographicRegions(markers, level).map((region) => ({
         id: region.id,
@@ -99,7 +106,7 @@ export const FilterPanelContent = ({
       countries: toItems("country"),
       cities: toItems("city"),
     };
-  }, [i18n.language]);
+  }, [allPhotos, i18n.language]);
 
   const resetFilters = () => {
     setGallerySetting((prev) => ({

@@ -104,40 +104,12 @@ export function createPhotoProcessingLoggers(
 }
 
 /**
- * 遗留的全局 Logger（仅用于兼容旧代码）
- */
-let legacyLoggers: PhotoProcessingLoggers | null = null;
-let hasWarnedLegacyLoggerUsage = false;
-
-/**
- * @deprecated 使用执行上下文替代
- */
-export function setGlobalLoggers(loggers: PhotoProcessingLoggers): void {
-  legacyLoggers = loggers;
-}
-
-/**
  * 获取当前上下文中的 Logger 集合
- * 会优先从执行上下文中获取；若未初始化则回退到遗留的全局实例
  */
-export function getGlobalLoggers(): PhotoProcessingLoggers {
-  try {
-    const context = getPhotoExecutionContext();
-    if (context.loggers) {
-      return context.loggers;
-    }
-  } catch {
-    // 忽略上下文不存在的错误，继续尝试使用遗留 logger
-  }
-
-  if (legacyLoggers) {
-    if (!hasWarnedLegacyLoggerUsage) {
-      legacyLoggers.image.warn(
-        "使用遗留的全局 logger，请尽快迁移到执行上下文模式。",
-      );
-      hasWarnedLegacyLoggerUsage = true;
-    }
-    return legacyLoggers;
+export function getPhotoProcessingLoggers(): PhotoProcessingLoggers {
+  const context = getPhotoExecutionContext();
+  if (context.loggers) {
+    return context.loggers;
   }
 
   throw new Error(

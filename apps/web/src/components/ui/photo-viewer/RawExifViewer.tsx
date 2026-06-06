@@ -7,10 +7,12 @@ import {
   DialogTrigger,
   ScrollArea,
 } from "@afilmory/ui";
+import { useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { isExiftoolLoadedAtom } from "~/atoms/app";
 import { ExifToolManager } from "~/lib/exiftool";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -152,6 +154,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
   currentPhoto,
 }) => {
   const { t } = useTranslation();
+  const setExiftoolLoaded = useSetAtom(isExiftoolLoadedAtom);
   const [isOpen, setIsOpen] = useState(false);
   const [rawExifData, setRawExifData] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,7 +198,9 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
         throw new Error(`Failed to fetch original image: ${response.status}`);
       }
       const blob = await response.blob();
-      const data = await ExifToolManager.parse(blob, currentPhoto.s3Key);
+      const data = await ExifToolManager.parse(blob, currentPhoto.s3Key, () =>
+        setExiftoolLoaded(true),
+      );
       if (
         requestController.signal.aborted ||
         currentPhotoIdRef.current !== requestPhotoId

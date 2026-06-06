@@ -13,13 +13,13 @@ import {
   getThumbnailPublicUrl,
   thumbnailExists,
 } from "../image/thumbnail.js";
-import { getBuilderOutputSettings } from "../output-paths.js";
+import { getScopedBuilderOutputSettings } from "../output-paths.js";
 import type {
   PhotoManifestItem,
   PickedExif,
   ToneAnalysis,
 } from "../types/photo.js";
-import { getGlobalLoggers } from "./logger-adapter.js";
+import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 export interface ThumbnailResult {
   thumbnailUrl: string;
@@ -37,7 +37,7 @@ export async function processThumbnailAndBlurhash(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<ThumbnailResult> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
 
   // 检查是否可以复用现有数据
   if (
@@ -47,7 +47,7 @@ export async function processThumbnailAndBlurhash(
     (await thumbnailExists(photoId))
   ) {
     try {
-      const { thumbnailsDir } = getBuilderOutputSettings();
+      const { thumbnailsDir } = getScopedBuilderOutputSettings();
       const thumbnailPath = path.join(thumbnailsDir, `${photoId}.jpg`);
       const thumbnailBuffer = await fs.readFile(thumbnailPath);
       const thumbnailUrl = getThumbnailPublicUrl(photoId);
@@ -91,7 +91,7 @@ export async function processExifData(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<PickedExif | null> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
 
   // 检查是否可以复用现有数据
   if (!options.isForceMode && !options.isForceManifest && existingItem?.exif) {
@@ -117,7 +117,7 @@ export async function processToneAnalysis(
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
 ): Promise<ToneAnalysis | null> {
-  const loggers = getGlobalLoggers();
+  const loggers = getPhotoProcessingLoggers();
 
   // 检查是否可以复用现有数据
   if (

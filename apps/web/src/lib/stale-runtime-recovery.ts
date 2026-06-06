@@ -1,4 +1,8 @@
-const STALE_RUNTIME_RELOAD_FLAG = "afilmory:stale-runtime-recovery-reloaded";
+import { isAfilmoryRuntimeCacheName } from "~/runtime/cache-names";
+import {
+  AFILMORY_REFRESH_SEARCH_PARAM,
+  AFILMORY_STORAGE_KEYS,
+} from "~/runtime/storage-keys";
 
 const STALE_RUNTIME_ERROR_PATTERNS = [
   "Failed to fetch dynamically imported module",
@@ -8,13 +12,6 @@ const STALE_RUNTIME_ERROR_PATTERNS = [
   "Unable to preload module",
   "vite:preloadError",
 ] as const;
-
-const AFILMORY_RUNTIME_CACHE_NAMES = new Set([
-  "google-fonts-cache",
-  "gstatic-fonts-cache",
-  "images-cache",
-  "s3-images-cache",
-]);
 
 type ReloadRequest = (url: string) => void;
 
@@ -83,7 +80,9 @@ export async function recoverStaleRuntime(
 
 export function clearStaleRuntimeReloadAttempt(): void {
   try {
-    window.sessionStorage.removeItem(STALE_RUNTIME_RELOAD_FLAG);
+    window.sessionStorage.removeItem(
+      AFILMORY_STORAGE_KEYS.staleRuntimeRecoveryReloaded,
+    );
   } catch {
     // Ignore restricted storage in SSR, private, or hardened browser profiles.
   }
@@ -133,20 +132,12 @@ async function deleteRuntimeCaches(): Promise<string[]> {
   }
 }
 
-function isAfilmoryRuntimeCacheName(name: string): boolean {
-  return (
-    AFILMORY_RUNTIME_CACHE_NAMES.has(name) ||
-    name.startsWith("workbox-") ||
-    name.includes("precache")
-  );
-}
-
 function requestCacheBustReload(options: StaleRuntimeRecoveryOptions): void {
   if (typeof window === "undefined") return;
 
   const url = new URL(window.location.href);
   url.searchParams.set(
-    "__afilmory_refresh",
+    AFILMORY_REFRESH_SEARCH_PARAM,
     (options.now?.() ?? Date.now()).toString(),
   );
 
@@ -171,7 +162,11 @@ function getErrorMessage(error: unknown): string {
 
 function hasReloadAttempted(): boolean {
   try {
-    return window.sessionStorage.getItem(STALE_RUNTIME_RELOAD_FLAG) === "1";
+    return (
+      window.sessionStorage.getItem(
+        AFILMORY_STORAGE_KEYS.staleRuntimeRecoveryReloaded,
+      ) === "1"
+    );
   } catch {
     return false;
   }
@@ -179,7 +174,10 @@ function hasReloadAttempted(): boolean {
 
 function markReloadAttempted(): void {
   try {
-    window.sessionStorage.setItem(STALE_RUNTIME_RELOAD_FLAG, "1");
+    window.sessionStorage.setItem(
+      AFILMORY_STORAGE_KEYS.staleRuntimeRecoveryReloaded,
+      "1",
+    );
   } catch {
     // Ignore restricted storage in private or hardened browser profiles.
   }

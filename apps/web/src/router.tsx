@@ -4,6 +4,7 @@ import App from "./App";
 import { ErrorElement } from "./components/common/ErrorElement";
 import { NotFound } from "./components/common/NotFound";
 import { buildGlobRoutes } from "./lib/route-builder";
+import type { AppRuntime } from "./runtime/app-runtime";
 
 const globTree = import.meta.env.DEV
   ? import.meta.glob("./pages/**/*.tsx")
@@ -14,10 +15,11 @@ const globTree = import.meta.env.DEV
     ]);
 const tree = buildGlobRoutes(globTree);
 
-export const router = createBrowserRouter([
+export const createAppRouter = (runtime: AppRuntime) =>
+  createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <App runtime={runtime} />,
     children: tree,
     errorElement: <ErrorElement />,
   },

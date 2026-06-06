@@ -3,6 +3,8 @@ import { deserialize } from "node:v8";
 
 import type { BuilderOptions } from "./builder/builder.js";
 import { AfilmoryBuilder } from "./builder/builder.js";
+import { closeExiftool } from "./image/exif.js";
+import { runWithBuilderOutputSettings } from "./output-paths.js";
 import type { PluginRunState } from "./plugins/manager.js";
 import type { StorageObject } from "./storage/interfaces";
 import type { BuilderConfig } from "./types/config.js";
@@ -28,12 +30,16 @@ interface SharedData {
   livePhotoMap: Map<string, StorageObject>;
   imageObjects: StorageObject[];
   builderConfig: BuilderConfig;
+  builderOptions: BuilderOptions;
   photoIdCollisionKeys?: string[];
 }
 
 // Worker 进程处理逻辑
 export async function runAsWorker() {
   process.title = "photo-gallery-builder-worker";
+  process.once("beforeExit", closeExiftool);
+  process.once("SIGINT", closeExiftool);
+  process.once("SIGTERM", closeExiftool);
   const workerId = Number.parseInt(process.env.WORKER_ID || "0");
 
   // 立即注册消息监听器，避免被异步初始化阻塞
@@ -43,6 +49,7 @@ export async function runAsWorker() {
   let existingManifestMap: Map<string, PhotoManifestItem>;
   let livePhotoMap: Map<string, StorageObject>;
   let builder: AfilmoryBuilder;
+  let builderOptions: BuilderOptions;
   let pluginRunState: PluginRunState;
 
   // 初始化函数，从主进程接收共享数据
@@ -59,6 +66,7 @@ export async function runAsWorker() {
     imageObjects = sharedData.imageObjects;
     existingManifestMap = sharedData.existingManifestMap;
     livePhotoMap = sharedData.livePhotoMap;
+    builderOptions = sharedData.builderOptions;
     builder = new AfilmoryBuilder(sharedData.builderConfig);
     builder.setPhotoIdCollisionKeys(sharedData.photoIdCollisionKeys ?? []);
     await builder.ensurePluginsReady();
@@ -104,36 +112,32 @@ export async function runAsWorker() {
         });
       }
 
-      // 处理器选项（这些可以作为环境变量传递或使用默认值）
       const processorOptions = {
-        isForceMode: process.env.FORCE_MODE === "true",
-        isForceManifest: process.env.FORCE_MANIFEST === "true",
-        isForceThumbnails: process.env.FORCE_THUMBNAILS === "true",
-      };
-
-      const builderOptions: BuilderOptions = {
-        isForceMode: processorOptions.isForceMode,
-        isForceManifest: processorOptions.isForceManifest,
-        isForceThumbnails: processorOptions.isForceThumbnails,
-        concurrencyLimit: undefined,
+        isForceMode: builderOptions.isForceMode,
+        isForceManifest: builderOptions.isForceManifest,
+        isForceThumbnails: builderOptions.isForceThumbnails,
       };
 
       // 处理照片
-      const result = await processPhoto(
-        legacyObj,
-        taskIndex,
-        workerId,
-        imageObjects.length,
-        existingManifestMap,
-        legacyLivePhotoMap,
-        processorOptions,
-        builder.services,
-        (runState, event, payload) =>
-          builder.emitPluginEvent(runState, event, payload),
-        {
-          runState: pluginRunState,
-          builderOptions,
-        },
+      const result = await runWithBuilderOutputSettings(
+        builder.getConfig().output,
+        async () =>
+          await processPhoto(
+            legacyObj,
+            taskIndex,
+            workerId,
+            imageObjects.length,
+            existingManifestMap,
+            legacyLivePhotoMap,
+            processorOptions,
+            builder.services,
+            (runState, event, payload) =>
+              builder.emitPluginEvent(runState, event, payload),
+            {
+              runState: pluginRunState,
+              builderOptions,
+            },
+          ),
       );
 
       // 发送结果回主进程
@@ -171,15 +175,9 @@ export async function runAsWorker() {
       const results: TaskResult[] = [];
       const taskPromises: Promise<void>[] = [];
       const batchProcessorOptions = {
-        isForceMode: process.env.FORCE_MODE === "true",
-        isForceManifest: process.env.FORCE_MANIFEST === "true",
-        isForceThumbnails: process.env.FORCE_THUMBNAILS === "true",
-      };
-      const batchBuilderOptions: BuilderOptions = {
-        isForceMode: batchProcessorOptions.isForceMode,
-        isForceManifest: batchProcessorOptions.isForceManifest,
-        isForceThumbnails: batchProcessorOptions.isForceThumbnails,
-        concurrencyLimit: undefined,
+        isForceMode: builderOptions.isForceMode,
+        isForceManifest: builderOptions.isForceManifest,
+        isForceThumbnails: builderOptions.isForceThumbnails,
       };
 
       // 创建所有任务的并发执行 Promise
@@ -209,21 +207,25 @@ export async function runAsWorker() {
 
             // 处理照片
             const { processPhoto } = await import("./photo/processor.js");
-            const result = await processPhoto(
-              legacyObj,
-              task.taskIndex,
-              workerId,
-              imageObjects.length,
-              existingManifestMap,
-              legacyLivePhotoMap,
-              batchProcessorOptions,
-              builder.services,
-              (runState, event, payload) =>
-                builder.emitPluginEvent(runState, event, payload),
-              {
-                runState: pluginRunState,
-                builderOptions: batchBuilderOptions,
-              },
+            const result = await runWithBuilderOutputSettings(
+              builder.getConfig().output,
+              async () =>
+                await processPhoto(
+                  legacyObj,
+                  task.taskIndex,
+                  workerId,
+                  imageObjects.length,
+                  existingManifestMap,
+                  legacyLivePhotoMap,
+                  batchProcessorOptions,
+                  builder.services,
+                  (runState, event, payload) =>
+                    builder.emitPluginEvent(runState, event, payload),
+                  {
+                    runState: pluginRunState,
+                    builderOptions,
+                  },
+                ),
             );
 
             // 添加成功结果

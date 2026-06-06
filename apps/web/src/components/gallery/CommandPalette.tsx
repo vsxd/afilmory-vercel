@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
-import { photoLoader } from "~/data-runtime/photo-loader";
 import {
   fuzzyMatch,
   getLocationTokens,
@@ -26,6 +25,7 @@ import {
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { FilterPanelContent } from "~/modules/gallery/panels/FilterPanel";
+import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
 
 // Command types
 type CommandType = "search" | "filter" | "action" | "photo";
@@ -47,16 +47,23 @@ interface CommandPaletteProps {
   onClose: () => void;
 }
 
-const allTags = photoLoader.getAllTags();
-const allCameras = photoLoader.getAllCameras();
-const allLenses = photoLoader.getAllLenses();
-const allPhotos = photoLoader.getPhotos();
-
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { t, i18n } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
   const navigate = useNavigate();
   const openViewer = useOpenPhotoViewer();
+  const runtime = useAfilmoryRuntime();
+  const photoRepository = usePhotoRepository();
+  const allTags = useMemo(() => photoRepository.getAllTags(), [photoRepository]);
+  const allCameras = useMemo(
+    () => photoRepository.getAllCameras(),
+    [photoRepository],
+  );
+  const allLenses = useMemo(
+    () => photoRepository.getAllLenses(),
+    [photoRepository],
+  );
+  const allPhotos = photoRepository.getPhotos();
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -106,7 +113,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       city: createGeographicRegions(markers, "city"),
       district: createGeographicRegions(markers, "district"),
     };
-  }, []);
+  }, [allPhotos]);
 
   const regionLabelMaps = useMemo(
     () => ({
@@ -468,11 +475,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             />
           ),
           action: () => {
-            const viewerPhotos = getViewerPhotos(photo.id);
+            const viewerPhotos = getViewerPhotos(runtime, photo.id);
             const photoIndex = viewerPhotos.findIndex((p) => p.id === photo.id);
             if (photoIndex !== -1) {
               openViewer(photoIndex, {
-                sourceMode: getViewerSourceMode(photo.id),
+                sourceMode: getViewerSourceMode(runtime, photo.id),
                 sourcePhotoIds: viewerPhotos.map(
                   (viewerPhoto) => viewerPhoto.id,
                 ),
@@ -498,12 +505,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   }, [
     t,
     gallerySetting,
+    allCameras,
+    allLenses,
+    allPhotos,
+    allTags,
     geoRegions,
     query,
     navigate,
     onClose,
     setGallerySetting,
     openViewer,
+    runtime,
     updateTagFilterMode,
     hasFilters,
     i18n.language,

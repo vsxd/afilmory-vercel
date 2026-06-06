@@ -1,10 +1,5 @@
-const DEV_SW_RELOAD_FLAG = "afilmory:dev-service-worker-cleanup-reloaded";
-
-const AFILMORY_CACHE_NAMES = new Set([
-  "google-fonts-cache",
-  "gstatic-fonts-cache",
-  "images-cache",
-]);
+import { isAfilmoryRuntimeCacheName } from "~/runtime/cache-names";
+import { AFILMORY_STORAGE_KEYS } from "~/runtime/storage-keys";
 
 type CleanupOptions = {
   reload?: () => void;
@@ -78,17 +73,13 @@ async function deleteAfilmoryRuntimeCaches(): Promise<string[]> {
   return namesToDelete;
 }
 
-function isAfilmoryRuntimeCacheName(name: string): boolean {
-  return (
-    AFILMORY_CACHE_NAMES.has(name) ||
-    name.startsWith("workbox-") ||
-    name.includes("precache")
-  );
-}
-
 function hasReloadAttempted(): boolean {
   try {
-    return window.sessionStorage.getItem(DEV_SW_RELOAD_FLAG) === "1";
+    return (
+      window.sessionStorage.getItem(
+        AFILMORY_STORAGE_KEYS.devServiceWorkerCleanupReloaded,
+      ) === "1"
+    );
   } catch {
     return false;
   }
@@ -96,7 +87,10 @@ function hasReloadAttempted(): boolean {
 
 function markReloadAttempted(): void {
   try {
-    window.sessionStorage.setItem(DEV_SW_RELOAD_FLAG, "1");
+    window.sessionStorage.setItem(
+      AFILMORY_STORAGE_KEYS.devServiceWorkerCleanupReloaded,
+      "1",
+    );
   } catch {
     // Ignore restricted storage in private or hardened browser profiles.
   }
@@ -104,7 +98,9 @@ function markReloadAttempted(): void {
 
 function clearReloadAttempt(): void {
   try {
-    window.sessionStorage.removeItem(DEV_SW_RELOAD_FLAG);
+    window.sessionStorage.removeItem(
+      AFILMORY_STORAGE_KEYS.devServiceWorkerCleanupReloaded,
+    );
   } catch {
     // Ignore restricted storage in private or hardened browser profiles.
   }

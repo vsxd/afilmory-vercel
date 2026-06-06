@@ -1,8 +1,6 @@
-import type { AfilmoryManifest } from "@afilmory/data";
-import type { SiteConfig } from "@config";
 import type { FC, PropsWithChildren } from "react";
 
-import type { InjectConfig } from "./config/types";
+import type { AfilmoryBrowserRuntime } from "./runtime/browser-runtime";
 
 declare global {
   export type Nullable<T> = T | null | undefined;
@@ -27,36 +25,13 @@ declare global {
     [K in keyof T]: T[K];
   } & {};
 
-  const APP_NAME: string;
-  const BUILT_DATE: string;
-  const GIT_COMMIT_HASH: string;
-
-  const __MANIFEST__: AfilmoryManifest | undefined;
-  const __MANIFEST_URL__: string | undefined;
-  const __MANIFEST_PROMISE__: Promise<unknown> | undefined;
-  const __SITE_CONFIG__: Partial<SiteConfig>;
-
-  const __CONFIG__: InjectConfig;
   /**
    * This function is a macro, will replace in the build stage.
    */
   export function tw(strings: TemplateStringsArray, ...values: any[]): string;
 
   interface Window {
-    __MANIFEST__?: AfilmoryManifest;
-    __MANIFEST_URL__?: string;
-    __MANIFEST_PROMISE__?: Promise<unknown>;
-    __SITE_CONFIG__?: Partial<SiteConfig>;
-    __AFILMORY_STARTUP__?: {
-      marks: Array<{
-        name: string;
-        time: number;
-        detail?: Record<string, unknown>;
-      }>;
-      mark: (name: string, detail?: Record<string, unknown>) => void;
-      flush: (reason?: string) => unknown;
-      snapshot: (reason?: string) => unknown;
-    };
+    __AFILMORY__?: AfilmoryBrowserRuntime;
   }
 }
 

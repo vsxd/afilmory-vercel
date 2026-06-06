@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { $ } from "execa";
 
-import { getBuilderOutputSettings, webAppDir } from "../output-paths.js";
+import { getScopedBuilderOutputSettings, webAppDir } from "../output-paths.js";
 import type { BuilderPlugin } from "./types.js";
 
 const RUN_SHARED_ASSETS_DIR = "assetsGitDir";
@@ -383,7 +383,7 @@ async function ensureLocalOutputLayout({
   assetsGitDir = path.resolve(webAppDir, "assets-git"),
   logger,
 }: OutputLayoutOptions): Promise<void> {
-  const { manifestPath, thumbnailsDir } = getBuilderOutputSettings();
+  const { manifestPath, thumbnailsDir } = getScopedBuilderOutputSettings();
   const geocodingCachePath = getGeocodingCachePath();
   const hasLegacySymlinks = (
     await Promise.all([
@@ -996,7 +996,7 @@ function createInitialGeocodingCacheContent(): string {
 }
 
 function getRemoteCachePaths(assetsGitDir: string): RemoteCachePaths {
-  const { manifestPath, thumbnailsDir } = getBuilderOutputSettings();
+  const { manifestPath, thumbnailsDir } = getScopedBuilderOutputSettings();
   const geocodingCachePath = getGeocodingCachePath();
 
   return {
@@ -1011,7 +1011,7 @@ function getRemoteCachePaths(assetsGitDir: string): RemoteCachePaths {
 }
 
 function getGeocodingCachePath(): string {
-  const { manifestPath, geocodingCachePath } = getBuilderOutputSettings();
+  const { manifestPath, geocodingCachePath } = getScopedBuilderOutputSettings();
 
   return path.resolve(
     geocodingCachePath ??

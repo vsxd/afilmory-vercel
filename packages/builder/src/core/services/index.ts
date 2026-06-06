@@ -22,6 +22,7 @@ export interface BuilderServicesBacking {
   logger: Logger;
   getStorageConfig: () => StorageConfig;
   getStorageManager: () => StorageManager;
+  createStorageManager: (config: StorageConfig) => StorageManager;
   registerStorageProvider: (
     name: string,
     factory: StorageProviderFactory,
@@ -36,6 +37,7 @@ export function createBuilderServices(
   backing: BuilderServicesBacking,
 ): BuilderServices {
   const storage: StorageService = {
+    createManager: (config) => backing.createStorageManager(config),
     getConfig: () => backing.getStorageConfig(),
     getManager: () => backing.getStorageManager(),
     registerProvider: (name, factory) =>

@@ -2,7 +2,7 @@
 
 ## 应用概述
 
-`apps/web` 是 Afilmory 的静态 SPA 前端，使用 React 19 + Vite 7 构建。它不在运行时访问数据库或后端；照片数据来自构建注入的 manifest，站点配置来自 `window.__SITE_CONFIG__`。
+`apps/web` 是 Afilmory 的静态 SPA 前端，使用 React 19 + Vite 7 构建。它不在运行时访问数据库或后端；照片数据和站点配置来自构建注入的 `window.__AFILMORY__` runtime namespace。
 
 ## 技术栈
 
@@ -24,10 +24,10 @@
 ### 状态和数据
 
 - Jotai
-- Zustand
 - TanStack Query
 - `apps/web/src/data-runtime/manifest-runtime.ts`
-- `apps/web/src/data-runtime/photo-loader.ts`
+- `apps/web/src/data-runtime/photo-repository.ts`
+- `apps/web/src/runtime/app-runtime.tsx`
 
 ### 国际化和地图
 
@@ -123,21 +123,22 @@ import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 Manifest runtime：
 
 - `dataInjectPlugin` 会注入 manifest source。
-- 开发默认内联 `window.__MANIFEST__`。
-- 生产默认生成 `assets/photos-manifest.<hash>.json` 并通过 `window.__MANIFEST_PROMISE__` fetch。
+- 开发默认在 `window.__AFILMORY__.manifest` 内联 manifest。
+- 生产默认生成 `assets/photos-manifest.<hash>.json` 并通过 `window.__AFILMORY__.manifest.promise` fetch。
 - `AFILMORY_EMBED_MANIFEST=true|false` 可覆盖默认策略。
 
-PhotoLoader 用法：
+PhotoRepository 用法：
 
 ```ts
-import { photoLoader } from "~/data-runtime/photo-loader";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 
-const photos = photoLoader.getPhotos();
-const photo = photoLoader.getPhoto(photoId);
-const tags = photoLoader.getAllTags();
+const photoRepository = usePhotoRepository();
+const photos = photoRepository.getPhotos();
+const photo = photoRepository.getPhoto(photoId);
+const tags = photoRepository.getAllTags();
 ```
 
-不要从 `@afilmory/data` 导入 `PhotoLoader`；该包只提供共享类型和 manifest 工具。
+不要创建模块级照片单例；React tree 内通过 AppRuntime 获取 PhotoRepository。
 
 ## 构建流程
 
@@ -189,9 +190,9 @@ apps/web/dist/
 
 - 读取 `generated/photos-manifest.json`。
 - 清理旧 manifest 中的 legacy `exif.Rating`。
-- 注入 `window.__SITE_CONFIG__`。
+- 注入 `window.__AFILMORY__.config`。
 - 根据 `AFILMORY_EMBED_MANIFEST` 和 serve/build 模式选择内联或外置 manifest。
-- 外置 manifest 会添加 preload link，并通过 `window.__MANIFEST_PROMISE__` 加载。
+- 外置 manifest 会添加 preload link，并通过 `window.__AFILMORY__.manifest.promise` 加载。
 
 ### `photosStaticPlugin`
 
@@ -282,7 +283,7 @@ GIT_COMMIT_HASH;
 ## 开发注意事项
 
 - 不要在浏览器端直接导入 `env.ts` 或读取 `process.env`。
-- 不要假设生产构建一定有 `window.__MANIFEST__`；应通过 `loadManifestRuntime()` 或已有 provider 使用 manifest。
+- 不要读取旧 `window.__*` manifest/config 名称；应通过 `loadManifestRuntime()`、AppRuntime 或已有 provider 使用 manifest。
 - 原图来自 S3/CDN，生产构建只包含生成缩略图和静态 Web 资源。
 - code-inspector-plugin 只在 dev server 中启用，按 `Alt` 点击可跳转源码。
 

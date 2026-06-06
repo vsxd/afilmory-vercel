@@ -17,10 +17,15 @@ describe("bootstrap splash", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-    vi.stubGlobal("__CONFIG__", {});
-    vi.stubGlobal("__SITE_CONFIG__", {
-      title: "Test Lens",
-      description: "Loading test photos",
+    vi.stubGlobal("__AFILMORY__", {
+      version: 1,
+      config: {
+        features: {},
+        site: {
+          title: "Test Lens",
+          description: "Loading test photos",
+        },
+      },
     });
     document.body.innerHTML = "";
   });
@@ -60,7 +65,20 @@ describe("bootstrap splash", () => {
     const criticalRoutesPromise = new Promise<void>((resolve) => {
       resolveCriticalRoutes = resolve;
     });
-    const initializePhotoLoader = vi.fn();
+    const createAppRuntime = vi.fn((options) => ({
+      browser: window.__AFILMORY__,
+      bodyScrollLock: {
+        lock: vi.fn(() => vi.fn()),
+        reset: vi.fn(),
+      },
+      criticalRoutePreloadCleanup: undefined,
+      dispose: vi.fn(),
+      photoRepository: {
+        getPhotos: () => options.manifest.data,
+      },
+      store: {},
+    }));
+    const createAppRouter = vi.fn(() => ({}));
     const markStartup = vi.fn();
     const flushStartupMetrics = vi.fn();
     const cleanupCriticalRoutePreloads = vi.fn();
@@ -72,24 +90,28 @@ describe("bootstrap splash", () => {
     vi.doMock("../data-runtime/manifest-runtime", () => ({
       loadManifestRuntime: vi.fn(() => manifestPromise),
     }));
-    vi.doMock("../data-runtime/photo-loader", () => ({
-      initializePhotoLoader,
+    vi.doMock("../runtime/app-runtime", () => ({
+      createAppRuntime,
     }));
     vi.doMock("../lib/critical-route-preload", () => ({
       installCriticalRoutePreloads,
     }));
     vi.doMock("../router", () => ({
-      router: {},
+      createAppRouter,
     }));
     vi.doMock("react-router", () => ({
       RouterProvider: () => <div data-testid="router-app">Gallery ready</div>,
     }));
 
-    window.__AFILMORY_STARTUP__ = {
-      marks: [],
-      mark: markStartup,
-      flush: flushStartupMetrics,
-      snapshot: vi.fn(),
+    window.__AFILMORY__ = {
+      version: 1,
+      startup: {
+        marks: [],
+        markedNames: [],
+        mark: markStartup,
+        flush: flushStartupMetrics,
+        snapshot: vi.fn(),
+      },
     };
     document.body.innerHTML =
       '<div id="splash-screen" role="status" aria-label="Loading">Static splash</div><div id="root"></div>';
@@ -102,7 +124,7 @@ describe("bootstrap splash", () => {
 
     expect(screen.getByRole("status", { name: "Loading" })).not.toBeNull();
     expect(screen.queryByTestId("router-app")).toBeNull();
-    expect(initializePhotoLoader).not.toHaveBeenCalled();
+    expect(createAppRuntime).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(markStartup).toHaveBeenCalledWith("manifest-start", undefined);
     });
@@ -112,7 +134,7 @@ describe("bootstrap splash", () => {
       await Promise.resolve();
     });
 
-    expect(initializePhotoLoader).not.toHaveBeenCalled();
+    expect(createAppRuntime).not.toHaveBeenCalled();
     expect(screen.queryByTestId("router-app")).toBeNull();
 
     await act(async () => {
@@ -120,7 +142,8 @@ describe("bootstrap splash", () => {
       await importPromise;
     });
 
-    expect(initializePhotoLoader).toHaveBeenCalledWith(manifest);
+    expect(createAppRuntime).toHaveBeenCalledWith({ manifest });
+    expect(createAppRouter).toHaveBeenCalled();
     await waitFor(() => {
       expect(screen.getByTestId("router-app")).not.toBeNull();
     });
@@ -136,7 +159,10 @@ describe("bootstrap splash", () => {
       "critical-routes-ready",
       undefined,
     );
-    expect(markStartup).toHaveBeenCalledWith("photo-loader-ready", undefined);
+    expect(markStartup).toHaveBeenCalledWith(
+      "photo-repository-ready",
+      undefined,
+    );
     expect(markStartup).toHaveBeenCalledWith("react-render-start", undefined);
     expect(markStartup).toHaveBeenCalledWith("app-commit", undefined);
     expect(markStartup).toHaveBeenCalledWith("splash-removed", {

@@ -5,7 +5,7 @@ import { isNil, noop } from "es-toolkit";
 import type { ExifDateTime, Tags } from "exiftool-vendored";
 import { ExifTool } from "exiftool-vendored";
 
-import { getGlobalLoggers } from "../photo/logger-adapter.js";
+import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { PickedExif } from "../types/photo.js";
 
 const exiftool = new ExifTool({
@@ -24,16 +24,12 @@ export const closeExiftool = () => {
   exiftool.end().catch(noop);
 };
 
-process.once("beforeExit", closeExiftool);
-process.once("SIGINT", closeExiftool);
-process.once("SIGTERM", closeExiftool);
-
 // 提取 EXIF 数据
 export async function extractExifData(
   imageBuffer: Buffer,
   originalBuffer?: Buffer,
 ): Promise<PickedExif | null> {
-  const log = getGlobalLoggers().exif;
+  const log = getPhotoProcessingLoggers().exif;
 
   await mkdir("/tmp/image_process", { recursive: true });
   const tempImagePath = path.resolve(

@@ -1,10 +1,8 @@
-type StartupMetricDetail = Record<string, unknown>;
-
-const marked = new Set<string>();
+import type { StartupMetricDetail } from "~/runtime/browser-runtime";
+import { getExistingBrowserRuntime } from "~/runtime/browser-runtime";
 
 function getStartupReporter() {
-  if (typeof window === "undefined") return null;
-  return window.__AFILMORY_STARTUP__ ?? null;
+  return getExistingBrowserRuntime()?.startup ?? null;
 }
 
 export function markStartup(name: string, detail?: StartupMetricDetail) {
@@ -15,8 +13,12 @@ export function markStartupOnce(
   name: string,
   detail?: StartupMetricDetail,
 ): boolean {
-  if (marked.has(name)) return false;
-  marked.add(name);
+  const reporter = getStartupReporter();
+  if (reporter) {
+    const markedNames = (reporter.markedNames ??= []);
+    if (markedNames.includes(name)) return false;
+    markedNames.push(name);
+  }
   markStartup(name, detail);
   return true;
 }

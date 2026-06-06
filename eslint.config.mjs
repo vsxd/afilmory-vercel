@@ -61,7 +61,6 @@ const hyobanConfig = await defineConfig(
       '@eslint-react/hooks-extra/no-direct-set-state-in-use-effect': 0,
       // NOTE: Disable this temporarily
       'react-compiler/react-compiler': 0,
-      'no-restricted-syntax': 0,
       '@typescript-eslint/no-unsafe-function-type': 0,
       // disable react compiler rules for now
       'react-hooks/no-unused-directives': 'off',
@@ -91,6 +90,65 @@ const hyobanConfig = await defineConfig(
           message:
             "Since you don't use the same router instance in electron and browser, you can't use the global location to get the route info. \n\n" +
             'You can use `useLocaltion` or `getReadonlyRoute` to get the route info.',
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'zustand',
+              message: 'UI state uses Jotai in this app.',
+            },
+            {
+              name: 'zustand/shallow',
+              message: 'Use a local equality helper with Jotai selectors.',
+            },
+            {
+              name: '~/data-runtime/photo-loader',
+              message: 'Use AppRuntime PhotoRepository instead of a module singleton.',
+            },
+            {
+              name: '~/lib/jotai',
+              importNames: ['jotaiStore', 'createAtomAccessor'],
+              message: 'Use the Provider-scoped Jotai store from AppRuntime.',
+            },
+            {
+              name: '../output-paths.js',
+              importNames: ['setBuilderOutputSettings', 'getBuilderOutputSettings'],
+              message: 'Use runWithBuilderOutputSettings/getScopedBuilderOutputSettings.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        ...[
+          '__CONFIG__',
+          '__SITE_CONFIG__',
+          '__MANIFEST__',
+          '__MANIFEST_URL__',
+          '__MANIFEST_PROMISE__',
+          '__AFILMORY_STARTUP__',
+          '__AFILMORY_CRITICAL_ROUTE_PRELOAD_CLEANUP__',
+          'router',
+        ].map((property) => ({
+          object: 'window',
+          property,
+          message: 'Use window.__AFILMORY__ or an explicit runtime service.',
+        })),
+        {
+          object: 'globalThis',
+          property: '__afilmoryGeocodingRateLimiters',
+          message: 'Use a scoped builder/geocoding runtime registry.',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Identifier[name=/^(setBuilderOutputSettings|getBuilderOutputSettings|getGlobalLoggers|setGlobalLoggers)$/]",
+          message: 'Use scoped builder services instead of legacy global helpers.',
         },
       ],
     },

@@ -9,7 +9,7 @@ export type {
 
 // 导出工厂类
 export type { StorageProviderFactory } from "./factory.js";
-export { StorageFactory } from "./factory.js";
+export { createStorageRegistry, StorageFactory, StorageRegistry } from "./factory.js";
 
 // 导出管理器
 export { StorageManager } from "./manager.js";

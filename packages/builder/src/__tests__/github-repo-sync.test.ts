@@ -7,15 +7,44 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { logger, setConsoleForwarding } from "../logger/index.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
-import { setBuilderOutputSettings, webAppDir } from "../output-paths.js";
+import type {BuilderOutputSettings} from "../output-paths.js";
+import {
+  runWithBuilderOutputSettings,
+  webAppDir
+} from "../output-paths.js";
 import {
   buildGitAuthenticationEnv,
-  persistBuildOutputsToRepository,
-  prepareRepositoryLayout,
-  pushUpdatesToRemoteRepo,
-  restoreLocalOutputLayout,
-  syncRemoteCacheRepository,
+  persistBuildOutputsToRepository as persistBuildOutputsToRepositoryBase,
+  prepareRepositoryLayout as prepareRepositoryLayoutBase,
+  pushUpdatesToRemoteRepo as pushUpdatesToRemoteRepoBase,
+  restoreLocalOutputLayout as restoreLocalOutputLayoutBase,
+  syncRemoteCacheRepository as syncRemoteCacheRepositoryBase,
 } from "../plugins/github-repo-sync";
+
+let currentOutputSettings: BuilderOutputSettings;
+
+const withOutputSettings = <T>(callback: () => T | Promise<T>) =>
+  runWithBuilderOutputSettings(currentOutputSettings, callback);
+
+const prepareRepositoryLayout = (
+  ...args: Parameters<typeof prepareRepositoryLayoutBase>
+) => withOutputSettings(() => prepareRepositoryLayoutBase(...args));
+
+const persistBuildOutputsToRepository = (
+  ...args: Parameters<typeof persistBuildOutputsToRepositoryBase>
+) => withOutputSettings(() => persistBuildOutputsToRepositoryBase(...args));
+
+const restoreLocalOutputLayout = (
+  ...args: Parameters<typeof restoreLocalOutputLayoutBase>
+) => withOutputSettings(() => restoreLocalOutputLayoutBase(...args));
+
+const syncRemoteCacheRepository = (
+  ...args: Parameters<typeof syncRemoteCacheRepositoryBase>
+) => withOutputSettings(() => syncRemoteCacheRepositoryBase(...args));
+
+const pushUpdatesToRemoteRepo = (
+  ...args: Parameters<typeof pushUpdatesToRemoteRepoBase>
+) => withOutputSettings(() => pushUpdatesToRemoteRepoBase(...args));
 
 describe("GitHub repo sync auth", () => {
   it("should configure askpass auth for GitHub HTTPS repositories", async () => {
@@ -108,11 +137,11 @@ describe("GitHub repo sync layout recovery", () => {
     geocodingCachePath = path.join(tmpDir, "generated", "geocoding-cache.json");
     thumbnailsDir = path.join(tmpDir, "public", "thumbnails");
 
-    setBuilderOutputSettings({
+    currentOutputSettings = {
       manifestPath,
       thumbnailsDir,
       originalsDir: path.join(tmpDir, "public", "originals"),
-    });
+    };
   });
 
   afterEach(async () => {
@@ -445,12 +474,12 @@ describe("GitHub repo sync layout recovery", () => {
       "custom-cache",
       "locations.json",
     );
-    setBuilderOutputSettings({
+    currentOutputSettings = {
       manifestPath,
       thumbnailsDir,
       originalsDir: path.join(tmpDir, "public", "originals"),
       geocodingCachePath: customGeocodingCachePath,
-    });
+    };
     await seedRepoAssets(assetsGitDir);
 
     await prepareRepositoryLayout({ assetsGitDir, logger });
@@ -497,11 +526,11 @@ describe("GitHub repo sync git integration", () => {
     manifestPath = path.join(tmpDir, "generated", "photos-manifest.json");
     thumbnailsDir = path.join(tmpDir, "public", "thumbnails");
 
-    setBuilderOutputSettings({
+    currentOutputSettings = {
       manifestPath,
       thumbnailsDir,
       originalsDir: path.join(tmpDir, "public", "originals"),
-    });
+    };
 
     await createCacheRemote({ remoteDir, seedDir });
   });
