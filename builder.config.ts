@@ -18,8 +18,6 @@ const missingS3Vars = Object.entries(requiredS3Vars)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || "";
-const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || "";
 const geocodingLocales =
   env.GEOCODING_LOCALES || env.GEOCODING_LANGUAGE || "en,zh-CN";
 const geocodingCachePath =
@@ -54,13 +52,6 @@ export default defineBuilderConfig(() => ({
     thumbnailsDir: path.resolve(__dirname, "apps/web/public/thumbnails"),
     originalsDir: path.resolve(__dirname, "apps/web/public/originals"),
     geocodingCachePath,
-  },
-
-  // 远程仓库缓存 - 根据环境变量自动启用
-  repo: {
-    enable: !!(repoUrl && repoToken),
-    url: repoUrl,
-    token: repoToken,
   },
 
   // 使用 S3 存储

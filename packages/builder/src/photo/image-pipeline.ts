@@ -1,4 +1,4 @@
-import { compressUint8Array } from "@afilmory/data";
+import { compressUint8Array } from "@afilmory/media";
 import type { _Object } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 

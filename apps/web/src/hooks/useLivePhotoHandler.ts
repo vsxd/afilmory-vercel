@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isMobileDevice } from "~/lib/device-viewport";
 import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 interface UseLivePhotoHandlerProps {
@@ -63,6 +64,7 @@ export const useLivePhotoHandler = ({
   imageLoaded,
 }: UseLivePhotoHandlerProps) => {
   const { id, video, originalUrl } = data;
+  const runtime = useAfilmoryRuntime();
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false);
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false);
   const [isConvertingVideo, setIsConvertingVideo] = useState(false);
@@ -141,7 +143,7 @@ export const useLivePhotoHandler = ({
       setLivePhotoVideoLoaded(false);
       setIsConvertingVideo(true);
 
-      const imageLoaderManager = new ImageLoaderManager();
+      const imageLoaderManager = new ImageLoaderManager(runtime.imageCache);
       imageLoaderManagerRef.current = imageLoaderManager;
 
       try {
@@ -193,7 +195,7 @@ export const useLivePhotoHandler = ({
       }
       resetVideoElement(videoEl);
     };
-  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey]);
+  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey, runtime.imageCache]);
 
   // Live Photo/Motion Photo hover handling (desktop only)
   const handleMouseEnter = useCallback(() => {

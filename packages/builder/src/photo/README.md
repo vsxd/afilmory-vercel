@@ -103,4 +103,4 @@ type VideoSource =
 - 添加新处理步骤时优先放在 `image-pipeline.ts` 附近，保持顺序清晰。
 - 添加新可复用数据时同步更新 cache 判定、manifest 类型和迁移逻辑。
 - 添加插件行为时优先通过 plugin lifecycle hook，不要绕过 `AfilmoryBuilder` services。
-- 新字段如果进入 manifest，需要同步 `@afilmory/data` 类型、web runtime 使用方和测试。
+- 新字段如果进入 manifest，需要同步 `@afilmory/schema` 类型、web runtime 使用方和测试。

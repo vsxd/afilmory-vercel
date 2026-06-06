@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path, { basename } from "node:path";
 
+import { createManifest, parseManifest } from "@afilmory/schema";
 import type { _Object } from "@aws-sdk/client-s3";
 
 import { logger } from "../logger/index.js";
@@ -9,10 +10,9 @@ import type {
   AfilmoryManifest,
   CameraInfo,
   LensInfo,
+  ManifestSource,
 } from "../types/manifest.js";
 import type { PhotoManifestItem } from "../types/photo.js";
-import { migrateManifestFileIfNeeded } from "./migrate.js";
-import { CURRENT_MANIFEST_VERSION } from "./version.js";
 
 export async function loadExistingManifest(): Promise<AfilmoryManifest> {
   const { manifestPath } = getScopedBuilderOutputSettings();
@@ -29,12 +29,7 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
 
     logger.fs.error("🔍 未找到 manifest 文件，创建新的 manifest 文件...");
     await saveManifest([]);
-    return {
-      version: CURRENT_MANIFEST_VERSION,
-      data: [],
-      cameras: [],
-      lenses: [],
-    };
+    return createManifest();
   }
 
   let manifest: AfilmoryManifest;
@@ -43,24 +38,11 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("manifest 内容不是有效的对象");
     }
-    manifest = parsed as AfilmoryManifest;
+    manifest = parseManifest(parsed);
   } catch (error) {
     throw new Error(
       `解析 manifest 失败：${manifestPath} - ${error instanceof Error ? error.message : String(error)}`,
     );
-  }
-
-  if (manifest.version !== CURRENT_MANIFEST_VERSION) {
-    const migrated = await migrateManifestFileIfNeeded(manifest);
-    if (migrated) return migrated;
-  }
-
-  // 向后兼容：如果现有 manifest 没有 cameras 和 lenses 字段，则添加空数组
-  if (!manifest.cameras) {
-    manifest.cameras = [];
-  }
-  if (!manifest.lenses) {
-    manifest.lenses = [];
   }
 
   return manifest;
@@ -93,6 +75,7 @@ export async function saveManifest(
   items: PhotoManifestItem[],
   cameras: CameraInfo[] = [],
   lenses: LensInfo[] = [],
+  source?: ManifestSource,
 ): Promise<void> {
   const { manifestPath } = getScopedBuilderOutputSettings();
   // 按日期排序（最新的在前）
@@ -104,12 +87,11 @@ export async function saveManifest(
   await fs.writeFile(
     manifestPath,
     JSON.stringify(
-      {
-        version: CURRENT_MANIFEST_VERSION,
-        data: sortedManifest,
-        cameras,
-        lenses,
-      } as AfilmoryManifest,
+      createManifest({
+        photos: sortedManifest,
+        indexes: { cameras, lenses },
+        source: source ?? { provider: "unknown" },
+      }),
       null,
       2,
     ),

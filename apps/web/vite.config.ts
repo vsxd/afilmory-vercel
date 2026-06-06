@@ -8,18 +8,18 @@ import { defineConfig } from "vite";
 import { analyzer } from "vite-bundle-analyzer";
 import { checker } from "vite-plugin-checker";
 import { createHtmlPlugin } from "vite-plugin-html";
-import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import PKG from "../../package.json";
 import { siteConfig } from "../../site.config.build";
 import { astPlugin } from "./plugins/vite/ast";
 import { buildAssetsPlugin } from "./plugins/vite/build-assets";
+import { dependencyChunkGroups } from "./plugins/vite/chunks";
 import { dataInjectPlugin } from "./plugins/vite/data-inject";
 import { createDependencyChunksPlugin } from "./plugins/vite/deps";
 import { localesJsonPlugin } from "./plugins/vite/locales-json";
 import { photosStaticPlugin } from "./plugins/vite/photos-static";
-import { AFILMORY_RUNTIME_CACHE_NAMES } from "./src/runtime/cache-names";
+import { createAfilmoryPwaPlugin } from "./plugins/vite/pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +28,10 @@ const ReactCompilerConfig = {
 };
 
 function silenceUnavailableNodeLocalStorageWarning() {
-  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const descriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "localStorage",
+  );
   if (!descriptor || !("get" in descriptor) || !descriptor.configurable) {
     return;
   }
@@ -47,123 +50,7 @@ const staticWebBuildPlugins: PluginOption[] = [
   dataInjectPlugin(),
   photosStaticPlugin(),
 
-  VitePWA({
-    base: "/",
-    scope: "/",
-    injectRegister: false,
-    registerType: "autoUpdate",
-    includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
-    manifest: {
-      name: siteConfig.title,
-      short_name: siteConfig.name,
-      description: siteConfig.description,
-      theme_color: "#1c1c1e",
-      background_color: "#1c1c1e",
-      display: "standalone",
-      scope: "/",
-      start_url: "/",
-      icons: [
-        {
-          src: "android-chrome-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-        },
-        {
-          src: "android-chrome-512x512.png",
-          sizes: "512x512",
-          type: "image/png",
-        },
-        {
-          src: "apple-touch-icon.png",
-          sizes: "180x180",
-          type: "image/png",
-        },
-      ],
-    },
-    workbox: {
-      cleanupOutdatedCaches: true,
-      clientsClaim: true,
-      maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB
-      skipWaiting: true,
-      // 优化预缓存策略：只缓存关键资源
-      globPatterns: [
-        "**/*.{js,css,html}", // 核心资源
-        "**/assets/photos-manifest.*.json", // 默认外置 manifest 是启动关键数据
-        "**/favicon*.{ico,png}", // 网站图标
-        "**/android-chrome-*.png", // PWA 图标
-        "**/apple-touch-icon.png", // iOS 图标
-      ],
-      globIgnores: [
-        "**/*.{jpg,jpeg}", // 大图片不预缓存
-        "**/vendor/heic-*.js", // 按需加载的 HEIC 解码器
-        "**/vendor/exiftool-*.js", // 按需加载的 EXIF 解析器
-        "**/assets/maplibre-gl-*.js", // 地图库按需加载
-        "**/assets/map-*.js", // 地图相关代码按需加载
-        "**/vendor/map-*.js", // 地图库独立 vendor chunk 按需加载
-        "**/assets/vendor/map*.css", // 地图库样式按需加载
-        "**/og-image-*.png", // OG 图片不需要预缓存
-        "**/*.map", // Source maps 不需要缓存
-      ],
-      runtimeCaching: [
-        // 字体缓存策略
-        {
-          urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-          handler: "CacheFirst",
-          options: {
-            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[0],
-            expiration: {
-              maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
-            },
-          },
-        },
-        {
-          urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-          handler: "CacheFirst",
-          options: {
-            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[1],
-            expiration: {
-              maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365, // 365 天
-            },
-          },
-        },
-        // 图片缓存策略：使用 StaleWhileRevalidate 提升体验
-        {
-          urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif)$/,
-          handler: "StaleWhileRevalidate",
-          options: {
-            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[2],
-            expiration: {
-              maxEntries: 150, // 增加缓存条目
-              maxAgeSeconds: 60 * 60 * 24 * 30, // 30 天
-            },
-            cacheableResponse: {
-              statuses: [0, 200],
-            },
-          },
-        },
-        // S3 图片缓存策略（针对静态博客的图片存储）
-        {
-          urlPattern: /^https?:\/\/.*\.(s3|amazonaws|cloudfront|cdn)\..*/i,
-          handler: "CacheFirst",
-          options: {
-            cacheName: AFILMORY_RUNTIME_CACHE_NAMES[3],
-            expiration: {
-              maxEntries: 200,
-              maxAgeSeconds: 60 * 60 * 24 * 90, // 90 天，S3 图片很少变化
-            },
-            cacheableResponse: {
-              statuses: [0, 200],
-            },
-          },
-        },
-      ],
-    },
-    devOptions: {
-      enabled: false, // 开发环境不启用 PWA
-    },
-  }),
+  createAfilmoryPwaPlugin(siteConfig),
 
   buildAssetsPlugin(
     {
@@ -231,82 +118,7 @@ export default defineConfig(async ({ command }) => {
         root: __dirname,
       }),
 
-      createDependencyChunksPlugin([
-        {
-          name: "react",
-          patterns: ["react", "react-dom", "react-router", "scheduler"],
-        },
-        {
-          name: "i18n",
-          patterns: [
-            "i18next",
-            "i18next-browser-languagedetector",
-            "react-i18next",
-          ],
-        },
-        {
-          name: "motion",
-          patterns: ["motion", "framer-motion", "motion-dom", "motion-utils"],
-        },
-        { name: "swiper", patterns: ["swiper"] },
-        { name: "state", patterns: ["jotai", "@tanstack/*"] },
-        {
-          name: "ui",
-          patterns: [
-            "@radix-ui/*",
-            "@floating-ui/*",
-            "react-remove-scroll",
-            "react-remove-scroll-bar",
-            "react-style-singleton",
-            "aria-hidden",
-            "use-sidecar",
-            "use-callback-ref",
-            "sonner",
-            "vaul",
-          ],
-        },
-        {
-          name: "masonry",
-          patterns: [
-            "masonic",
-            "trie-memoize",
-            "raf-schd",
-            "@react-hook/*",
-            "react-intersection-observer",
-            "react-use-measure",
-            "usehooks-ts",
-          ],
-        },
-        // 地图库单独分块，因为体积较大且不是所有用户都会使用
-        { name: "map", patterns: ["maplibre-gl", "react-map-gl"] },
-        { name: "heic", patterns: ["heic-to"] },
-        {
-          name: "file-type",
-          patterns: [
-            "file-type",
-            "strtok3",
-            "token-types",
-            "iobuffer",
-            "uint8array-extras",
-            "peek-readable",
-            "ieee754",
-            "fflate",
-          ],
-        },
-        { name: "zoom", patterns: ["react-zoom-pan-pinch"] },
-        { name: "thumbhash", patterns: ["thumbhash"] },
-        { name: "exiftool", patterns: ["@uswriting/exiftool"] },
-        {
-          name: "utils",
-          patterns: [
-            "es-toolkit",
-            "clsx",
-            "tailwind-merge",
-            "tailwind-variants",
-            "foxact",
-          ],
-        },
-      ]),
+      createDependencyChunksPlugin(dependencyChunkGroups),
       localesJsonPlugin(),
       tailwindcss(),
       ...staticWebBuildPlugins,

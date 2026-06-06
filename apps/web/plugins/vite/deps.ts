@@ -1,6 +1,6 @@
 import type { Plugin, UserConfig } from "vite";
 
-type DependencyChunkGroup = {
+export type DependencyChunkGroup = {
   name: string;
   patterns: string[];
 };

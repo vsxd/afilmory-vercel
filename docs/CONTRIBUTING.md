@@ -2,7 +2,7 @@
 
 ## Setup
 
-This repository is a pnpm workspace. The main app is `apps/web`; photo processing lives in `packages/builder`; shared types are in `packages/data`.
+This repository is a pnpm workspace. The main app is `apps/web`; photo processing lives in `packages/builder`; shared manifest/photo schema lives in `packages/schema`; pure media helpers live in `packages/media`.
 
 Prerequisites:
 
@@ -32,7 +32,7 @@ pnpm build
 - `pnpm build:manifest` runs the builder and writes `generated/photos-manifest.json` plus generated thumbnails.
 - `pnpm build:web` builds only the Vite app and expects a manifest to already exist.
 - `SKIP_MANIFEST_BUILD=true pnpm build` skips the builder intentionally.
-- Production web builds load the manifest through `window.__MANIFEST_PROMISE__`; the default production mode emits a hashed `assets/photos-manifest.<hash>.json` file.
+- Production web builds load the manifest through `window.__AFILMORY__.manifest`; the default production mode emits a hashed `assets/photos-manifest.<hash>.json` file.
 
 ## Before Opening a PR
 

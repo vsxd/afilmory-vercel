@@ -16,7 +16,7 @@
     "react-dom": "^19.1.1"
   },
   "dependencies": {
-    "@afilmory/data": "workspace:*",
+    "@afilmory/media": "workspace:*",
     "@radix-ui/react-avatar": "1.1.10",
     "@radix-ui/react-checkbox": "1.3.3",
     "@radix-ui/react-context-menu": "2.2.16",

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { createManifest } from "@afilmory/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { precheck } from "../../scripts/precheck";
@@ -20,6 +21,14 @@ describe("precheck", () => {
   });
 
   async function writeManifest() {
+    await fs.mkdir(path.join(tmpDir, "generated"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "generated/photos-manifest.json"),
+      JSON.stringify(createManifest()),
+    );
+  }
+
+  async function writeLegacyManifest() {
     await fs.mkdir(path.join(tmpDir, "generated"), { recursive: true });
     await fs.writeFile(
       path.join(tmpDir, "generated/photos-manifest.json"),
@@ -57,6 +66,18 @@ describe("precheck", () => {
         runBuilder,
       }),
     ).rejects.toThrow("Missing required S3 environment variables");
+  });
+
+  it("fails when S3 credentials are missing and the manifest is legacy", async () => {
+    await writeLegacyManifest();
+
+    await expect(
+      precheck({
+        workdir: tmpDir,
+        env: {},
+        runBuilder,
+      }),
+    ).rejects.toThrow("not manifest v2");
   });
 
   it("falls back to an existing manifest when the builder cannot refresh remote state", async () => {

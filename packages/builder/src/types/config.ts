@@ -1,12 +1,6 @@
 import type { BuilderPluginConfigEntry } from "../core/contracts/plugin-ref.js";
 import type { StorageConfig } from "../storage/interfaces.js";
 
-export interface BuilderRepoSettings {
-  enable: boolean;
-  url: string;
-  token?: string;
-}
-
 export interface LoggingConfig {
   verbose: boolean;
   level: "info" | "warn" | "error" | "debug";
@@ -43,7 +37,6 @@ export interface SystemBuilderSettings {
 }
 
 export interface UserBuilderSettings {
-  repo: BuilderRepoSettings;
   storage: StorageConfig | null;
 }
 
@@ -67,9 +60,7 @@ type DeepPartial<T> = T extends object
     }
   : T;
 
-export type BuilderConfigInput = DeepPartial<
-  Omit<UserBuilderSettings, "storage">
-> & {
+export type BuilderConfigInput = {
   storage?: StorageConfig | null;
   user?: DeepPartial<UserBuilderSettings>;
   system?: DeepPartial<SystemBuilderSettings>;

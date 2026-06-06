@@ -42,9 +42,9 @@ async function main() {
   // 显示帮助信息
   if (args.has("--help") || args.has("-h")) {
     logger.main.info(`
-照片库构建工具 (新版本 - 使用适配器模式)
+照片库构建工具 (S3 静态站点构建)
 
-用法：tsx src/core/cli.ts [选项]
+用法：tsx packages/builder/src/cli.ts [选项]
 
 选项：
   --force              强制重新处理所有照片
@@ -55,19 +55,14 @@ async function main() {
   --no-ui             使用传统日志输出（禁用 TUI）
 
 示例：
-  tsx src/core/cli.ts                           # 增量更新
-  tsx src/core/cli.ts --force                   # 全量更新
-  tsx src/core/cli.ts --force-thumbnails        # 强制重新生成缩略图
-  tsx src/core/cli.ts --config                  # 显示配置信息
+  tsx packages/builder/src/cli.ts                           # 增量更新
+  tsx packages/builder/src/cli.ts --force                   # 全量更新
+  tsx packages/builder/src/cli.ts --force-thumbnails        # 强制重新生成缩略图
+  tsx packages/builder/src/cli.ts --config                  # 显示配置信息
 
 配置：
   在 builder.config.ts 中设置 performance.worker.useClusterMode = true 
   可启用多进程集群模式，发挥多核心优势。
-
-远程仓库：
-  如果启用了远程仓库 (repo.enable = true)，构建完成后会自动推送更新。
-  需要配置 repo.token 或设置 REPO_TOKEN 环境变量以提供推送权限（GIT_TOKEN 仍作为兼容别名）。
-  如果没有提供 token，将跳过推送步骤。
 `);
     return;
   }
@@ -93,14 +88,6 @@ async function main() {
         logger.main.info(`   前缀：${storage.prefix || "无"}`);
         break;
       }
-      case "github": {
-        logger.main.info(`   仓库所有者：${storage.owner}`);
-        logger.main.info(`   仓库名称：${storage.repo}`);
-        logger.main.info(`   分支：${storage.branch || "main"}`);
-        logger.main.info(`   路径：${storage.path || "无"}`);
-        logger.main.info(`   使用原始 URL：${storage.useRawUrl || "否"}`);
-        break;
-      }
     }
     logger.main.info(
       `   默认并发数：${config.system.processing.defaultConcurrency}`,
@@ -122,19 +109,8 @@ async function main() {
     );
     logger.main.info("");
     if (!userConfig) {
-      logger.main.warn("未配置用户级设置（repo/storage）");
+      logger.main.warn("未配置用户级设置（storage）");
       return;
-    }
-
-    logger.main.info("📦 远程仓库配置：");
-    logger.main.info(
-      `   启用状态：${userConfig.repo.enable ? "启用" : "禁用"}`,
-    );
-    if (userConfig.repo.enable) {
-      logger.main.info(`   仓库地址：${userConfig.repo.url || "未设置"}`);
-      logger.main.info(
-        `   推送权限：${userConfig.repo.token ? "已配置" : "未配置"}`,
-      );
     }
     return;
   }

@@ -1,10 +1,11 @@
 import "dotenv-expand/config";
 
 /* eslint-disable no-console */
-import { access } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isAfilmoryManifest } from "@afilmory/schema";
 import { $ } from "execa";
 
 interface PrecheckOptions {
@@ -26,7 +27,23 @@ export const precheck = async (options: PrecheckOptions = {}) => {
   const missingS3Vars = requiredS3Vars.filter((key) => !env[key]);
   const manifestPath = path.join(workdir, "generated/photos-manifest.json");
   const ensureExistingManifest = async () => {
-    await access(manifestPath);
+    let content: string;
+    try {
+      content = await readFile(manifestPath, "utf-8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new Error("manifest file is missing");
+      }
+      throw error;
+    }
+
+    const parsed = JSON.parse(content);
+    if (!isAfilmoryManifest(parsed)) {
+      throw new Error(
+        `[precheck] Existing manifest at ${manifestPath} is not manifest v2. ` +
+          "Run pnpm build:manifest with S3 credentials to regenerate it.",
+      );
+    }
   };
 
   if (!shouldBuildManifest) {
@@ -43,7 +60,13 @@ export const precheck = async (options: PrecheckOptions = {}) => {
         `[precheck] Missing S3 env vars (${missingS3Vars.join(", ")}), using existing manifest instead of running builder.`,
       );
       return;
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("manifest file is missing")
+      ) {
+        throw error;
+      }
       throw new Error(
         `[precheck] Missing required S3 environment variables: ${missingS3Vars.join(", ")}. ` +
           `Either configure them or commit an existing manifest at ${manifestPath}.`,

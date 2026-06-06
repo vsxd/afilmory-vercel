@@ -66,11 +66,6 @@ function applySystemOverrides(
 function ensureUserSettings(target: BuilderConfig): UserBuilderSettings {
   if (!target.user) {
     target.user = {
-      repo: {
-        enable: false,
-        url: "",
-        token: "",
-      },
       storage: null,
     };
   }
@@ -84,12 +79,6 @@ function applyUserOverrides(
   if (!overrides) return;
   const user = ensureUserSettings(target);
 
-  if (overrides.repo) {
-    user.repo = {
-      ...user.repo,
-      ...overrides.repo,
-    };
-  }
   if (overrides.storage !== undefined) {
     user.storage = overrides.storage as StorageConfig | null;
   }
@@ -136,14 +125,6 @@ function normalizeBuilderConfig(
   applySystemOverrides(next.system, input.system);
   applyUserOverrides(next, input.user);
   applyOutputOverrides(next.output, input.output);
-
-  if (input.repo) {
-    const user = ensureUserSettings(next);
-    user.repo = {
-      ...user.repo,
-      ...input.repo,
-    };
-  }
 
   if (input.storage !== undefined) {
     ensureUserSettings(next).storage = input.storage ?? null;
@@ -201,12 +182,6 @@ export async function loadBuilderConfig(
       sanitized.user = {
         ...sanitized.user,
         storage: storage as typeof sanitized.user.storage,
-      };
-    }
-    if (sanitized.user?.repo) {
-      sanitized.user = {
-        ...sanitized.user,
-        repo: { ...sanitized.user.repo, token: "***" },
       };
     }
     logger.info(sanitized);

@@ -1,4 +1,4 @@
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
 import { describe, expect, it } from "vitest";
 
 import { getPhotoDate, getPhotoDateString } from "../photo-date";

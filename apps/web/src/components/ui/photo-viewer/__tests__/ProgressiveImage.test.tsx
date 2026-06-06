@@ -7,6 +7,7 @@ import { ProgressiveImage } from "../ProgressiveImage";
 const hoisted = vi.hoisted(() => ({
   canUseWebGL: false,
   failWebGL: false,
+  runtime: { imageCache: {} },
 }));
 
 vi.mock("@afilmory/ui", () => ({
@@ -57,6 +58,10 @@ vi.mock("~/lib/image-loader-manager", () => {
 
   return { ImageLoaderManager: MockImageLoaderManager };
 });
+
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => hoisted.runtime,
+}));
 
 vi.mock("motion/react", () => {
   return {

@@ -12,10 +12,10 @@ export type {
   ToneAnalysis,
   ToneType,
   VideoSource,
-} from "@afilmory/data/types";
+} from "@afilmory/schema/types";
 
 export interface ProcessPhotoResult {
-  item: import("@afilmory/data/types").PhotoManifestItem | null;
+  item: import("@afilmory/schema/types").PhotoManifestItem | null;
   type: "processed" | "skipped" | "new" | "failed";
   pluginData?: Record<string, unknown>;
 }

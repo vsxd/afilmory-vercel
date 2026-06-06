@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { AFILMORY_MANIFEST_SCHEMA } from "@afilmory/schema";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -111,8 +112,25 @@ describe("loadExistingManifest", () => {
       loadExistingManifest(),
     );
 
+    expect(manifest.schema).toBe(AFILMORY_MANIFEST_SCHEMA);
     expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    expect(manifest.photos).toEqual([]);
     await expect(fs.access(manifestPath)).resolves.toBeUndefined();
+  });
+
+  it("does not migrate legacy manifests", async () => {
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({ version: "v10", data: [{ id: "legacy" }] }),
+    );
+
+    const manifest = await runWithBuilderOutputSettings(outputSettings, () =>
+      loadExistingManifest(),
+    );
+
+    expect(manifest.schema).toBe(AFILMORY_MANIFEST_SCHEMA);
+    expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    expect(manifest.photos).toEqual([]);
   });
 
   it("preserves an unreadable manifest instead of overwriting it", async () => {

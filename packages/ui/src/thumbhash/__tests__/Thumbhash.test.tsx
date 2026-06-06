@@ -1,11 +1,11 @@
-import { decompressUint8Array } from "@afilmory/data";
+import { decompressUint8Array } from "@afilmory/media";
 import { render } from "@testing-library/react";
 import { thumbHashToDataURL } from "thumbhash";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Thumbhash } from "../index";
 
-vi.mock("@afilmory/data", () => ({
+vi.mock("@afilmory/media", () => ({
   decompressUint8Array: vi.fn(
     (value: string) => new Uint8Array([value.length]),
   ),

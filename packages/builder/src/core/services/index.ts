@@ -1,5 +1,4 @@
 import type { Logger } from "../../logger/index.js";
-import type { StorageProviderFactory } from "../../storage/factory.js";
 import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
 import type { BuilderConfig } from "../../types/config.js";
@@ -23,10 +22,6 @@ export interface BuilderServicesBacking {
   getStorageConfig: () => StorageConfig;
   getStorageManager: () => StorageManager;
   createStorageManager: (config: StorageConfig) => StorageManager;
-  registerStorageProvider: (
-    name: string,
-    factory: StorageProviderFactory,
-  ) => void;
   hasPhotoIdCollision: (key: string) => boolean;
   getPhotoIdForKey: (key: string, existingItem?: PhotoManifestItem) => string;
   setPhotoIdCollisionKeys: (keys: Iterable<string>) => void;
@@ -40,8 +35,6 @@ export function createBuilderServices(
     createManager: (config) => backing.createStorageManager(config),
     getConfig: () => backing.getStorageConfig(),
     getManager: () => backing.getStorageManager(),
-    registerProvider: (name, factory) =>
-      backing.registerStorageProvider(name, factory),
   };
 
   const output: OutputPathsService = {

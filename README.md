@@ -71,7 +71,7 @@ Huge thanks to [Innei](https://innei.in) and the Afilmory team for creating this
 - ☁️ **S3-compatible source photos** - works with AWS S3, MinIO, Aliyun OSS, Tencent COS, and other S3-compatible services.
 - 🌍 **CDN-friendly URLs** - `S3_CUSTOM_DOMAIN` can be used for public photo URLs.
 - 📦 **Zero original photo bundling** - original photos remain in object storage; only generated thumbnails and web assets are deployed.
-- 🚀 **Static SPA runtime** - production builds default to an external `assets/photos-manifest.<hash>.json` loaded through `window.__MANIFEST_PROMISE__`.
+- 🚀 **Static SPA runtime** - production builds default to an external `assets/photos-manifest.<hash>.json` loaded through `window.__AFILMORY__.manifest`.
 
 ---
 
@@ -117,7 +117,7 @@ Click the button below and follow the prompts to configure S3-related environmen
 
 ## ⚙️ Environment Variables
 
-Environment overrides are merged into `site.config.ts` by `site.config.build.ts` during build. Client-side code receives the final config through `window.__SITE_CONFIG__`; it does not read `process.env` at runtime.
+Environment overrides are merged into `site.config.ts` by `site.config.build.ts` during build. Client-side code receives the final config through `window.__AFILMORY__.config`; it does not read `process.env` at runtime.
 
 ### Required for S3 source photos
 
@@ -315,7 +315,7 @@ Use `pnpm build` as the build command.
 - Tailwind CSS 4
 - Radix UI
 - Motion
-- Jotai and Zustand
+- Jotai
 - TanStack Query
 - React Router 7
 - i18next and react-i18next

@@ -100,7 +100,9 @@ test("loads the gallery from the unified browser runtime namespace", async ({
         config?: unknown;
         manifest?: {
           data?: {
-            data?: unknown[];
+            schema?: unknown;
+            version?: unknown;
+            photos?: unknown[];
           };
         };
       };
@@ -114,8 +116,10 @@ test("loads the gallery from the unified browser runtime namespace", async ({
       configInjected: scriptText.includes("window.__AFILMORY__.config"),
       hasConfig: Boolean(runtime?.config),
       hasManifest: Boolean(runtime?.manifest),
-      manifestPhotoCount: Array.isArray(runtime?.manifest?.data?.data)
-        ? runtime.manifest.data.data.length
+      manifestSchema: runtime?.manifest?.data?.schema,
+      manifestVersion: runtime?.manifest?.data?.version,
+      manifestPhotoCount: Array.isArray(runtime?.manifest?.data?.photos)
+        ? runtime.manifest.data.photos.length
         : 0,
       oldGlobals: Object.fromEntries(
         legacyGlobals.map((key) => [key, typeof appWindow[key]]),
@@ -130,6 +134,8 @@ test("loads the gallery from the unified browser runtime namespace", async ({
   expect(runtimeState.configInjected).toBe(true);
   expect(runtimeState.hasConfig).toBe(true);
   expect(runtimeState.hasManifest).toBe(true);
+  expect(runtimeState.manifestSchema).toBe("afilmory.manifest");
+  expect(runtimeState.manifestVersion).toBe(2);
   expect(runtimeState.manifestPhotoCount).toBeGreaterThan(0);
   expect(runtimeState.oldGlobalStringsInScripts).toBe(false);
   expect(runtimeState.oldGlobals).toEqual(

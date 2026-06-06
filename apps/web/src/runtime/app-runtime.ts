@@ -1,8 +1,10 @@
-import type { AfilmoryManifest } from "@afilmory/data";
+import type { AfilmoryManifest } from "@afilmory/schema";
 import { createStore } from "jotai";
 import { createContext, use } from "react";
 
 import { PhotoRepository } from "~/data-runtime/photo-repository";
+import type { RegularImageCache } from "~/lib/image-cache-service";
+import { createRegularImageCache } from "~/lib/image-cache-service";
 
 import type { AfilmoryBrowserRuntime } from "./browser-runtime";
 import { ensureBrowserRuntime } from "./browser-runtime";
@@ -50,6 +52,7 @@ export type AppRuntime = {
   bodyScrollLock: BodyScrollLockManager;
   browser: AfilmoryBrowserRuntime;
   criticalRoutePreloadCleanup?: () => void;
+  imageCache: RegularImageCache;
   photoRepository: PhotoRepository;
   store: ReturnType<typeof createStore>;
   dispose: () => void;
@@ -67,10 +70,12 @@ export function createAppRuntime({
   return {
     bodyScrollLock,
     browser: browserRuntime,
+    imageCache: createRegularImageCache(),
     photoRepository: new PhotoRepository(manifest),
     store: createStore(),
     dispose() {
       this.criticalRoutePreloadCleanup?.();
+      this.imageCache.clear();
       bodyScrollLock.reset();
     },
   };

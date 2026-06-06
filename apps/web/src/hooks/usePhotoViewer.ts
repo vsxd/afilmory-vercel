@@ -1,4 +1,4 @@
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { use, useCallback, useEffect, useMemo } from "react";
 
@@ -18,10 +18,7 @@ const viewerSourcePhotoIdsAtom = atom<string[] | null>(null);
 
 type ViewerSourceMode = "filtered" | "all";
 
-const sortPhotos = (
-  photos: PhotoManifestItem[],
-  sortOrder: "asc" | "desc",
-) => {
+const sortPhotos = (photos: PhotoManifestItem[], sortOrder: "asc" | "desc") => {
   return photos.toSorted((a, b) => {
     const aDateStr = getPhotoDateString(a);
     const bDateStr = getPhotoDateString(b);

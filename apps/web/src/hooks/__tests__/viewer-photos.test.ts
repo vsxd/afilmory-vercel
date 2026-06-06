@@ -1,4 +1,5 @@
-import type { AfilmoryManifest, PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
+import { createManifest } from "@afilmory/schema";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { Provider } from "jotai";
 import * as React from "react";
@@ -56,11 +57,8 @@ const createPhoto = (
   ...overrides,
 });
 
-const manifest: AfilmoryManifest = {
-  version: "v8",
-  cameras: [],
-  lenses: [],
-  data: [
+const manifest = createManifest({
+  photos: [
     createPhoto({
       id: "visible-photo",
       title: "Visible Photo",
@@ -81,7 +79,7 @@ const manifest: AfilmoryManifest = {
       tags: ["other"],
     }),
   ],
-};
+});
 
 let runtime: AppRuntime;
 

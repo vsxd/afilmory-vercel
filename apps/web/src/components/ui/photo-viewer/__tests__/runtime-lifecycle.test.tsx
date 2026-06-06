@@ -20,6 +20,7 @@ let processVideoMock: ReturnType<typeof vi.fn>;
 let cleanupMock: ReturnType<typeof vi.fn>;
 let animationStartMock: ReturnType<typeof vi.fn>;
 let animationSetMock: ReturnType<typeof vi.fn>;
+const runtimeMock = vi.hoisted(() => ({ imageCache: {} }));
 
 vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
@@ -38,6 +39,10 @@ vi.mock("~/lib/image-loader-manager", () => {
 
   return { ImageLoaderManager: MockImageLoaderManager };
 });
+
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => runtimeMock,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({

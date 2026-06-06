@@ -9,10 +9,16 @@ class ResizeObserverMock {
 }
 
 class WorkerMock {
+  static instances: WorkerMock[] = [];
+
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
   postMessage = vi.fn();
   terminate = vi.fn();
+
+  constructor() {
+    WorkerMock.instances.push(this);
+  }
 }
 
 function createWebGLMock(): WebGLRenderingContext {
@@ -119,6 +125,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
   const originalRevokeObjectURL = URL.revokeObjectURL;
 
   beforeEach(() => {
+    WorkerMock.instances = [];
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     vi.stubGlobal("Worker", WorkerMock);
     Object.defineProperty(URL, "createObjectURL", {
@@ -350,8 +357,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
     void engine.loadImage("blob:photo", 100, 100, sourceBlob);
 
-    const {worker} = (engine as unknown as { worker: WorkerMock | null });
-    expect(worker?.postMessage).toHaveBeenCalledWith({
+    expect(WorkerMock.instances.at(-1)?.postMessage).toHaveBeenCalledWith({
       type: "load-image",
       payload: { url: "blob:photo", blob: sourceBlob },
     });

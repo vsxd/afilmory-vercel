@@ -33,6 +33,12 @@ vi.mock("~/lib/device-viewport", () => ({
   isMobileDevice: false,
 }));
 
+const runtimeMock = vi.hoisted(() => ({ imageCache: {} }));
+
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => runtimeMock,
+}));
+
 function LivePhotoHandlerHarness({
   data,
   tick,

@@ -1,4 +1,4 @@
-import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/data";
+import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/schema";
 
 const getLocationTokens = (
   location?: {
@@ -75,10 +75,7 @@ export const fuzzyMatch = (text: string, query: string): boolean => {
 };
 
 // Search photos utility
-export const searchPhotos = (
-  photos: PhotoManifestItem[],
-  query: string,
-) => {
+export const searchPhotos = (photos: PhotoManifestItem[], query: string) => {
   const lowerQuery = query.trim().toLowerCase();
   if (!lowerQuery) return [];
 

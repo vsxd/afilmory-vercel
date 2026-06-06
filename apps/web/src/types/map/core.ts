@@ -1,4 +1,4 @@
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
 
 /**
  * GPS Cardinal directions enum

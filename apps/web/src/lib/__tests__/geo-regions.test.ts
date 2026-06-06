@@ -1,4 +1,4 @@
-import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/data";
+import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/schema";
 import { describe, expect, it } from "vitest";
 
 import {

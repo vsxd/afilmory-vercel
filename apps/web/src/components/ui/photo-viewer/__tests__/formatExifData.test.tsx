@@ -1,4 +1,4 @@
-import type { PickedExif } from "@afilmory/data";
+import type { PickedExif } from "@afilmory/schema";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 

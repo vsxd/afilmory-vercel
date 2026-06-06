@@ -7,16 +7,10 @@ import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import {
-  fuzzyMatch,
-  getLocationTokens,
-  searchPhotos,
-} from "~/hooks/useCommandSearch";
-import {
   getViewerPhotos,
   getViewerSourceMode,
   useOpenPhotoViewer,
 } from "~/hooks/usePhotoViewer";
-import { MageLens } from "~/icons";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
 import {
   createGeographicRegions,
@@ -26,21 +20,15 @@ import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { FilterPanelContent } from "~/modules/gallery/panels/FilterPanel";
 import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
+import type { PhotoManifest } from "~/types/photo";
 
-// Command types
-type CommandType = "search" | "filter" | "action" | "photo";
-
-interface Command {
-  id: string;
-  type: CommandType;
-  title: string;
-  subtitle?: string;
-  icon: string | React.ReactNode;
-  action: () => void;
-  keywords?: string[];
-  badge?: string | number;
-  active?: boolean;
-}
+import {
+  buildActiveFilterChips,
+  buildCommandIndex,
+  filterCommands,
+  getActiveFilterCount,
+  getAvailableFilterCount,
+} from "./command-palette-model";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -54,7 +42,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const openViewer = useOpenPhotoViewer();
   const runtime = useAfilmoryRuntime();
   const photoRepository = usePhotoRepository();
-  const allTags = useMemo(() => photoRepository.getAllTags(), [photoRepository]);
+  const allTags = useMemo(
+    () => photoRepository.getAllTags(),
+    [photoRepository],
+  );
   const allCameras = useMemo(
     () => photoRepository.getAllCameras(),
     [photoRepository],
@@ -70,12 +61,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const activeFilterCount =
-    gallerySetting.selectedTags.length +
-    gallerySetting.selectedCameras.length +
-    gallerySetting.selectedLenses.length +
-    gallerySetting.selectedGeoCountries.length +
-    gallerySetting.selectedGeoCities.length;
+  const activeFilterCount = getActiveFilterCount(gallerySetting);
 
   const hasFilters = activeFilterCount > 0;
 
@@ -117,25 +103,25 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   const regionLabelMaps = useMemo(
     () => ({
-      country: new Map(
+      selectedGeoCountries: new Map(
         geoRegions.country.map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
         ]),
       ),
-      region: new Map(
+      selectedGeoRegions: new Map(
         geoRegions.region.map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
         ]),
       ),
-      city: new Map(
+      selectedGeoCities: new Map(
         geoRegions.city.map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
         ]),
       ),
-      district: new Map(
+      selectedGeoDistricts: new Map(
         geoRegions.district.map((region) => [
           region.id,
           getRegionDisplayName(region, i18n.language),
@@ -146,103 +132,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   );
 
   const activeFilterChips = useMemo(
-    () => [
-      ...gallerySetting.selectedTags.map((tag) => ({
-        id: `tag-${tag}`,
-        label: tag,
-        icon: "i-mingcute-tag-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedTags: prev.selectedTags.filter(
-              (selectedTag) => selectedTag !== tag,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedCameras.map((camera) => ({
-        id: `camera-${camera}`,
-        label: camera,
-        icon: "i-mingcute-camera-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedCameras: prev.selectedCameras.filter(
-              (selectedCamera) => selectedCamera !== camera,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedLenses.map((lens) => ({
-        id: `lens-${lens}`,
-        label: lens,
-        icon: "i-mingcute-camera-2-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedLenses: prev.selectedLenses.filter(
-              (selectedLens) => selectedLens !== lens,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedGeoCountries.map((id) => ({
-        id: `geo-country-${id}`,
-        label: regionLabelMaps.country.get(id) ?? id,
-        icon: "i-mingcute-world-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoCountries: prev.selectedGeoCountries.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedGeoRegions.map((id) => ({
-        id: `geo-region-${id}`,
-        label: regionLabelMaps.region.get(id) ?? id,
-        icon: "i-mingcute-map-pin-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoRegions: prev.selectedGeoRegions.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedGeoCities.map((id) => ({
-        id: `geo-city-${id}`,
-        label: regionLabelMaps.city.get(id) ?? id,
-        icon: "i-mingcute-building-5-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoCities: prev.selectedGeoCities.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
-      ...gallerySetting.selectedGeoDistricts.map((id) => ({
-        id: `geo-district-${id}`,
-        label: regionLabelMaps.district.get(id) ?? id,
-        icon: "i-mingcute-map-pin-line",
-        onRemove: () =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoDistricts: prev.selectedGeoDistricts.filter(
-              (selectedId) => selectedId !== id,
-            ),
-          })),
-      })),
-    ],
-    [
-      gallerySetting.selectedCameras,
-      gallerySetting.selectedGeoCities,
-      gallerySetting.selectedGeoCountries,
-      gallerySetting.selectedGeoDistricts,
-      gallerySetting.selectedGeoRegions,
-      gallerySetting.selectedLenses,
-      gallerySetting.selectedTags,
-      regionLabelMaps,
-      setGallerySetting,
-    ],
+    () =>
+      buildActiveFilterChips({
+        gallerySetting,
+        regionLabelMaps,
+        setGallerySetting,
+      }),
+    [gallerySetting, regionLabelMaps, setGallerySetting],
   );
 
   // Reset state when opened
@@ -266,274 +162,65 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Generate commands
-  const commands = useMemo((): Command[] => {
-    const cmds: Command[] = [];
+  const openPhoto = useCallback(
+    (photo: PhotoManifest) => {
+      const viewerPhotos = getViewerPhotos(runtime, photo.id);
+      const photoIndex = viewerPhotos.findIndex((item) => item.id === photo.id);
+      if (photoIndex === -1) {
+        return;
+      }
 
-    // Filter commands - Tags
-    if (allTags.length > 0) {
-      allTags.forEach((tag) => {
-        const isActive = gallerySetting.selectedTags.includes(tag);
-        cmds.push({
-          id: `tag-${tag}`,
-          type: "filter",
-          title: tag,
-          subtitle: t("action.tag.filter"),
-          icon: "i-mingcute-tag-line",
-          active: isActive,
-          action: () => {
-            setGallerySetting((prev) => ({
-              ...prev,
-              selectedTags: isActive
-                ? prev.selectedTags.filter((t) => t !== tag)
-                : [...prev.selectedTags, tag],
-            }));
-          },
-          keywords: ["tag", "filter", tag],
-        });
+      openViewer(photoIndex, {
+        sourceMode: getViewerSourceMode(runtime, photo.id),
+        sourcePhotoIds: viewerPhotos.map((viewerPhoto) => viewerPhoto.id),
       });
-    }
-
-    // Filter commands - Cameras
-    if (allCameras.length > 0) {
-      allCameras.forEach((camera) => {
-        const isActive = gallerySetting.selectedCameras.includes(
-          camera.displayName,
-        );
-        cmds.push({
-          id: `camera-${camera.displayName}`,
-          type: "filter",
-          title: camera.displayName,
-          subtitle: t("action.camera.filter"),
-          icon: "i-mingcute-camera-line",
-          active: isActive,
-          action: () => {
-            setGallerySetting((prev) => ({
-              ...prev,
-              selectedCameras: isActive
-                ? prev.selectedCameras.filter((c) => c !== camera.displayName)
-                : [...prev.selectedCameras, camera.displayName],
-            }));
-          },
-          keywords: [
-            "camera",
-            "filter",
-            camera.displayName,
-            camera.make,
-            camera.model,
-          ],
-        });
+      navigate({
+        pathname: buildPhotoDetailPathname(photo.id),
+        search: buildGalleryFilterSearch("", gallerySetting),
       });
-    }
+      onClose();
+    },
+    [gallerySetting, navigate, onClose, openViewer, runtime],
+  );
 
-    // Filter commands - Lenses
-    if (allLenses.length > 0) {
-      allLenses.forEach((lens) => {
-        const isActive = gallerySetting.selectedLenses.includes(
-          lens.displayName,
-        );
-        cmds.push({
-          id: `lens-${lens.displayName}`,
-          type: "filter",
-          title: lens.displayName,
-          subtitle: t("action.lens.filter"),
-          icon: <MageLens />,
-          active: isActive,
-          action: () => {
-            setGallerySetting((prev) => ({
-              ...prev,
-              selectedLenses: isActive
-                ? prev.selectedLenses.filter((l) => l !== lens.displayName)
-                : [...prev.selectedLenses, lens.displayName],
-            }));
-          },
-          keywords: ["lens", "filter", lens.displayName],
-        });
-      });
-    }
+  const commands = useMemo(
+    () =>
+      buildCommandIndex({
+        t,
+        language: i18n.language,
+        gallerySetting,
+        allTags,
+        allCameras,
+        allLenses,
+        allPhotos,
+        geoRegions,
+        query,
+        hasFilters,
+        setGallerySetting,
+        updateTagFilterMode,
+        openPhoto,
+      }),
+    [
+      t,
+      i18n.language,
+      gallerySetting,
+      allTags,
+      allCameras,
+      allLenses,
+      allPhotos,
+      geoRegions,
+      query,
+      hasFilters,
+      setGallerySetting,
+      updateTagFilterMode,
+      openPhoto,
+    ],
+  );
 
-    const geoCommandGroups = [
-      {
-        regions: geoRegions.country,
-        selected: gallerySetting.selectedGeoCountries,
-        label: t("action.geo.country.filter"),
-        icon: "i-mingcute-world-line",
-        keywords: ["country", "geo", "region", "filter"],
-        toggle: (id: string) =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoCountries: prev.selectedGeoCountries.includes(id)
-              ? prev.selectedGeoCountries.filter((item) => item !== id)
-              : [...prev.selectedGeoCountries, id],
-          })),
-      },
-      {
-        regions: geoRegions.city,
-        selected: gallerySetting.selectedGeoCities,
-        label: t("action.geo.city.filter"),
-        icon: "i-mingcute-building-5-line",
-        keywords: ["city", "geo", "filter"],
-        toggle: (id: string) =>
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedGeoCities: prev.selectedGeoCities.includes(id)
-              ? prev.selectedGeoCities.filter((item) => item !== id)
-              : [...prev.selectedGeoCities, id],
-          })),
-      },
-    ];
-
-    geoCommandGroups.forEach((group) => {
-      group.regions.forEach((region) => {
-        const isActive = group.selected.includes(region.id);
-        const title = getRegionDisplayName(region, i18n.language);
-        cmds.push({
-          id: `geo-${region.level}-${region.id}`,
-          type: "filter",
-          title,
-          subtitle: group.label,
-          icon: group.icon,
-          active: isActive,
-          action: () => group.toggle(region.id),
-          keywords: [
-            ...group.keywords,
-            title,
-            region.label,
-            region.adminPath.country,
-            region.adminPath.region,
-            region.adminPath.city,
-            region.adminPath.district,
-          ].filter(Boolean) as string[],
-          badge: region.photoCount,
-        });
-      });
-    });
-
-    // Tag filter mode toggle
-    if (allTags.length > 0) {
-      const isUnionMode = gallerySetting.tagFilterMode === "union";
-      cmds.push({
-        id: "tag-filter-mode-toggle",
-        type: "action",
-        title: isUnionMode
-          ? t("action.tag.match.any")
-          : t("action.tag.match.all"),
-        subtitle: t("action.tag.match.label"),
-        icon: "i-mingcute-switch-line",
-        badge: isUnionMode ? t("action.tag.mode.or") : t("action.tag.mode.and"),
-        action: () =>
-          updateTagFilterMode(isUnionMode ? "intersection" : "union"),
-        keywords: ["tag", "filter", "mode", "toggle"],
-      });
-    }
-
-    if (hasFilters) {
-      cmds.push({
-        id: "clear-filters",
-        type: "action",
-        title: t("action.search.clear"),
-        subtitle: t("action.search.clear-filters-subtitle"),
-        icon: "i-mingcute-close-line",
-        action: () => {
-          setGallerySetting((prev) => ({
-            ...prev,
-            selectedTags: [],
-            selectedCameras: [],
-            selectedLenses: [],
-            selectedGeoCountries: [],
-            selectedGeoRegions: [],
-            selectedGeoCities: [],
-            selectedGeoDistricts: [],
-            tagFilterMode: "union",
-          }));
-        },
-        keywords: ["clear", "reset", "remove", "filter"],
-      });
-    }
-
-    // Photo search results
-    if (query.trim()) {
-      const photos = searchPhotos(allPhotos, query);
-      photos.slice(0, 10).forEach((photo) => {
-        const locationTokens = getLocationTokens(photo.location);
-        const locationSubtitle = locationTokens.join(", ");
-        cmds.push({
-          id: `photo-${photo.id}`,
-          type: "photo",
-          title: photo.title || photo.id,
-          subtitle:
-            photo.description ||
-            locationSubtitle ||
-            `${photo.exif?.Model || t("action.search.photo")}`,
-          icon: (
-            <img
-              src={photo.thumbnailUrl}
-              alt={t("action.search.photo-thumbnail", {
-                title: photo.title || photo.id,
-              })}
-              className="h-10 w-10 rounded-xl object-cover"
-            />
-          ),
-          action: () => {
-            const viewerPhotos = getViewerPhotos(runtime, photo.id);
-            const photoIndex = viewerPhotos.findIndex((p) => p.id === photo.id);
-            if (photoIndex !== -1) {
-              openViewer(photoIndex, {
-                sourceMode: getViewerSourceMode(runtime, photo.id),
-                sourcePhotoIds: viewerPhotos.map(
-                  (viewerPhoto) => viewerPhoto.id,
-                ),
-              });
-              navigate({
-                pathname: buildPhotoDetailPathname(photo.id),
-                search: buildGalleryFilterSearch("", gallerySetting),
-              });
-              onClose();
-            }
-          },
-          keywords: [
-            photo.title,
-            photo.description,
-            ...locationTokens,
-            ...(photo.tags || []),
-          ].filter(Boolean) as string[],
-        });
-      });
-    }
-
-    return cmds;
-  }, [
-    t,
-    gallerySetting,
-    allCameras,
-    allLenses,
-    allPhotos,
-    allTags,
-    geoRegions,
-    query,
-    navigate,
-    onClose,
-    setGallerySetting,
-    openViewer,
-    runtime,
-    updateTagFilterMode,
-    hasFilters,
-    i18n.language,
-  ]);
-
-  // Filter commands based on query
-  const filteredCommands = useMemo(() => {
-    if (!query.trim()) {
-      return [];
-    }
-
-    return commands
-      .filter((cmd) => {
-        const searchText = `${cmd.title} ${cmd.subtitle || ""} ${cmd.keywords?.join(" ") || ""}`;
-        return fuzzyMatch(searchText, query);
-      })
-      .slice(0, 20);
-  }, [commands, query]);
+  const filteredCommands = useMemo(
+    () => filterCommands(commands, query),
+    [commands, query],
+  );
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -583,12 +270,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   if (!isOpen) return null;
 
   const isBrowsingFilters = !query.trim();
-  const availableFilterCount =
-    allTags.length +
-    allCameras.length +
-    allLenses.length +
-    geoRegions.country.length +
-    geoRegions.city.length;
+  const availableFilterCount = getAvailableFilterCount({
+    allTags,
+    allCameras,
+    allLenses,
+    geoRegions,
+  });
   const resultSummary = query.trim()
     ? t("action.search.command-count", { count: filteredCommands.length })
     : t("action.search.showing-filters", { count: availableFilterCount });

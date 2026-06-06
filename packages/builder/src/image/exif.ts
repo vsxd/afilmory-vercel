@@ -8,20 +8,45 @@ import { ExifTool } from "exiftool-vendored";
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { PickedExif } from "../types/photo.js";
 
-const exiftool = new ExifTool({
-  ...(process.env.EXIFTOOL_PATH
-    ? { exiftoolPath: process.env.EXIFTOOL_PATH }
-    : {}),
-  taskTimeoutMillis: 30000,
-});
+export class ExifService {
+  private readonly exiftool: ExifTool;
+  private closed = false;
 
-let isExiftoolClosed = false;
-export const closeExiftool = () => {
-  if (isExiftoolClosed) {
-    return;
+  constructor(options: { exiftoolPath?: string } = {}) {
+    this.exiftool = new ExifTool({
+      ...(options.exiftoolPath ? { exiftoolPath: options.exiftoolPath } : {}),
+      taskTimeoutMillis: 30000,
+    });
   }
-  isExiftoolClosed = true;
-  exiftool.end().catch(noop);
+
+  async read(filePath: string): Promise<Tags> {
+    if (this.closed) {
+      throw new Error("ExifService has already been closed.");
+    }
+    return await this.exiftool.read(filePath);
+  }
+
+  close(): void {
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
+    this.exiftool.end().catch(noop);
+  }
+}
+
+let defaultExifService: ExifService | null = null;
+
+function getDefaultExifService(): ExifService {
+  defaultExifService ??= new ExifService({
+    exiftoolPath: process.env.EXIFTOOL_PATH,
+  });
+  return defaultExifService;
+}
+
+export const closeExiftool = () => {
+  defaultExifService?.close();
+  defaultExifService = null;
 };
 
 // 提取 EXIF 数据
@@ -41,7 +66,7 @@ export async function extractExifData(
     await writeFile(tempImagePath, originalBuffer || imageBuffer);
 
     log.info(`开始提取 EXIF 数据, 文件路径: ${tempImagePath}`);
-    const exifData = await exiftool.read(tempImagePath);
+    const exifData = await getDefaultExifService().read(tempImagePath);
 
     const result = handleExifData(exifData);
 

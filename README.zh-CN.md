@@ -71,7 +71,7 @@
 - ☁️ **S3 兼容照片源** - 支持 AWS S3、MinIO、阿里云 OSS、腾讯云 COS 等 S3 兼容服务。
 - 🌍 **CDN 友好 URL** - 可通过 `S3_CUSTOM_DOMAIN` 生成公开照片 URL。
 - 📦 **原图不打包** - 原图保留在对象存储中，部署产物只包含生成缩略图和 Web 资源。
-- 🚀 **静态 SPA 运行时** - 生产构建默认输出外置 `assets/photos-manifest.<hash>.json`，通过 `window.__MANIFEST_PROMISE__` 加载。
+- 🚀 **静态 SPA 运行时** - 生产构建默认输出外置 `assets/photos-manifest.<hash>.json`，通过 `window.__AFILMORY__.manifest` 加载。
 
 ---
 
@@ -117,7 +117,7 @@
 
 ## ⚙️ 环境变量配置
 
-构建时，`site.config.build.ts` 会把环境变量覆盖合并到 `site.config.ts` 默认值中。浏览器端通过 `window.__SITE_CONFIG__` 获取最终配置，不在运行时读取 `process.env`。
+构建时，`site.config.build.ts` 会把环境变量覆盖合并到 `site.config.ts` 默认值中。浏览器端通过 `window.__AFILMORY__.config` 获取最终配置，不在运行时读取 `process.env`。
 
 ### S3 照片源必填项
 
@@ -315,7 +315,7 @@ S3 凭据完整时，`scripts/build-static.sh` 会运行 `pnpm build`。缺少 S
 - Tailwind CSS 4
 - Radix UI
 - Motion
-- Jotai 与 Zustand
+- Jotai
 - TanStack Query
 - React Router 7
 - i18next 与 react-i18next

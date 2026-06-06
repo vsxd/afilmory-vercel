@@ -3,8 +3,8 @@ import type {
   CameraInfo,
   LensInfo,
   PhotoManifestItem,
-} from "@afilmory/data";
-import { createEmptyManifest } from "@afilmory/data";
+} from "@afilmory/schema";
+import { createEmptyManifest } from "@afilmory/schema";
 
 import { debugLog } from "~/lib/debug-log";
 
@@ -15,9 +15,9 @@ export class PhotoRepository {
   private readonly lenses: LensInfo[];
 
   constructor(manifest: AfilmoryManifest = createEmptyManifest()) {
-    this.photos = manifest.data;
-    this.cameras = manifest.cameras;
-    this.lenses = manifest.lenses;
+    this.photos = manifest.photos;
+    this.cameras = manifest.indexes.cameras;
+    this.lenses = manifest.indexes.lenses;
     this.photoMap = new Map(
       this.photos.flatMap((photo) => (photo?.id ? [[photo.id, photo]] : [])),
     );

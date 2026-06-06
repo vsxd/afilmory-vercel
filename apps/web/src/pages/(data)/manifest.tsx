@@ -211,8 +211,9 @@ const ManifestInspectorPage = () => {
 
   const photos = photoRepository.getPhotos();
   const manifestData = {
-    version: "v6",
-    data: photos,
+    schema: "afilmory.manifest",
+    version: 2,
+    photos,
   };
 
   // 搜索过滤
@@ -374,7 +375,11 @@ const ManifestInspectorPage = () => {
                     <JsonHighlight
                       data={
                         searchTerm
-                          ? { version: "v6", data: filteredPhotos }
+                          ? {
+                              schema: "afilmory.manifest",
+                              version: 2,
+                              photos: filteredPhotos,
+                            }
                           : manifestData
                       }
                     />

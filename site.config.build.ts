@@ -6,14 +6,12 @@
  *
  * - Imports 'env.ts' to access process.env safely.
  * - Merges defaults from 'site.config.ts' with environment overrides.
- * - The result is injected into the client via 'window.__SITE_CONFIG__'.
+ * - The result is injected into the client via 'window.__AFILMORY__.config'.
  */
 
-import { merge } from 'es-toolkit/compat'
-
-import { env } from './env'
-import type { SiteConfig } from './site.config'
-import { siteConfig as baseSiteConfig } from './site.config'
+import { env } from "./env";
+import type { SiteConfig } from "./site.config";
+import { siteConfig as baseSiteConfig } from "./site.config";
 
 const envConfig: Partial<SiteConfig> = {
   name: env.SITE_NAME,
@@ -30,20 +28,61 @@ const envConfig: Partial<SiteConfig> = {
   social: {
     github: env.SOCIAL_GITHUB || baseSiteConfig.social?.github,
     twitter: env.SOCIAL_TWITTER || baseSiteConfig.social?.twitter,
-    rss: env.SOCIAL_RSS ? env.SOCIAL_RSS === 'true' : baseSiteConfig.social?.rss,
+    rss: env.SOCIAL_RSS
+      ? env.SOCIAL_RSS === "true"
+      : baseSiteConfig.social?.rss,
   },
   feed: {
     folo: {
       challenge: {
-        feedId: env.FEED_FOLO_FEED_ID || baseSiteConfig.feed?.folo?.challenge?.feedId || '',
-        userId: env.FEED_FOLO_USER_ID || baseSiteConfig.feed?.folo?.challenge?.userId || '',
+        feedId:
+          env.FEED_FOLO_FEED_ID ||
+          baseSiteConfig.feed?.folo?.challenge?.feedId ||
+          "",
+        userId:
+          env.FEED_FOLO_USER_ID ||
+          baseSiteConfig.feed?.folo?.challenge?.userId ||
+          "",
       },
     },
   },
   mapStyle: env.MAP_STYLE,
   mapProjection: env.MAP_PROJECTION,
+};
+
+function mergeSiteConfig(
+  base: SiteConfig,
+  overrides: Partial<SiteConfig>,
+): SiteConfig {
+  return {
+    ...base,
+    ...overrides,
+    author: {
+      ...base.author,
+      ...overrides.author,
+    },
+    social: {
+      ...base.social,
+      ...overrides.social,
+    },
+    feed: {
+      ...base.feed,
+      ...overrides.feed,
+      folo: {
+        ...base.feed?.folo,
+        ...overrides.feed?.folo,
+        challenge: {
+          ...base.feed?.folo?.challenge,
+          ...overrides.feed?.folo?.challenge,
+        },
+      },
+    },
+  };
 }
 
-export const siteConfig: SiteConfig = merge(baseSiteConfig, envConfig) as any
+export const siteConfig: SiteConfig = mergeSiteConfig(
+  baseSiteConfig,
+  envConfig,
+);
 
-export default siteConfig
+export default siteConfig;

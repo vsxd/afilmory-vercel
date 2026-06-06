@@ -1,5 +1,5 @@
-import type { AfilmoryManifest } from "@afilmory/data";
-import { parseManifest } from "@afilmory/data";
+import type { AfilmoryManifest } from "@afilmory/schema";
+import { parseManifest } from "@afilmory/schema";
 
 import {
   ensureBrowserRuntime,
