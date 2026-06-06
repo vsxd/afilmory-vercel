@@ -22,6 +22,7 @@ export const createAppRouter = (runtime: AppRuntime) =>
     element: <App runtime={runtime} />,
     children: tree,
     errorElement: <ErrorElement />,
+    hydrateFallbackElement: <></>,
   },
   {
     path: "*",

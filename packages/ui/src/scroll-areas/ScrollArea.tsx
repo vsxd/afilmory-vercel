@@ -84,7 +84,6 @@ const Viewport = ({
   focusable = true,
   ...rest
 }: React.ComponentPropsWithoutRef<typeof ScrollAreaBase.Viewport> & {
-  mask?: boolean;
   focusable?: boolean;
 } & {
   ref?: React.Ref<React.ElementRef<typeof ScrollAreaBase.Viewport> | null>;
@@ -134,7 +133,6 @@ export const ScrollArea = ({
   rootClassName,
   viewportClassName,
   scrollbarClassName,
-  mask = false,
   onScroll,
   orientation = "vertical",
   asChild = false,
@@ -166,7 +164,6 @@ export const ScrollArea = ({
             flex ? "[&>div]:!flex [&>div]:!flex-col" : "",
             viewportClassName,
           )}
-          mask={mask}
           asChild={asChild}
           onScroll={onScroll}
           focusable={focusable}

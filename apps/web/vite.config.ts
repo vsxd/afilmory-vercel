@@ -27,6 +27,22 @@ const ReactCompilerConfig = {
   /* ... */
 };
 
+function silenceUnavailableNodeLocalStorageWarning() {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  if (!descriptor || !("get" in descriptor) || !descriptor.configurable) {
+    return;
+  }
+
+  // code-inspector probes localStorage while loading in Node. On Node 22 this
+  // getter emits an ExperimentalWarning unless --localstorage-file is provided.
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    enumerable: descriptor.enumerable,
+    value: undefined,
+    writable: true,
+  });
+}
+
 const staticWebBuildPlugins: PluginOption[] = [
   dataInjectPlugin(),
   photosStaticPlugin(),
@@ -187,6 +203,7 @@ export default defineConfig(async ({ command }) => {
   const tailwindcss = await loadTailwindcssPlugin();
 
   if (command === "serve") {
+    silenceUnavailableNodeLocalStorageWarning();
     const { codeInspectorPlugin } = await import("code-inspector-plugin");
     devOnlyPlugins.push(
       codeInspectorPlugin({
