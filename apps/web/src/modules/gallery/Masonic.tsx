@@ -22,7 +22,17 @@ import { useForceUpdate } from "motion/react";
 import * as React from "react";
 
 export interface MasonryRef {
+  getLayoutMetrics: () => MasonryLayoutMetrics | null;
+  getItemRect: (index: number) => DOMRect | null;
   reposition: () => void;
+}
+
+export interface MasonryLayoutMetrics {
+  columnCount: number;
+  columnGutter: number;
+  columnWidth: number;
+  containerRect: DOMRect;
+  rowGutter: number;
 }
 /**
  * A "batteries included" masonry grid which includes all of the implementation details below. This component is the
@@ -98,6 +108,35 @@ export const Masonry = <Item,>(
   const [positionIndex, setPositionIndex] = React.useState(0);
 
   React.useImperativeHandle(props.ref, () => ({
+    getLayoutMetrics: () => {
+      const container = containerRef.current;
+      if (!container) {
+        return null;
+      }
+
+      return {
+        columnCount: nextProps.positioner.columnCount,
+        columnGutter: props.columnGutter ?? 0,
+        columnWidth: nextProps.positioner.columnWidth,
+        containerRect: container.getBoundingClientRect(),
+        rowGutter: props.rowGutter ?? props.columnGutter ?? 0,
+      };
+    },
+    getItemRect: (index: number) => {
+      const item = nextProps.positioner.get(index);
+      const container = containerRef.current;
+      if (!item || !container) {
+        return null;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      return DOMRect.fromRect({
+        x: containerRect.left + item.left,
+        y: containerRect.top + item.top,
+        width: nextProps.positioner.columnWidth,
+        height: item.height,
+      });
+    },
     reposition: () => {
       setPositionIndex((i) => i + 1);
     },

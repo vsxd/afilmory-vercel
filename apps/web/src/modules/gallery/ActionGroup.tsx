@@ -66,7 +66,7 @@ export const ActionGroup = () => {
         icon="i-mingcute-layout-grid-line"
         title={t("action.view.title")}
         badge={hasViewCustomization ? "●" : undefined}
-        contentClassName="bg-material-thick border-fill-tertiary w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border p-0 shadow-xl backdrop-blur-2xl"
+        contentClassName="bg-material-thick border-fill-tertiary w-[24rem] max-w-[calc(100vw-2rem)] rounded-[1.5rem] border p-0 shadow-2xl ring-1 ring-accent/5 backdrop-blur-2xl"
       >
         <ViewPanel />
       </ResponsiveActionButton>

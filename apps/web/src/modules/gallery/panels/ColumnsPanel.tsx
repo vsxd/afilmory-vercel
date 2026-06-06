@@ -35,7 +35,7 @@ export const ColumnsPanel = () => {
     : { min: 3, max: 8 }; // 桌面端适合的列数范围
 
   return (
-    <div className="w-full lg:w-80">
+    <div className="w-full">
       <Slider
         value={previewColumns}
         onChange={handleChange}

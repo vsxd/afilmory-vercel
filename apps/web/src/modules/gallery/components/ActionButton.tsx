@@ -87,7 +87,12 @@ export const DesktopActionButton = ({
           onClick={() => {}}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className={contentClassName}>
+      <DropdownMenuContent
+        align="center"
+        collisionPadding={16}
+        sideOffset={10}
+        className={contentClassName}
+      >
         {children}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -120,9 +125,11 @@ export const MobileActionButton = ({
       />
       <Drawer.Root open={open} onOpenChange={onOpenChange}>
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm" />
-          <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex flex-col rounded-t-2xl border-t p-4 shadow-xl backdrop-blur-2xl">
-            <div className="bg-fill-tertiary mx-auto mb-4 h-1.5 w-12 flex-shrink-0 rounded-full" />
+          <Drawer.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xl" />
+          <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl">
+            <div className="flex h-10 shrink-0 items-center justify-center">
+              <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
+            </div>
             {children}
           </Drawer.Content>
         </Drawer.Portal>

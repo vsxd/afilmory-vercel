@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { getGalleryVirtualPhotoTargetRect } from "~/lib/gallery-virtual-target";
 import type { PhotoManifest } from "~/types/photo";
 
 import type {
@@ -62,6 +63,16 @@ export const usePhotoViewerTransitions = ({
     useState<PhotoViewerTransition | null>(null);
   const [isViewerContentVisible, setIsViewerContentVisible] = useState(false);
 
+  const isElementForCurrentPhoto = useCallback(
+    (element: HTMLElement | null) => {
+      if (!currentPhoto || !element) return false;
+
+      const photoElement = element.closest<HTMLElement>("[data-photo-id]");
+      return photoElement?.dataset.photoId === currentPhoto.id;
+    },
+    [currentPhoto],
+  );
+
   const restoreTriggerElementVisibility = useCallback(() => {
     const trigger = hiddenTriggerRef.current;
     if (trigger) {
@@ -85,11 +96,6 @@ export const usePhotoViewerTransitions = ({
   const resolveTriggerElement = useCallback((): HTMLElement | null => {
     if (!currentPhoto) return null;
 
-    if (triggerElement && triggerElement.isConnected) {
-      cachedTriggerRef.current = triggerElement;
-      return triggerElement;
-    }
-
     const selector = `[data-photo-id="${escapeAttributeValue(currentPhoto.id)}"]`;
     const liveTriggerEl =
       typeof document === "undefined"
@@ -101,18 +107,31 @@ export const usePhotoViewerTransitions = ({
       return liveTriggerEl;
     }
 
-    if (cachedTriggerRef.current && cachedTriggerRef.current.isConnected) {
+    if (
+      triggerElement &&
+      triggerElement.isConnected &&
+      isElementForCurrentPhoto(triggerElement)
+    ) {
+      cachedTriggerRef.current = triggerElement;
+      return triggerElement;
+    }
+
+    if (
+      cachedTriggerRef.current &&
+      cachedTriggerRef.current.isConnected &&
+      isElementForCurrentPhoto(cachedTriggerRef.current)
+    ) {
       return cachedTriggerRef.current;
     }
 
     return null;
-  }, [currentPhoto, triggerElement]);
+  }, [currentPhoto, isElementForCurrentPhoto, triggerElement]);
 
   useEffect(() => {
-    if (triggerElement) {
+    if (triggerElement && isElementForCurrentPhoto(triggerElement)) {
       cachedTriggerRef.current = triggerElement;
     }
-  }, [triggerElement]);
+  }, [isElementForCurrentPhoto, triggerElement]);
 
   useEffect(() => {
     return () => {
@@ -252,16 +271,11 @@ export const usePhotoViewerTransitions = ({
     }
 
     const triggerEl = resolveTriggerElement();
-
-    if (!triggerEl || !triggerEl.isConnected) {
-      wasOpenRef.current = false;
-      restoreTriggerElementVisibility();
-      setExitTransition(null);
-      return;
-    }
-
-    const targetRect = triggerEl.getBoundingClientRect();
-    if (!targetRect.width || !targetRect.height) {
+    const virtualTargetRect = triggerEl
+      ? null
+      : getGalleryVirtualPhotoTargetRect(currentPhoto.id);
+    const targetRect = triggerEl?.getBoundingClientRect() ?? virtualTargetRect;
+    if (!targetRect || !targetRect.width || !targetRect.height) {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
       setExitTransition(null);
@@ -277,7 +291,7 @@ export const usePhotoViewerTransitions = ({
       viewportRect,
       isMobile,
     );
-    const viewerFrame = viewerImageFrameRef.current ?? {
+    const viewerFrame = {
       left: computedFrame.left,
       top: computedFrame.top,
       width: computedFrame.width,
@@ -294,11 +308,13 @@ export const usePhotoViewerTransitions = ({
 
     viewerImageFrameRef.current = viewerFrame;
 
-    const borderRadius = getBorderRadius(
-      triggerEl instanceof HTMLImageElement && triggerEl.parentElement
-        ? triggerEl.parentElement
-        : triggerEl,
-    );
+    const borderRadius = triggerEl
+      ? getBorderRadius(
+          triggerEl instanceof HTMLImageElement && triggerEl.parentElement
+            ? triggerEl.parentElement
+            : triggerEl,
+        )
+      : (virtualTargetRect?.borderRadius ?? 0);
 
     const imageSrc =
       currentPhoto.thumbnailUrl ||
@@ -314,7 +330,9 @@ export const usePhotoViewerTransitions = ({
     }
 
     restoreTriggerElementVisibility();
-    hideTriggerElement(triggerEl);
+    if (triggerEl) {
+      hideTriggerElement(triggerEl);
+    }
 
     const transitionState: PhotoViewerTransitionState = {
       photoId: currentPhoto.id,

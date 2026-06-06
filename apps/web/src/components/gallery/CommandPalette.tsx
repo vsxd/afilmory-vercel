@@ -583,15 +583,15 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-end justify-center lg:items-start lg:pt-[12vh]"
+      className="fixed inset-0 z-[9999] flex items-end justify-center"
       onClick={onClose}
     >
       {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-xl transition-all duration-200" />
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-xl transition-[background-color,backdrop-filter] duration-200" />
 
       {/* Command Palette Panel */}
       <div
-        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary lg:slide-in-from-top-4 relative flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl rounded-b-none border shadow-xl backdrop-blur-2xl duration-200 lg:max-h-[72vh] lg:rounded-2xl!"
+        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl duration-200 lg:mb-6 lg:max-h-[min(86vh,46rem)] lg:rounded-[1.75rem] lg:border"
         style={{
           boxShadow:
             "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
@@ -606,17 +606,20 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
           }}
         />
+        <div className="flex h-10 shrink-0 items-center justify-center">
+          <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
+        </div>
         {/* Search Input */}
-        <div className="border-fill-secondary relative border-b px-4 py-4">
-          <div className="mb-3 flex items-center gap-3">
-            <div className="bg-accent/10 ring-accent/20 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset">
+        <div className="border-fill-secondary relative border-b px-6 pb-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="bg-accent/10 border-accent/20 text-accent flex size-12 shrink-0 items-center justify-center rounded-2xl border shadow-sm">
               <i className="i-mingcute-search-line text-accent text-lg" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-text text-base leading-tight font-semibold tracking-tight">
+              <h2 className="text-text text-lg leading-tight font-semibold text-pretty">
                 {t("action.search.unified.title")}
               </h2>
-              <p className="text-text-secondary mt-1 text-xs">
+              <p className="text-text-secondary mt-1 text-sm">
                 {t("action.search.indexed-photos", { count: allPhotos.length })}
               </p>
             </div>
@@ -640,11 +643,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             </button>
           </div>
 
-          <div className="bg-fill-vibrant-quinary border-fill-tertiary focus-within:border-accent/50 focus-within:bg-fill-secondary/70 focus-within:ring-accent/20 flex h-12 items-center gap-3 rounded-xl border px-3 transition-[background-color,border-color,box-shadow] duration-200 focus-within:ring-2">
+          <div className="bg-fill-vibrant-quinary border-fill-tertiary focus-within:border-accent/50 focus-within:bg-fill-secondary/70 focus-within:ring-accent/20 flex h-12 items-center gap-3 rounded-2xl border px-3 shadow-inner transition-[background-color,border-color,box-shadow] duration-200 focus-within:ring-2">
             <i className="i-mingcute-search-line text-text-tertiary shrink-0 text-lg" />
             <input
               ref={inputRef}
               type="text"
+              name="gallery-search"
+              autoComplete="off"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -656,7 +661,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {hasFilters && (
-          <div className="border-fill-secondary relative border-b px-4 py-3">
+          <div className="border-fill-secondary relative border-b px-6 py-3">
             <div className="mb-2 flex items-center justify-between gap-3">
               <div className="text-text-secondary flex items-center gap-2 text-xs font-medium">
                 <i className="i-mingcute-filter-3-line text-sm" />
@@ -693,17 +698,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           </div>
         )}
 
-        <div className="border-fill-secondary bg-fill-vibrant-quinary/60 text-text-secondary relative flex items-center justify-between gap-3 border-b px-4 py-3 text-xs">
+        <div className="border-fill-secondary bg-fill-vibrant-quinary/35 text-text-secondary relative flex items-center justify-between gap-3 border-b px-6 py-4 text-sm">
           <div className="flex items-center gap-2">
             <i className="i-mingcute-filter-3-line text-sm" />
             <span>{t("action.tag.match.label")}</span>
           </div>
-          <div className="bg-fill-secondary/70 border-fill-tertiary flex rounded-full border p-0.5">
+          <div className="bg-fill-secondary/70 border-fill-tertiary flex shrink-0 rounded-full border p-0.5">
             <button
               type="button"
               onClick={() => updateTagFilterMode("union")}
               className={clsxm(
-                "focus-visible:ring-accent/45 rounded-full px-3 py-1 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+                "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 gallerySetting.tagFilterMode === "union"
                   ? "bg-accent text-white shadow-sm"
                   : "text-text-secondary hover:text-text",
@@ -716,7 +721,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               type="button"
               onClick={() => updateTagFilterMode("intersection")}
               className={clsxm(
-                "focus-visible:ring-accent/45 rounded-full px-3 py-1 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+                "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 gallerySetting.tagFilterMode === "intersection"
                   ? "bg-accent text-white shadow-sm"
                   : "text-text-secondary hover:text-text",
@@ -736,7 +741,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           {isBrowsingFilters ? (
             <FilterPanelContent
               showHeader={false}
-              className="max-h-none overflow-visible px-4 pt-2 pb-5"
+              className="max-h-none overflow-visible px-6 pt-3 pb-8"
             />
           ) : filteredCommands.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -753,7 +758,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 onClick={cmd.action}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsxm(
-                  "command-item focus-visible:ring-accent/35 group flex w-full items-center gap-3 px-4 py-3 text-left transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+                  "command-item focus-visible:ring-accent/35 group flex w-full items-center gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                   selectedIndex === index && "selected",
                 )}
               >
@@ -810,7 +815,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Footer */}
-        <div className="border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-4 py-3">
+        <div className="pb-safe border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-6 pt-3 pb-4">
           <div className="text-text-secondary flex items-center justify-between text-xs">
             <span>{resultSummary}</span>
             {hasFilters && (

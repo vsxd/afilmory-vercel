@@ -55,14 +55,16 @@ const FilterSection = ({
               key={item.id}
               type="button"
               onClick={() => onToggle(item.id)}
-              className={
+              aria-pressed={isActive}
+              className={clsxm(
+                "focus-visible:ring-accent/45 inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-[background-color,border-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 isActive
-                  ? "bg-accent text-accent-foreground rounded-full px-3 py-1.5 text-xs font-medium"
-                  : "bg-fill-secondary/60 text-text-secondary hover:bg-fill-tertiary rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-              }
+                  ? "bg-accent border-accent text-white shadow-sm"
+                  : "bg-fill-vibrant-quinary border-fill-tertiary text-text-secondary hover:border-accent/25 hover:bg-fill-secondary hover:text-text",
+              )}
               title={item.label}
             >
-              <span className="line-clamp-1">{item.label}</span>
+              <span className="truncate">{item.label}</span>
             </button>
           );
         })}

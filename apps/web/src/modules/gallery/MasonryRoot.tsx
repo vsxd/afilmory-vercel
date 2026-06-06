@@ -8,12 +8,13 @@ import { DateRangeIndicator } from "~/components/ui/date-range-indicator";
 import { useMobile } from "~/hooks/useMobile";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { useVisiblePhotosDateRange } from "~/hooks/useVisiblePhotosDateRange";
+import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-target";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
 import type { PanelType } from "./ActionPanel";
 import { ActionPanel } from "./ActionPanel";
-import type { MasonryRef } from "./Masonic";
+import type { MasonryLayoutMetrics, MasonryRef } from "./Masonic";
 import { Masonry } from "./Masonic";
 import { MasonryHeaderMasonryItem } from "./MasonryHeaderMasonryItem";
 import { MasonryPhotoItem } from "./MasonryPhotoItem";
@@ -57,6 +58,78 @@ const getPhotoSetKey = (photos: PhotoManifest[]) => {
   return `${photos.length}:${hash >>> 0}:${photos[0]?.id ?? ""}:${photos.at(-1)?.id ?? ""}`;
 };
 
+const getShortestColumnIndex = (columnHeights: number[]) => {
+  let shortestIndex = 0;
+  let shortestHeight = columnHeights[0] ?? 0;
+
+  for (let index = 1; index < columnHeights.length; index += 1) {
+    const height = columnHeights[index] ?? 0;
+    if (height < shortestHeight) {
+      shortestIndex = index;
+      shortestHeight = height;
+    }
+  }
+
+  return shortestIndex;
+};
+
+const estimatePhotoVirtualRect = ({
+  headerHeight,
+  isMobile,
+  metrics,
+  photoIndex,
+  photos,
+}: {
+  headerHeight: number;
+  isMobile: boolean;
+  metrics: MasonryLayoutMetrics;
+  photoIndex: number;
+  photos: PhotoManifest[];
+}) => {
+  const { columnCount, columnGutter, columnWidth, containerRect, rowGutter } =
+    metrics;
+  if (columnCount <= 0 || columnWidth <= 0) {
+    return null;
+  }
+
+  const columnHeights = Array.from({ length: columnCount }, () => 0);
+  if (!isMobile && columnHeights.length > 0 && headerHeight > 0) {
+    columnHeights[0] = headerHeight + rowGutter;
+  }
+
+  for (let index = 0; index <= photoIndex; index += 1) {
+    const photo = photos[index];
+    if (!photo) {
+      return null;
+    }
+
+    const rawAspectRatio =
+      photo.aspectRatio || (photo.height ? photo.width / photo.height : 1);
+    const aspectRatio =
+      Number.isFinite(rawAspectRatio) && rawAspectRatio > 0
+        ? rawAspectRatio
+        : 1;
+    const height = columnWidth / aspectRatio;
+    const column = getShortestColumnIndex(columnHeights);
+    const left = column * (columnWidth + columnGutter);
+    const top = columnHeights[column] ?? 0;
+
+    if (index === photoIndex) {
+      return {
+        left: containerRect.left + left,
+        top: containerRect.top + top,
+        width: columnWidth,
+        height,
+        borderRadius: 0,
+      };
+    }
+
+    columnHeights[column] = top + height + rowGutter;
+  }
+
+  return null;
+};
+
 export const MasonryRoot = () => {
   const { columns } = useAtomValue(gallerySettingAtom);
   const hasAnimatedRef = useRef(false);
@@ -66,6 +139,10 @@ export const MasonryRoot = () => {
   const photos = useContextPhotos();
   const masonryRef = useRef<MasonryRef>(null);
   const photosKey = useMemo(() => getPhotoSetKey(photos), [photos]);
+  const photoIndexById = useMemo(
+    () => new Map(photos.map((photo, index) => [photo.id, index])),
+    [photos],
+  );
 
   const { dateRange, handleRender } = useVisiblePhotosDateRange(photos);
   const scrollElement = useScrollViewElement();
@@ -138,6 +215,45 @@ export const MasonryRoot = () => {
       scrollElement.removeEventListener("scroll", handleScroll);
     };
   }, [scrollElement]);
+
+  useEffect(() => {
+    setGalleryVirtualPhotoTargetResolver((photoId) => {
+      const photoIndex = photoIndexById.get(photoId);
+      if (photoIndex === undefined) {
+        return null;
+      }
+
+      const masonryItemIndex = isMobile ? photoIndex : photoIndex + 1;
+      const rect = masonryRef.current?.getItemRect(masonryItemIndex);
+      if (rect?.width && rect.height) {
+        return {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          borderRadius: 0,
+        };
+      }
+
+      const metrics = masonryRef.current?.getLayoutMetrics();
+      if (!metrics) {
+        return null;
+      }
+
+      const headerRect = isMobile ? null : masonryRef.current?.getItemRect(0);
+      return estimatePhotoVirtualRect({
+        headerHeight: headerRect?.height ?? 0,
+        isMobile,
+        metrics,
+        photoIndex,
+        photos,
+      });
+    });
+
+    return () => {
+      setGalleryVirtualPhotoTargetResolver(null);
+    };
+  }, [isMobile, photoIndexById, photos]);
 
   return (
     <>
