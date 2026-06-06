@@ -65,7 +65,7 @@ async function bootstrap() {
       criticalRoutesReady,
     ];
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && import.meta.env.MODE === "development") {
       startupTasks.push(
         import("react-scan").then(({ start }) => {
           start();

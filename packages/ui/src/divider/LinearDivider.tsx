@@ -1,6 +1,10 @@
+import type { ComponentPropsWithoutRef } from "react";
+
 import { clsxm } from "../utils/cn";
 
-export const LinearDivider: Component = ({ className }) => {
+export const LinearDivider = ({
+  className,
+}: Pick<ComponentPropsWithoutRef<"div">, "className">) => {
   return (
     <div
       className={clsxm(

@@ -20,11 +20,12 @@ import type {
   BuilderPluginESMImporter,
   BuilderPluginEventPayloads,
 } from "../plugins/types.js";
-import type {StorageConfig, StorageProviderFactory, StorageRegistry} from "../storage/index.js";
-import {
-  createStorageRegistry,
-  StorageManager
+import type {
+  StorageConfig,
+  StorageProviderFactory,
+  StorageRegistry,
 } from "../storage/index.js";
+import { createStorageRegistry, StorageManager } from "../storage/index.js";
 import type { BuilderConfig, UserBuilderSettings } from "../types/config.js";
 import type {
   AfilmoryManifest,

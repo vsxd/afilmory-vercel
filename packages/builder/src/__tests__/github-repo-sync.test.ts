@@ -7,11 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { logger, setConsoleForwarding } from "../logger/index.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
-import type {BuilderOutputSettings} from "../output-paths.js";
-import {
-  runWithBuilderOutputSettings,
-  webAppDir
-} from "../output-paths.js";
+import type { BuilderOutputSettings } from "../output-paths.js";
+import { runWithBuilderOutputSettings, webAppDir } from "../output-paths.js";
 import {
   buildGitAuthenticationEnv,
   persistBuildOutputsToRepository as persistBuildOutputsToRepositoryBase,

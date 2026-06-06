@@ -1,7 +1,6 @@
 import type { Atom, PrimitiveAtom } from "jotai";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { selectAtom } from "jotai/utils";
-import { useCallback } from "react";
+import { atom as createAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useMemo } from "react";
 
 /**
  * @param atom - jotai
@@ -15,13 +14,45 @@ export const createAtomHooks = <T>(atom: PrimitiveAtom<T>) =>
     () => useSetAtom(atom),
   ] as const;
 
+const EMPTY_SELECTION = Symbol("empty-selection");
+
+export const createSelectAtom = <Value, Selection>(
+  atom: Atom<Value>,
+  selector: (value: Value) => Selection,
+  equalityFn: (previous: Selection, next: Selection) => boolean = Object.is,
+) => {
+  let previous: Selection | typeof EMPTY_SELECTION = EMPTY_SELECTION;
+
+  return createAtom((get) => {
+    const next = selector(get(atom));
+    if (
+      previous !== EMPTY_SELECTION &&
+      equalityFn(previous as Selection, next)
+    ) {
+      return previous as Selection;
+    }
+    previous = next;
+    return next;
+  });
+};
+
+export const useAtomSelector = <Value, Selection>(
+  atom: Atom<Value>,
+  selector: (value: Value) => Selection,
+  equalityFn?: (previous: Selection, next: Selection) => boolean,
+) => {
+  const selectedAtom = useMemo(
+    () => createSelectAtom(atom, selector, equalityFn),
+    [atom, selector, equalityFn],
+  );
+  return useAtomValue(selectedAtom);
+};
+
 export const createAtomSelector = <T>(atom: Atom<T>) => {
   const useHook = <R>(selector: (a: T) => R) =>
-    useAtomValue(
-      selectAtom(
-        atom,
-        useCallback((a) => selector(a as T), [selector]),
-      ),
+    useAtomSelector(
+      atom,
+      useCallback((a) => selector(a), [selector]),
     );
 
   useHook.__atom = atom;

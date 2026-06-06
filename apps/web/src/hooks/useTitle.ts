@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { siteConfig } from "~/config";
 
 const titleTemplate = `%s | ${siteConfig.name}`;
-export const useTitle = (title?: Nullable<string>) => {
+export const useTitle = (title?: string | null) => {
   useEffect(() => {
     if (!title) return;
 

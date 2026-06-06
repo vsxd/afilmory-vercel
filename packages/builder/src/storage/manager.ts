@@ -1,5 +1,5 @@
-import type {StorageRegistry} from "./factory.js";
-import { StorageFactory  } from "./factory.js";
+import type { StorageRegistry } from "./factory.js";
+import { StorageFactory } from "./factory.js";
 import type {
   StorageConfig,
   StorageObject,

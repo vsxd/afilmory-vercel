@@ -55,6 +55,8 @@ const useShowWebContextMenu = () => {
 
 export type FollowMenuItem = MenuItemText | MenuItemSeparator;
 
+type NilValue = null | undefined | false | "";
+
 export type MenuItemInput = MenuItemText | MenuItemSeparator | NilValue;
 
 function filterNullableMenuItems(items: MenuItemInput[]): FollowMenuItem[] {

@@ -1,9 +1,8 @@
 import type { ExtractAtomValue, getDefaultStore } from "jotai";
-import { useAtomValue } from "jotai";
-import { selectAtom } from "jotai/utils";
 import { useCallback } from "react";
 
 import { viewportAtom } from "../atoms/viewport";
+import { useAtomSelector } from "../lib/jotai";
 
 const shallowEqual = <T,>(a: T, b: T): boolean => {
   if (Object.is(a, b)) return true;
@@ -29,12 +28,10 @@ const shallowEqual = <T,>(a: T, b: T): boolean => {
 export const useViewport = <T>(
   selector: (value: ExtractAtomValue<typeof viewportAtom>) => T,
 ): T =>
-  useAtomValue(
-    selectAtom(
-      viewportAtom,
-      useCallback((atomValue) => selector(atomValue), [selector]),
-      shallowEqual,
-    ),
+  useAtomSelector(
+    viewportAtom,
+    useCallback((atomValue) => selector(atomValue), [selector]),
+    shallowEqual,
   );
 
 type JotaiStore = ReturnType<typeof getDefaultStore>;

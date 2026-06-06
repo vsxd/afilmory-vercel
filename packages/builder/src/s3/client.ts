@@ -3,7 +3,7 @@ import https from "node:https";
 
 import type { S3ClientConfig } from "@aws-sdk/client-s3";
 import { S3Client } from "@aws-sdk/client-s3";
-import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 
 import type { S3Config } from "../storage/interfaces";
 

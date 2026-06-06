@@ -2,7 +2,6 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { PluginOption } from "vite";
 import { defineConfig } from "vite";
@@ -185,6 +184,7 @@ const staticWebBuildPlugins: PluginOption[] = [
 // https://vitejs.dev/config/
 export default defineConfig(async ({ command }) => {
   const devOnlyPlugins: PluginOption[] = [];
+  const tailwindcss = await loadTailwindcssPlugin();
 
   if (command === "serve") {
     const { codeInspectorPlugin } = await import("code-inspector-plugin");
@@ -346,5 +346,16 @@ function getGitHash() {
   } catch (e) {
     console.error("Failed to get git hash", e);
     return "";
+  }
+}
+
+async function loadTailwindcssPlugin() {
+  // Tailwind 4.1.x calls the deprecated module.register() during import on Node 26.
+  const previousNoDeprecation = process.noDeprecation;
+  process.noDeprecation = true;
+  try {
+    return (await import("@tailwindcss/vite")).default;
+  } finally {
+    process.noDeprecation = previousNoDeprecation;
   }
 }

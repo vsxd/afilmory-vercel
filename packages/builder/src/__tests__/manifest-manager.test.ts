@@ -10,10 +10,8 @@ import {
   needsUpdate,
 } from "../manifest/manager.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
-import type {BuilderOutputSettings} from "../output-paths.js";
-import {
-  runWithBuilderOutputSettings
-} from "../output-paths.js";
+import type { BuilderOutputSettings } from "../output-paths.js";
+import { runWithBuilderOutputSettings } from "../output-paths.js";
 import type { PhotoManifestItem } from "../types/photo.js";
 
 function createPhotoManifestItem(id: string): PhotoManifestItem {
@@ -121,7 +119,9 @@ describe("loadExistingManifest", () => {
     await fs.writeFile(manifestPath, "{ invalid json");
 
     await expect(
-      runWithBuilderOutputSettings(outputSettings, () => loadExistingManifest()),
+      runWithBuilderOutputSettings(outputSettings, () =>
+        loadExistingManifest(),
+      ),
     ).rejects.toThrow(/解析 manifest 失败/);
     await expect(fs.readFile(manifestPath, "utf-8")).resolves.toBe(
       "{ invalid json",

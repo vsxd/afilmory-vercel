@@ -11,6 +11,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@afilmory/ui";
+import type { PropsWithChildren } from "react";
 import { Fragment, memo, useCallback, useEffect, useRef } from "react";
 
 import type { FollowMenuItem } from "~/atoms/context-menu";
@@ -21,7 +22,7 @@ import {
 } from "~/atoms/context-menu";
 import { nextFrame, preventDefault } from "~/lib/dom";
 
-export const ContextMenuProvider: Component = ({ children }) => (
+export const ContextMenuProvider = ({ children }: PropsWithChildren) => (
   <>
     {children}
     <Handler />

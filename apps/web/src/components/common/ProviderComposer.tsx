@@ -1,9 +1,11 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX, PropsWithChildren, ReactNode } from "react";
 import { cloneElement } from "react";
 
-export const ProviderComposer: Component<{
+type ProviderComposerProps = PropsWithChildren<{
   contexts: JSX.Element[];
-}> = ({ contexts, children }) =>
+}>;
+
+export const ProviderComposer = ({ contexts, children }: ProviderComposerProps) =>
   contexts.reduceRight(
     (kids: ReactNode, parent: JSX.Element) =>
       cloneElement(parent, { children: kids }),
