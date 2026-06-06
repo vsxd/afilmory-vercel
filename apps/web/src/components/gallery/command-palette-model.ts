@@ -1,6 +1,5 @@
 import type { CameraInfo, LensInfo } from "@afilmory/schema";
 import type { TFunction } from "i18next";
-import type { ReactNode } from "react";
 
 import type { GallerySetting } from "~/atoms/app";
 import {
@@ -8,7 +7,6 @@ import {
   getLocationTokens,
   searchPhotos,
 } from "~/hooks/useCommandSearch";
-import { MageLens } from "~/icons";
 import type { GeoFilterState } from "~/lib/geo-regions";
 import { getRegionDisplayName } from "~/lib/geo-regions";
 import type { GeographicRegion } from "~/types/map";
@@ -21,11 +19,15 @@ export interface Command {
   type: CommandType;
   title: string;
   subtitle?: string;
-  icon: string | ReactNode;
+  icon: string;
   action: () => void;
   keywords?: string[];
   badge?: string | number;
   active?: boolean;
+  thumbnail?: {
+    src: string;
+    alt: string;
+  };
 }
 
 export interface ActiveFilterChip {
@@ -238,7 +240,7 @@ export function buildCommandIndex(input: {
       type: "filter",
       title: lens.displayName,
       subtitle: t("action.lens.filter"),
-      icon: <MageLens />,
+      icon: "i-mingcute-camera-2-line",
       active: isActive,
       action: () => {
         setGallerySetting((prev) => ({
@@ -301,15 +303,13 @@ export function buildCommandIndex(input: {
           photo.description ||
           locationSubtitle ||
           `${photo.exif?.Model || t("action.search.photo")}`,
-        icon: (
-          <img
-            src={photo.thumbnailUrl}
-            alt={t("action.search.photo-thumbnail", {
-              title: photo.title || photo.id,
-            })}
-            className="h-10 w-10 rounded-xl object-cover"
-          />
-        ),
+        icon: "photo-thumbnail",
+        thumbnail: {
+          src: photo.thumbnailUrl,
+          alt: t("action.search.photo-thumbnail", {
+            title: photo.title || photo.id,
+          }),
+        },
         action: () => openPhoto(photo),
         keywords: [
           photo.title,

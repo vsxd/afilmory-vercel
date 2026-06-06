@@ -1,3 +1,4 @@
+import type { ExifService } from "../../image/exif.js";
 import type { Logger } from "../../logger/index.js";
 import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
@@ -21,6 +22,7 @@ export interface BuilderServicesBacking {
   logger: Logger;
   getStorageConfig: () => StorageConfig;
   getStorageManager: () => StorageManager;
+  getExifService: () => ExifService;
   createStorageManager: (config: StorageConfig) => StorageManager;
   hasPhotoIdCollision: (key: string) => boolean;
   getPhotoIdForKey: (key: string, existingItem?: PhotoManifestItem) => string;
@@ -49,6 +51,7 @@ export function createBuilderServices(
   };
 
   return {
+    exif: backing.getExifService(),
     storage,
     output,
     photoId,

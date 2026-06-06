@@ -1,4 +1,4 @@
-import type { LoadingCallbacks } from "../image-loader-manager";
+import type { LoadingCallbacks } from "../image-loading-types";
 
 // 转换结果接口
 export interface ConversionResult {

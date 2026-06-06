@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import type { BuildProgressListener } from "./builder/builder.js";
 import { AfilmoryBuilder } from "./builder/index.js";
 import { loadBuilderConfig } from "./config/index.js";
-import { closeExiftool } from "./image/exif.js";
+import { ExifService } from "./image/exif.js";
 import { logger, setLogListener } from "./logger/index.js";
 import { runAsWorker } from "./runAsWorker.js";
 
@@ -29,7 +29,12 @@ async function main() {
   const builderConfig = await loadBuilderConfig({
     cwd: join(fileURLToPath(import.meta.url), "../../../.."),
   });
-  const cliBuilder = new AfilmoryBuilder(builderConfig);
+  const cliBuilder = new AfilmoryBuilder(builderConfig, {
+    exifService: new ExifService({
+      exiftoolPath: process.env.EXIFTOOL_PATH,
+    }),
+    ownsExifService: true,
+  });
   process.title = "photo-gallery-builder-main";
 
   // 解析命令行参数
@@ -64,6 +69,7 @@ async function main() {
   在 builder.config.ts 中设置 performance.worker.useClusterMode = true 
   可启用多进程集群模式，发挥多核心优势。
 `);
+    cliBuilder.dispose();
     return;
   }
 
@@ -74,6 +80,7 @@ async function main() {
     const storage = userConfig?.storage;
     if (!storage) {
       logger.main.error("未配置存储提供商，请先在配置文件中设置 storage 字段");
+      cliBuilder.dispose();
       return;
     }
     logger.main.info("🔧 当前配置：");
@@ -110,8 +117,10 @@ async function main() {
     logger.main.info("");
     if (!userConfig) {
       logger.main.warn("未配置用户级设置（storage）");
+      cliBuilder.dispose();
       return;
     }
+    cliBuilder.dispose();
     return;
   }
 
@@ -186,10 +195,10 @@ async function main() {
       setLogListener(null, { forwardToConsole: true });
       tui?.detach();
     }
+    cliBuilder.dispose();
   }
 
   // 清理 ExifTool 进程后退出
-  closeExiftool();
   // eslint-disable-next-line unicorn/no-process-exit
   process.exit(0);
 }
@@ -197,7 +206,6 @@ async function main() {
 // 运行主函数
 main().catch((error) => {
   logger.main.error("构建失败：", error);
-  closeExiftool();
   throw error;
 });
 

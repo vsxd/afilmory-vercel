@@ -27,7 +27,7 @@
 - TanStack Query
 - `apps/web/src/data-runtime/manifest-runtime.ts`
 - `apps/web/src/data-runtime/photo-repository.ts`
-- `apps/web/src/runtime/app-runtime.tsx`
+- `apps/web/src/runtime/app-runtime.ts`
 
 ### 国际化和地图
 
@@ -60,7 +60,7 @@ apps/web/
 │   ├── atoms/                  # Jotai atoms
 │   ├── components/             # common/gallery/photo-viewer UI
 │   ├── config/                 # runtime site config accessor
-│   ├── data-runtime/           # manifest runtime and PhotoLoader instance
+│   ├── data-runtime/           # manifest runtime and PhotoRepository
 │   ├── hooks/
 │   ├── lib/
 │   ├── modules/gallery/
@@ -189,7 +189,7 @@ apps/web/dist/
 ### `dataInjectPlugin`
 
 - 读取 `generated/photos-manifest.json`。
-- 清理旧 manifest 中的 legacy `exif.Rating`。
+- 使用 schema strict validation 读取 manifest；旧 manifest schema 不再迁移。
 - 注入 `window.__AFILMORY__.config`。
 - 根据 `AFILMORY_EMBED_MANIFEST` 和 serve/build 模式选择内联或外置 manifest。
 - 外置 manifest 会添加 preload link，并通过 `window.__AFILMORY__.manifest.promise` 加载。

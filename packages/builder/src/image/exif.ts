@@ -35,22 +35,9 @@ export class ExifService {
   }
 }
 
-let defaultExifService: ExifService | null = null;
-
-function getDefaultExifService(): ExifService {
-  defaultExifService ??= new ExifService({
-    exiftoolPath: process.env.EXIFTOOL_PATH,
-  });
-  return defaultExifService;
-}
-
-export const closeExiftool = () => {
-  defaultExifService?.close();
-  defaultExifService = null;
-};
-
 // 提取 EXIF 数据
 export async function extractExifData(
+  exifService: ExifService,
   imageBuffer: Buffer,
   originalBuffer?: Buffer,
 ): Promise<PickedExif | null> {
@@ -66,7 +53,7 @@ export async function extractExifData(
     await writeFile(tempImagePath, originalBuffer || imageBuffer);
 
     log.info(`开始提取 EXIF 数据, 文件路径: ${tempImagePath}`);
-    const exifData = await getDefaultExifService().read(tempImagePath);
+    const exifData = await exifService.read(tempImagePath);
 
     const result = handleExifData(exifData);
 

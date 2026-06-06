@@ -62,10 +62,24 @@ export default defineConfig({
               replacement: `${fileURLToPath(new URL("apps/web/src", import.meta.url))}/`,
             },
             {
+              find: /^@locales\//,
+              replacement: `${fileURLToPath(new URL("locales", import.meta.url))}/`,
+            },
+            {
               find: "@pkg",
               replacement: fileURLToPath(
                 new URL("apps/web/package.json", import.meta.url),
               ),
+            },
+            {
+              find: "@config",
+              replacement: fileURLToPath(
+                new URL("site.config.ts", import.meta.url),
+              ),
+            },
+            {
+              find: "@env",
+              replacement: fileURLToPath(new URL("env.ts", import.meta.url)),
             },
             {
               find: "virtual:pwa-register",

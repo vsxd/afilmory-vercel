@@ -3,7 +3,7 @@ import { deserialize } from "node:v8";
 
 import type { BuilderOptions } from "./builder/builder.js";
 import { AfilmoryBuilder } from "./builder/builder.js";
-import { closeExiftool } from "./image/exif.js";
+import { ExifService } from "./image/exif.js";
 import { runWithBuilderOutputSettings } from "./output-paths.js";
 import type { PluginRunState } from "./plugins/manager.js";
 import type { StorageObject } from "./storage/interfaces";
@@ -37,9 +37,13 @@ interface SharedData {
 // Worker 进程处理逻辑
 export async function runAsWorker() {
   process.title = "photo-gallery-builder-worker";
-  process.once("beforeExit", closeExiftool);
-  process.once("SIGINT", closeExiftool);
-  process.once("SIGTERM", closeExiftool);
+  const workerExifService = new ExifService({
+    exiftoolPath: process.env.EXIFTOOL_PATH,
+  });
+  const closeWorkerServices = () => workerExifService.close();
+  process.once("beforeExit", closeWorkerServices);
+  process.once("SIGINT", closeWorkerServices);
+  process.once("SIGTERM", closeWorkerServices);
   const workerId = Number.parseInt(process.env.WORKER_ID || "0");
 
   // 立即注册消息监听器，避免被异步初始化阻塞
@@ -67,7 +71,10 @@ export async function runAsWorker() {
     existingManifestMap = sharedData.existingManifestMap;
     livePhotoMap = sharedData.livePhotoMap;
     builderOptions = sharedData.builderOptions;
-    builder = new AfilmoryBuilder(sharedData.builderConfig);
+    builder = new AfilmoryBuilder(sharedData.builderConfig, {
+      exifService: workerExifService,
+      ownsExifService: false,
+    });
     builder.setPhotoIdCollisionKeys(sharedData.photoIdCollisionKeys ?? []);
     await builder.ensurePluginsReady();
     pluginRunState = builder.createPluginRunState();
@@ -93,25 +100,6 @@ export async function runAsWorker() {
         throw new Error(`Invalid taskIndex: ${taskIndex}`);
       }
 
-      // 转换 StorageObject 到旧的 _Object 格式以兼容现有的 processPhoto 函数
-      const legacyObj = {
-        Key: obj.key,
-        Size: obj.size,
-        LastModified: obj.lastModified,
-        ETag: obj.etag,
-      };
-
-      // 转换 Live Photo Map
-      const legacyLivePhotoMap = new Map();
-      for (const [key, value] of livePhotoMap) {
-        legacyLivePhotoMap.set(key, {
-          Key: value.key,
-          Size: value.size,
-          LastModified: value.lastModified,
-          ETag: value.etag,
-        });
-      }
-
       const processorOptions = {
         isForceMode: builderOptions.isForceMode,
         isForceManifest: builderOptions.isForceManifest,
@@ -123,12 +111,12 @@ export async function runAsWorker() {
         builder.getConfig().output,
         async () =>
           await processPhoto(
-            legacyObj,
+            obj,
             taskIndex,
             workerId,
             imageObjects.length,
             existingManifestMap,
-            legacyLivePhotoMap,
+            livePhotoMap,
             processorOptions,
             builder.services,
             (runState, event, payload) =>
@@ -186,37 +174,18 @@ export async function runAsWorker() {
           try {
             const obj = imageObjects[task.taskIndex];
 
-            // 转换 StorageObject 到旧的 _Object 格式以兼容现有的 processPhoto 函数
-            const legacyObj = {
-              Key: obj.key,
-              Size: obj.size,
-              LastModified: obj.lastModified,
-              ETag: obj.etag,
-            };
-
-            // 转换 Live Photo Map
-            const legacyLivePhotoMap = new Map();
-            for (const [key, value] of livePhotoMap) {
-              legacyLivePhotoMap.set(key, {
-                Key: value.key,
-                Size: value.size,
-                LastModified: value.lastModified,
-                ETag: value.etag,
-              });
-            }
-
             // 处理照片
             const { processPhoto } = await import("./photo/processor.js");
             const result = await runWithBuilderOutputSettings(
               builder.getConfig().output,
               async () =>
                 await processPhoto(
-                  legacyObj,
+                  obj,
                   task.taskIndex,
                   workerId,
                   imageObjects.length,
                   existingManifestMap,
-                  legacyLivePhotoMap,
+                  livePhotoMap,
                   batchProcessorOptions,
                   builder.services,
                   (runState, event, payload) =>

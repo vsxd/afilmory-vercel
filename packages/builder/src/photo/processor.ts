@@ -1,5 +1,3 @@
-import type { _Object } from "@aws-sdk/client-s3";
-
 import type { EmitPluginEventFn } from "../core/contracts/execution-context.js";
 import type {
   PhotoProcessingContext as PhotoProcessingContextType,
@@ -8,6 +6,7 @@ import type {
 import type { PluginRunState } from "../core/contracts/plugin-ref.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import { logger } from "../logger/index.js";
+import type { StorageObject } from "../storage/interfaces.js";
 import type { BuilderOptions } from "../types/options.js";
 import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
 import {
@@ -22,12 +21,12 @@ export type { PhotoProcessingContext } from "../core/contracts/photo-processing.
 
 // 处理单张照片
 export async function processPhoto(
-  obj: _Object,
+  obj: StorageObject,
   index: number,
   workerId: number,
   totalImages: number,
   existingManifestMap: Map<string, PhotoManifestItem>,
-  livePhotoMap: Map<string, _Object>,
+  livePhotoMap: Map<string, StorageObject>,
   options: PhotoProcessorOptions,
   services: BuilderServices,
   emitPluginEvent: EmitPluginEventFn,
@@ -36,7 +35,7 @@ export async function processPhoto(
     builderOptions: BuilderOptions;
   },
 ): Promise<ProcessPhotoResult> {
-  const key = obj.Key;
+  const { key } = obj;
   if (!key) {
     logger.image.warn(`跳过没有 Key 的对象`);
     return { item: null, type: "failed" };

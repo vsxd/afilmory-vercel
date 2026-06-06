@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { parseManifest } from "@afilmory/schema";
+import { assertManifest } from "@afilmory/schema";
 import { DOMParser } from "linkedom";
 import type { Plugin } from "vite";
 
@@ -20,7 +20,7 @@ function resolveEmbedPreference(command: "serve" | "build"): boolean {
 function getManifestContent(command: "serve" | "build"): string {
   try {
     return JSON.stringify(
-      parseManifest(JSON.parse(readFileSync(MANIFEST_PATH, "utf-8"))),
+      assertManifest(JSON.parse(readFileSync(MANIFEST_PATH, "utf-8"))),
     );
   } catch (error) {
     if (command === "build") {

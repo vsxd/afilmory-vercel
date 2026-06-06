@@ -1,5 +1,4 @@
 import { compressUint8Array } from "@afilmory/media";
-import type { _Object } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 
 import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
@@ -11,6 +10,7 @@ import {
   preprocessImageBuffer,
 } from "../image/processor.js";
 import { THUMBNAIL_PLUGIN_DATA_KEY } from "../plugins/thumbnail-storage/shared.js";
+import type { StorageObject } from "../storage/interfaces.js";
 import type { BuilderOptions } from "../types/options.js";
 import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
 import { shouldProcessPhoto } from "./cache-manager.js";
@@ -35,9 +35,9 @@ export interface ProcessedImageData {
 
 export interface PhotoProcessingContext {
   photoKey: string;
-  obj: _Object;
+  obj: StorageObject;
   existingItem: PhotoManifestItem | undefined;
-  livePhotoMap: Map<string, _Object>;
+  livePhotoMap: Map<string, StorageObject>;
   options: PhotoProcessorOptions;
   pluginData: Record<string, unknown>;
 }
@@ -256,9 +256,9 @@ export async function executePhotoProcessingPipeline(
       height: metadata.height,
       aspectRatio,
       s3Key: photoKey,
-      lastModified: obj.LastModified?.toISOString() || new Date().toISOString(),
-      size: obj.Size || 0,
-      etag: obj.ETag,
+      lastModified: obj.lastModified?.toISOString() || new Date().toISOString(),
+      size: obj.size || 0,
+      etag: obj.etag,
       exif: exifData,
       toneAnalysis,
       location: existingItem?.location ?? null,

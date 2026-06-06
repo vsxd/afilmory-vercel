@@ -1,5 +1,5 @@
 import { isSafari } from "~/lib/device-viewport";
-import type { LoadingCallbacks } from "~/lib/image-loader-manager";
+import type { LoadingCallbacks } from "~/lib/image-loading-types";
 
 import type { ConversionResult, ImageConverterStrategy } from "../type";
 

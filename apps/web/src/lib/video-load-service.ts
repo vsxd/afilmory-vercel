@@ -1,9 +1,9 @@
-import type { VideoSource } from "~/components/ui/photo-viewer/types";
 import { getI18n } from "~/i18n";
 import { debugLog } from "~/lib/debug-log";
 import type {
   LoadingCallbacks,
   VideoProcessResult,
+  VideoSource,
 } from "~/lib/image-loading-types";
 import { createAbortError } from "~/lib/image-loading-types";
 import { extractMotionPhotoVideo } from "~/lib/motion-photo-extractor";

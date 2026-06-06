@@ -79,14 +79,7 @@ export class DiffPlanner {
         continue;
       }
 
-      if (
-        needsUpdate(existingItem, {
-          Key: key,
-          Size: obj.size,
-          LastModified: obj.lastModified,
-          ETag: obj.etag,
-        })
-      ) {
+      if (needsUpdate(existingItem, obj)) {
         tasksToProcess.push(obj);
         continue;
       }

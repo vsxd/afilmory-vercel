@@ -7,7 +7,22 @@ import { ProgressiveImage } from "../ProgressiveImage";
 const hoisted = vi.hoisted(() => ({
   canUseWebGL: false,
   failWebGL: false,
-  runtime: { imageCache: {} },
+  runtime: {
+    imageCache: {},
+    imageLoading: {
+      createLoader: vi.fn(() => ({
+        loadImage: () =>
+          Promise.resolve({
+            blobSrc: "blob:mock-image",
+            blob: new Blob(["photo"], { type: "image/jpeg" }),
+          }),
+        cleanup: vi.fn(),
+      })),
+      cleanupLoader: vi.fn((loader: { cleanup: () => void }) => {
+        loader.cleanup();
+      }),
+    },
+  },
 }));
 
 vi.mock("@afilmory/ui", () => ({

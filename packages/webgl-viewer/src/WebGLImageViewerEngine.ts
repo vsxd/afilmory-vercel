@@ -1,3 +1,4 @@
+import { copyImageUrlToClipboard } from "./clipboard-service";
 import { createWebGLDebugInfo } from "./debug-adapter";
 import { LoadingState } from "./enum";
 import { ImageViewerEngineBase } from "./ImageViewerEngineBase";
@@ -12,6 +13,23 @@ import {
   SIMPLE_LOD_LEVELS,
   TILE_CACHE_SIZE,
 } from "./tile-cache";
+import {
+  calculateVisibleTiles as calculateVisibleTilesForViewport,
+  createViewportHash,
+  selectPendingTileBatch,
+} from "./tile-scheduler";
+import type {
+  TransformBounds,
+  TransformState,
+  ViewportGeometry,
+} from "./transform-controller";
+import {
+  constrainImagePosition as constrainTransformPosition,
+  constrainScaleAndPosition as constrainTransformScaleAndPosition,
+  createFitTransform,
+  getFitToScreenScale as getFitToScreenScaleForGeometry,
+  zoomAtTransform,
+} from "./transform-controller";
 import { TextureWorkerBridge } from "./worker-bridge";
 
 // 简化的 WebGL 图像查看器引擎
@@ -450,13 +468,9 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private fitImageToScreen() {
-    const scaleX = this.canvasWidth / this.imageWidth;
-    const scaleY = this.canvasHeight / this.imageHeight;
-    const fitToScreenScale = Math.min(scaleX, scaleY);
-
-    this.scale = fitToScreenScale * this.config.initialScale;
-    this.translateX = 0;
-    this.translateY = 0;
+    this.applyTransformState(
+      createFitTransform(this.getViewportGeometry(), this.config.initialScale),
+    );
     this.isDoubleClickZoomed = false;
   }
 
@@ -479,52 +493,60 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     ]);
   }
 
+  private getViewportGeometry(): ViewportGeometry {
+    return {
+      canvasWidth: this.canvasWidth,
+      canvasHeight: this.canvasHeight,
+      imageWidth: this.imageWidth,
+      imageHeight: this.imageHeight,
+    };
+  }
+
+  private getTransformState(): TransformState {
+    return {
+      scale: this.scale,
+      translateX: this.translateX,
+      translateY: this.translateY,
+    };
+  }
+
+  private getTransformBounds(): TransformBounds {
+    return {
+      initialScale: this.config.initialScale,
+      limitToBounds: this.config.limitToBounds,
+      maxScale: this.config.maxScale,
+      minScale: this.config.minScale,
+    };
+  }
+
+  private applyTransformState(transform: TransformState): void {
+    this.scale = transform.scale;
+    this.translateX = transform.translateX;
+    this.translateY = transform.translateY;
+  }
+
   private getFitToScreenScale(): number {
-    const scaleX = this.canvasWidth / this.imageWidth;
-    const scaleY = this.canvasHeight / this.imageHeight;
-    return Math.min(scaleX, scaleY);
+    return getFitToScreenScaleForGeometry(this.getViewportGeometry());
   }
 
   private constrainImagePosition() {
-    if (!this.config.limitToBounds) return;
-
-    const fitScale = this.getFitToScreenScale();
-
-    if (this.scale <= fitScale) {
-      this.translateX = 0;
-      this.translateY = 0;
-      return;
-    }
-
-    const scaledWidth = this.imageWidth * this.scale;
-    const scaledHeight = this.imageHeight * this.scale;
-    const maxTranslateX = Math.max(0, (scaledWidth - this.canvasWidth) / 2);
-    const maxTranslateY = Math.max(0, (scaledHeight - this.canvasHeight) / 2);
-
-    this.translateX = Math.max(
-      -maxTranslateX,
-      Math.min(maxTranslateX, this.translateX),
-    );
-    this.translateY = Math.max(
-      -maxTranslateY,
-      Math.min(maxTranslateY, this.translateY),
+    this.applyTransformState(
+      constrainTransformPosition(
+        this.getTransformState(),
+        this.getViewportGeometry(),
+        this.config.limitToBounds,
+      ),
     );
   }
 
   private constrainScaleAndPosition() {
-    const fitToScreenScale = this.getFitToScreenScale();
-    const absoluteMinScale = fitToScreenScale * this.config.minScale;
-    const originalSizeScale = 1;
-    const userMaxScale = fitToScreenScale * this.config.maxScale;
-    const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale);
-
-    if (this.scale < absoluteMinScale) {
-      this.scale = absoluteMinScale;
-    } else if (this.scale > effectiveMaxScale) {
-      this.scale = effectiveMaxScale;
-    }
-
-    this.constrainImagePosition();
+    this.applyTransformState(
+      constrainTransformScaleAndPosition(
+        this.getTransformState(),
+        this.getViewportGeometry(),
+        this.getTransformBounds(),
+      ),
+    );
   }
 
   // 瓦片系统实现
@@ -546,93 +568,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     lodLevel: number;
     priority: number;
   }> {
-    if (!this.imageLoaded) return [];
-
-    const lodLevel = this.selectOptimalLOD();
-    const { cols, rows } = this.getTileGridSize(lodLevel);
-
-    // 计算当前可视区域在图像坐标系中的范围
-    // 图像中心点在 canvas 中的位置
-    const imageCenterInCanvasX = this.canvasWidth / 2 + this.translateX;
-    const imageCenterInCanvasY = this.canvasHeight / 2 + this.translateY;
-
-    // 当前缩放后的图像尺寸
-    const scaledImageWidth = this.imageWidth * this.scale;
-    const scaledImageHeight = this.imageHeight * this.scale;
-
-    // 图像左上角在 canvas 中的位置
-    const imageLeftInCanvas = imageCenterInCanvasX - scaledImageWidth / 2;
-    const imageTopInCanvas = imageCenterInCanvasY - scaledImageHeight / 2;
-
-    // 可视区域在图像坐标中的范围 (0 到 imageWidth/Height)
-    const viewLeft = Math.max(0, -imageLeftInCanvas / this.scale);
-    const viewTop = Math.max(0, -imageTopInCanvas / this.scale);
-    const viewRight = Math.min(
-      this.imageWidth,
-      (this.canvasWidth - imageLeftInCanvas) / this.scale,
-    );
-    const viewBottom = Math.min(
-      this.imageHeight,
-      (this.canvasHeight - imageTopInCanvas) / this.scale,
-    );
-
-    // 计算瓦片大小在原图坐标中的尺寸
-    const tileWidthInImage = this.imageWidth / cols;
-    const tileHeightInImage = this.imageHeight / rows;
-
-    // 计算需要的瓦片范围
-    const margin = 1; // 额外加载 1 个瓦片的边距
-    const startTileX = Math.max(
-      0,
-      Math.floor(viewLeft / tileWidthInImage) - margin,
-    );
-    const endTileX = Math.min(
-      cols - 1,
-      Math.ceil(viewRight / tileWidthInImage) + margin,
-    );
-    const startTileY = Math.max(
-      0,
-      Math.floor(viewTop / tileHeightInImage) - margin,
-    );
-    const endTileY = Math.min(
-      rows - 1,
-      Math.ceil(viewBottom / tileHeightInImage) + margin,
-    );
-
-    const visibleTiles: Array<{
-      x: number;
-      y: number;
-      lodLevel: number;
-      priority: number;
-    }> = [];
-
-    // 计算视口中心在图像坐标中的位置
-    const viewCenterX = (viewLeft + viewRight) / 2;
-    const viewCenterY = (viewTop + viewBottom) / 2;
-
-    for (let y = startTileY; y <= endTileY; y++) {
-      for (let x = startTileX; x <= endTileX; x++) {
-        // 计算瓦片中心到视口中心的距离作为优先级
-        const tileCenterX = (x + 0.5) * tileWidthInImage;
-        const tileCenterY = (y + 0.5) * tileHeightInImage;
-        const distance = Math.sqrt(
-          Math.pow(tileCenterX - viewCenterX, 2) +
-            Math.pow(tileCenterY - viewCenterY, 2),
-        );
-
-        visibleTiles.push({
-          x,
-          y,
-          lodLevel,
-          priority: distance,
-        });
-      }
-    }
-
-    // 按优先级排序（距离越近优先级越高）
-    visibleTiles.sort((a, b) => a.priority - b.priority);
-
-    return visibleTiles;
+    return calculateVisibleTilesForViewport({
+      ...this.getViewportGeometry(),
+      imageLoaded: this.imageLoaded,
+      lodLevel: this.selectOptimalLOD(),
+      scale: this.scale,
+      translateX: this.translateX,
+      translateY: this.translateY,
+    });
   }
 
   private async updateTileCache(): Promise<void> {
@@ -642,7 +585,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     const newVisibleTiles = new Set<TileKey>();
 
     // 创建当前视口的哈希，用于检测视口变化
-    const viewportHash = `${this.scale.toFixed(3)}-${this.translateX.toFixed(1)}-${this.translateY.toFixed(1)}`;
+    const viewportHash = createViewportHash({
+      scale: this.scale,
+      translateX: this.translateX,
+      translateY: this.translateY,
+    });
     const viewportChanged = viewportHash !== this.lastViewportHash;
     this.lastViewportHash = viewportHash;
 
@@ -735,14 +682,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       return;
     }
 
-    // 按优先级排序
-    const sortedRequests = Array.from(this.pendingTileRequests.entries())
-      .map(([key, priority]) => ({ key, priority }))
-      .sort((a, b) => a.priority - b.priority);
-
-    const halfCount = Math.max(1, Math.ceil(sortedRequests.length / 2));
-    const batchSize = Math.min(MAX_TILES_PER_FRAME, halfCount);
-    const batch = sortedRequests.slice(0, batchSize);
+    const batch = selectPendingTileBatch(
+      this.pendingTileRequests,
+      MAX_TILES_PER_FRAME,
+    );
 
     for (const request of batch) {
       const { key, priority } = request;
@@ -1140,31 +1083,24 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   public zoomAt(x: number, y: number, scaleFactor: number, animated = false) {
-    const newScale = this.scale * scaleFactor;
-    const fitToScreenScale = this.getFitToScreenScale();
-    const absoluteMinScale = fitToScreenScale * this.config.minScale;
-    const originalSizeScale = 1;
-    const userMaxScale = fitToScreenScale * this.config.maxScale;
-    const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale);
+    const nextTransform = zoomAtTransform(
+      this.getTransformState(),
+      this.getViewportGeometry(),
+      this.getTransformBounds(),
+      { x, y },
+      scaleFactor,
+    );
 
-    if (newScale < absoluteMinScale || newScale > effectiveMaxScale) return;
+    if (!nextTransform) return;
 
     if (animated && this.config.smooth) {
-      const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale;
-      const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale;
-      const targetTranslateX = x - this.canvasWidth / 2 - zoomX * newScale;
-      const targetTranslateY = y - this.canvasHeight / 2 - zoomY * newScale;
-
-      this.startAnimation(newScale, targetTranslateX, targetTranslateY);
+      this.startAnimation(
+        nextTransform.scale,
+        nextTransform.translateX,
+        nextTransform.translateY,
+      );
     } else {
-      const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale;
-      const zoomY = (y - this.canvasHeight / 2 - this.translateY) / this.scale;
-
-      this.scale = newScale;
-      this.translateX = x - this.canvasWidth / 2 - zoomX * this.scale;
-      this.translateY = y - this.canvasHeight / 2 - zoomY * this.scale;
-
-      this.constrainImagePosition();
+      this.applyTransformState(nextTransform);
       this.render();
       this.notifyZoomChange();
     }
@@ -1172,16 +1108,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   async copyOriginalImageToClipboard() {
     try {
-      const response = await fetch(this.originalImageSrc);
-      const blob = await response.blob();
-
-      if (!navigator.clipboard || !navigator.clipboard.write) {
+      const didCopy = await copyImageUrlToClipboard(this.originalImageSrc);
+      if (!didCopy) {
         console.warn("Clipboard API not supported");
         return;
       }
-
-      const clipboardItem = new ClipboardItem({ [blob.type]: blob });
-      await navigator.clipboard.write([clipboardItem]);
 
       if (this.onImageCopied) {
         this.onImageCopied();

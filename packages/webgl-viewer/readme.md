@@ -21,12 +21,19 @@ src/
 ├── DebugInfo.tsx              # debug overlay
 ├── ImageViewerEngineBase.ts   # engine base class
 ├── WebGLImageViewer.tsx       # React component wrapper
-├── WebGLImageViewerEngine.ts  # WebGL engine and interactions
+├── WebGLImageViewerEngine.ts  # engine coordinator
+├── clipboard-service.ts       # clipboard side effect wrapper
 ├── constants.ts               # default interaction configs
+├── debug-adapter.ts           # debug info projection
 ├── enum.ts                    # LoadingState
+├── input-controller.ts        # pointer/wheel/touch input handling
 ├── index.ts                   # public exports
 ├── interface.ts               # public prop/ref/debug types
+├── renderer.ts                # WebGL renderer and shader program lifecycle
 ├── shaders.ts                 # shader helpers
+├── tile-cache.ts              # tile keys, LOD constants and grid math
+├── tile-scheduler.ts          # visible tile and request scheduling helpers
+├── transform-controller.ts    # fit/zoom/constrain transform math
 └── texture.worker.js          # image/tile worker
 ```
 
@@ -182,8 +189,11 @@ The debug overlay also exposes a tile outline toggle.
 ## Implementation Notes
 
 - `WebGLImageViewer.tsx` owns React lifecycle and engine creation/destruction.
-- `WebGLImageViewerEngine.ts` owns WebGL state, pointer/touch/wheel/double-click handling, tiling, animations, and clipboard copy.
-- `texture.worker.js` loads image data and creates tile bitmaps off the main thread when possible.
+- `WebGLImageViewerEngine.ts` coordinates mutable viewer state, rendering, worker messages and animation.
+- `renderer.ts` owns shader program and draw calls; `input-controller.ts` owns DOM input handling.
+- `transform-controller.ts` and `tile-scheduler.ts` keep viewport math and tile selection testable outside the engine.
+- `worker-bridge.ts` wraps worker messaging; `texture.worker.js` loads image data and creates tile bitmaps off the main thread when possible.
+- `clipboard-service.ts` isolates clipboard side effects so copy behavior is easy to test and replace.
 - The component calls `onError` for initialization and image loading failures so the app can fall back gracefully.
 
 ## Development Checklist

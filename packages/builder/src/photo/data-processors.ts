@@ -19,6 +19,7 @@ import type {
   PickedExif,
   ToneAnalysis,
 } from "../types/photo.js";
+import { getPhotoExecutionContext } from "./execution-context.js";
 import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 export interface ThumbnailResult {
@@ -104,7 +105,8 @@ export async function processExifData(
   const ext = path.extname(photoKey).toLowerCase();
   const originalBuffer = HEIC_FORMATS.has(ext) ? rawImageBuffer : undefined;
 
-  return await extractExifData(imageBuffer, originalBuffer);
+  const { services } = getPhotoExecutionContext();
+  return await extractExifData(services.exif, imageBuffer, originalBuffer);
 }
 
 /**

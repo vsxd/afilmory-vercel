@@ -19,21 +19,14 @@ import { usePhotoViewerTransitions } from "./animations/usePhotoViewerTransition
 import { ExifPanel } from "./ExifPanel";
 import { GalleryThumbnail } from "./GalleryThumbnail";
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
+import {
+  usePhotoViewerBlobSource,
+  usePhotoViewerKeyboard,
+  useSwiperIndexSync,
+  useSwiperZoomLock,
+} from "./PhotoViewerController";
 import { PhotoViewerMediaCarousel } from "./PhotoViewerMediaCarousel";
 import { PhotoViewerToolbar } from "./PhotoViewerToolbar";
-
-const isEditableKeyboardTarget = (target: EventTarget | null): boolean => {
-  if (!(target instanceof HTMLElement)) return false;
-
-  if (target.isContentEditable) return true;
-
-  const tagName = target.tagName.toLowerCase();
-  return tagName === "input" || tagName === "textarea" || tagName === "select";
-};
-
-const hasNestedKeyboardOverlay = (): boolean => {
-  return document.querySelector("[data-photo-viewer-nested-overlay]") !== null;
-};
 
 interface PhotoViewerProps {
   photos: PhotoManifest[];
@@ -56,7 +49,8 @@ export const PhotoViewer = ({
   const swiperRef = useRef<SwiperType | null>(null);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const { showExifPanel, toggleExifPanel, closeExifPanel } = useExifPanel();
-  const [currentBlobSrc, setCurrentBlobSrc] = useState<string | null>(null);
+  const { currentBlobSrc, resetBlobSource, handleBlobSrcChange } =
+    usePhotoViewerBlobSource();
 
   const isMobile = useMobile();
   const currentPhoto = photos[currentIndex];
@@ -92,41 +86,22 @@ export const PhotoViewer = ({
     if (!isOpen) {
       setIsImageZoomed(false);
       closeExifPanel();
-      setCurrentBlobSrc(null);
+      resetBlobSource();
     }
-  }, [isOpen, closeExifPanel]);
+  }, [isOpen, closeExifPanel, resetBlobSource]);
 
-  // 同步 Swiper 的索引
-  useEffect(() => {
-    if (swiperRef.current && swiperRef.current.activeIndex !== currentIndex) {
-      swiperRef.current.slideTo(currentIndex, 300);
-    }
-    // 切换图片时重置缩放状态
-    setIsImageZoomed(false);
-  }, [currentIndex]);
-
-  // 当图片缩放状态改变时，控制 Swiper 的触摸行为
-  useEffect(() => {
-    if (swiperRef.current) {
-      if (isImageZoomed) {
-        // 图片被缩放时，禁用 Swiper 的触摸滑动
-        swiperRef.current.allowTouchMove = false;
-      } else {
-        // 图片未缩放时，启用 Swiper 的触摸滑动
-        swiperRef.current.allowTouchMove = true;
-      }
-    }
-  }, [isImageZoomed]);
+  const handleIndexSynced = useCallback(() => setIsImageZoomed(false), []);
+  useSwiperIndexSync({
+    currentIndex,
+    onIndexSynced: handleIndexSynced,
+    swiper: swiperRef,
+  });
+  useSwiperZoomLock({ isImageZoomed, swiper: swiperRef });
 
   const loadingIndicatorRef = useRef<LoadingIndicatorRef>(null);
   // 处理图片缩放状态变化
   const handleZoomChange = useCallback((isZoomed: boolean) => {
     setIsImageZoomed(isZoomed);
-  }, []);
-
-  // 处理 blobSrc 变化
-  const handleBlobSrcChange = useCallback((blobSrc: string | null) => {
-    setCurrentBlobSrc(blobSrc);
   }, []);
 
   const handleSwiperReady = useCallback(
@@ -145,47 +120,12 @@ export const PhotoViewer = ({
     [onIndexChange],
   );
 
-  // 键盘导航
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.isComposing ||
-        isEditableKeyboardTarget(event.target)
-      ) {
-        return;
-      }
-
-      if (hasNestedKeyboardOverlay()) {
-        return;
-      }
-
-      switch (event.key) {
-        case "ArrowLeft": {
-          event.preventDefault();
-          handlePrevious();
-          break;
-        }
-        case "ArrowRight": {
-          event.preventDefault();
-          handleNext();
-          break;
-        }
-        case "Escape": {
-          event.preventDefault();
-          onClose();
-          break;
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, handlePrevious, handleNext, onClose]);
+  usePhotoViewerKeyboard({
+    isOpen,
+    onClose,
+    onNext: handleNext,
+    onPrevious: handlePrevious,
+  });
 
   if (!currentPhoto) return null;
 

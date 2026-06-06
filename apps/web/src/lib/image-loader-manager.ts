@@ -1,4 +1,3 @@
-import type { VideoSource } from "~/components/ui/photo-viewer/types";
 import type { RegularImageCache } from "~/lib/image-cache-service";
 import { createRegularImageCache } from "~/lib/image-cache-service";
 import { ImageConversionService } from "~/lib/image-conversion-service";
@@ -7,6 +6,7 @@ import type {
   ImageLoadResult,
   LoadingCallbacks,
   VideoProcessResult,
+  VideoSource,
 } from "~/lib/image-loading-types";
 import { VideoLoadService } from "~/lib/video-load-service";
 

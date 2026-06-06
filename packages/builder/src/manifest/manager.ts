@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path, { basename } from "node:path";
 
-import { createManifest, parseManifest } from "@afilmory/schema";
-import type { _Object } from "@aws-sdk/client-s3";
+import { assertManifest, createManifest } from "@afilmory/schema";
 
 import { logger } from "../logger/index.js";
 import { getScopedBuilderOutputSettings } from "../output-paths.js";
+import type { StorageObject } from "../storage/interfaces.js";
 import type {
   AfilmoryManifest,
   CameraInfo,
@@ -38,7 +38,7 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("manifest 内容不是有效的对象");
     }
-    manifest = parseManifest(parsed);
+    manifest = assertManifest(parsed);
   } catch (error) {
     throw new Error(
       `解析 manifest 失败：${manifestPath} - ${error instanceof Error ? error.message : String(error)}`,
@@ -51,20 +51,20 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
 // 检查照片是否需要更新（基于最后修改时间、大小和可用 ETag）
 export function needsUpdate(
   existingItem: PhotoManifestItem | undefined,
-  s3Object: _Object,
+  object: StorageObject,
 ): boolean {
   if (!existingItem) return true;
-  if (!s3Object.LastModified) return true;
+  if (!object.lastModified) return true;
 
   const existingModified = new Date(existingItem.lastModified);
-  const s3Modified = s3Object.LastModified;
+  const s3Modified = object.lastModified;
   const modifiedChanged = s3Modified > existingModified;
   const sizeChanged =
     typeof existingItem.size === "number" &&
-    typeof s3Object.Size === "number" &&
-    existingItem.size !== s3Object.Size;
+    typeof object.size === "number" &&
+    existingItem.size !== object.size;
   const etagChanged = Boolean(
-    existingItem.etag && s3Object.ETag && existingItem.etag !== s3Object.ETag,
+    existingItem.etag && object.etag && existingItem.etag !== object.etag,
   );
 
   return modifiedChanged || sizeChanged || etagChanged;

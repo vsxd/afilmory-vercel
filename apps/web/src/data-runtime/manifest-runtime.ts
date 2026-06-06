@@ -1,5 +1,5 @@
 import type { AfilmoryManifest } from "@afilmory/schema";
-import { parseManifest } from "@afilmory/schema";
+import { assertManifest } from "@afilmory/schema";
 
 import {
   ensureBrowserRuntime,
@@ -46,7 +46,7 @@ async function fetchManifest(url: string): Promise<unknown> {
 }
 
 function coerceManifest(input: unknown): AfilmoryManifest {
-  const manifest = parseManifest(input);
+  const manifest = assertManifest(input);
   setRuntimeManifest(manifest);
   return manifest;
 }

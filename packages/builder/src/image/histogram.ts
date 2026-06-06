@@ -1,11 +1,7 @@
-import type {
-  HistogramData,
-  ToneAnalysis,
-  ToneType,
-} from "@afilmory/builder/types/photo.js";
 import type sharp from "sharp";
 
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
+import type { HistogramData, ToneAnalysis, ToneType } from "../types/photo.js";
 
 /**
  * 计算图片的直方图

@@ -478,10 +478,14 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                       : undefined
                   }
                 >
-                  {typeof cmd.icon === "string" ? (
-                    <i className={cmd.icon} />
+                  {cmd.thumbnail ? (
+                    <img
+                      src={cmd.thumbnail.src}
+                      alt={cmd.thumbnail.alt}
+                      className="h-10 w-10 rounded-xl object-cover"
+                    />
                   ) : (
-                    cmd.icon
+                    <i className={cmd.icon} />
                   )}
                 </div>
 

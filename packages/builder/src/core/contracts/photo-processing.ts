@@ -1,5 +1,4 @@
-import type { _Object } from "@aws-sdk/client-s3";
-
+import type { StorageObject } from "../../storage/interfaces.js";
 import type { PhotoManifestItem } from "../../types/photo.js";
 
 export interface PhotoProcessorOptions {
@@ -10,9 +9,9 @@ export interface PhotoProcessorOptions {
 
 export interface PhotoProcessingContext {
   photoKey: string;
-  obj: _Object;
+  obj: StorageObject;
   existingItem: PhotoManifestItem | undefined;
-  livePhotoMap: Map<string, _Object>;
+  livePhotoMap: Map<string, StorageObject>;
   options: PhotoProcessorOptions;
   pluginData: Record<string, unknown>;
 }

@@ -24,6 +24,45 @@ const rootIgnores = globalIgnores([
   "packages/webgl-viewer/src/shaders.js",
 ]);
 
+const restrictedImports = {
+  paths: [
+    {
+      name: "zustand",
+      message: "UI state uses Jotai in this app.",
+    },
+    {
+      name: "zustand/shallow",
+      message: "Use a local equality helper with Jotai selectors.",
+    },
+    {
+      name: "@afilmory/data",
+      message: "Use @afilmory/schema or @afilmory/media.",
+    },
+    {
+      name: "~/data-runtime/photo-loader",
+      message:
+        "Use AppRuntime PhotoRepository instead of a module singleton.",
+    },
+    {
+      name: "~/lib/jotai",
+      importNames: ["jotaiStore", "createAtomAccessor"],
+      message: "Use the Provider-scoped Jotai store from AppRuntime.",
+    },
+    {
+      name: "../output-paths.js",
+      importNames: ["setBuilderOutputSettings", "getBuilderOutputSettings"],
+      message:
+        "Use runWithBuilderOutputSettings/getScopedBuilderOutputSettings.",
+    },
+  ],
+  patterns: [
+    {
+      group: ["zustand/*", "@afilmory/data/*"],
+      message: "UI state uses Jotai in this app.",
+    },
+  ],
+};
+
 const hyobanConfig = await defineConfig(
   {
     formatting: false,
@@ -94,43 +133,7 @@ const hyobanConfig = await defineConfig(
       ],
       "no-restricted-imports": [
         "error",
-        {
-          paths: [
-            {
-              name: "zustand",
-              message: "UI state uses Jotai in this app.",
-            },
-            {
-              name: "zustand/shallow",
-              message: "Use a local equality helper with Jotai selectors.",
-            },
-            {
-              name: "~/data-runtime/photo-loader",
-              message:
-                "Use AppRuntime PhotoRepository instead of a module singleton.",
-            },
-            {
-              name: "~/lib/jotai",
-              importNames: ["jotaiStore", "createAtomAccessor"],
-              message: "Use the Provider-scoped Jotai store from AppRuntime.",
-            },
-            {
-              name: "../output-paths.js",
-              importNames: [
-                "setBuilderOutputSettings",
-                "getBuilderOutputSettings",
-              ],
-              message:
-                "Use runWithBuilderOutputSettings/getScopedBuilderOutputSettings.",
-            },
-          ],
-          patterns: [
-            {
-              group: ["zustand/*"],
-              message: "UI state uses Jotai in this app.",
-            },
-          ],
-        },
+        restrictedImports,
       ],
       "no-restricted-properties": [
         "error",
@@ -195,6 +198,78 @@ const hyobanConfig = await defineConfig(
     files: ["**/*.tsx"],
     rules: {
       "@stylistic/jsx-self-closing-comp": "error",
+    },
+  },
+
+  {
+    files: ["packages/builder/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: restrictedImports.paths,
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: ["@afilmory/builder", "@afilmory/builder/*"],
+              message:
+                "Builder internals should use relative imports instead of importing their own package entrypoints.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    files: ["packages/ui/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            ...restrictedImports.paths,
+            {
+              name: "@afilmory/schema",
+              message: "UI primitives must not depend on manifest schema.",
+            },
+          ],
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: ["@afilmory/schema/*"],
+              message: "UI primitives must not depend on manifest schema.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    files: ["apps/web/src/lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: restrictedImports.paths,
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: [
+                "~/components/*",
+                "~/modules/*",
+                "~/pages/*",
+                "../**/components/*",
+                "../**/modules/*",
+                "../**/pages/*",
+              ],
+              message:
+                "web lib modules must not depend on feature/component layers.",
+            },
+          ],
+        },
+      ],
     },
   },
 

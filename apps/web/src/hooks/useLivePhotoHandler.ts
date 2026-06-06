@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { isMobileDevice } from "~/lib/device-viewport";
-import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -143,7 +143,7 @@ export const useLivePhotoHandler = ({
       setLivePhotoVideoLoaded(false);
       setIsConvertingVideo(true);
 
-      const imageLoaderManager = new ImageLoaderManager(runtime.imageCache);
+      const imageLoaderManager = runtime.imageLoading.createLoader();
       imageLoaderManagerRef.current = imageLoaderManager;
 
       try {
@@ -190,12 +190,18 @@ export const useLivePhotoHandler = ({
     return () => {
       cancelled = true;
       if (imageLoaderManagerRef.current) {
-        imageLoaderManagerRef.current.cleanup();
+        runtime.imageLoading.cleanupLoader(imageLoaderManagerRef.current);
         imageLoaderManagerRef.current = null;
       }
       resetVideoElement(videoEl);
     };
-  }, [stableVideo, originalUrl, imageLoaded, videoLoadKey, runtime.imageCache]);
+  }, [
+    stableVideo,
+    originalUrl,
+    imageLoaded,
+    videoLoadKey,
+    runtime.imageLoading,
+  ]);
 
   // Live Photo/Motion Photo hover handling (desktop only)
   const handleMouseEnter = useCallback(() => {
@@ -253,14 +259,14 @@ export const useLivePhotoHandler = ({
       }
 
       if (imageLoaderManagerRef.current) {
-        imageLoaderManagerRef.current.cleanup();
+        runtime.imageLoading.cleanupLoader(imageLoaderManagerRef.current);
         imageLoaderManagerRef.current = null;
       }
 
       loadedVideoKeyRef.current = null;
       resetVideoElement(currentVideoElement);
     };
-  }, []);
+  }, [runtime.imageLoading]);
 
   return {
     videoRef,

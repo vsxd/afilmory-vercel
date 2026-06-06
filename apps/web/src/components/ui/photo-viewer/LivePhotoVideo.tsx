@@ -10,10 +10,11 @@ import {
 } from "react";
 
 import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { VideoSource } from "~/lib/image-loading-types";
+import { getVideoSourceKey } from "~/lib/image-loading-types";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
-import type { LivePhotoVideoHandle, VideoSource } from "./types";
-import { getVideoSourceKey } from "./types";
+import type { LivePhotoVideoHandle } from "./types";
 
 export type { LivePhotoVideoHandle } from "./types";
 

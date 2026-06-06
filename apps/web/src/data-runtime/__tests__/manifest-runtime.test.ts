@@ -2,10 +2,33 @@ import { createManifest } from "@afilmory/schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AfilmoryBrowserRuntime } from "~/runtime/browser-runtime";
+import type { PhotoManifest } from "~/types/photo";
 
 import { loadManifestRuntime } from "../manifest-runtime";
 
 const originalFetch = globalThis.fetch;
+
+function createPhoto(id: string): PhotoManifest {
+  return {
+    id,
+    title: id,
+    description: "",
+    dateTaken: "2024-01-01T00:00:00.000Z",
+    tags: [],
+    originalUrl: `https://example.com/${id}.jpg`,
+    thumbnailUrl: `https://example.com/${id}-thumb.jpg`,
+    thumbHash: null,
+    width: 100,
+    height: 100,
+    aspectRatio: 1,
+    s3Key: `${id}.jpg`,
+    lastModified: "2024-01-01T00:00:00.000Z",
+    size: 1,
+    exif: null,
+    toneAnalysis: null,
+    location: null,
+  };
+}
 
 describe("loadManifestRuntime", () => {
   beforeEach(() => {
@@ -27,7 +50,7 @@ describe("loadManifestRuntime", () => {
       version: 1,
       manifest: {
         mode: "inline",
-        data: createManifest({ photos: [{ id: "1", tags: [] } as never] }),
+        data: createManifest({ photos: [createPhoto("1")] }),
       },
     };
     const fetchSpy = vi.fn();
@@ -50,7 +73,7 @@ describe("loadManifestRuntime", () => {
         mode: "external",
         url: "/assets/photos-manifest.json",
         promise: Promise.resolve(
-          createManifest({ photos: [{ id: "2", tags: [] } as never] }),
+          createManifest({ photos: [createPhoto("2")] }),
         ),
       },
     };
@@ -74,8 +97,7 @@ describe("loadManifestRuntime", () => {
     };
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () =>
-        createManifest({ photos: [{ id: "3", tags: [] } as never] }),
+      json: async () => createManifest({ photos: [createPhoto("3")] }),
     });
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
@@ -109,8 +131,7 @@ describe("loadManifestRuntime", () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () =>
-          createManifest({ photos: [{ id: "4", tags: [] } as never] }),
+        json: async () => createManifest({ photos: [createPhoto("4")] }),
       });
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 

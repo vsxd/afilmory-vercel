@@ -1,5 +1,3 @@
-import type { _Object } from "@aws-sdk/client-s3";
-
 import { logger } from "../../logger/index.js";
 import type { PhotoProcessorOptions } from "../../photo/processor.js";
 import { processPhoto } from "../../photo/processor.js";
@@ -195,12 +193,12 @@ export class PhotoTaskProcessor {
       const obj = tasksToProcess[taskIndex];
 
       return await processPhoto(
-        this.toS3Object(obj),
+        obj,
         taskIndex,
         workerId,
         tasksToProcess.length,
         existingManifestMap,
-        this.toS3ObjectMap(livePhotoMap),
+        livePhotoMap,
         processorOptions,
         session.services,
         (runState, event, payload) =>
@@ -238,24 +236,5 @@ export class PhotoTaskProcessor {
         break;
       }
     }
-  }
-
-  private toS3Object(obj: StorageObject): _Object {
-    return {
-      Key: obj.key,
-      Size: obj.size,
-      LastModified: obj.lastModified,
-      ETag: obj.etag,
-    };
-  }
-
-  private toS3ObjectMap(
-    objects: Map<string, StorageObject>,
-  ): Map<string, _Object> {
-    const legacyMap = new Map<string, _Object>();
-    for (const [key, value] of objects) {
-      legacyMap.set(key, this.toS3Object(value));
-    }
-    return legacyMap;
   }
 }

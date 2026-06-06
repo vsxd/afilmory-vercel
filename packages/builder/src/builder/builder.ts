@@ -1,5 +1,6 @@
 import type { BuilderServices } from "../core/contracts/services.js";
 import { createBuilderServices } from "../core/services/index.js";
+import { ExifService } from "../image/exif.js";
 import { logger } from "../logger/index.js";
 import { loadExistingManifest } from "../manifest/manager.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
@@ -33,6 +34,11 @@ export type {
   BuildProgressStartPayload,
 } from "../types/options.js";
 
+export interface AfilmoryBuilderRuntime {
+  exifService?: ExifService;
+  ownsExifService?: boolean;
+}
+
 export class AfilmoryBuilder {
   private storageManager: StorageManager | null = null;
   private config: BuilderConfig;
@@ -40,9 +46,13 @@ export class AfilmoryBuilder {
   private readonly pluginReferences: BuilderPluginConfigEntry[];
   private photoIdCollisionKeys = new Set<string>();
   private readonly servicesInstance: BuilderServices;
+  private readonly exifService: ExifService;
+  private readonly ownsExifService: boolean;
 
-  constructor(config: BuilderConfig) {
+  constructor(config: BuilderConfig, runtime: AfilmoryBuilderRuntime = {}) {
     this.config = config;
+    this.exifService = runtime.exifService ?? new ExifService();
+    this.ownsExifService = runtime.ownsExifService ?? !runtime.exifService;
 
     this.pluginReferences = this.resolvePluginReferences();
 
@@ -55,6 +65,7 @@ export class AfilmoryBuilder {
       logger,
       getStorageConfig: () => this.getStorageConfig(),
       getStorageManager: () => this.getStorageManager(),
+      getExifService: () => this.exifService,
       createStorageManager: (config) => this.createStorageManager(config),
       hasPhotoIdCollision: (key) => this.hasPhotoIdCollision(key),
       getPhotoIdForKey: (key, existingItem) =>
@@ -66,6 +77,12 @@ export class AfilmoryBuilder {
 
   get services(): BuilderServices {
     return this.servicesInstance;
+  }
+
+  dispose(): void {
+    if (this.ownsExifService) {
+      this.exifService.close();
+    }
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {

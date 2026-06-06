@@ -1,3 +1,4 @@
+import type { ExifService } from "../../image/exif.js";
 import type { Logger } from "../../logger/index.js";
 import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
@@ -29,6 +30,7 @@ export interface PhotoIdService {
  * plugins are event subscribers, not coordinators.
  */
 export interface BuilderServices {
+  exif: ExifService;
   storage: StorageService;
   output: OutputPathsService;
   photoId: PhotoIdService;
