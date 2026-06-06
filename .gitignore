@@ -14,6 +14,7 @@ apps/web/public/thumbnails
 apps/web/public/photos
 apps/web/public/originals
 apps/web/assets-git
+apps/web/assets-git.backup-*
 generated
 
 # 部署相关

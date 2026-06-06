@@ -13,11 +13,13 @@ const RUN_SHARED_SYNC_ENABLED = "repoSyncEnabled";
 const CACHE_MANIFEST_FILE = "photos-manifest.json";
 const CACHE_GEOCODING_FILE = "geocoding-cache.json";
 const CACHE_THUMBNAILS_DIR = "thumbnails";
+const CACHE_README_FILE = "README.md";
 const CACHE_ROOT_ENTRIES = new Set([
   ".git",
   CACHE_MANIFEST_FILE,
   CACHE_GEOCODING_FILE,
   CACHE_THUMBNAILS_DIR,
+  CACHE_README_FILE,
 ]);
 const CACHE_STAGE_PATHS = [
   CACHE_MANIFEST_FILE,

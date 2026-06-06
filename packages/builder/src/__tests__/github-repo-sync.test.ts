@@ -373,11 +373,22 @@ describe("GitHub repo sync layout recovery", () => {
 
   it("rejects non-cache root entries in the cache repo", async () => {
     await seedRepoAssets(assetsGitDir);
-    await fs.writeFile(path.join(assetsGitDir, "README.md"), "metadata");
+    await fs.writeFile(path.join(assetsGitDir, "metadata.json"), "{}");
 
     await expect(
       prepareRepositoryLayout({ assetsGitDir, logger }),
-    ).rejects.toThrow("远程缓存仓库包含非缓存文件：README.md");
+    ).rejects.toThrow("远程缓存仓库包含非缓存文件：metadata.json");
+  });
+
+  it("allows a root README.md in the cache repo", async () => {
+    await seedRepoAssets(assetsGitDir);
+    await fs.writeFile(path.join(assetsGitDir, "README.md"), "cache docs");
+
+    await prepareRepositoryLayout({ assetsGitDir, logger });
+
+    await expect(fs.readFile(manifestPath, "utf-8")).resolves.toContain(
+      '"photo"',
+    );
   });
 
   it("copies local build outputs back into the cache repo workspace", async () => {
