@@ -1,13 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { GallerySetting } from "~/atoms/app";
 import type { PhotoManifest } from "~/types/photo";
 
 import {
+  applyGalleryCommandAction,
   buildCommandIndex,
   filterCommands,
   getActiveFilterCount,
-} from "./command-palette-model";
+} from "./model";
 
 const gallerySetting: GallerySetting = {
   sortBy: "date",
@@ -84,20 +85,25 @@ describe("command-palette-model", () => {
       },
       query: "mountains",
       hasFilters: false,
-      setGallerySetting: vi.fn(),
-      updateTagFilterMode: vi.fn(),
-      openPhoto: vi.fn(),
     });
 
     expect(
       commands.find((command) => command.id === "lens-Sony FE 35mm"),
     ).toMatchObject({
       icon: "i-mingcute-camera-2-line",
+      action: {
+        type: "toggle-lens",
+        lens: "Sony FE 35mm",
+      },
     });
     expect(
       commands.find((command) => command.id === "photo-photo"),
     ).toMatchObject({
       icon: "photo-thumbnail",
+      action: {
+        type: "open-photo",
+        photoId: "photo",
+      },
       thumbnail: {
         src: "/thumb.jpg",
         alt: "action.search.photo-thumbnail:Mountains",
@@ -114,11 +120,33 @@ describe("command-palette-model", () => {
             type: "filter",
             title: "Sony A7C",
             icon: "camera",
-            action: vi.fn(),
+            action: { type: "toggle-camera", camera: "Sony A7C" },
           },
         ],
         "a7c",
       ),
     ).toHaveLength(1);
+  });
+
+  it("applies command actions to gallery settings", () => {
+    expect(
+      applyGalleryCommandAction(gallerySetting, {
+        type: "toggle-tag",
+        tag: "travel",
+      }).selectedTags,
+    ).toEqual(["travel"]);
+
+    expect(
+      applyGalleryCommandAction(
+        {
+          ...gallerySetting,
+          selectedTags: ["travel"],
+        },
+        { type: "clear-filters" },
+      ),
+    ).toMatchObject({
+      selectedTags: [],
+      tagFilterMode: "union",
+    });
   });
 });

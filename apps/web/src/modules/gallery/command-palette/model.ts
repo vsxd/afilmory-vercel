@@ -1,4 +1,4 @@
-import type { CameraInfo, LensInfo } from "@afilmory/schema";
+import type { CameraInfo, GeoFilterState, LensInfo } from "@afilmory/schema";
 import type { TFunction } from "i18next";
 
 import type { GallerySetting } from "~/atoms/app";
@@ -7,7 +7,6 @@ import {
   getLocationTokens,
   searchPhotos,
 } from "~/hooks/useCommandSearch";
-import type { GeoFilterState } from "~/lib/geo-regions";
 import { getRegionDisplayName } from "~/lib/geo-regions";
 import type { GeographicRegion } from "~/types/map";
 import type { PhotoManifest } from "~/types/photo";
@@ -20,7 +19,7 @@ export interface Command {
   title: string;
   subtitle?: string;
   icon: string;
-  action: () => void;
+  action: CommandAction;
   keywords?: string[];
   badge?: string | number;
   active?: boolean;
@@ -34,13 +33,20 @@ export interface ActiveFilterChip {
   id: string;
   label: string;
   icon: string;
-  onRemove: () => void;
+  action: CommandAction;
 }
 
-type GallerySettingUpdater = (
-  updater: (previous: GallerySetting) => GallerySetting,
-) => void;
 type GalleryTranslation = TFunction<"app">;
+type GeoFilterField = keyof GeoFilterState;
+
+export type CommandAction =
+  | { type: "toggle-tag"; tag: string }
+  | { type: "toggle-camera"; camera: string }
+  | { type: "toggle-lens"; lens: string }
+  | { type: "toggle-geo"; field: GeoFilterField; id: string }
+  | { type: "set-tag-filter-mode"; mode: GallerySetting["tagFilterMode"] }
+  | { type: "clear-filters" }
+  | { type: "open-photo"; photoId: string };
 
 export type CommandGeoRegions = Record<
   "country" | "region" | "city" | "district",
@@ -53,7 +59,9 @@ export function getActiveFilterCount(gallerySetting: GallerySetting): number {
     gallerySetting.selectedCameras.length +
     gallerySetting.selectedLenses.length +
     gallerySetting.selectedGeoCountries.length +
-    gallerySetting.selectedGeoCities.length
+    gallerySetting.selectedGeoRegions.length +
+    gallerySetting.selectedGeoCities.length +
+    gallerySetting.selectedGeoDistricts.length
   );
 }
 
@@ -75,46 +83,27 @@ export function getAvailableFilterCount(input: {
 export function buildActiveFilterChips(input: {
   gallerySetting: GallerySetting;
   regionLabelMaps: Record<keyof GeoFilterState, Map<string, string>>;
-  setGallerySetting: GallerySettingUpdater;
 }): ActiveFilterChip[] {
-  const { gallerySetting, regionLabelMaps, setGallerySetting } = input;
+  const { gallerySetting, regionLabelMaps } = input;
 
   return [
     ...gallerySetting.selectedTags.map((tag) => ({
       id: `tag-${tag}`,
       label: tag,
       icon: "i-mingcute-tag-line",
-      onRemove: () =>
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedTags: prev.selectedTags.filter(
-            (selectedTag) => selectedTag !== tag,
-          ),
-        })),
+      action: { type: "toggle-tag", tag } satisfies CommandAction,
     })),
     ...gallerySetting.selectedCameras.map((camera) => ({
       id: `camera-${camera}`,
       label: camera,
       icon: "i-mingcute-camera-line",
-      onRemove: () =>
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedCameras: prev.selectedCameras.filter(
-            (selectedCamera) => selectedCamera !== camera,
-          ),
-        })),
+      action: { type: "toggle-camera", camera } satisfies CommandAction,
     })),
     ...gallerySetting.selectedLenses.map((lens) => ({
       id: `lens-${lens}`,
       label: lens,
       icon: "i-mingcute-camera-2-line",
-      onRemove: () =>
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedLenses: prev.selectedLenses.filter(
-            (selectedLens) => selectedLens !== lens,
-          ),
-        })),
+      action: { type: "toggle-lens", lens } satisfies CommandAction,
     })),
     ...buildGeoChips({
       ids: gallerySetting.selectedGeoCountries,
@@ -122,7 +111,6 @@ export function buildActiveFilterChips(input: {
       prefix: "geo-country",
       icon: "i-mingcute-world-line",
       field: "selectedGeoCountries",
-      setGallerySetting,
     }),
     ...buildGeoChips({
       ids: gallerySetting.selectedGeoRegions,
@@ -130,7 +118,6 @@ export function buildActiveFilterChips(input: {
       prefix: "geo-region",
       icon: "i-mingcute-map-pin-line",
       field: "selectedGeoRegions",
-      setGallerySetting,
     }),
     ...buildGeoChips({
       ids: gallerySetting.selectedGeoCities,
@@ -138,7 +125,6 @@ export function buildActiveFilterChips(input: {
       prefix: "geo-city",
       icon: "i-mingcute-building-5-line",
       field: "selectedGeoCities",
-      setGallerySetting,
     }),
     ...buildGeoChips({
       ids: gallerySetting.selectedGeoDistricts,
@@ -146,7 +132,6 @@ export function buildActiveFilterChips(input: {
       prefix: "geo-district",
       icon: "i-mingcute-map-pin-line",
       field: "selectedGeoDistricts",
-      setGallerySetting,
     }),
   ];
 }
@@ -162,9 +147,6 @@ export function buildCommandIndex(input: {
   geoRegions: CommandGeoRegions;
   query: string;
   hasFilters: boolean;
-  setGallerySetting: GallerySettingUpdater;
-  updateTagFilterMode: (mode: GallerySetting["tagFilterMode"]) => void;
-  openPhoto: (photo: PhotoManifest) => void;
 }): Command[] {
   const {
     t,
@@ -177,9 +159,6 @@ export function buildCommandIndex(input: {
     geoRegions,
     query,
     hasFilters,
-    setGallerySetting,
-    updateTagFilterMode,
-    openPhoto,
   } = input;
   const commands: Command[] = [];
 
@@ -192,14 +171,7 @@ export function buildCommandIndex(input: {
       subtitle: t("action.tag.filter"),
       icon: "i-mingcute-tag-line",
       active: isActive,
-      action: () => {
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedTags: isActive
-            ? prev.selectedTags.filter((selectedTag) => selectedTag !== tag)
-            : [...prev.selectedTags, tag],
-        }));
-      },
+      action: { type: "toggle-tag", tag },
       keywords: ["tag", "filter", tag],
     });
   }
@@ -215,14 +187,7 @@ export function buildCommandIndex(input: {
       subtitle: t("action.camera.filter"),
       icon: "i-mingcute-camera-line",
       active: isActive,
-      action: () => {
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedCameras: isActive
-            ? prev.selectedCameras.filter((item) => item !== camera.displayName)
-            : [...prev.selectedCameras, camera.displayName],
-        }));
-      },
+      action: { type: "toggle-camera", camera: camera.displayName },
       keywords: [
         "camera",
         "filter",
@@ -242,14 +207,7 @@ export function buildCommandIndex(input: {
       subtitle: t("action.lens.filter"),
       icon: "i-mingcute-camera-2-line",
       active: isActive,
-      action: () => {
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedLenses: isActive
-            ? prev.selectedLenses.filter((item) => item !== lens.displayName)
-            : [...prev.selectedLenses, lens.displayName],
-        }));
-      },
+      action: { type: "toggle-lens", lens: lens.displayName },
       keywords: ["lens", "filter", lens.displayName],
     });
   }
@@ -260,7 +218,6 @@ export function buildCommandIndex(input: {
     language,
     geoRegions,
     gallerySetting,
-    setGallerySetting,
   });
 
   if (allTags.length > 0) {
@@ -274,7 +231,10 @@ export function buildCommandIndex(input: {
       subtitle: t("action.tag.match.label"),
       icon: "i-mingcute-switch-line",
       badge: isUnionMode ? t("action.tag.mode.or") : t("action.tag.mode.and"),
-      action: () => updateTagFilterMode(isUnionMode ? "intersection" : "union"),
+      action: {
+        type: "set-tag-filter-mode",
+        mode: isUnionMode ? "intersection" : "union",
+      },
       keywords: ["tag", "filter", "mode", "toggle"],
     });
   }
@@ -286,7 +246,7 @@ export function buildCommandIndex(input: {
       title: t("action.search.clear"),
       subtitle: t("action.search.clear-filters-subtitle"),
       icon: "i-mingcute-close-line",
-      action: () => clearFilters(setGallerySetting),
+      action: { type: "clear-filters" },
       keywords: ["clear", "reset", "remove", "filter"],
     });
   }
@@ -310,7 +270,7 @@ export function buildCommandIndex(input: {
             title: photo.title || photo.id,
           }),
         },
-        action: () => openPhoto(photo),
+        action: { type: "open-photo", photoId: photo.id },
         keywords: [
           photo.title,
           photo.description,
@@ -322,6 +282,53 @@ export function buildCommandIndex(input: {
   }
 
   return commands;
+}
+
+export function applyGalleryCommandAction(
+  gallerySetting: GallerySetting,
+  action: CommandAction,
+): GallerySetting {
+  switch (action.type) {
+    case "toggle-tag": {
+      return {
+        ...gallerySetting,
+        selectedTags: toggleValue(gallerySetting.selectedTags, action.tag),
+      };
+    }
+    case "toggle-camera": {
+      return {
+        ...gallerySetting,
+        selectedCameras: toggleValue(
+          gallerySetting.selectedCameras,
+          action.camera,
+        ),
+      };
+    }
+    case "toggle-lens": {
+      return {
+        ...gallerySetting,
+        selectedLenses: toggleValue(gallerySetting.selectedLenses, action.lens),
+      };
+    }
+    case "toggle-geo": {
+      return {
+        ...gallerySetting,
+        [action.field]: toggleValue(gallerySetting[action.field], action.id),
+      };
+    }
+    case "set-tag-filter-mode": {
+      return {
+        ...gallerySetting,
+        tagFilterMode: action.mode,
+      };
+    }
+    case "clear-filters": {
+      return clearFilters(gallerySetting);
+    }
+    case "open-photo": {
+      return gallerySetting;
+    }
+  }
 }
 
 export function filterCommands(commands: Command[], query: string): Command[] {
@@ -337,9 +344,15 @@ export function filterCommands(commands: Command[], query: string): Command[] {
     .slice(0, 20);
 }
 
-function clearFilters(setGallerySetting: GallerySettingUpdater): void {
-  setGallerySetting((prev) => ({
-    ...prev,
+function toggleValue(values: string[], value: string): string[] {
+  return values.includes(value)
+    ? values.filter((item) => item !== value)
+    : [...values, value];
+}
+
+function clearFilters(gallerySetting: GallerySetting): GallerySetting {
+  return {
+    ...gallerySetting,
     selectedTags: [],
     selectedCameras: [],
     selectedLenses: [],
@@ -348,7 +361,7 @@ function clearFilters(setGallerySetting: GallerySettingUpdater): void {
     selectedGeoCities: [],
     selectedGeoDistricts: [],
     tagFilterMode: "union",
-  }));
+  };
 }
 
 function buildGeoChips(input: {
@@ -357,18 +370,13 @@ function buildGeoChips(input: {
   prefix: string;
   icon: string;
   field: keyof GeoFilterState;
-  setGallerySetting: GallerySettingUpdater;
 }): ActiveFilterChip[] {
-  const { ids, labelMap, prefix, icon, field, setGallerySetting } = input;
+  const { ids, labelMap, prefix, icon, field } = input;
   return ids.map((id) => ({
     id: `${prefix}-${id}`,
     label: labelMap.get(id) ?? id,
     icon,
-    onRemove: () =>
-      setGallerySetting((prev) => ({
-        ...prev,
-        [field]: prev[field].filter((selectedId) => selectedId !== id),
-      })),
+    action: { type: "toggle-geo", field, id },
   }));
 }
 
@@ -378,16 +386,8 @@ function addGeoCommands(input: {
   language: string;
   geoRegions: CommandGeoRegions;
   gallerySetting: GallerySetting;
-  setGallerySetting: GallerySettingUpdater;
 }): void {
-  const {
-    commands,
-    t,
-    language,
-    geoRegions,
-    gallerySetting,
-    setGallerySetting,
-  } = input;
+  const { commands, t, language, geoRegions, gallerySetting } = input;
   const geoCommandGroups = [
     {
       regions: geoRegions.country,
@@ -395,13 +395,11 @@ function addGeoCommands(input: {
       label: t("action.geo.country.filter"),
       icon: "i-mingcute-world-line",
       keywords: ["country", "geo", "region", "filter"],
-      toggle: (id: string) =>
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedGeoCountries: prev.selectedGeoCountries.includes(id)
-            ? prev.selectedGeoCountries.filter((item) => item !== id)
-            : [...prev.selectedGeoCountries, id],
-        })),
+      action: (id: string): CommandAction => ({
+        type: "toggle-geo",
+        field: "selectedGeoCountries",
+        id,
+      }),
     },
     {
       regions: geoRegions.city,
@@ -409,13 +407,11 @@ function addGeoCommands(input: {
       label: t("action.geo.city.filter"),
       icon: "i-mingcute-building-5-line",
       keywords: ["city", "geo", "filter"],
-      toggle: (id: string) =>
-        setGallerySetting((prev) => ({
-          ...prev,
-          selectedGeoCities: prev.selectedGeoCities.includes(id)
-            ? prev.selectedGeoCities.filter((item) => item !== id)
-            : [...prev.selectedGeoCities, id],
-        })),
+      action: (id: string): CommandAction => ({
+        type: "toggle-geo",
+        field: "selectedGeoCities",
+        id,
+      }),
     },
   ];
 
@@ -429,7 +425,7 @@ function addGeoCommands(input: {
         subtitle: group.label,
         icon: group.icon,
         active: group.selected.includes(region.id),
-        action: () => group.toggle(region.id),
+        action: group.action(region.id),
         keywords: [
           ...group.keywords,
           title,

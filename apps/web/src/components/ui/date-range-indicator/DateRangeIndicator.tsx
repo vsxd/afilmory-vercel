@@ -15,9 +15,10 @@ interface DateRangeIndicatorProps {
 export const DateRangeIndicator = memo(
   ({ dateRange, location, isVisible, className }: DateRangeIndicatorProps) => {
     const { t } = useTranslation();
-    const translateDay = (day: string | number) => t(`date.day.${day}` as any);
+    const translateDay = (day: string | number) =>
+      t(`date.day.${day}` as never);
     const translateMonth = (month: string | number) =>
-      t(`date.month.${month}` as any);
+      t(`date.month.${month}` as never);
 
     // 解析日期范围，提取主要的日期信息
     const parseMainDate = (range: string) => {

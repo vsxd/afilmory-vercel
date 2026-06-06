@@ -1,12 +1,8 @@
 import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/schema";
+import { buildGeoRegionId, photoMatchesGeoFilters } from "@afilmory/schema";
 import { describe, expect, it } from "vitest";
 
-import {
-  buildGeoRegionId,
-  createGeographicRegions,
-  getRegionDisplayName,
-  photoMatchesGeoFilters,
-} from "../geo-regions";
+import { createGeographicRegions, getRegionDisplayName } from "../geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "../map-utils";
 
 const createPhoto = (

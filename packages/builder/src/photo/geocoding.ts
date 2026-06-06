@@ -1,7 +1,9 @@
-import { createHash } from "node:crypto";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import {
+  createLocationInfo,
+  normalizeCountryCode,
+  normalizeGeoValue,
+  normalizeLocalizedAdminValue,
+} from "@afilmory/schema";
 
 import type {
   LocationAdminInfo,
@@ -9,6 +11,11 @@ import type {
   PickedExif,
 } from "../types/photo.js";
 import { sleep } from "../utils/backoff.js";
+import type { SequentialRateLimiter } from "./geocoding-rate-limiter.js";
+import {
+  applyInterprocessRateLimit,
+  getRateLimiter,
+} from "./geocoding-rate-limiter.js";
 import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 const getBackoffDelay = (attempt: number, baseDelay: number): number => {
@@ -16,156 +23,6 @@ const getBackoffDelay = (attempt: number, baseDelay: number): number => {
   const jitter = Math.random() * baseDelay;
   return exponential + jitter;
 };
-
-const INTERPROCESS_RATE_LIMIT_DIR = path.join(
-  os.tmpdir(),
-  "afilmory-geocoding-rate-limit",
-);
-const LOCK_RETRY_DELAY_MS = 50;
-const LOCK_STALE_TIMEOUT_MS = 5 * 60_000;
-let rateLimitDirReady: Promise<void> | null = null;
-
-const ensureRateLimitDir = async (): Promise<void> => {
-  if (!rateLimitDirReady) {
-    rateLimitDirReady = fs
-      .mkdir(INTERPROCESS_RATE_LIMIT_DIR, { recursive: true })
-      .then(() => {});
-  }
-  await rateLimitDirReady;
-};
-
-const hashKey = (key: string): string =>
-  createHash("sha1").update(key).digest("hex");
-
-const getRateLimitPaths = (
-  key: string,
-): { lockPath: string; timestampPath: string } => {
-  const hashedKey = hashKey(key);
-  return {
-    lockPath: path.join(INTERPROCESS_RATE_LIMIT_DIR, `${hashedKey}.lock`),
-    timestampPath: path.join(INTERPROCESS_RATE_LIMIT_DIR, `${hashedKey}.ts`),
-  };
-};
-
-async function tryRemoveLock(lockPath: string): Promise<void> {
-  await fs.rm(lockPath, { force: true }).catch(() => {});
-}
-
-const isLockStale = async (lockPath: string): Promise<boolean> => {
-  try {
-    const stat = await fs.stat(lockPath);
-    return Date.now() - stat.mtimeMs > LOCK_STALE_TIMEOUT_MS;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return false;
-    }
-    throw error;
-  }
-};
-
-async function withInterprocessLock<T>(
-  key: string,
-  fn: () => Promise<T>,
-): Promise<T> {
-  await ensureRateLimitDir();
-  const { lockPath } = getRateLimitPaths(key);
-
-  while (true) {
-    try {
-      const handle = await fs.open(lockPath, "wx");
-      await handle.write(`${process.pid}:${Date.now()}`);
-      await handle.close();
-
-      try {
-        const result = await fn();
-        return result;
-      } finally {
-        await tryRemoveLock(lockPath);
-      }
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === "EEXIST") {
-        if (await isLockStale(lockPath)) {
-          await tryRemoveLock(lockPath);
-          continue;
-        }
-        await sleep(LOCK_RETRY_DELAY_MS);
-        continue;
-      }
-      throw error;
-    }
-  }
-}
-
-const applyInterprocessRateLimit = async (
-  key: string,
-  intervalMs: number,
-): Promise<void> => {
-  const { timestampPath } = getRateLimitPaths(key);
-
-  await withInterprocessLock(key, async () => {
-    let lastRequestTime = 0;
-    try {
-      const stat = await fs.stat(timestampPath);
-      lastRequestTime = stat.mtimeMs;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw error;
-      }
-    }
-
-    const now = Date.now();
-    const elapsed = now - lastRequestTime;
-    if (elapsed < intervalMs) {
-      await sleep(intervalMs - elapsed);
-    }
-
-    await fs.writeFile(timestampPath, `${Date.now()}`);
-  });
-};
-
-class SequentialRateLimiter {
-  private queue: Promise<void> = Promise.resolve();
-  private lastTimestamp = 0;
-
-  constructor(private readonly intervalMs: number) {}
-
-  wait(): Promise<void> {
-    this.queue = this.queue.then(async () => {
-      const now = Date.now();
-      const elapsed = now - this.lastTimestamp;
-      const delay = elapsed < this.intervalMs ? this.intervalMs - elapsed : 0;
-
-      if (delay > 0) {
-        await sleep(delay);
-      }
-
-      this.lastTimestamp = Date.now();
-    });
-
-    return this.queue;
-  }
-}
-
-const geocodingRateLimiters = new Map<string, SequentialRateLimiter>();
-
-const getRateLimiter = (
-  key: string,
-  intervalMs: number,
-): SequentialRateLimiter => {
-  const existing = geocodingRateLimiters.get(key);
-  if (existing) {
-    return existing;
-  }
-
-  const limiter = new SequentialRateLimiter(intervalMs);
-  geocodingRateLimiters.set(key, limiter);
-  return limiter;
-};
-
-export function resetGeocodingRateLimitersForTests(): void {
-  geocodingRateLimiters.clear();
-}
 
 /**
  * 地理编码提供者接口
@@ -176,73 +33,7 @@ export interface GeocodingProvider {
 
 const cleanString = (value: unknown): string | undefined => {
   if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
-const TRADITIONAL_LANGUAGE_PATTERN = /^zh-(?:hant|tw|hk|mo)\b/i;
-const SIMPLIFIED_LANGUAGE_PATTERN = /^zh-(?:hans|cn|sg)\b/i;
-const SIMPLIFIED_ONLY_CHARS =
-  "国兰伦苏广东门湾县区台后龙义乌宁厦宫丽桥泽罗汉爱约尔贝";
-const TRADITIONAL_ONLY_CHARS =
-  "國蘭倫蘇廣東門灣縣區臺後龍義烏寧廈宮麗橋澤羅漢愛約爾貝";
-const SIMPLIFIED_ONLY_SET = new Set(Array.from(SIMPLIFIED_ONLY_CHARS));
-const TRADITIONAL_ONLY_SET = new Set(Array.from(TRADITIONAL_ONLY_CHARS));
-
-const prefersTraditionalChinese = (language: string | null): boolean => {
-  if (!language) return false;
-  return (
-    TRADITIONAL_LANGUAGE_PATTERN.test(language) &&
-    !SIMPLIFIED_LANGUAGE_PATTERN.test(language)
-  );
-};
-
-const getScriptScore = (value: string, preferredTraditional: boolean): number => {
-  let simplifiedScore = 0;
-  let traditionalScore = 0;
-
-  for (const character of value) {
-    if (SIMPLIFIED_ONLY_SET.has(character)) simplifiedScore += 1;
-    if (TRADITIONAL_ONLY_SET.has(character)) traditionalScore += 1;
-  }
-
-  return preferredTraditional
-    ? traditionalScore - simplifiedScore
-    : simplifiedScore - traditionalScore;
-};
-
-const selectLocalizedAlias = (
-  value: string,
-  language: string | null,
-): string => {
-  const aliases = value
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (aliases.length <= 1) return value;
-
-  const preferredTraditional = prefersTraditionalChinese(language);
-  return aliases
-    .map((alias, index) => ({
-      alias,
-      index,
-      score: getScriptScore(alias, preferredTraditional),
-    }))
-    .sort((a, b) => b.score - a.score || a.index - b.index)[0].alias;
-};
-
-const cleanLocalizedAdminString = (
-  value: unknown,
-  language: string | null,
-): string | undefined => {
-  const cleaned = cleanString(value);
-  return cleaned ? selectLocalizedAlias(cleaned, language) : undefined;
-};
-
-const normalizeCountryCode = (value: unknown): string | undefined => {
-  const code = cleanString(value);
-  return code ? code.toUpperCase() : undefined;
+  return normalizeGeoValue(value);
 };
 
 const firstString = (...values: unknown[]): string | undefined => {
@@ -258,53 +49,10 @@ const firstLocalizedAdminString = (
   ...values: unknown[]
 ): string | undefined => {
   for (const value of values) {
-    const normalized = cleanLocalizedAdminString(value, language);
+    const normalized = normalizeLocalizedAdminValue(value, language);
     if (normalized) return normalized;
   }
   return undefined;
-};
-
-const createLocationInfo = ({
-  latitude,
-  longitude,
-  admin,
-  locationName,
-}: {
-  latitude: number;
-  longitude: number;
-  admin: LocationAdminInfo;
-  locationName?: string;
-}): LocationInfo => ({
-  latitude,
-  longitude,
-  admin,
-  country: admin.country,
-  city: admin.city ?? admin.district ?? admin.region,
-  locationName,
-});
-
-export const normalizeLocationInfoAdminAliases = (
-  location: LocationInfo,
-  language: string | null,
-): LocationInfo => {
-  const admin = location.admin ?? {};
-  const normalizedAdmin: LocationAdminInfo = {
-    country: cleanLocalizedAdminString(
-      admin.country ?? location.country,
-      language,
-    ),
-    countryCode: normalizeCountryCode(admin.countryCode),
-    region: cleanLocalizedAdminString(admin.region, language),
-    city: cleanLocalizedAdminString(admin.city ?? location.city, language),
-    district: cleanLocalizedAdminString(admin.district, language),
-  };
-
-  return createLocationInfo({
-    latitude: location.latitude,
-    longitude: location.longitude,
-    admin: normalizedAdmin,
-    locationName: location.locationName,
-  });
 };
 
 /**
@@ -371,7 +119,8 @@ export class MapboxGeocodingProvider implements GeocodingProvider {
         const admin: LocationAdminInfo = {
           country: cleanString(context.country?.name),
           countryCode: normalizeCountryCode(
-            context.country?.country_code ?? context.country?.country_code_alpha_2,
+            context.country?.country_code ??
+              context.country?.country_code_alpha_2,
           ),
           region: cleanString(context.region?.name),
           city: firstString(context.place?.name, context.locality?.name),
@@ -662,3 +411,5 @@ export async function extractLocationFromGPS(
     return null;
   }
 }
+
+export { resetGeocodingRateLimitersForTests } from "./geocoding-rate-limiter.js";

@@ -1,12 +1,25 @@
-/* eslint-disable react-refresh/only-export-components */
-
 import type { FujiRecipe, PickedExif } from "@afilmory/schema";
-import { EllipsisHorizontalTextWithTooltip } from "@afilmory/ui";
-import type { FC } from "react";
 
 import { getI18n } from "~/i18n";
 
-const hasExifValue = <T,>(value: T | null | undefined): value is T =>
+export type ExifTranslationAdapter = {
+  language: string;
+  exists: (key: string) => boolean;
+  t: (key: string, props?: Record<string, string | number>) => string;
+};
+
+const getDefaultExifTranslationAdapter = (): ExifTranslationAdapter => {
+  const i18n = getI18n();
+  const translate = i18n.t.bind(i18n) as unknown as ExifTranslationAdapter["t"];
+
+  return {
+    language: i18n.language,
+    exists: (key) => i18n.exists(key),
+    t: translate,
+  };
+};
+
+const hasExifValue = <T>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined;
 
 // Helper function to clean up EXIF values by removing unnecessary characters
@@ -38,35 +51,36 @@ const getTranslationKey = (
 
 // Translation functions for different EXIF categories
 const translateExifValue = (
+  translator: ExifTranslationAdapter,
   category: string,
   value: string | number | null,
   props?: Record<string, string | number>,
 ): string | null => {
   if (value === null || value === undefined) return null;
 
-  const i18n = getI18n();
   const translationKey = getTranslationKey(category, value);
 
   if (!translationKey) return cleanExifValue(String(value));
 
   // Try to get translation, fallback to cleaned original value
   const cleanedValue = cleanExifValue(String(value));
-  if (!i18n.exists(translationKey)) {
+  if (!translator.exists(translationKey)) {
     return cleanedValue;
   }
 
-  const translated = i18n.t(translationKey as any, props);
+  const translated = translator.t(translationKey, props);
   return translated || cleanedValue;
 };
 
 const createTranslator =
   (category: string) =>
   (
+    translator: ExifTranslationAdapter,
     value: string | number | null,
     props?: Record<string, string | number>,
   ): string | null => {
     if (value === null || value === undefined) return null;
-    return translateExifValue(category, value, props);
+    return translateExifValue(translator, category, value, props);
   };
 
 // Specific translation functions for different EXIF fields
@@ -99,12 +113,14 @@ const translateFujiWhiteBalance = createTranslator("fujirecipe-whitebalance");
 const translateSceneCaptureType = createTranslator("scene.capture.type");
 
 // 翻译白平衡偏移字段中的 Red 和 Blue
-const translateWhiteBalanceFineTune = (value: string | null): string | null => {
+const translateWhiteBalanceFineTune = (
+  translator: ExifTranslationAdapter,
+  value: string | null,
+): string | null => {
   if (!value) return null;
 
-  const i18n = getI18n();
-  const redTranslation = i18n.t("exif.white.balance.red");
-  const blueTranslation = i18n.t("exif.white.balance.blue");
+  const redTranslation = translator.t("exif.white.balance.red");
+  const blueTranslation = translator.t("exif.white.balance.blue");
 
   // 替换 Red 和 Blue 文本，保持数值和符号不变
   return value
@@ -130,7 +146,10 @@ type WidenStringFields<T> = {
 type ProcessedFujiRecipe = WidenStringFields<FujiRecipe>;
 
 // Process entire Fuji Recipe object
-const processFujiRecipe = (recipe: FujiRecipe): ProcessedFujiRecipe | null => {
+const processFujiRecipe = (
+  recipe: FujiRecipe,
+  translator: ExifTranslationAdapter,
+): ProcessedFujiRecipe | null => {
   if (!recipe) return null;
 
   const processed: ProcessedFujiRecipe = { ...recipe };
@@ -154,26 +173,33 @@ const processFujiRecipe = (recipe: FujiRecipe): ProcessedFujiRecipe | null => {
 
   if (recipe.GrainEffectRoughness) {
     processed.GrainEffectRoughness = translateFujiGrainEffectRoughness(
+      translator,
       recipe.GrainEffectRoughness,
     );
   }
   if (recipe.GrainEffectSize) {
     processed.GrainEffectSize = translateFujiGrainEffectSize(
+      translator,
       recipe.GrainEffectSize,
     );
   }
   if (recipe.ColorChromeEffect) {
     processed.ColorChromeEffect = translateFujiColorChromeEffect(
+      translator,
       recipe.ColorChromeEffect,
     );
   }
   if (recipe.ColorChromeFxBlue) {
     processed.ColorChromeFxBlue = translateFujiColorChromeFxBlue(
+      translator,
       recipe.ColorChromeFxBlue,
     );
   }
   if (recipe.DynamicRange) {
-    processed.DynamicRange = translateFujiDynamicRange(recipe.DynamicRange);
+    processed.DynamicRange = translateFujiDynamicRange(
+      translator,
+      recipe.DynamicRange,
+    );
   }
 
   if (recipe.DynamicRangeSetting) {
@@ -185,19 +211,23 @@ const processFujiRecipe = (recipe: FujiRecipe): ProcessedFujiRecipe | null => {
   }
 
   if (recipe.Sharpness) {
-    processed.Sharpness = translateFujiSharpness(recipe.Sharpness);
+    processed.Sharpness = translateFujiSharpness(translator, recipe.Sharpness);
   }
   if (recipe.WhiteBalance) {
     if (recipe.ColorTemperature && recipe.WhiteBalance === "Kelvin") {
-      processed.WhiteBalance = translateFujiWhiteBalance("Kelvin", {
+      processed.WhiteBalance = translateFujiWhiteBalance(translator, "Kelvin", {
         kelvin: recipe.ColorTemperature,
       });
     } else {
-      processed.WhiteBalance = translateFujiWhiteBalance(recipe.WhiteBalance);
+      processed.WhiteBalance = translateFujiWhiteBalance(
+        translator,
+        recipe.WhiteBalance,
+      );
     }
   }
   if (recipe.WhiteBalanceFineTune) {
     processed.WhiteBalanceFineTune = translateWhiteBalanceFineTune(
+      translator,
       recipe.WhiteBalanceFineTune,
     );
   }
@@ -271,7 +301,10 @@ const isGpsAltitudeBelowSeaLevel = (
   return ref === 1 || ref === "Below Sea Level";
 };
 
-export const formatExifData = (exif: PickedExif | null) => {
+export const formatExifData = (
+  exif: PickedExif | null,
+  translator: ExifTranslationAdapter = getDefaultExifTranslationAdapter(),
+) => {
   if (!exif) return null;
 
   // 时区和时间相关
@@ -339,6 +372,7 @@ export const formatExifData = (exif: PickedExif | null) => {
         exif.DateTimeOriginal,
         exif.OffsetTimeOriginal || exif.OffsetTime,
       ),
+      translator,
     );
   })();
 
@@ -350,6 +384,7 @@ export const formatExifData = (exif: PickedExif | null) => {
         exif.DateTimeDigitized,
         exif.OffsetTimeDigitized || exif.OffsetTime,
       ),
+      translator,
     );
   })();
 
@@ -359,22 +394,32 @@ export const formatExifData = (exif: PickedExif | null) => {
   const offsetTimeDigitized = exif.OffsetTimeDigitized || null;
 
   // 曝光模式 - with translation
-  const exposureMode = translateExposureMode(exif.ExposureMode || null);
+  const exposureMode = translateExposureMode(
+    translator,
+    exif.ExposureMode || null,
+  );
 
   // 测光模式 - with translation
-  const meteringMode = translateMeteringMode(exif.MeteringMode || null);
+  const meteringMode = translateMeteringMode(
+    translator,
+    exif.MeteringMode || null,
+  );
 
   // 白平衡 - with translation
-  const whiteBalance = translateWhiteBalance(exif.WhiteBalance || null);
+  const whiteBalance = translateWhiteBalance(
+    translator,
+    exif.WhiteBalance || null,
+  );
 
   // 闪光灯 - with translation
-  const flash = translateFlash(exif.Flash || null);
+  const flash = translateFlash(translator, exif.Flash || null);
 
   // 闪光灯测光模式
   const flashMeteringMode = exif.FlashMeteringMode || null;
 
   // 场景捕获类型 - with translation
   const sceneCaptureType = translateSceneCaptureType(
+    translator,
     exif.SceneCaptureType || null,
   );
 
@@ -397,7 +442,10 @@ export const formatExifData = (exif: PickedExif | null) => {
     : null;
 
   // 光源类型 - with translation
-  const lightSource = translateLightSource(exif.LightSource || null);
+  const lightSource = translateLightSource(
+    translator,
+    exif.LightSource || null,
+  );
 
   // 白平衡偏移/微调相关字段
   const whiteBalanceBias = hasExifValue(exif.WhiteBalanceBias)
@@ -407,7 +455,10 @@ export const formatExifData = (exif: PickedExif | null) => {
   const wbShiftGM = hasExifValue(exif.WBShiftGM) ? exif.WBShiftGM : null;
 
   // 感光方法
-  const sensingMethod = translateSensingMethod(exif.SensingMethod || null);
+  const sensingMethod = translateSensingMethod(
+    translator,
+    exif.SensingMethod || null,
+  );
 
   // 焦平面分辨率
   const focalPlaneXResolution = hasExifValue(exif.FocalPlaneXResolution)
@@ -418,7 +469,7 @@ export const formatExifData = (exif: PickedExif | null) => {
     : null;
 
   // 色彩空间 - with translation
-  const colorSpace = translateColorSpace(exif.ColorSpace || null);
+  const colorSpace = translateColorSpace(translator, exif.ColorSpace || null);
 
   const GPSAltitudeIsAboveSeaLevel = !isGpsAltitudeBelowSeaLevel(
     exif.GPSAltitudeRef,
@@ -434,6 +485,7 @@ export const formatExifData = (exif: PickedExif | null) => {
   };
 
   const exposureProgram = translateExposureProgram(
+    translator,
     exif.ExposureProgram || null,
   );
 
@@ -492,40 +544,19 @@ export const formatExifData = (exif: PickedExif | null) => {
     // GPS 信息
     gps: gpsInfo.latitude && gpsInfo.longitude ? gpsInfo : null,
 
-    fujiRecipe: exif.FujiRecipe ? processFujiRecipe(exif.FujiRecipe) : null,
+    fujiRecipe: exif.FujiRecipe
+      ? processFujiRecipe(exif.FujiRecipe, translator)
+      : null,
     exposureProgram,
   };
 };
 
-export const Row: FC<{
-  label: string;
-  value: string | number | null | undefined | number[];
-  ellipsis?: boolean;
-}> = ({ label, value, ellipsis = false }) => {
-  return (
-    <div className="flex justify-between gap-4 text-sm">
-      <span className="text-text-secondary shrink-0">{label}</span>
-      {ellipsis ? (
-        <span className="relative min-w-0 flex-1 shrink">
-          <span className="absolute inset-0">
-            <EllipsisHorizontalTextWithTooltip className="text-text min-w-0 text-right">
-              {Array.isArray(value) ? value.join(" ") : value}
-            </EllipsisHorizontalTextWithTooltip>
-          </span>
-        </span>
-      ) : (
-        <span className="text-text min-w-0 text-right">
-          {Array.isArray(value) ? value.join(" ") : value}
-        </span>
-      )}
-    </div>
-  );
-};
-
-const formatDateTime = (date: Date | null | undefined) => {
+const formatDateTime = (
+  date: Date | null | undefined,
+  translator: ExifTranslationAdapter,
+) => {
   if (!date || Number.isNaN(date.getTime())) return "";
-  const i18n = getI18n();
-  const datetimeFormatter = new Intl.DateTimeFormat(i18n.language, {
+  const datetimeFormatter = new Intl.DateTimeFormat(translator.language, {
     dateStyle: "short",
     timeStyle: "medium",
   });

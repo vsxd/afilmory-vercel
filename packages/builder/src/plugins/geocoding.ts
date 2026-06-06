@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { normalizeLocationInfoAdminAliases } from "@afilmory/schema";
+
 import type { EmitPluginEventFn } from "../core/contracts/execution-context.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import type { Logger } from "../logger/index.js";
@@ -13,7 +15,6 @@ import type { GeocodingProvider } from "../photo/geocoding.js";
 import {
   createGeocodingProvider,
   extractLocationFromGPS,
-  normalizeLocationInfoAdminAliases,
   parseGPSCoordinates,
 } from "../photo/geocoding.js";
 import { createPhotoProcessingLoggers } from "../photo/logger-adapter.js";

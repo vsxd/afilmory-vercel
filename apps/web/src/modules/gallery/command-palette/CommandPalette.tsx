@@ -12,23 +12,24 @@ import {
   useOpenPhotoViewer,
 } from "~/hooks/usePhotoViewer";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
-import {
-  createGeographicRegions,
-  getRegionDisplayName,
-} from "~/lib/geo-regions";
-import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { FilterPanelContent } from "~/modules/gallery/panels/FilterPanel";
 import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import {
+  createGalleryGeoRegions,
+  createGeoRegionLabelMaps,
+} from "../filter-options";
+import type { CommandAction } from "./model";
+import {
+  applyGalleryCommandAction,
   buildActiveFilterChips,
   buildCommandIndex,
   filterCommands,
   getActiveFilterCount,
   getAvailableFilterCount,
-} from "./command-palette-model";
+} from "./model";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -65,69 +66,21 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   const hasFilters = activeFilterCount > 0;
 
-  const updateTagFilterMode = useCallback(
-    (mode: "union" | "intersection") => {
-      setGallerySetting((prev) => ({
-        ...prev,
-        tagFilterMode: mode,
-      }));
-    },
-    [setGallerySetting],
-  );
-
   const handleReset = useCallback(() => {
     setQuery("");
     setSelectedIndex(0);
-    setGallerySetting((prev) => ({
-      ...prev,
-      selectedTags: [],
-      selectedCameras: [],
-      selectedLenses: [],
-      selectedGeoCountries: [],
-      selectedGeoRegions: [],
-      selectedGeoCities: [],
-      selectedGeoDistricts: [],
-      tagFilterMode: "union",
-    }));
+    setGallerySetting((prev) =>
+      applyGalleryCommandAction(prev, { type: "clear-filters" }),
+    );
   }, [setGallerySetting]);
 
-  const geoRegions = useMemo(() => {
-    const markers = convertPhotosToMarkersFromEXIF(allPhotos);
-    return {
-      country: createGeographicRegions(markers, "country"),
-      region: createGeographicRegions(markers, "region"),
-      city: createGeographicRegions(markers, "city"),
-      district: createGeographicRegions(markers, "district"),
-    };
-  }, [allPhotos]);
+  const geoRegions = useMemo(
+    () => createGalleryGeoRegions(allPhotos),
+    [allPhotos],
+  );
 
   const regionLabelMaps = useMemo(
-    () => ({
-      selectedGeoCountries: new Map(
-        geoRegions.country.map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      selectedGeoRegions: new Map(
-        geoRegions.region.map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      selectedGeoCities: new Map(
-        geoRegions.city.map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      selectedGeoDistricts: new Map(
-        geoRegions.district.map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-    }),
+    () => createGeoRegionLabelMaps(geoRegions, i18n.language),
     [geoRegions, i18n.language],
   );
 
@@ -136,9 +89,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       buildActiveFilterChips({
         gallerySetting,
         regionLabelMaps,
-        setGallerySetting,
       }),
-    [gallerySetting, regionLabelMaps, setGallerySetting],
+    [gallerySetting, regionLabelMaps],
   );
 
   // Reset state when opened
@@ -183,6 +135,21 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     [gallerySetting, navigate, onClose, openViewer, runtime],
   );
 
+  const executeCommandAction = useCallback(
+    (action: CommandAction) => {
+      if (action.type === "open-photo") {
+        const photo = allPhotos.find((item) => item.id === action.photoId);
+        if (photo) {
+          openPhoto(photo);
+        }
+        return;
+      }
+
+      setGallerySetting((prev) => applyGalleryCommandAction(prev, action));
+    },
+    [allPhotos, openPhoto, setGallerySetting],
+  );
+
   const commands = useMemo(
     () =>
       buildCommandIndex({
@@ -196,9 +163,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         geoRegions,
         query,
         hasFilters,
-        setGallerySetting,
-        updateTagFilterMode,
-        openPhoto,
       }),
     [
       t,
@@ -211,9 +175,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       geoRegions,
       query,
       hasFilters,
-      setGallerySetting,
-      updateTagFilterMode,
-      openPhoto,
     ],
   );
 
@@ -243,13 +204,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         case "Enter": {
           e.preventDefault();
           if (filteredCommands[selectedIndex]) {
-            filteredCommands[selectedIndex].action();
+            executeCommandAction(filteredCommands[selectedIndex].action);
           }
           break;
         }
       }
     },
-    [filteredCommands, selectedIndex],
+    [executeCommandAction, filteredCommands, selectedIndex],
   );
 
   // Scroll selected item into view
@@ -383,7 +344,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 <button
                   key={chip.id}
                   type="button"
-                  onClick={chip.onRemove}
+                  onClick={() => executeCommandAction(chip.action)}
                   className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 focus-visible:ring-accent/45 flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ring-inset focus-visible:ring-2"
                   aria-label={`${t("action.search.clear")} ${chip.label}`}
                   title={chip.label}
@@ -405,7 +366,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           <div className="bg-fill-secondary/70 border-fill-tertiary flex shrink-0 rounded-full border p-0.5">
             <button
               type="button"
-              onClick={() => updateTagFilterMode("union")}
+              onClick={() =>
+                executeCommandAction({
+                  type: "set-tag-filter-mode",
+                  mode: "union",
+                })
+              }
               className={clsxm(
                 "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 gallerySetting.tagFilterMode === "union"
@@ -418,7 +384,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             </button>
             <button
               type="button"
-              onClick={() => updateTagFilterMode("intersection")}
+              onClick={() =>
+                executeCommandAction({
+                  type: "set-tag-filter-mode",
+                  mode: "intersection",
+                })
+              }
               className={clsxm(
                 "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 gallerySetting.tagFilterMode === "intersection"
@@ -454,7 +425,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <button
                 key={cmd.id}
                 type="button"
-                onClick={cmd.action}
+                onClick={() => executeCommandAction(cmd.action)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsxm(
                   "command-item focus-visible:ring-accent/35 group flex w-full items-center gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",

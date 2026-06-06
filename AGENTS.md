@@ -172,9 +172,3 @@ pnpm preview
 1. 在 `locales/app` 添加 JSON 文件。
 2. 在 `apps/web/src/@types/resources.ts` 导入并注册。
 3. 在 `apps/web/src/@types/constants.ts` 添加语言代码。
-
-## 已知后续事项
-
-- `package.json` license 字段仍指向 `LICENSE.md`，但仓库实际文件是 `LICENSE`。
-- Builder CLI help 文本仍有旧路径示例。
-- `.env.template` 对 `S3_REGION` 的“必填”注释与 `env.ts` 默认值不完全一致。

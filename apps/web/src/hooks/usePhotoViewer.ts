@@ -1,10 +1,10 @@
 import type { PhotoManifestItem } from "@afilmory/schema";
+import { photoMatchesGeoFilters } from "@afilmory/schema";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { use, useCallback, useEffect, useMemo } from "react";
 
 import type { GallerySetting } from "~/atoms/app";
 import { gallerySettingAtom } from "~/atoms/app";
-import { photoMatchesGeoFilters } from "~/lib/geo-regions";
 import { getPhotoDateString } from "~/lib/photo-date";
 import { PhotosContext } from "~/providers/photos-provider";
 import type { AppRuntime } from "~/runtime/app-runtime";

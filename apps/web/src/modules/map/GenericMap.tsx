@@ -2,8 +2,9 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 
 import { getInitialViewStateForMarkers } from "~/lib/map-utils";
-import { useMapAdapter } from "~/modules/map/map-context";
 import type { BaseMapProps, GeographicRegion, PhotoMarker } from "~/types/map";
+
+import { useMapAdapter } from "./map-context";
 
 interface GenericMapProps extends Omit<BaseMapProps, "handlers"> {
   /** Photo markers to display */

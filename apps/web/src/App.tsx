@@ -6,7 +6,7 @@ import { RootProviders } from "./providers/root-providers";
 import type { AppRuntime } from "./runtime/app-runtime";
 
 const CommandPalette = lazy(() =>
-  import("./components/gallery/CommandPalette").then((m) => ({
+  import("./modules/gallery/command-palette/CommandPalette").then((m) => ({
     default: m.CommandPalette,
   })),
 );

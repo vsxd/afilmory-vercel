@@ -5,6 +5,7 @@ import { ImageViewerEngineBase } from "./ImageViewerEngineBase";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
 import { WebGLViewerRenderer } from "./renderer";
+import { getLodQuality, TextureLodManager } from "./texture-lod-manager";
 import type { TileInfo, TileKey } from "./tile-cache";
 import {
   createTileKey,
@@ -37,7 +38,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private canvas: HTMLCanvasElement;
   private gl: WebGLRenderingContext;
   private renderer!: WebGLViewerRenderer;
-  private texture: WebGLTexture | null = null;
+  private textureManager!: TextureLodManager;
   private imageLoaded = false;
   private originalImageSrc = "";
 
@@ -68,9 +69,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private animationStartLOD = -1;
 
   // 简化的纹理管理
-  private currentLOD = 1; // 默认使用正常质量
-  private lodTextures = new Map<number, WebGLTexture>();
-
   // 配置和回调
   private config: Required<WebGLImageViewerProps>;
   private onZoomChange?: (originalScale: number, relativeScale: number) => void;
@@ -137,6 +135,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       throw new Error("WebGL not supported");
     }
     this.gl = gl;
+    this.textureManager = new TextureLodManager(gl);
 
     this.boundResizeCanvas = () => this.resizeCanvas();
 
@@ -215,16 +214,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         imageBitmap.close();
 
         if (texture) {
-          this.cleanupLODTextures();
-          this.lodTextures.set(lodLevel, texture);
-          this.texture = texture;
-          this.currentLOD = lodLevel;
-          this.currentQuality =
-            SIMPLE_LOD_LEVELS[lodLevel].scale >= 2
-              ? "high"
-              : SIMPLE_LOD_LEVELS[lodLevel].scale >= 1
-                ? "medium"
-                : "low";
+          this.textureManager.setBaseTexture(texture, lodLevel);
+          this.currentQuality = getLodQuality(lodLevel);
         }
 
         this.imageLoaded = true;
@@ -355,13 +346,6 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     source: HTMLCanvasElement | HTMLImageElement | ImageBitmap,
   ): WebGLTexture | null {
     return this.renderer.createTexture(source);
-  }
-
-  private cleanupLODTextures() {
-    for (const texture of this.lodTextures.values()) {
-      this.gl.deleteTexture(texture);
-    }
-    this.lodTextures.clear();
   }
 
   private selectOptimalLOD(): number {
@@ -730,8 +714,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.renderer.prepareFrame(this.canvas.width, this.canvas.height);
 
     // 始终渲染一个低分辨率的底图作为回退，防止瓦片加载过程中出现空白
-    if (this.texture) {
-      this.renderer.drawTexturedQuad(this.texture, this.createMatrix());
+    if (this.textureManager.texture) {
+      this.renderer.drawTexturedQuad(
+        this.textureManager.texture,
+        this.createMatrix(),
+      );
     }
 
     // 渲染可见的瓦片
@@ -782,7 +769,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private notifyImagePainted() {
-    if (this.hasNotifiedImagePainted || !this.imageLoaded || !this.texture) {
+    if (
+      this.hasNotifiedImagePainted ||
+      !this.imageLoaded ||
+      !this.textureManager.texture
+    ) {
       return;
     }
 
@@ -918,10 +909,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.inputController = null;
 
     // 清理 WebGL 资源
-    this.cleanupLODTextures();
-    if (this.texture) {
-      this.gl.deleteTexture(this.texture);
-    }
+    this.textureManager.dispose();
     this.renderer.dispose();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
@@ -949,7 +937,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         scale: this.scale,
         translateX: this.translateX,
         translateY: this.translateY,
-        currentLOD: this.currentLOD,
+        currentLOD: this.textureManager.currentLOD,
         lodLevelCount: SIMPLE_LOD_LEVELS.length,
         canvasWidth: this.canvasWidth,
         canvasHeight: this.canvasHeight,
@@ -963,7 +951,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         quality: this.currentQuality,
         isLoading: this.isLoadingTexture,
         tileOutlineEnabled: this.tileOutlineEnabled,
-        lodTextureCount: this.lodTextures.size,
+        lodTextureCount: this.textureManager.textureCount,
         tileCache: this.tileCache,
         currentVisibleTiles: this.currentVisibleTiles,
         loadingTiles: this.loadingTiles,

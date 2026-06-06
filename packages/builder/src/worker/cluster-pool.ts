@@ -7,8 +7,10 @@ import { serialize } from "node:v8";
 
 import type { Logger } from "../logger/index.js";
 import { logger } from "../logger/index.js";
+import type { StorageObject } from "../storage/interfaces.js";
 import type { BuilderConfig } from "../types/config.js";
 import type { BuilderOptions } from "../types/options.js";
+import type { PhotoManifestItem } from "../types/photo.js";
 import type { TaskCompletedPayload } from "./pool.js";
 
 const WORKER_SHUTDOWN_GRACE_MS = 5_000;
@@ -16,18 +18,20 @@ const WORKER_SHUTDOWN_GRACE_MS = 5_000;
 export interface ClusterPoolOptions<T> {
   concurrency: number;
   totalTasks: number;
+  logger?: Logger;
   workerEnv?: Record<string, string>; // 传递给 worker 的环境变量
   workerConcurrency?: number; // 每个 worker 内部的并发数
-  // 新增：传递给 worker 的共享数据
- sharedData?: {
-    existingManifestMap: Map<string, any>;
-    livePhotoMap: Map<string, any>;
-    imageObjects: any[];
-    builderConfig: BuilderConfig;
-    builderOptions: BuilderOptions;
-    photoIdCollisionKeys?: string[];
-  };
+  sharedData?: ClusterWorkerSharedData;
   onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void;
+}
+
+export interface ClusterWorkerSharedData {
+  existingManifestMap: Map<string, PhotoManifestItem>;
+  livePhotoMap: Map<string, StorageObject>;
+  imageObjects: StorageObject[];
+  builderConfig: BuilderConfig;
+  builderOptions: BuilderOptions;
+  photoIdCollisionKeys?: string[];
 }
 
 export interface WorkerReadyMessage {
@@ -54,7 +58,7 @@ export interface BatchTaskMessage {
 export interface TaskResult {
   type: "result" | "error";
   taskId: string;
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
@@ -112,7 +116,7 @@ export class ClusterPool<T> extends EventEmitter {
     this.totalTasks = options.totalTasks;
     this.workerEnv = options.workerEnv || {};
     this.workerConcurrency = options.workerConcurrency || 5; // 默认每个 worker 同时处理 5 个任务
-    this.logger = logger;
+    this.logger = options.logger ?? logger;
     this.sharedData = options.sharedData;
     this.onTaskCompleted = options.onTaskCompleted;
 
@@ -444,7 +448,8 @@ export class ClusterPool<T> extends EventEmitter {
       if (taskResult.type === "result" && taskResult.result !== undefined) {
         // 从 taskId 中提取 taskIndex
         const taskIndex = Number.parseInt(taskResult.taskId.split("-")[1]);
-        this.results[taskIndex] = taskResult.result;
+        const result = taskResult.result as T;
+        this.results[taskIndex] = result;
         successfulInBatch++;
 
         this.completedTasks++;
@@ -453,7 +458,7 @@ export class ClusterPool<T> extends EventEmitter {
           taskIndex,
           completed: this.completedTasks,
           total: this.totalTasks,
-          result: taskResult.result as T,
+          result,
         });
       } else if (taskResult.type === "error") {
         workerLogger.error(
@@ -509,7 +514,8 @@ export class ClusterPool<T> extends EventEmitter {
     if (message.type === "result" && message.result !== undefined) {
       // 从 taskId 中提取 taskIndex
       const taskIndex = Number.parseInt(message.taskId.split("-")[1]);
-      this.results[taskIndex] = message.result;
+      const result = message.result as T;
+      this.results[taskIndex] = result;
       stats.processedTasks++;
 
       this.completedTasks++;
@@ -517,7 +523,7 @@ export class ClusterPool<T> extends EventEmitter {
         taskIndex,
         completed: this.completedTasks,
         total: this.totalTasks,
-        result: message.result as T,
+        result,
       });
       workerLogger.info(
         `完成任务 ${taskIndex + 1}/${this.totalTasks} (已完成：${this.completedTasks}，当前处理中：${newTaskCount})`,

@@ -16,11 +16,11 @@ import {
   StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens,
   TablerAperture,
 } from "~/icons";
-import { buildSingleTagFilterSearch } from "~/lib/gallery-filter-url";
 import { getImageFormat } from "~/lib/image-utils";
 import { convertExifGPSToDecimal } from "~/lib/map-utils";
 
-import { formatExifData, Row } from "./formatExifData";
+import { ExifRow as Row } from "./ExifRow";
+import { formatExifData } from "./formatExifData";
 import { HistogramChart } from "./HistogramChart";
 import { RawExifViewer } from "./RawExifViewer";
 
@@ -33,8 +33,9 @@ export const ExifPanel: FC<{
   exifData: PickedExif | null;
 
   onClose?: () => void;
+  onTagClick?: (tag: string) => void;
   visible?: boolean;
-}> = ({ currentPhoto, exifData, onClose, visible = true }) => {
+}> = ({ currentPhoto, exifData, onClose, onTagClick, visible = true }) => {
   const { t } = useTranslation();
   const isMobile = useMobile();
   const formattedExifData = useMemo(() => formatExifData(exifData), [exifData]);
@@ -247,13 +248,7 @@ export const ExifPanel: FC<{
                   {currentPhoto.tags.map((tag) => (
                     <MotionButtonBase
                       type="button"
-                      onClick={() => {
-                        window.open(
-                          `/${buildSingleTagFilterSearch(tag)}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                      }}
+                      onClick={() => onTagClick?.(tag)}
                       key={tag}
                       className="glassmorphic-btn border-accent/20 bg-accent/10 focus-visible:ring-accent/45 inline-flex cursor-pointer items-center rounded-full border px-2 py-1 text-xs text-white/90 backdrop-blur-sm focus-visible:ring-2"
                     >

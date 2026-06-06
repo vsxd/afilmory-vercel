@@ -1,12 +1,6 @@
 import { AnimatePresence } from "motion/react";
 import type { PropsWithChildren } from "react";
-import {
-  use,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { use, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useEventCallback } from "usehooks-ts";
 
 import { clsxm } from "../utils/cn";
@@ -14,7 +8,6 @@ import { Spring } from "../utils/spring";
 import { Dialog, DialogContent } from "./Dialog";
 import type { ModalItem, ModalManager } from "./ModalManager";
 import { createModalManager, ModalManagerContext } from "./ModalManager";
-import type { ModalComponent } from "./types";
 
 export function ModalProvider({ children }: PropsWithChildren) {
   const manager = useMemo(() => createModalManager(), []);
@@ -31,7 +24,9 @@ export function ModalContainer({ manager }: { manager?: ModalManager }) {
   const contextManager = use(ModalManagerContext);
   const modalManager = manager ?? contextManager;
   if (!modalManager) {
-    throw new Error("ModalManager is not initialized. Render ModalProvider first.");
+    throw new Error(
+      "ModalManager is not initialized. Render ModalProvider first.",
+    );
   }
   const items = useSyncExternalStore(
     modalManager.subscribe,
@@ -81,24 +76,19 @@ function ModalWrapper({
     }
   });
 
-  const Component = item.component as ModalComponent<any>;
-
-  const { contentProps, contentClassName } = Component;
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className={clsxm("w-full max-w-md", contentClassName)}
+        className={clsxm("w-full max-w-md", item.contentClassName)}
         transition={Spring.presets.smooth}
         onAnimationComplete={handleAnimationComplete}
-        {...contentProps}
+        {...item.contentProps}
         {...item.modalContent}
       >
-        <Component
-          modalId={item.id}
-          dismiss={dismiss}
-          {...(item.props as any)}
-        />
+        {item.render({
+          modalId: item.id,
+          dismiss,
+        })}
       </DialogContent>
     </Dialog>
   );

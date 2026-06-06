@@ -155,6 +155,7 @@ export class PhotoTaskProcessor {
     const clusterPool = new ClusterPool<ProcessPhotoResult>({
       concurrency,
       totalTasks: tasksToProcess.length,
+      logger,
       workerConcurrency:
         session.config.system.observability.performance.worker
           .workerConcurrency,
@@ -186,6 +187,7 @@ export class PhotoTaskProcessor {
     const workerPool = new WorkerPool<ProcessPhotoResult>({
       concurrency,
       totalTasks: tasksToProcess.length,
+      logger,
       onTaskCompleted,
     });
 

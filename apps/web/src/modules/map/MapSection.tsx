@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 
 import {
-  GenericMap,
   MapBackButton,
   MapInfoPanel,
   MapLoadingState,
@@ -30,6 +29,8 @@ import type {
   MapDisplayMode,
   PhotoMarker,
 } from "~/types/map";
+
+import { GenericMap } from "./GenericMap";
 
 export const MapSection = () => {
   return (
@@ -269,7 +270,13 @@ const MapSectionContent = () => {
         selectedPhotoId: photoIdParam,
         selectedRegionId: null,
       };
-    }, [effectiveMapMode, markers, photoRepository, regionsByLevel, searchParams]);
+    }, [
+      effectiveMapMode,
+      markers,
+      photoRepository,
+      regionsByLevel,
+      searchParams,
+    ]);
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {
