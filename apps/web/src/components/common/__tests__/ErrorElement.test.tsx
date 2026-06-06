@@ -1,4 +1,3 @@
-import type { ButtonHTMLAttributes } from "react";
 import {
   cleanup,
   fireEvent,
@@ -6,7 +5,10 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ButtonHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { ErrorElement } from "../ErrorElement";
 
 const routeError = vi.hoisted(() => ({
   current: new Error("Failed to fetch dynamically imported module: /chunk.js"),
@@ -37,8 +39,6 @@ vi.mock("react-router", () => ({
 }));
 
 vi.mock("~/lib/stale-runtime-recovery", () => recovery);
-
-import { ErrorElement } from "../ErrorElement";
 
 describe("ErrorElement", () => {
   beforeEach(() => {

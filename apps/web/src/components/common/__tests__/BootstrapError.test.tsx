@@ -7,6 +7,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BootstrapError } from "../BootstrapError";
+
 const recovery = vi.hoisted(() => ({
   isStaleRuntimeError: vi.fn(),
   recoverFromStaleRuntimeError: vi.fn(),
@@ -14,8 +16,6 @@ const recovery = vi.hoisted(() => ({
 }));
 
 vi.mock("~/lib/stale-runtime-recovery", () => recovery);
-
-import { BootstrapError } from "../BootstrapError";
 
 describe("BootstrapError", () => {
   beforeEach(() => {

@@ -34,6 +34,6 @@ describe("language helpers", () => {
   it("uses the configured language only as fallback", () => {
     expect(getFallbackLanguages("zh")).toEqual(["zh-CN", "en"]);
     expect(getFallbackLanguages("en-US")).toEqual(["en"]);
-    expect(getFallbackLanguages(undefined)).toEqual(["en"]);
+    expect(getFallbackLanguages()).toEqual(["en"]);
   });
 });

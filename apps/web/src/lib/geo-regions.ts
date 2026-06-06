@@ -75,7 +75,7 @@ const CHINA_DIRECT_ADMIN_REGION_KEYS = new Set([
 const SUB_CITY_ADMIN_PATTERN =
   /\b(?:district|county|borough|sub-?district|new area|community)\b/i;
 const SUB_CITY_ADMIN_SUFFIX_PATTERN =
-  /(?:区|區|县|縣|街道|新区|新區|社区|社區|乡|鄉|镇|鎮)$/;
+  /(?:[区區县縣乡鄉镇鎮]|街道|新区|新區|社区|社區)$/;
 
 const prefersTraditionalChinese = (language: string | undefined): boolean => {
   if (!language) return false;
@@ -190,7 +190,7 @@ const extractCityFromLocationName = (
   const parts = locationName
     .split(",")
     .map((part) => normalizeValue(part))
-    .filter((part): part is string => Boolean(part));
+    .filter(Boolean);
   const regionIndex = parts.findLastIndex(
     (part) => normalizeKey(part) === normalizeKey(region),
   );

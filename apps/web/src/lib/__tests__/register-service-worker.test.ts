@@ -29,7 +29,7 @@ describe("registerProductionServiceWorker", () => {
   });
 
   it("registers the production service worker explicitly", async () => {
-    const updateServiceWorker = vi.fn(async () => undefined);
+    const updateServiceWorker = vi.fn(async () => {});
     const registerSW = vi.fn(() => updateServiceWorker);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
