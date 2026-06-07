@@ -1,8 +1,78 @@
 import { Buffer } from "node:buffer";
 
+import type {
+  DeleteObjectCommand,
+  DeleteObjectCommandOutput,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  ListObjectsV2CommandOutput,
+  PutObjectCommand,
+  PutObjectCommandOutput,
+} from "@aws-sdk/client-s3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type {
+  S3ClientLike,
+  S3GetObjectOutput,
+  S3SendOptions,
+} from "../storage/providers/s3-provider.js";
 import { S3StorageProvider } from "../storage/providers/s3-provider.js";
+
+type MockS3Command =
+  | DeleteObjectCommand
+  | GetObjectCommand
+  | ListObjectsV2Command
+  | PutObjectCommand;
+
+type MockS3Response =
+  | DeleteObjectCommandOutput
+  | S3GetObjectOutput
+  | ListObjectsV2CommandOutput
+  | PutObjectCommandOutput;
+
+type MockS3Send = (
+  command: MockS3Command,
+  options?: S3SendOptions,
+) => Promise<MockS3Response>;
+
+class MockS3Client implements S3ClientLike {
+  constructor(private readonly sendMock: MockS3Send) {}
+
+  send(
+    command: DeleteObjectCommand,
+    options?: S3SendOptions,
+  ): Promise<DeleteObjectCommandOutput>;
+  send(
+    command: GetObjectCommand,
+    options?: S3SendOptions,
+  ): Promise<S3GetObjectOutput>;
+  send(
+    command: ListObjectsV2Command,
+    options?: S3SendOptions,
+  ): Promise<ListObjectsV2CommandOutput>;
+  send(
+    command: PutObjectCommand,
+    options?: S3SendOptions,
+  ): Promise<PutObjectCommandOutput>;
+  async send(
+    command: MockS3Command,
+    options?: S3SendOptions,
+  ): Promise<MockS3Response> {
+    return await this.sendMock(command, options);
+  }
+}
+
+function createGetObjectResponse(
+  response: Omit<S3GetObjectOutput, "$metadata">,
+): S3GetObjectOutput {
+  return { $metadata: {}, ...response };
+}
+
+function createListObjectsResponse(
+  response: Omit<ListObjectsV2CommandOutput, "$metadata">,
+): ListObjectsV2CommandOutput {
+  return { $metadata: {}, ...response };
+}
 
 describe("S3StorageProvider.getFile", () => {
   const config = {
@@ -19,14 +89,15 @@ describe("S3StorageProvider.getFile", () => {
   });
 
   it("clears the total timeout when the response body is already a Buffer", async () => {
-    const provider = new S3StorageProvider(config);
-    const send = vi.fn().mockResolvedValue({
-      Body: Buffer.from("hello"),
-      ContentLength: 5,
+    const send = vi.fn<MockS3Send>().mockResolvedValue(
+      createGetObjectResponse({
+        Body: Buffer.from("hello"),
+        ContentLength: 5,
+      }),
+    );
+    const provider = new S3StorageProvider(config, {
+      s3Client: new MockS3Client(send),
     });
-    (provider as unknown as { s3Client: { send: typeof send } }).s3Client = {
-      send,
-    };
 
     const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
 
@@ -37,11 +108,12 @@ describe("S3StorageProvider.getFile", () => {
   });
 
   it("clears the total timeout when the response body is missing", async () => {
-    const provider = new S3StorageProvider(config);
-    const send = vi.fn().mockResolvedValue({});
-    (provider as unknown as { s3Client: { send: typeof send } }).s3Client = {
-      send,
-    };
+    const send = vi
+      .fn<MockS3Send>()
+      .mockResolvedValue(createGetObjectResponse({}));
+    const provider = new S3StorageProvider(config, {
+      s3Client: new MockS3Client(send),
+    });
 
     const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
 
@@ -50,24 +122,27 @@ describe("S3StorageProvider.getFile", () => {
   });
 
   it("paginates through truncated list responses for listAllFiles", async () => {
-    const provider = new S3StorageProvider(config);
     const send = vi
-      .fn()
-      .mockResolvedValueOnce({
-        Contents: [
-          { Key: "a.jpg", Size: 1 },
-          { Key: "b.mov", Size: 2 },
-        ],
-        IsTruncated: true,
-        NextContinuationToken: "page-2",
-      })
-      .mockResolvedValueOnce({
-        Contents: [{ Key: "c.heic", Size: 3 }],
-        IsTruncated: false,
-      });
-    (provider as unknown as { s3Client: { send: typeof send } }).s3Client = {
-      send,
-    };
+      .fn<MockS3Send>()
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [
+            { Key: "a.jpg", Size: 1 },
+            { Key: "b.mov", Size: 2 },
+          ],
+          IsTruncated: true,
+          NextContinuationToken: "page-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [{ Key: "c.heic", Size: 3 }],
+          IsTruncated: false,
+        }),
+      );
+    const provider = new S3StorageProvider(config, {
+      s3Client: new MockS3Client(send),
+    });
 
     await expect(provider.listAllFiles()).resolves.toEqual([
       { key: "a.jpg", size: 1, lastModified: undefined, etag: undefined },
@@ -78,28 +153,34 @@ describe("S3StorageProvider.getFile", () => {
   });
 
   it("respects maxFileLimit across paginated list responses", async () => {
-    const provider = new S3StorageProvider({
-      ...config,
-      maxFileLimit: 2,
-    });
     const send = vi
-      .fn()
-      .mockResolvedValueOnce({
-        Contents: [{ Key: "a.jpg", Size: 1 }],
-        IsTruncated: true,
-        NextContinuationToken: "page-2",
-      })
-      .mockResolvedValueOnce({
-        Contents: [
-          { Key: "b.jpg", Size: 2 },
-          { Key: "c.jpg", Size: 3 },
-        ],
-        IsTruncated: true,
-        NextContinuationToken: "page-3",
-      });
-    (provider as unknown as { s3Client: { send: typeof send } }).s3Client = {
-      send,
-    };
+      .fn<MockS3Send>()
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [{ Key: "a.jpg", Size: 1 }],
+          IsTruncated: true,
+          NextContinuationToken: "page-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [
+            { Key: "b.jpg", Size: 2 },
+            { Key: "c.jpg", Size: 3 },
+          ],
+          IsTruncated: true,
+          NextContinuationToken: "page-3",
+        }),
+      );
+    const provider = new S3StorageProvider(
+      {
+        ...config,
+        maxFileLimit: 2,
+      },
+      {
+        s3Client: new MockS3Client(send),
+      },
+    );
 
     await expect(provider.listImages()).resolves.toEqual([
       { key: "a.jpg", size: 1, lastModified: undefined, etag: undefined },

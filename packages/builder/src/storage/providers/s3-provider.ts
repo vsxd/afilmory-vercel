@@ -1,6 +1,12 @@
 import path from "node:path";
 
-import type { _Object, S3Client } from "@aws-sdk/client-s3";
+import type {
+  _Object,
+  DeleteObjectCommandOutput,
+  GetObjectCommandOutput,
+  ListObjectsV2CommandOutput,
+  PutObjectCommandOutput,
+} from "@aws-sdk/client-s3";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -22,6 +28,36 @@ import type {
 } from "../interfaces";
 import { encodeStorageKeyForUrl, joinPublicUrl } from "../url.js";
 
+export interface S3SendOptions {
+  abortSignal?: AbortSignal;
+  requestTimeout?: number;
+}
+
+export type S3GetObjectOutput = Omit<GetObjectCommandOutput, "Body"> & {
+  Body?: Buffer | GetObjectCommandOutput["Body"];
+};
+
+export interface S3ClientLike {
+  send: {
+    (
+      command: GetObjectCommand,
+      options?: S3SendOptions,
+    ): Promise<S3GetObjectOutput>;
+    (
+      command: ListObjectsV2Command,
+      options?: S3SendOptions,
+    ): Promise<ListObjectsV2CommandOutput>;
+    (
+      command: PutObjectCommand,
+      options?: S3SendOptions,
+    ): Promise<PutObjectCommandOutput>;
+    (
+      command: DeleteObjectCommand,
+      options?: S3SendOptions,
+    ): Promise<DeleteObjectCommandOutput>;
+  };
+}
+
 // 将 AWS S3 对象转换为通用存储对象
 function convertS3ObjectToStorageObject(s3Object: _Object): StorageObject {
   return {
@@ -34,12 +70,12 @@ function convertS3ObjectToStorageObject(s3Object: _Object): StorageObject {
 
 export class S3StorageProvider implements StorageProvider {
   private config: S3Config;
-  private s3Client: S3Client;
+  private s3Client: S3ClientLike;
   private limiter: Semaphore;
 
-  constructor(config: S3Config) {
+  constructor(config: S3Config, options: { s3Client?: S3ClientLike } = {}) {
     this.config = config;
-    this.s3Client = createS3Client(config);
+    this.s3Client = options.s3Client ?? createS3Client(config);
     this.limiter = new Semaphore(this.config.downloadConcurrency ?? 16);
   }
 

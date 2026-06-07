@@ -8,7 +8,12 @@ import { ExifTool } from "exiftool-vendored";
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { FujiRecipe, PickedExif, SonyRecipe } from "../types/photo.js";
 
-export class ExifService {
+export interface ExifReaderService {
+  read: (filePath: string) => Promise<Tags>;
+  close: () => void;
+}
+
+export class ExifService implements ExifReaderService {
   private readonly exiftool: ExifTool;
   private closed = false;
 
@@ -37,7 +42,7 @@ export class ExifService {
 
 // 提取 EXIF 数据
 export async function extractExifData(
-  exifService: ExifService,
+  exifService: ExifReaderService,
   imageBuffer: Buffer,
   originalBuffer?: Buffer,
 ): Promise<PickedExif | null> {

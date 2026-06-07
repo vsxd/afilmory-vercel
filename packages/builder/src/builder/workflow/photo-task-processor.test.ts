@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDefaultBuilderConfig } from "../../config/defaults.js";
+import type { BuilderServices } from "../../core/contracts/services.js";
+import { logger } from "../../logger/index.js";
+import { StorageManager } from "../../storage/index.js";
 import type { StorageObject } from "../../storage/interfaces.js";
+import type { BuilderConfig } from "../../types/config.js";
 import type { BuilderOptions } from "../../types/options.js";
 import type {
   PhotoManifestItem,
@@ -10,7 +14,13 @@ import type {
 import type { ClusterPoolOptions } from "../../worker/cluster-pool.js";
 import type { WorkerPoolOptions } from "../../worker/pool.js";
 import { PhotoTaskProcessor } from "./photo-task-processor.js";
-import type { BuildSession } from "./session.js";
+import type {
+  BuildPluginEventEmitter,
+  BuildSessionStorageManager,
+} from "./session.js";
+import { BuildSession } from "./session.js";
+
+type ProcessPhotoFn = typeof import("../../photo/processor.js").processPhoto;
 
 const processorMocks = vi.hoisted(() => ({
   clusterPoolInstances: [] as Array<{
@@ -18,7 +28,7 @@ const processorMocks = vi.hoisted(() => ({
     options: ClusterPoolOptions<ProcessPhotoResult>;
   }>,
   clusterResults: [] as ProcessPhotoResult[],
-  processPhoto: vi.fn(),
+  processPhoto: vi.fn<ProcessPhotoFn>(),
   workerPoolInstances: [] as Array<{
     execute: ReturnType<typeof vi.fn>;
     options: WorkerPoolOptions<ProcessPhotoResult>;
@@ -113,32 +123,94 @@ function createResult(type: ProcessPhotoResult["type"]): ProcessPhotoResult {
   };
 }
 
-function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
-  const config = createDefaultBuilderConfig();
-  config.system.processing.defaultConcurrency = 2;
-  config.system.observability.performance.worker.useClusterMode = false;
-  config.system.observability.performance.worker.workerConcurrency = 3;
-  const logger = {
-    main: {
-      info: vi.fn(),
-    },
+function createStorageManagerFixture(): BuildSessionStorageManager {
+  return {
+    deleteFile: vi.fn(async () => {}),
+    detectLivePhotos: vi.fn(async () => new Map()),
+    generatePublicUrl: vi.fn(
+      async (key: string) => `https://example.com/${key}`,
+    ),
+    getFile: vi.fn(async () => null),
+    listAllFiles: vi.fn(async () => []),
+    listImages: vi.fn(async () => []),
+    uploadFile: vi.fn(async (key: string, data: Buffer) => ({
+      key,
+      size: data.length,
+    })),
+  };
+}
+
+function createBuilderServicesFixture(config: BuilderConfig): BuilderServices {
+  const storageConfig = config.user?.storage ?? {
+    provider: "s3" as const,
+    bucket: "photos",
   };
 
   return {
     config,
-    emit: vi.fn(async () => {}),
-    emitPluginEvent: vi.fn(async () => {}),
+    exif: {
+      close: vi.fn(),
+      read: vi.fn(async () => ({ SourceFile: "fixture.jpg" })),
+    },
+    logger,
+    output: {
+      getSettings: () => config.output,
+    },
+    photoId: {
+      getIdForKey: (key) => key.replace(/\.[^.]+$/, ""),
+      hasCollision: (key) => key === "collision.jpg",
+      setCollisionKeys: vi.fn(),
+    },
+    storage: {
+      createManager: (nextConfig) => new StorageManager(nextConfig),
+      getConfig: () => storageConfig,
+      getManager: () => new StorageManager(storageConfig),
+    },
+  };
+}
+
+function createPluginEventEmitter(): BuildPluginEventEmitter {
+  const emitPluginEvent: BuildPluginEventEmitter = async () => {};
+  return vi.fn(emitPluginEvent);
+}
+
+function getFirstProcessPhotoCall(): Parameters<ProcessPhotoFn> {
+  const call = processorMocks.processPhoto.mock.calls[0];
+  if (!call) {
+    throw new Error("Expected processPhoto to be called.");
+  }
+  return call;
+}
+
+function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
+  const config = createDefaultBuilderConfig();
+  config.user = {
+    storage: { provider: "s3", bucket: "photos" },
+  };
+  config.system.processing.defaultConcurrency = 2;
+  config.system.observability.performance.worker.useClusterMode = false;
+  config.system.observability.performance.worker.workerConcurrency = 3;
+  const storageManager = createStorageManagerFixture();
+  const services = createBuilderServicesFixture(config);
+
+  return new BuildSession({
+    config,
+    emitPluginEvent: createPluginEventEmitter(),
     getConfig: () => config,
     getPhotoIdCollisionKeys: () => new Set(["collision.jpg"]),
+    getManifestSource: () => ({ provider: "s3", bucket: "photos" }),
+    getPhotoIdForKey: (key) => key.replace(/\.[^.]+$/, ""),
     options: {
       isForceMode: false,
       isForceManifest: false,
       isForceThumbnails: false,
       ...options,
     },
-    runState: { runShared: new Map() },
-    services: { logger, marker: "services" },
-  } as unknown as BuildSession;
+    runState: new Map(),
+    services,
+    setPhotoIdCollisionKeys: vi.fn(),
+    storageManager,
+  });
 }
 
 describe("PhotoTaskProcessor", () => {
@@ -210,13 +282,17 @@ describe("PhotoTaskProcessor", () => {
     expect(processorMocks.workerPoolInstances[0].options.logger).toBe(
       session.services.logger,
     );
-    expect(session.emit).toHaveBeenCalledWith("beforeProcessTasks", {
-      concurrency: 2,
-      mode: "worker",
-      options: session.options,
-      processorOptions: output.processorOptions,
-      tasks,
-    });
+    expect(session.emitPluginEvent).toHaveBeenCalledWith(
+      session.runState,
+      "beforeProcessTasks",
+      {
+        concurrency: 2,
+        mode: "worker",
+        options: session.options,
+        processorOptions: output.processorOptions,
+        tasks,
+      },
+    );
     expect(processorMocks.processPhoto).toHaveBeenCalledWith(
       tasks[0],
       0,
@@ -233,8 +309,7 @@ describe("PhotoTaskProcessor", () => {
       },
     );
 
-    const pluginBridge = processorMocks.processPhoto.mock
-      .calls[0][8] as BuildSession["emitPluginEvent"];
+    const pluginBridge = getFirstProcessPhotoCall()[8];
     await pluginBridge(session.runState, "afterImagesListed", {
       imageObjects: tasks,
       options: session.options,

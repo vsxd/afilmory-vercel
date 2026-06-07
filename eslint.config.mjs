@@ -63,6 +63,20 @@ const restrictedImports = {
   ],
 };
 
+/** @type {import("eslint").Linter.Config} */
+const i18nJsonConfig = {
+  files: ["locales/**/*.json"],
+  plugins: {
+    "recursive-sort": recursiveSort,
+    "check-i18n-json": checkI18nJson,
+  },
+  rules: {
+    "recursive-sort/recursive-sort": "error",
+    "check-i18n-json/valid-i18n-keys": "error",
+    "check-i18n-json/no-extra-keys": "error",
+  },
+};
+
 const hyobanConfig = await defineConfig(
   {
     formatting: false,
@@ -92,6 +106,15 @@ const hyobanConfig = await defineConfig(
     rules: {
       "unicorn/no-abusive-eslint-disable": 0,
       "@typescript-eslint/triple-slash-reference": 0,
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-check": false,
+          "ts-expect-error": true,
+          "ts-ignore": true,
+          "ts-nocheck": true,
+        },
+      ],
       "unicorn/prefer-math-trunc": "off",
       "unicorn/no-static-only-class": "off",
       "@eslint-react/no-clone-element": 0,
@@ -177,23 +200,22 @@ const hyobanConfig = await defineConfig(
           message:
             "Use scoped builder services instead of legacy global helpers.",
         },
+        {
+          selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword']",
+          message:
+            "Do not cast to any; model the boundary with an explicit type or test fixture.",
+        },
+        {
+          selector:
+            "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
+          message:
+            "Do not double-cast through unknown; introduce a typed seam, guard, or fixture.",
+        },
       ],
     },
   },
 
-  // @ts-expect-error
-  {
-    files: ["locales/**/*.json"],
-    plugins: {
-      "recursive-sort": recursiveSort,
-      "check-i18n-json": checkI18nJson,
-    },
-    rules: {
-      "recursive-sort/recursive-sort": "error",
-      "check-i18n-json/valid-i18n-keys": "error",
-      "check-i18n-json/no-extra-keys": "error",
-    },
-  },
+  i18nJsonConfig,
   {
     files: ["**/*.tsx"],
     rules: {

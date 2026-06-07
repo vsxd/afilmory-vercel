@@ -15,12 +15,23 @@ export type BuildPluginEventEmitter = <
   payload: BuilderPluginEventPayloads[TEvent],
 ) => Promise<void>;
 
+export type BuildSessionStorageManager = Pick<
+  StorageManager,
+  | "deleteFile"
+  | "detectLivePhotos"
+  | "generatePublicUrl"
+  | "getFile"
+  | "listAllFiles"
+  | "listImages"
+  | "uploadFile"
+>;
+
 export interface BuildSessionInput {
   config: BuilderConfig;
   options: BuilderOptions;
   services: BuilderServices;
   runState: PluginRunState;
-  storageManager: StorageManager;
+  storageManager: BuildSessionStorageManager;
   emitPluginEvent: BuildPluginEventEmitter;
   getConfig: () => BuilderConfig;
   getManifestSource: () => ManifestSource;
@@ -34,7 +45,7 @@ export class BuildSession {
   readonly options: BuilderOptions;
   readonly services: BuilderServices;
   readonly runState: PluginRunState;
-  readonly storageManager: StorageManager;
+  readonly storageManager: BuildSessionStorageManager;
   readonly emitPluginEvent: BuildPluginEventEmitter;
   readonly getConfig: () => BuilderConfig;
   readonly getManifestSource: () => ManifestSource;

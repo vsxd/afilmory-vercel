@@ -15,6 +15,7 @@ import {
 } from "./execution-context.js";
 import { processPhotoWithPipeline } from "./image-pipeline.js";
 import { createPhotoProcessingLoggers } from "./logger-adapter.js";
+import { createPhotoPipelineRuntime } from "./pipeline-runtime.js";
 
 export type PhotoProcessorOptions = PhotoProcessorOptionsType;
 export type { PhotoProcessingContext } from "../core/contracts/photo-processing.js";
@@ -68,9 +69,14 @@ export async function processPhoto(
     },
     async () => {
       photoLoggers.image.info(`📸 [${index + 1}/${totalImages}] ${key}`);
+      const pipelineRuntime = createPhotoPipelineRuntime();
 
       // 使用处理管道
-      return await processPhotoWithPipeline(context, pluginRuntime);
+      return await processPhotoWithPipeline(
+        context,
+        pluginRuntime,
+        pipelineRuntime,
+      );
     },
   );
 }

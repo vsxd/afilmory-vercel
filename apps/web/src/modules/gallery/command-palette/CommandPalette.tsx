@@ -12,6 +12,7 @@ import {
   useOpenPhotoViewer,
 } from "~/hooks/usePhotoViewer";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
+import { translateDynamicKey } from "~/lib/i18n-dynamic";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { FilterPanelContent } from "~/modules/gallery/panels/FilterPanel";
 import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
@@ -21,6 +22,7 @@ import {
   createGalleryGeoRegions,
   createGeoRegionLabelMaps,
 } from "../filter-options";
+import { resolveCommandKeyboardIntent } from "./keyboard";
 import type { CommandAction } from "./model";
 import {
   applyGalleryCommandAction,
@@ -38,6 +40,11 @@ interface CommandPaletteProps {
 
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { t, i18n } = useTranslation();
+  const commandT = useCallback(
+    (key: string, options?: Record<string, unknown>) =>
+      translateDynamicKey(i18n, key, options),
+    [i18n],
+  );
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
   const navigate = useNavigate();
   const openViewer = useOpenPhotoViewer();
@@ -153,7 +160,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const commands = useMemo(
     () =>
       buildCommandIndex({
-        t,
+        t: commandT,
         language: i18n.language,
         gallerySetting,
         allTags,
@@ -165,7 +172,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         hasFilters,
       }),
     [
-      t,
+      commandT,
       i18n.language,
       gallerySetting,
       allTags,
@@ -186,28 +193,24 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (filteredCommands.length === 0) return;
+      const intent = resolveCommandKeyboardIntent(e.key, {
+        selectedIndex,
+        resultCount: filteredCommands.length,
+      });
 
-      switch (e.key) {
-        case "ArrowDown": {
-          e.preventDefault();
-          setSelectedIndex((prev) =>
-            Math.min(prev + 1, filteredCommands.length - 1),
-          );
-          break;
-        }
-        case "ArrowUp": {
-          e.preventDefault();
-          setSelectedIndex((prev) => Math.max(prev - 1, 0));
-          break;
-        }
-        case "Enter": {
-          e.preventDefault();
-          if (filteredCommands[selectedIndex]) {
-            executeCommandAction(filteredCommands[selectedIndex].action);
-          }
-          break;
-        }
+      if (intent.type === "none") {
+        return;
+      }
+
+      e.preventDefault();
+      if (intent.type === "move") {
+        setSelectedIndex(intent.selectedIndex);
+        return;
+      }
+
+      const command = filteredCommands[intent.selectedIndex];
+      if (command) {
+        executeCommandAction(command.action);
       }
     },
     [executeCommandAction, filteredCommands, selectedIndex],
@@ -215,10 +218,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   // Scroll selected item into view
   useEffect(() => {
-    const selectedElement = listRef.current?.children[
-      selectedIndex
-    ] as HTMLElement;
-    if (selectedElement) {
+    const selectedElement = listRef.current?.children[selectedIndex];
+    if (selectedElement instanceof HTMLElement) {
       selectedElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }, [selectedIndex]);

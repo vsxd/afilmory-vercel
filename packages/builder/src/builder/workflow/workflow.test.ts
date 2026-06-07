@@ -1,12 +1,22 @@
+import type { Tags } from "exiftool-vendored";
 import { describe, expect, it, vi } from "vitest";
 
 import { createDefaultBuilderConfig } from "../../config/defaults.js";
+import type { BuilderServices } from "../../core/contracts/services.js";
+import { logger } from "../../logger/index.js";
+import { StorageManager } from "../../storage/index.js";
 import type { StorageObject } from "../../storage/interfaces.js";
+import type { BuilderConfig } from "../../types/config.js";
+import type { BuilderOptions } from "../../types/options.js";
 import type { PhotoManifestItem } from "../../types/photo.js";
 import { ArtifactWriter } from "./artifact-writer.js";
 import { DiffPlanner } from "./diff-planner.js";
 import { ManifestAssembler } from "./manifest-assembler.js";
-import type { BuildSession } from "./session.js";
+import type {
+  BuildPluginEventEmitter,
+  BuildSessionStorageManager,
+} from "./session.js";
+import { BuildSession } from "./session.js";
 import { SourceScanner } from "./source-scanner.js";
 
 const manifestManagerMocks = vi.hoisted(() => ({
@@ -56,31 +66,99 @@ function createPhoto(
   };
 }
 
-function createSession(overrides: Partial<BuildSession> = {}): BuildSession {
-  const config = createDefaultBuilderConfig();
-  config.user = {
-    storage: { provider: "s3", bucket: "photos" },
+function createStorageManagerFixture(
+  overrides: Partial<BuildSessionStorageManager> = {},
+): BuildSessionStorageManager {
+  return {
+    deleteFile: overrides.deleteFile ?? vi.fn(async () => {}),
+    detectLivePhotos:
+      overrides.detectLivePhotos ?? vi.fn(async () => new Map()),
+    generatePublicUrl:
+      overrides.generatePublicUrl ??
+      vi.fn(async (key: string) => `https://example.com/${key}`),
+    getFile: overrides.getFile ?? vi.fn(async () => null),
+    listAllFiles: overrides.listAllFiles ?? vi.fn(async () => []),
+    listImages: overrides.listImages ?? vi.fn(async () => []),
+    uploadFile:
+      overrides.uploadFile ??
+      vi.fn(async (key: string, data: Buffer) => ({
+        key,
+        size: data.length,
+      })),
+  };
+}
+
+function createBuilderServicesFixture(config: BuilderConfig): BuilderServices {
+  const storageConfig = config.user?.storage ?? {
+    provider: "s3" as const,
+    bucket: "photos",
+  };
+  const emptyTags: Tags = {
+    SourceFile: "fixture.jpg",
   };
 
   return {
     config,
+    exif: {
+      close: vi.fn(),
+      read: vi.fn(async () => emptyTags),
+    },
+    logger,
+    output: {
+      getSettings: () => config.output,
+    },
+    photoId: {
+      getIdForKey: (key) => key.replace(/\.[^.]+$/, ""),
+      hasCollision: () => false,
+      setCollisionKeys: vi.fn(),
+    },
+    storage: {
+      createManager: (nextConfig) => new StorageManager(nextConfig),
+      getConfig: () => storageConfig,
+      getManager: () => new StorageManager(storageConfig),
+    },
+  };
+}
+
+function createPluginEventEmitter(): BuildPluginEventEmitter {
+  const emitPluginEvent: BuildPluginEventEmitter = async () => {};
+  return vi.fn(emitPluginEvent);
+}
+
+function createSession(
+  overrides: {
+    config?: BuilderConfig;
+    options?: Partial<BuilderOptions>;
+    storageManager?: BuildSessionStorageManager;
+  } = {},
+): BuildSession {
+  const config = createDefaultBuilderConfig();
+  config.user = {
+    storage: { provider: "s3", bucket: "photos" },
+  };
+  const sessionConfig = overrides.config ?? config;
+  const storageManager =
+    overrides.storageManager ?? createStorageManagerFixture();
+  const services = createBuilderServicesFixture(sessionConfig);
+
+  return new BuildSession({
+    config: sessionConfig,
     options: {
       isForceMode: false,
       isForceManifest: false,
       isForceThumbnails: false,
+      ...overrides.options,
     },
-    emit: vi.fn(async () => {}),
+    services,
+    runState: new Map(),
+    storageManager,
+    emitPluginEvent: createPluginEventEmitter(),
     getManifestSource: () => ({ provider: "s3", bucket: "photos" }),
     getPhotoIdCollisionKeys: () => new Set<string>(),
     getPhotoIdForKey: (key: string) => key.replace(/\.[^.]+$/, ""),
     setPhotoIdCollisionKeys: vi.fn(),
-    storageManager: {
-      listAllFiles: vi.fn(async () => []),
-      listImages: vi.fn(async () => []),
-      detectLivePhotos: vi.fn(async () => new Map()),
-    },
-    ...overrides,
-  } as unknown as BuildSession;
+    getConfig: () => sessionConfig,
+  });
 }
 
 describe("builder workflow modules", () => {
@@ -95,11 +173,11 @@ describe("builder workflow modules", () => {
     );
     const livePhotoMap = new Map([[allObjects[0].key, allObjects[1]]]);
     const session = createSession({
-      storageManager: {
+      storageManager: createStorageManagerFixture({
         listAllFiles: vi.fn(async () => allObjects),
         listImages: vi.fn(async () => imageObjects),
         detectLivePhotos: vi.fn(async () => livePhotoMap),
-      } as unknown as BuildSession["storageManager"],
+      }),
     });
 
     const result = await new SourceScanner().scan(session);
@@ -109,14 +187,22 @@ describe("builder workflow modules", () => {
       imageObjects,
       livePhotoMap,
     });
-    expect(session.emit).toHaveBeenCalledWith("afterAllFilesListed", {
-      options: session.options,
-      allObjects,
-    });
-    expect(session.emit).toHaveBeenCalledWith("afterLivePhotoDetection", {
-      options: session.options,
-      livePhotoMap,
-    });
+    expect(session.emitPluginEvent).toHaveBeenCalledWith(
+      session.runState,
+      "afterAllFilesListed",
+      {
+        options: session.options,
+        allObjects,
+      },
+    );
+    expect(session.emitPluginEvent).toHaveBeenCalledWith(
+      session.runState,
+      "afterLivePhotoDetection",
+      {
+        options: session.options,
+        livePhotoMap,
+      },
+    );
   });
 
   it("plans force-mode tasks without consulting thumbnail state", async () => {

@@ -1,15 +1,11 @@
 import type { CameraInfo, GeoFilterState, LensInfo } from "@afilmory/schema";
-import type { TFunction } from "i18next";
 
 import type { GallerySetting } from "~/atoms/app";
-import {
-  fuzzyMatch,
-  getLocationTokens,
-  searchPhotos,
-} from "~/hooks/useCommandSearch";
 import { getRegionDisplayName } from "~/lib/geo-regions";
 import type { GeographicRegion } from "~/types/map";
 import type { PhotoManifest } from "~/types/photo";
+
+import { fuzzyMatch, getLocationTokens, searchPhotos } from "./search";
 
 export type CommandType = "search" | "filter" | "action" | "photo";
 
@@ -36,7 +32,10 @@ export interface ActiveFilterChip {
   action: CommandAction;
 }
 
-type GalleryTranslation = TFunction<"app">;
+type GalleryTranslation = (
+  key: string,
+  options?: Record<string, unknown>,
+) => string;
 type GeoFilterField = keyof GeoFilterState;
 
 export type CommandAction =
@@ -276,7 +275,7 @@ export function buildCommandIndex(input: {
           photo.description,
           ...locationTokens,
           ...(photo.tags || []),
-        ].filter(Boolean) as string[],
+        ].filter(isNonEmptyString),
       });
     }
   }
@@ -364,6 +363,10 @@ function clearFilters(gallerySetting: GallerySetting): GallerySetting {
   };
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 function buildGeoChips(input: {
   ids: string[];
   labelMap: Map<string, string>;
@@ -434,7 +437,7 @@ function addGeoCommands(input: {
           region.adminPath.region,
           region.adminPath.city,
           region.adminPath.district,
-        ].filter(Boolean) as string[],
+        ].filter(isNonEmptyString),
         badge: region.photoCount,
       });
     }

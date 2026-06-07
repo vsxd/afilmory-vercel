@@ -1,11 +1,11 @@
 import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { TFunction } from "i18next";
 import type { ComponentPropsWithoutRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { createExifPanelViewModel } from "../exif-panel-view-model";
 import { BasicExifSection } from "../ExifPanelSections";
+import type { ExifTranslationAdapter } from "../formatExifData";
 
 vi.mock("@afilmory/ui", () => ({
   EllipsisHorizontalTextWithTooltip: ({
@@ -20,7 +20,12 @@ vi.mock("@afilmory/ui", () => ({
   ),
 }));
 
-const t = ((key: string) => key) as unknown as TFunction<"app">;
+const testTranslator: ExifTranslationAdapter = {
+  language: "en-US",
+  exists: () => false,
+  t: (key) => key,
+};
+const t = (key: string) => key;
 
 function createPhoto(): PhotoManifestItem {
   return {
@@ -57,6 +62,7 @@ describe("ExifPanel sections", () => {
       createExifPanelViewModel({
         currentPhoto: createPhoto(),
         exifData: exif,
+        translator: testTranslator,
       }),
     ).toMatchObject({
       decimalLatitude: -41.4031,
@@ -72,6 +78,7 @@ describe("ExifPanel sections", () => {
     const viewModel = createExifPanelViewModel({
       currentPhoto,
       exifData: null,
+      translator: testTranslator,
     });
 
     render(

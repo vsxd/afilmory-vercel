@@ -1,6 +1,7 @@
 import { TransformAnimationController } from "./animation-controller";
 import { copyImageUrlToClipboard } from "./clipboard-service";
 import { createWebGLDebugInfo } from "./debug-adapter";
+import { resolveDoubleClickToggle } from "./double-click-zoom-policy";
 import { LoadingState } from "./enum";
 import { ImageViewerEngineBase } from "./ImageViewerEngineBase";
 import { WebGLInputController } from "./input-controller";
@@ -951,56 +952,26 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.animationController.cancel();
 
     if (this.config.doubleClick.mode === "toggle") {
-      const fitToScreenScale = this.getFitToScreenScale();
-      const configuredFitScale = fitToScreenScale * this.config.initialScale;
-      const absoluteMinScale = fitToScreenScale * this.config.minScale;
-      const originalSizeScale = 1;
-      const userMaxScale = fitToScreenScale * this.config.maxScale;
-      const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale);
+      const result = resolveDoubleClickToggle({
+        isZoomed: this.isDoubleClickZoomed,
+        point: { x, y },
+        transform: this.getTransformState(),
+        canvasWidth: this.canvasWidth,
+        canvasHeight: this.canvasHeight,
+        fitToScreenScale: this.getFitToScreenScale(),
+        initialScale: this.config.initialScale,
+        minScale: this.config.minScale,
+        maxScale: this.config.maxScale,
+        step: this.config.doubleClick.step,
+      });
 
-      if (this.isDoubleClickZoomed) {
-        const targetScale = Math.max(
-          absoluteMinScale,
-          Math.min(effectiveMaxScale, configuredFitScale),
-        );
-        const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale;
-        const zoomY =
-          (y - this.canvasHeight / 2 - this.translateY) / this.scale;
-        const targetTranslateX = x - this.canvasWidth / 2 - zoomX * targetScale;
-        const targetTranslateY =
-          y - this.canvasHeight / 2 - zoomY * targetScale;
-
-        this.startAnimation(
-          targetScale,
-          targetTranslateX,
-          targetTranslateY,
-          this.config.doubleClick.animationTime,
-        );
-        this.isDoubleClickZoomed = false;
-      } else {
-        const doubleClickZoomScale = Math.min(
-          originalSizeScale,
-          configuredFitScale * this.config.doubleClick.step,
-        );
-        const targetScale = Math.max(
-          absoluteMinScale,
-          Math.min(effectiveMaxScale, doubleClickZoomScale),
-        );
-        const zoomX = (x - this.canvasWidth / 2 - this.translateX) / this.scale;
-        const zoomY =
-          (y - this.canvasHeight / 2 - this.translateY) / this.scale;
-        const targetTranslateX = x - this.canvasWidth / 2 - zoomX * targetScale;
-        const targetTranslateY =
-          y - this.canvasHeight / 2 - zoomY * targetScale;
-
-        this.startAnimation(
-          targetScale,
-          targetTranslateX,
-          targetTranslateY,
-          this.config.doubleClick.animationTime,
-        );
-        this.isDoubleClickZoomed = true;
-      }
+      this.startAnimation(
+        result.transform.scale,
+        result.transform.translateX,
+        result.transform.translateY,
+        this.config.doubleClick.animationTime,
+      );
+      this.isDoubleClickZoomed = result.isZoomed;
     } else {
       this.zoomAt(x, y, this.config.doubleClick.step, true);
     }

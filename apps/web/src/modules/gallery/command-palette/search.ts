@@ -47,18 +47,17 @@ const getLocationTokens = (
 
   const uniqueTokens: string[] = [];
   const seen = new Set<string>();
-  tokens.forEach((token) => {
+  for (const token of tokens) {
     const normalized = token.toLowerCase();
     if (!seen.has(normalized)) {
       seen.add(normalized);
       uniqueTokens.push(token);
     }
-  });
+  }
 
   return uniqueTokens;
 };
 
-// Fuzzy search utility
 export const fuzzyMatch = (text: string, query: string): boolean => {
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
@@ -74,7 +73,6 @@ export const fuzzyMatch = (text: string, query: string): boolean => {
   return queryIndex === lowerQuery.length;
 };
 
-// Search photos utility
 export const searchPhotos = (photos: PhotoManifestItem[], query: string) => {
   const lowerQuery = query.trim().toLowerCase();
   if (!lowerQuery) return [];

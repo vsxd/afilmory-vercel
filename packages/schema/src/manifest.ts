@@ -2,9 +2,14 @@ import type {
   AfilmoryManifest,
   CameraInfo,
   LensInfo,
+  LocationAdminInfo,
+  LocationInfo,
   ManifestSource,
   PhotoManifestItem,
+  PickedExif,
+  ToneAnalysis,
   ToneType,
+  VideoSource,
 } from "./types.ts";
 import {
   AFILMORY_MANIFEST_SCHEMA,
@@ -122,9 +127,48 @@ function normalizeIndexes(value: unknown): {
 
   return {
     cameras: Array.isArray(value.cameras)
-      ? (value.cameras as CameraInfo[])
+      ? value.cameras.flatMap((camera) => {
+          const normalized = normalizeCameraInfo(camera);
+          return normalized ? [normalized] : [];
+        })
       : [],
-    lenses: Array.isArray(value.lenses) ? (value.lenses as LensInfo[]) : [],
+    lenses: Array.isArray(value.lenses)
+      ? value.lenses.flatMap((lens) => {
+          const normalized = normalizeLensInfo(lens);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+  };
+}
+
+function normalizeCameraInfo(value: unknown): CameraInfo | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.make !== "string" ||
+    typeof value.model !== "string" ||
+    typeof value.displayName !== "string"
+  ) {
+    return null;
+  }
+  return {
+    make: value.make,
+    model: value.model,
+    displayName: value.displayName,
+  };
+}
+
+function normalizeLensInfo(value: unknown): LensInfo | null {
+  if (!isRecord(value)) return null;
+  if (
+    typeof value.model !== "string" ||
+    typeof value.displayName !== "string"
+  ) {
+    return null;
+  }
+  return {
+    make: typeof value.make === "string" ? value.make : undefined,
+    model: value.model,
+    displayName: value.displayName,
   };
 }
 
@@ -212,6 +256,70 @@ function validateLocation(
   );
 }
 
+function normalizeStringRecord(
+  value: unknown,
+): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const record: Record<string, string> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === "string") {
+      record[key] = item;
+    }
+  }
+  return Object.keys(record).length > 0 ? record : undefined;
+}
+
+function normalizeAdminInfo(value: unknown): LocationAdminInfo | undefined {
+  if (!isRecord(value)) return undefined;
+  const admin: LocationAdminInfo = {
+    country: typeof value.country === "string" ? value.country : undefined,
+    countryCode:
+      typeof value.countryCode === "string" ? value.countryCode : undefined,
+    region: typeof value.region === "string" ? value.region : undefined,
+    city: typeof value.city === "string" ? value.city : undefined,
+    district: typeof value.district === "string" ? value.district : undefined,
+  };
+  return Object.values(admin).some(Boolean) ? admin : undefined;
+}
+
+function normalizeAdminInfoRecord(
+  value: unknown,
+): Record<string, LocationAdminInfo> | undefined {
+  if (!isRecord(value)) return undefined;
+  const record: Record<string, LocationAdminInfo> = {};
+  for (const [key, item] of Object.entries(value)) {
+    const admin = normalizeAdminInfo(item);
+    if (admin) {
+      record[key] = admin;
+    }
+  }
+  return Object.keys(record).length > 0 ? record : undefined;
+}
+
+function normalizeLocation(value: unknown): LocationInfo | null {
+  if (!isRecord(value)) return null;
+  const location: LocationInfo = {
+    latitude: isFiniteNumber(value.latitude) ? value.latitude : 0,
+    longitude: isFiniteNumber(value.longitude) ? value.longitude : 0,
+  };
+
+  const admin = normalizeAdminInfo(value.admin);
+  if (admin) location.admin = admin;
+  const adminI18n = normalizeAdminInfoRecord(value.adminI18n);
+  if (adminI18n) location.adminI18n = adminI18n;
+  const adminKey = normalizeAdminInfo(value.adminKey);
+  if (adminKey) location.adminKey = adminKey;
+  if (typeof value.country === "string") location.country = value.country;
+  if (typeof value.city === "string") location.city = value.city;
+  if (typeof value.locationName === "string") {
+    location.locationName = value.locationName;
+  }
+  const locationNameI18n = normalizeStringRecord(value.locationNameI18n);
+  if (locationNameI18n) location.locationNameI18n = locationNameI18n;
+
+  return location;
+}
+
 function validateToneAnalysis(
   value: unknown,
   issues: string[],
@@ -238,6 +346,23 @@ function validateToneAnalysis(
       `${path}.${field} must be a number`,
     );
   }
+}
+
+function isToneType(value: unknown): value is ToneType {
+  return typeof value === "string" && VALID_TONE_TYPES.has(value as ToneType);
+}
+
+function normalizeToneAnalysis(value: unknown): ToneAnalysis | null {
+  if (!isRecord(value)) return null;
+  return {
+    toneType: isToneType(value.toneType) ? value.toneType : "normal",
+    brightness: isFiniteNumber(value.brightness) ? value.brightness : 0,
+    contrast: isFiniteNumber(value.contrast) ? value.contrast : 0,
+    shadowRatio: isFiniteNumber(value.shadowRatio) ? value.shadowRatio : 0,
+    highlightRatio: isFiniteNumber(value.highlightRatio)
+      ? value.highlightRatio
+      : 0,
+  };
 }
 
 function validateVideo(value: unknown, issues: string[], path: string): void {
@@ -283,6 +408,42 @@ function validateVideo(value: unknown, issues: string[], path: string): void {
   }
 
   issues.push(`${path}.type is invalid`);
+}
+
+function normalizeVideo(value: unknown): VideoSource | undefined {
+  if (!isRecord(value)) return undefined;
+
+  if (value.type === "live-photo") {
+    if (typeof value.videoUrl !== "string" || typeof value.s3Key !== "string") {
+      return undefined;
+    }
+    return {
+      type: "live-photo",
+      videoUrl: value.videoUrl,
+      s3Key: value.s3Key,
+    };
+  }
+
+  if (value.type === "motion-photo") {
+    if (!isFiniteNumber(value.offset)) return undefined;
+    return {
+      type: "motion-photo",
+      offset: value.offset,
+      size: isFiniteNumber(value.size) ? value.size : undefined,
+      presentationTimestamp: isFiniteNumber(value.presentationTimestamp)
+        ? value.presentationTimestamp
+        : undefined,
+    };
+  }
+
+  return undefined;
+}
+
+function normalizeExif(value: unknown): PickedExif | null {
+  if (value === null || !isRecord(value)) return null;
+  const exif: PickedExif = {};
+  Object.assign(exif, value);
+  return exif;
 }
 
 function validatePhoto(
@@ -346,7 +507,41 @@ function validatePhoto(
     );
   }
 
-  return value as unknown as PhotoManifestItem;
+  const item: PhotoManifestItem = {
+    id: typeof value.id === "string" ? value.id : "",
+    originalUrl: typeof value.originalUrl === "string" ? value.originalUrl : "",
+    thumbnailUrl:
+      typeof value.thumbnailUrl === "string" ? value.thumbnailUrl : "",
+    thumbHash:
+      typeof value.thumbHash === "string" || value.thumbHash === null
+        ? value.thumbHash
+        : null,
+    width: isFiniteNumber(value.width) ? value.width : 0,
+    height: isFiniteNumber(value.height) ? value.height : 0,
+    aspectRatio: isFiniteNumber(value.aspectRatio) ? value.aspectRatio : 1,
+    s3Key: typeof value.s3Key === "string" ? value.s3Key : "",
+    lastModified:
+      typeof value.lastModified === "string" ? value.lastModified : "",
+    size: isFiniteNumber(value.size) ? value.size : 0,
+    etag: typeof value.etag === "string" ? value.etag : undefined,
+    exif: normalizeExif(value.exif),
+    toneAnalysis: normalizeToneAnalysis(value.toneAnalysis),
+    location: normalizeLocation(value.location),
+    title: typeof value.title === "string" ? value.title : "",
+    dateTaken: typeof value.dateTaken === "string" ? value.dateTaken : "",
+    tags: isStringArray(value.tags) ? value.tags : [],
+    description: typeof value.description === "string" ? value.description : "",
+  };
+
+  if (typeof value.isHDR === "boolean") {
+    item.isHDR = value.isHDR;
+  }
+  const video = normalizeVideo(value.video);
+  if (video) {
+    item.video = video;
+  }
+
+  return item;
 }
 
 export function createManifest({

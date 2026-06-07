@@ -13,9 +13,9 @@ describe("TextureLodManager", () => {
 
   it("replaces and disposes base textures without duplicate deletes", () => {
     const deleted: WebGLTexture[] = [];
-    const gl = {
+    const gl: WebGLRenderingContext = Object.assign(Object.create(null), {
       deleteTexture: vi.fn((texture: WebGLTexture) => deleted.push(texture)),
-    } as unknown as WebGLRenderingContext;
+    });
     const first = {} as WebGLTexture;
     const second = {} as WebGLTexture;
     const manager = new TextureLodManager(gl);

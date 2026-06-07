@@ -1,22 +1,9 @@
 import type { FujiRecipe, PickedExif } from "@afilmory/schema";
 
-import { getI18n } from "~/i18n";
-
 export type ExifTranslationAdapter = {
   language: string;
   exists: (key: string) => boolean;
   t: (key: string, props?: Record<string, string | number>) => string;
-};
-
-const getDefaultExifTranslationAdapter = (): ExifTranslationAdapter => {
-  const i18n = getI18n();
-  const translate = i18n.t.bind(i18n) as unknown as ExifTranslationAdapter["t"];
-
-  return {
-    language: i18n.language,
-    exists: (key) => i18n.exists(key),
-    t: translate,
-  };
 };
 
 const hasExifValue = <T>(value: T | null | undefined): value is T =>
@@ -303,7 +290,7 @@ const isGpsAltitudeBelowSeaLevel = (
 
 export const formatExifData = (
   exif: PickedExif | null,
-  translator: ExifTranslationAdapter = getDefaultExifTranslationAdapter(),
+  translator: ExifTranslationAdapter,
 ) => {
   if (!exif) return null;
 

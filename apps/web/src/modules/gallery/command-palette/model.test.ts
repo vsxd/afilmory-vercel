@@ -65,7 +65,7 @@ describe("command-palette-model", () => {
 
   it("builds pure command data for lens and photo results", () => {
     const commands = buildCommandIndex({
-      t: t as never,
+      t,
       language: "en",
       gallerySetting,
       allTags: [],

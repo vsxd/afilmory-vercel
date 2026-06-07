@@ -6,6 +6,7 @@ import type sharp from "sharp";
 
 import { HEIC_FORMATS } from "../constants/index.js";
 import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
+import type { ExifReaderService } from "../image/exif.js";
 import { extractExifData } from "../image/exif.js";
 import { calculateHistogramAndAnalyzeTone } from "../image/histogram.js";
 import {
@@ -19,7 +20,6 @@ import type {
   PickedExif,
   ToneAnalysis,
 } from "../types/photo.js";
-import { getPhotoExecutionContext } from "./execution-context.js";
 import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
 export interface ThumbnailResult {
@@ -91,6 +91,7 @@ export async function processExifData(
   photoKey: string,
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
+  exifService: ExifReaderService,
 ): Promise<PickedExif | null> {
   const loggers = getPhotoProcessingLoggers();
 
@@ -105,8 +106,7 @@ export async function processExifData(
   const ext = path.extname(photoKey).toLowerCase();
   const originalBuffer = HEIC_FORMATS.has(ext) ? rawImageBuffer : undefined;
 
-  const { services } = getPhotoExecutionContext();
-  return await extractExifData(services.exif, imageBuffer, originalBuffer);
+  return await extractExifData(exifService, imageBuffer, originalBuffer);
 }
 
 /**

@@ -19,13 +19,13 @@ import {
   processThumbnailAndBlurhash,
   processToneAnalysis,
 } from "./data-processors.js";
-import { getPhotoExecutionContext } from "./execution-context.js";
 import { detectGainMap } from "./gainmap-detector.js";
 import { createPhotoId } from "./id.js";
 import { extractPhotoInfo } from "./info-extractor.js";
 import { processLivePhoto } from "./live-photo-handler.js";
-import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 import { detectMotionPhoto } from "./motion-photo-detector.js";
+import type { PhotoPipelineRuntime } from "./pipeline-runtime.js";
+import { createPhotoPipelineRuntime } from "./pipeline-runtime.js";
 
 export interface ProcessedImageData {
   sharpInstance: sharp.Sharp;
@@ -48,9 +48,9 @@ export interface PhotoProcessingContext {
  */
 export async function preprocessImage(
   photoKey: string,
+  runtime: PhotoPipelineRuntime = createPhotoPipelineRuntime(),
 ): Promise<{ rawBuffer: Buffer; processedBuffer: Buffer } | null> {
-  const loggers = getPhotoProcessingLoggers();
-  const { storageManager } = getPhotoExecutionContext();
+  const { loggers, storageManager } = runtime;
 
   try {
     // 获取图片数据
@@ -86,8 +86,9 @@ export async function preprocessImage(
 export async function processImageWithSharp(
   imageBuffer: Buffer,
   photoKey: string,
+  runtime: PhotoPipelineRuntime = createPhotoPipelineRuntime(),
 ): Promise<ProcessedImageData | null> {
-  const loggers = getPhotoProcessingLoggers();
+  const { loggers } = runtime;
 
   try {
     // 创建 Sharp 实例，复用于多个操作
@@ -133,8 +134,9 @@ export async function processImageWithSharp(
 function generatePhotoId(
   s3Key: string,
   existingItem?: PhotoManifestItem,
+  runtime: PhotoPipelineRuntime = createPhotoPipelineRuntime(),
 ): string {
-  const { services } = getPhotoExecutionContext();
+  const { services } = runtime;
   const digestSuffixLength =
     services.config.system.processing.digestSuffixLength ?? 0;
 
@@ -158,22 +160,23 @@ function generatePhotoId(
  */
 export async function executePhotoProcessingPipeline(
   context: PhotoProcessingContext,
+  runtime: PhotoPipelineRuntime = createPhotoPipelineRuntime(),
 ): Promise<PhotoManifestItem | null> {
   const { photoKey, obj, existingItem, livePhotoMap, options } = context;
-  const { storageManager } = getPhotoExecutionContext();
-  const loggers = getPhotoProcessingLoggers();
+  const { loggers, storageManager } = runtime;
   // Generate the actual photo ID with digest suffix
-  const photoId = generatePhotoId(photoKey, existingItem);
+  const photoId = generatePhotoId(photoKey, existingItem, runtime);
 
   try {
     // 1. 预处理图片
-    const imageData = await preprocessImage(photoKey);
+    const imageData = await preprocessImage(photoKey, runtime);
     if (!imageData) return null;
 
     // 2. 处理图片并创建 Sharp 实例
     const processedData = await processImageWithSharp(
       imageData.processedBuffer,
       photoKey,
+      runtime,
     );
     if (!processedData) return null;
 
@@ -201,6 +204,7 @@ export async function executePhotoProcessingPipeline(
       photoKey,
       existingItem,
       options,
+      runtime.services.exif,
     );
 
     // 5. 检测 HDR GainMap（Ultra HDR 图片）
@@ -301,16 +305,16 @@ export async function executePhotoProcessingPipeline(
 export async function processPhotoWithPipeline(
   context: PhotoProcessingContext,
   runtime: { runState: PluginRunState; builderOptions: BuilderOptions },
+  pipelineRuntime: PhotoPipelineRuntime = createPhotoPipelineRuntime(),
 ): Promise<{
   item: PhotoManifestItem | null;
   type: "new" | "processed" | "skipped" | "failed";
   pluginData: Record<string, unknown>;
 }> {
   const { photoKey, existingItem, obj, options } = context;
-  const { emitPluginEvent } = getPhotoExecutionContext();
-  const loggers = getPhotoProcessingLoggers();
+  const { emitPluginEvent, loggers } = pipelineRuntime;
 
-  const photoId = generatePhotoId(photoKey, existingItem);
+  const photoId = generatePhotoId(photoKey, existingItem, pipelineRuntime);
 
   await emitPluginEvent(runtime.runState, "beforePhotoProcess", {
     options: runtime.builderOptions,
@@ -352,7 +356,10 @@ export async function processPhotoWithPipeline(
   let resultType: ProcessPhotoResult["type"] = isNewPhoto ? "new" : "processed";
 
   try {
-    processedItem = await executePhotoProcessingPipeline(context);
+    processedItem = await executePhotoProcessingPipeline(
+      context,
+      pipelineRuntime,
+    );
     if (!processedItem) {
       resultType = "failed";
     }

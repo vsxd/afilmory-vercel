@@ -66,15 +66,14 @@ describe("ImageLoaderManager", () => {
     vi.useFakeTimers();
     MockXMLHttpRequest.instances = [];
 
-    globalThis.XMLHttpRequest =
-      MockXMLHttpRequest as unknown as typeof XMLHttpRequest;
+    vi.stubGlobal("XMLHttpRequest", MockXMLHttpRequest);
     URL.createObjectURL = vi.fn(() => "blob:mock-image");
     URL.revokeObjectURL = vi.fn();
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    globalThis.XMLHttpRequest = originalXMLHttpRequest;
+    vi.stubGlobal("XMLHttpRequest", originalXMLHttpRequest);
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
     vi.restoreAllMocks();

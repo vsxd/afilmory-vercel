@@ -2,22 +2,44 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { copyImageUrlToClipboard } from "./clipboard-service";
 
-class ClipboardItemMock {
-  constructor(readonly items: Record<string, Blob>) {}
+class ClipboardItemMock implements ClipboardItem {
+  readonly presentationStyle: PresentationStyle = "unspecified";
+  readonly types: string[];
+
+  constructor(readonly items: Record<string, Blob>) {
+    this.types = Object.keys(items);
+  }
+
+  async getType(type: string): Promise<Blob> {
+    const item = this.items[type];
+    if (!item) {
+      throw new TypeError(`Missing clipboard item type: ${type}`);
+    }
+    return item;
+  }
 }
 
 function mockFetchBlob(blob: Blob): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn(async () => ({
-    blob: async () => blob,
-  }));
-  globalThis.fetch = fetchMock as unknown as typeof fetch;
+  const fetchMock = vi.fn<typeof fetch>(
+    async () =>
+      new Response(blob, {
+        headers: { "Content-Type": blob.type },
+      }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
+}
+
+function expectClipboardItemMock(item: ClipboardItem): ClipboardItemMock {
+  expect(item).toBeInstanceOf(ClipboardItemMock);
+  if (!(item instanceof ClipboardItemMock)) {
+    throw new TypeError("Expected ClipboardItemMock instance.");
+  }
+  return item;
 }
 
 describe("copyImageUrlToClipboard", () => {
   const originalClipboard = navigator.clipboard;
-  const originalClipboardItem = globalThis.ClipboardItem;
-  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     vi.stubGlobal("ClipboardItem", ClipboardItemMock);
@@ -25,12 +47,11 @@ describe("copyImageUrlToClipboard", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: originalClipboard,
     });
-    globalThis.ClipboardItem = originalClipboardItem;
-    globalThis.fetch = originalFetch;
   });
 
   it("fetches the image and writes a ClipboardItem", async () => {
@@ -48,10 +69,16 @@ describe("copyImageUrlToClipboard", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("https://example.com/photo.png");
     expect(write).toHaveBeenCalledTimes(1);
-    const items = write.mock.calls[0]?.[0] as unknown as ClipboardItemMock[];
+    const items = write.mock.calls[0]?.[0];
+    if (!items) {
+      throw new Error("Expected clipboard write payload.");
+    }
     expect(items).toHaveLength(1);
-    expect(items[0]).toBeInstanceOf(ClipboardItemMock);
-    expect((items[0] as ClipboardItemMock).items).toEqual({
+    const item = items[0];
+    if (!item) {
+      throw new Error("Expected one clipboard item.");
+    }
+    expect(expectClipboardItemMock(item).items).toEqual({
       "image/png": blob,
     });
   });
@@ -69,9 +96,10 @@ describe("copyImageUrlToClipboard", () => {
 
   it("propagates fetch failures", async () => {
     const error = new Error("network unavailable");
-    globalThis.fetch = vi.fn(async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
       throw error;
-    }) as unknown as typeof fetch;
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     await expect(copyImageUrlToClipboard("photo.png")).rejects.toThrow(error);
   });

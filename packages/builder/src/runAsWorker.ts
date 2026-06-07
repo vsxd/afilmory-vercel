@@ -4,35 +4,25 @@ import { deserialize } from "node:v8";
 import type { BuilderOptions } from "./builder/builder.js";
 import { AfilmoryBuilder } from "./builder/builder.js";
 import { ExifService } from "./image/exif.js";
-import { runWithBuilderOutputSettings } from "./output-paths.js";
 import type { PluginRunState } from "./plugins/manager.js";
 import type { StorageObject } from "./storage/interfaces";
-import type { BuilderConfig } from "./types/config.js";
 import type { PhotoManifestItem } from "./types/photo";
 import type {
   BatchTaskMessage,
   BatchTaskResult,
+  ClusterWorkerSharedData,
   TaskMessage,
   TaskResult,
-} from "./worker/cluster-pool";
-
-// 新增接口定义
-interface WorkerInitMessage {
-  type: "init";
-  sharedData: {
-    data: number[]; // Buffer 转换为数组传输
-    length: number;
-  };
-}
-
-interface SharedData {
-  existingManifestMap: Map<string, PhotoManifestItem>;
-  livePhotoMap: Map<string, StorageObject>;
-  imageObjects: StorageObject[];
-  builderConfig: BuilderConfig;
-  builderOptions: BuilderOptions;
-  photoIdCollisionKeys?: string[];
-}
+  WorkerInitMessage,
+} from "./worker/cluster-protocol.js";
+import type {
+  WorkerProcessPhoto,
+  WorkerTaskRuntime,
+} from "./worker/task-executor.js";
+import {
+  executeWorkerBatchTask,
+  executeWorkerTask,
+} from "./worker/task-executor.js";
 
 // Worker 进程处理逻辑
 export async function runAsWorker() {
@@ -64,7 +54,7 @@ export async function runAsWorker() {
 
     // 将数组重新转换为 Buffer，然后反序列化
     const buffer = Buffer.from(serializedData.data);
-    const sharedData = deserialize(buffer) as SharedData;
+    const sharedData = deserialize(buffer) as ClusterWorkerSharedData;
 
     // 从主进程接收的共享数据中恢复数据结构（数据已经是正确的类型）
     imageObjects = sharedData.imageObjects;
@@ -82,58 +72,37 @@ export async function runAsWorker() {
     isInitialized = true;
   };
 
+  const createTaskRuntime = (): WorkerTaskRuntime => {
+    if (!isInitialized) {
+      throw new Error("Worker 未初始化，请先发送 init 消息");
+    }
+
+    return {
+      workerId,
+      imageObjects,
+      existingManifestMap,
+      livePhotoMap,
+      builderOptions,
+      outputSettings: builder.getConfig().output,
+      services: builder.services,
+      pluginRunState,
+      emitPluginEvent: (runState, event, payload) =>
+        builder.emitPluginEvent(runState, event, payload),
+    };
+  };
+
+  const loadProcessPhoto = async (): Promise<WorkerProcessPhoto> => {
+    const { processPhoto } = await import("./photo/processor.js");
+    return processPhoto;
+  };
+
   const handleTask = async (message: TaskMessage): Promise<void> => {
     try {
-      // 确保 worker 已初始化
-      if (!isInitialized) {
-        throw new Error("Worker 未初始化，请先发送 init 消息");
-      }
-
-      // 动态导入 processPhoto（放在这里以避免阻塞消息监听）
-      const { processPhoto } = await import("./photo/processor.js");
-
-      const { taskIndex } = message;
-
-      // 根据 taskIndex 获取对应的图片对象
-      const obj = imageObjects[taskIndex];
-      if (!obj) {
-        throw new Error(`Invalid taskIndex: ${taskIndex}`);
-      }
-
-      const processorOptions = {
-        isForceMode: builderOptions.isForceMode,
-        isForceManifest: builderOptions.isForceManifest,
-        isForceThumbnails: builderOptions.isForceThumbnails,
-      };
-
-      // 处理照片
-      const result = await runWithBuilderOutputSettings(
-        builder.getConfig().output,
-        async () =>
-          await processPhoto(
-            obj,
-            taskIndex,
-            workerId,
-            imageObjects.length,
-            existingManifestMap,
-            livePhotoMap,
-            processorOptions,
-            builder.services,
-            (runState, event, payload) =>
-              builder.emitPluginEvent(runState, event, payload),
-            {
-              runState: pluginRunState,
-              builderOptions,
-            },
-          ),
+      const response = await executeWorkerTask(
+        message,
+        createTaskRuntime(),
+        await loadProcessPhoto(),
       );
-
-      // 发送结果回主进程
-      const response: TaskResult = {
-        type: "result",
-        taskId: message.taskId,
-        result,
-      };
 
       if (process.send) {
         process.send(response);
@@ -155,75 +124,11 @@ export async function runAsWorker() {
   // 批量任务处理函数
   const handleBatchTask = async (message: BatchTaskMessage): Promise<void> => {
     try {
-      // 确保已初始化
-      if (!isInitialized) {
-        throw new Error("Worker 未初始化，请先发送 init 消息");
-      }
-
-      const results: TaskResult[] = [];
-      const taskPromises: Promise<void>[] = [];
-      const batchProcessorOptions = {
-        isForceMode: builderOptions.isForceMode,
-        isForceManifest: builderOptions.isForceManifest,
-        isForceThumbnails: builderOptions.isForceThumbnails,
-      };
-
-      // 创建所有任务的并发执行 Promise
-      for (const task of message.tasks) {
-        const taskPromise = (async () => {
-          try {
-            const obj = imageObjects[task.taskIndex];
-
-            // 处理照片
-            const { processPhoto } = await import("./photo/processor.js");
-            const result = await runWithBuilderOutputSettings(
-              builder.getConfig().output,
-              async () =>
-                await processPhoto(
-                  obj,
-                  task.taskIndex,
-                  workerId,
-                  imageObjects.length,
-                  existingManifestMap,
-                  livePhotoMap,
-                  batchProcessorOptions,
-                  builder.services,
-                  (runState, event, payload) =>
-                    builder.emitPluginEvent(runState, event, payload),
-                  {
-                    runState: pluginRunState,
-                    builderOptions,
-                  },
-                ),
-            );
-
-            // 添加成功结果
-            results.push({
-              type: "result",
-              taskId: task.taskId,
-              result,
-            });
-          } catch (error) {
-            // 添加错误结果
-            results.push({
-              type: "error",
-              taskId: task.taskId,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-
-        taskPromises.push(taskPromise);
-      }
-
-      // 等待所有任务完成
-      await Promise.all(taskPromises);
-
-      // 发送批量结果回主进程
-      const response: BatchTaskResult = {
-        type: "batch-result",
-        results,
-      };
+      const response = await executeWorkerBatchTask(
+        message,
+        createTaskRuntime(),
+        await loadProcessPhoto(),
+      );
 
       if (process.send) {
         process.send(response);

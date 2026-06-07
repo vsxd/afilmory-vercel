@@ -4,10 +4,11 @@ import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
 import { ScrollArea, Spring } from "@afilmory/ui";
 import { m } from "motion/react";
 import type { FC } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useMobile } from "~/hooks/useMobile";
+import { translateDynamicKey } from "~/lib/i18n-dynamic";
 
 import { createExifPanelViewModel } from "./exif-panel-view-model";
 import {
@@ -15,6 +16,7 @@ import {
   FormattedExifSections,
   ToneExifSection,
 } from "./ExifPanelSections";
+import type { ExifTranslationAdapter } from "./formatExifData";
 import { RawExifViewer } from "./RawExifViewer";
 
 export const ExifPanel: FC<{
@@ -24,11 +26,28 @@ export const ExifPanel: FC<{
   onTagClick?: (tag: string) => void;
   visible?: boolean;
 }> = ({ currentPhoto, exifData, onClose, onTagClick, visible = true }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isMobile = useMobile();
+  const sectionT = useCallback(
+    (key: string) => translateDynamicKey(i18n, key),
+    [i18n],
+  );
+  const exifTranslator = useMemo<ExifTranslationAdapter>(
+    () => ({
+      language: i18n.language,
+      exists: (key) => i18n.exists(key),
+      t: (key, props) => translateDynamicKey(i18n, key, props),
+    }),
+    [i18n],
+  );
   const viewModel = useMemo(
-    () => createExifPanelViewModel({ currentPhoto, exifData }),
-    [currentPhoto, exifData],
+    () =>
+      createExifPanelViewModel({
+        currentPhoto,
+        exifData,
+        translator: exifTranslator,
+      }),
+    [currentPhoto, exifData, exifTranslator],
   );
 
   return (
@@ -94,13 +113,13 @@ export const ExifPanel: FC<{
           <BasicExifSection
             currentPhoto={currentPhoto}
             onTagClick={onTagClick}
-            t={t}
+            t={sectionT}
             viewModel={viewModel}
           />
-          <ToneExifSection currentPhoto={currentPhoto} t={t} />
+          <ToneExifSection currentPhoto={currentPhoto} t={sectionT} />
           <FormattedExifSections
             currentPhoto={currentPhoto}
-            t={t}
+            t={sectionT}
             viewModel={viewModel}
           />
         </div>

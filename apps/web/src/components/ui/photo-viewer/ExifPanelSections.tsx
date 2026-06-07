@@ -1,7 +1,6 @@
 import type { PhotoManifestItem } from "@afilmory/schema";
 import { MotionButtonBase } from "@afilmory/ui";
 import { isNil } from "es-toolkit/compat";
-import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { Fragment, lazy, Suspense } from "react";
 
@@ -21,7 +20,7 @@ const MiniMap = lazy(() =>
   import("./MiniMap").then((m) => ({ default: m.MiniMap })),
 );
 
-type ExifPanelTranslation = TFunction<"app">;
+type ExifPanelTranslation = (key: string) => string;
 
 export function BasicExifSection({
   currentPhoto,
