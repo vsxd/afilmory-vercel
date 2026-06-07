@@ -7,6 +7,7 @@ import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
+import { useMobile } from "~/hooks/useMobile";
 import {
   getViewerPhotos,
   getViewerSourceMode,
@@ -72,6 +73,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [panelDragOffset, setPanelDragOffset] = useState(0);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const isMobile = useMobile();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const dragStartYRef = useRef<number | null>(null);
@@ -320,10 +322,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       setQuery("");
       setSelectedIndex(0);
       resetPanelDrag();
+      if (isMobile) return;
       const timer = setTimeout(() => inputRef.current?.focus(), 50);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, resetPanelDrag]);
+  }, [isMobile, isOpen, resetPanelDrag]);
 
   // Handle escape key
   useEffect(() => {
@@ -485,7 +488,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           }}
         />
         <div
-          className="flex h-10 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+          className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
           onPointerDown={handleDragHandlePointerDown}
           onPointerMove={handleDragHandlePointerMove}
           onPointerUp={handleDragHandlePointerUp}
@@ -512,7 +515,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={handleReset}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-10 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-11 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
               aria-label={t("action.search.reset")}
               title={t("action.search.reset")}
             >
@@ -521,7 +524,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={onClose}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-10 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-11 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
               aria-label={t("common.close")}
               title={t("common.close")}
             >
@@ -560,7 +563,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2"
+                className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 min-h-11 rounded-full px-3 text-xs font-medium transition-colors focus-visible:ring-2"
               >
                 {t("action.search.clear")}
               </button>
@@ -571,7 +574,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                   key={chip.id}
                   type="button"
                   onClick={() => executeCommandAction(chip.action)}
-                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 focus-visible:ring-accent/45 flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ring-inset focus-visible:ring-2"
+                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 focus-visible:ring-accent/45 flex min-h-11 max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 transition-colors ring-inset focus-visible:ring-2"
                   aria-label={`${t("action.search.clear")} ${chip.label}`}
                   title={chip.label}
                 >

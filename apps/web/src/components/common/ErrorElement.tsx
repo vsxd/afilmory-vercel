@@ -113,13 +113,13 @@ export function ErrorElement() {
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
             <Button
               onClick={() => void recoverFromStaleRuntime()}
-              className="bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 h-10 flex-1 border-0 font-medium transition-colors"
+              className="bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 h-11 flex-1 border-0 font-medium transition-colors"
             >
               Reload Application
             </Button>
             <Button
               onClick={() => window.history.back()}
-              className="bg-material-thin text-text border-fill-tertiary hover:bg-fill-tertiary h-10 flex-1 border font-medium transition-colors"
+              className="bg-material-thin text-text border-fill-tertiary hover:bg-fill-tertiary h-11 flex-1 border font-medium transition-colors"
             >
               Go Back
             </Button>

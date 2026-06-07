@@ -37,7 +37,7 @@ export const ActionGroup = () => {
         onClick={() => {
           setCommandPaletteOpen(true);
         }}
-        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-10 min-w-10 rounded-full border px-3 shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-11 min-w-11 rounded-full border px-3 shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
         aria-label={t("action.search.unified.title")}
         title={t("action.search.unified.title")}
       >
@@ -54,7 +54,7 @@ export const ActionGroup = () => {
         variant="ghost"
         size="sm"
         onClick={() => navigate("/explore")}
-        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background h-10 w-10 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background h-11 w-11 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
         aria-label={t("action.map.explore")}
         title={t("action.map.explore")}
       >

@@ -108,7 +108,7 @@ export const Slider = ({
       <div
         ref={sliderRef}
         className={clsxm(
-          "relative h-6 cursor-pointer",
+          "relative h-11 cursor-pointer",
           disabled && "cursor-not-allowed opacity-50",
         )}
         onPointerDown={handlePointerDown}

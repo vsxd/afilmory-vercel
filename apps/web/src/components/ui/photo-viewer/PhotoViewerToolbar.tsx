@@ -7,7 +7,7 @@ import type { PhotoManifest } from "~/types/photo";
 import { SharePanel } from "./SharePanel";
 
 const viewerToolbarButtonClassName =
-  "bg-material-ultra-thick pointer-events-auto flex size-10 items-center justify-center rounded-full text-white shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-black/40 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40";
+  "bg-material-ultra-thick pointer-events-auto flex size-11 items-center justify-center rounded-full text-white shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-black/40 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40";
 
 interface PhotoViewerToolbarProps {
   currentPhoto: PhotoManifest;
@@ -36,7 +36,7 @@ export const PhotoViewerToolbar = ({
       animate={{ opacity: isVisible ? 1 : 0 }}
       exit={{ opacity: 0 }}
       transition={Spring.presets.snappy}
-      className={`pointer-events-none absolute ${isMobile ? "top-2 right-2 left-2" : "top-4 right-4 left-4"} z-30 flex items-center justify-between`}
+      className={`pointer-events-none absolute ${isMobile ? "top-[calc(env(safe-area-inset-top)+0.5rem)] right-[calc(env(safe-area-inset-right)+0.5rem)] left-[calc(env(safe-area-inset-left)+0.5rem)]" : "top-4 right-4 left-4"} z-30 flex items-center justify-between`}
     >
       <div className="flex items-center gap-2">
         {isMobile && (

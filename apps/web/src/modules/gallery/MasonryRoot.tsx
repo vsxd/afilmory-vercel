@@ -143,7 +143,7 @@ export const MasonryRoot = () => {
 
       {/* 移动端：垂直堆叠 */}
       {isMobile && !!dateRange.formattedRange && (
-        <div className="fixed top-0 right-0 left-0 z-50">
+        <div className="fixed top-0 right-0 left-0 z-50 pt-[env(safe-area-inset-top)]">
           <DateRangeIndicator
             dateRange={dateRange.formattedRange}
             location={dateRange.location}

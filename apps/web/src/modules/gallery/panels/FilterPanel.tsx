@@ -53,7 +53,7 @@ const FilterSection = ({
               onClick={() => onToggle(item.id)}
               aria-pressed={isActive}
               className={clsxm(
-                "focus-visible:ring-accent/45 inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-xs font-medium transition-[background-color,border-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+                "focus-visible:ring-accent/45 inline-flex min-h-11 max-w-full items-center rounded-full border px-3 text-xs font-medium transition-[background-color,border-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
                 isActive
                   ? "bg-accent border-accent text-white shadow-sm"
                   : "bg-fill-vibrant-quinary border-fill-tertiary text-text-secondary hover:border-accent/25 hover:bg-fill-secondary hover:text-text",
@@ -151,7 +151,7 @@ export const FilterPanelContent = ({
           <button
             type="button"
             onClick={resetFilters}
-            className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 rounded-full px-2 py-1 text-xs font-medium transition-colors focus-visible:ring-2"
+            className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 min-h-11 rounded-full px-3 text-xs font-medium transition-colors focus-visible:ring-2"
           >
             {t("action.search.clear")}
           </button>

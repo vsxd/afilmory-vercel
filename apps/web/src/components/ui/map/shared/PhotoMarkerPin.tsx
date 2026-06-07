@@ -62,7 +62,7 @@ export const PhotoMarkerPin = ({
       >
         <HoverCardTrigger asChild>
           <m.div
-            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -84,7 +84,7 @@ export const PhotoMarkerPin = ({
             )}
 
             {/* Photo background preview */}
-            <div className="absolute inset-0 overflow-hidden rounded-full">
+            <div className="absolute inset-0.5 overflow-hidden rounded-full">
               <ThumbnailImage
                 photoId={marker.photo.id}
                 src={marker.photo.thumbnailUrl || marker.photo.originalUrl}
@@ -140,7 +140,7 @@ export const PhotoMarkerPin = ({
             {/* 选中时显示关闭按钮 */}
             {isSelected && (
               <GlassButton
-                className="absolute top-3 right-3 z-10 size-10"
+                className="absolute top-3 right-3 z-10 size-11"
                 onClick={handleClose}
                 aria-label={t("common.close")}
                 title={t("common.close")}

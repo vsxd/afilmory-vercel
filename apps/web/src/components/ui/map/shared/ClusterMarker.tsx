@@ -20,7 +20,7 @@ export const ClusterMarker = ({
   onClusterClick,
 }: ClusterMarkerProps) => {
   const { t } = useTranslation();
-  const size = Math.min(64, Math.max(40, 32 + Math.log(pointCount) * 8));
+  const size = Math.min(64, Math.max(44, 32 + Math.log(pointCount) * 8));
   const handleClusterKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();

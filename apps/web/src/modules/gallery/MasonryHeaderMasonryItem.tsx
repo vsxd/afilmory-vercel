@@ -241,7 +241,7 @@ export const MasonryHeaderMasonryItem = ({
                 href={githubUrl}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-8 items-center justify-center rounded-full transition-colors"
+                className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-11 items-center justify-center rounded-full transition-colors"
                 title="GitHub"
                 aria-label="GitHub"
               >
@@ -253,7 +253,7 @@ export const MasonryHeaderMasonryItem = ({
                 href={`https://twitter.com/${siteConfig.social.twitter.replace("@", "")}`}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary inline-flex size-8 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
+                className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
                 title="Twitter"
                 aria-label="Twitter"
               >
@@ -265,7 +265,7 @@ export const MasonryHeaderMasonryItem = ({
                 href="/feed.xml"
                 target="_blank"
                 rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary inline-flex size-8 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
+                className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
                 title="RSS"
                 aria-label="RSS"
               >

@@ -96,7 +96,7 @@ export const ExifPanel: FC<{
               type="button"
               aria-label={t("common.close", { defaultValue: "Close" })}
               title={t("common.close", { defaultValue: "Close" })}
-              className="glassmorphic-btn border-accent/20 focus-visible:ring-accent/45 flex size-10 items-center justify-center rounded-full border text-white/70 transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:text-white focus-visible:ring-2 focus-visible:ring-inset"
+              className="glassmorphic-btn border-accent/20 focus-visible:ring-accent/45 flex size-11 items-center justify-center rounded-full border text-white/70 transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:text-white focus-visible:ring-2 focus-visible:ring-inset"
               onClick={onClose}
             >
               <i className="i-mingcute-close-line text-base" />
@@ -107,7 +107,11 @@ export const ExifPanel: FC<{
 
       <ScrollArea
         rootClassName="flex-1 min-h-0 overflow-auto lg:overflow-hidden"
-        viewportClassName="px-4 pb-4 **:select-text"
+        viewportClassName={
+          isMobile
+            ? "px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] **:select-text"
+            : "px-4 pb-4 **:select-text"
+        }
       >
         <div className={`space-y-${isMobile ? "3" : "4"}`}>
           <BasicExifSection

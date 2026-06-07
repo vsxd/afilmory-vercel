@@ -33,7 +33,7 @@ export const ActionButton = ({
     <Button
       variant="ghost"
       size="sm"
-      className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-10 w-10 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+      className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-11 w-11 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
       aria-label={title}
       title={title}
       onClick={onClick}
@@ -127,7 +127,7 @@ export const MobileActionButton = ({
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xl" />
           <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl">
-            <div className="flex h-10 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing">
+            <div className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing">
               <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
             </div>
             {children}

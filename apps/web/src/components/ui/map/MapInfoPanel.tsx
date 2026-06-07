@@ -35,19 +35,17 @@ export const MapInfoPanel = ({
 }: MapInfoPanelProps) => {
   const { t, i18n } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
-  const primaryCountLabel =
-    isGpsFallback
-      ? t("explore.found.photos", { count: photosCount })
-      : displayMode === "regions"
+  const primaryCountLabel = isGpsFallback
+    ? t("explore.found.photos", { count: photosCount })
+    : displayMode === "regions"
       ? t("explore.found.regions", {
           count: regionsCount,
           level: t(`explore.region.level.${regionLevel}`),
         })
       : t("explore.found.photos", { count: photosCount });
-  const secondaryCountLabel =
-    isGpsFallback
-      ? t("explore.fallback.gpsOnly")
-      : displayMode === "regions"
+  const secondaryCountLabel = isGpsFallback
+    ? t("explore.fallback.gpsOnly")
+    : displayMode === "regions"
       ? t("explore.found.photosCompact", { count: photosCount })
       : t("explore.found.citiesCompact", { count: cityCount });
   const modes = [
@@ -75,9 +73,7 @@ export const MapInfoPanel = ({
 
   const formatLatitude = (latitude: number) =>
     `${Math.abs(latitude).toFixed(6)}° ${t(
-      latitude >= 0
-        ? "explore.coordinates.north"
-        : "explore.coordinates.south",
+      latitude >= 0 ? "explore.coordinates.north" : "explore.coordinates.south",
     )}`;
   const formatLongitude = (longitude: number) => {
     const normalizedLongitude = normalizeLongitude(longitude);
@@ -91,7 +87,7 @@ export const MapInfoPanel = ({
 
   return (
     <m.div
-      className="absolute top-4 right-4 z-40 max-w-xs"
+      className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 max-w-xs"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
@@ -119,7 +115,7 @@ export const MapInfoPanel = ({
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary focus-visible:ring-accent/45 relative -top-2 -mb-2 flex size-10 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-[background-color,box-shadow,color,transform] duration-200 ring-inset focus-visible:ring-2"
+                  className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary focus-visible:ring-accent/45 relative -top-2 -mb-2 flex size-11 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-[background-color,box-shadow,color,transform] duration-200 ring-inset focus-visible:ring-2"
                   aria-label={t(
                     isExpanded
                       ? "explore.panel.toggle.collapse"
@@ -160,7 +156,7 @@ export const MapInfoPanel = ({
                 <button
                   key={mode.value}
                   type="button"
-                  className={`flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-[background-color,box-shadow,color] ${
+                  className={`flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-[background-color,box-shadow,color] ${
                     isActive
                       ? "bg-fill-vibrant-secondary text-text shadow-sm"
                       : "text-text-secondary hover:bg-fill-tertiary/70"

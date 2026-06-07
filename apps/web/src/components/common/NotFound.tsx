@@ -35,7 +35,9 @@ export const NotFound = () => {
         </p>
 
         <p>
-          <Button onClick={handleBackToHome}>Back to Home</Button>
+          <Button className="h-11 px-4" onClick={handleBackToHome}>
+            Back to Home
+          </Button>
         </p>
       </main>
     </div>

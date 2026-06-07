@@ -28,7 +28,7 @@ export const MapBackButton = () => {
 
   return (
     <GlassButton
-      className="absolute top-4 left-4 z-50"
+      className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-[calc(env(safe-area-inset-left)+1rem)] z-50 size-12"
       onClick={handleBack}
       aria-label={t("explore.back.to.gallery")}
       title={t("explore.back.to.gallery")}

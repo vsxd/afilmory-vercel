@@ -324,7 +324,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       </p>
                     </div>
                     <div className="relative">
-                      <div className="border-accent/20 bg-accent/5 rounded-lg border p-3">
+                      <div className="border-accent/20 bg-accent/5 rounded-lg border p-3 pr-14">
                         <code
                           ref={(ref) => {
                             if (ref) {
@@ -346,7 +346,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       </div>
                       <button
                         type="button"
-                        className="glassmorphic-btn border-accent/20 bg-accent/5 focus-visible:ring-accent/45 absolute top-2 right-2 flex size-9 items-center justify-center rounded-lg border backdrop-blur-2xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+                        className="glassmorphic-btn border-accent/20 bg-accent/5 focus-visible:ring-accent/45 absolute top-2 right-2 flex size-11 items-center justify-center rounded-lg border backdrop-blur-2xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
                         aria-label={t("photo.share.copy.embed")}
                         title={t("photo.share.copy.embed")}
                         onClick={handleCopyEmbedCode}

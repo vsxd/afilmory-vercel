@@ -161,7 +161,7 @@ export const RegionMarkerPin = ({
           <div className="relative space-y-3 p-4">
             {isSelected && (
               <GlassButton
-                className="absolute top-3 right-3 z-10 size-9"
+                className="absolute top-3 right-3 z-10 size-11"
                 onClick={handleClose}
                 aria-label={t("common.close")}
                 title={t("common.close")}
@@ -169,7 +169,7 @@ export const RegionMarkerPin = ({
                 <i className="i-mingcute-close-line text-lg" />
               </GlassButton>
             )}
-            <div className="pr-10">
+            <div className="pr-14">
               <div className="text-text text-sm font-semibold">
                 {displayName}
               </div>
@@ -184,7 +184,7 @@ export const RegionMarkerPin = ({
               <button
                 type="button"
                 onClick={handleFilterRegion}
-                className="focus-visible:ring-accent/45 bg-accent text-accent-foreground focus-visible:ring-offset-background h-9 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="focus-visible:ring-accent/45 bg-accent text-accent-foreground focus-visible:ring-offset-background h-11 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
               >
                 {t("explore.region.filter")}
               </button>

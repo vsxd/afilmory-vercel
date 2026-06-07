@@ -74,7 +74,7 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
 
   return (
     <m.div
-      className="absolute bottom-4 left-4 z-40 flex flex-col gap-3"
+      className="absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-[calc(env(safe-area-inset-left)+1rem)] z-40 flex flex-col gap-3"
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}

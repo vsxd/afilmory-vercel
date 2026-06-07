@@ -268,7 +268,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
           disabled={isLoading}
           aria-label={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
           title={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
-          className="focus-visible:ring-accent/45 flex size-10 cursor-pointer items-center justify-center rounded-full text-white/70 transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 md:size-8"
+          className="focus-visible:ring-accent/45 flex size-11 cursor-pointer items-center justify-center rounded-full text-white/70 transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 md:size-8"
         >
           {isLoading ? (
             <i className="i-mingcute-loading-3-line animate-spin" />
