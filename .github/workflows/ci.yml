@@ -45,7 +45,17 @@ jobs:
       - name: Create CI manifest fixture
         run: |
           mkdir -p generated
-          printf '%s\n' '{"version":"ci","data":[],"cameras":[],"lenses":[]}' > generated/photos-manifest.json
+          pnpm exec tsx <<'EOF'
+          import { createManifest } from "@afilmory/schema";
+          import { writeFileSync } from "node:fs";
+
+          writeFileSync(
+            "generated/photos-manifest.json",
+            `${JSON.stringify(
+              createManifest({ generatedAt: "1970-01-01T00:00:00.000Z" }),
+            )}\n`,
+          );
+          EOF
 
       - name: Build
         run: SKIP_MANIFEST_BUILD=true pnpm build
