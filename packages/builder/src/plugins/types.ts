@@ -3,6 +3,7 @@ import type {
   BuilderPluginEvent,
   BuilderPluginEventPayloads,
 } from "../core/contracts/plugin-events.js";
+import type { BuiltinBuilderPluginDescriptor } from "../core/contracts/plugin-ref.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import type { Logger } from "../logger/index.js";
 import type { BuilderConfig } from "../types/config.js";
@@ -16,8 +17,12 @@ export type {
   BuilderPluginConfigEntry,
   BuilderPluginESMImporter,
   BuilderPluginReference,
+  BuiltinBuilderPluginDescriptor,
 } from "../core/contracts/plugin-ref.js";
-export { isPluginESMImporter } from "../core/contracts/plugin-ref.js";
+export {
+  isBuiltinBuilderPluginDescriptor,
+  isPluginESMImporter,
+} from "../core/contracts/plugin-ref.js";
 
 export interface BuilderPluginInitContext {
   services: BuilderServices;
@@ -63,6 +68,7 @@ export interface BuilderPluginHooks extends BuilderPluginLifecycleHooks {
 export interface BuilderPlugin {
   name?: string;
   hooks?: BuilderPluginHooks;
+  serializablePluginReference?: BuiltinBuilderPluginDescriptor;
 }
 
 export type BuilderPluginFactory =

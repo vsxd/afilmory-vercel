@@ -96,4 +96,50 @@ describe("precheck", () => {
 
     expect(runBuilder).toHaveBeenCalledOnce();
   });
+
+  it("does not fall back to a manifest created during a failed builder run", async () => {
+    runBuilder.mockImplementationOnce(async () => {
+      await writeManifest();
+      throw new Error("cluster serialization failed");
+    });
+
+    await expect(
+      precheck({
+        workdir: tmpDir,
+        env: {
+          S3_BUCKET_NAME: "bucket",
+          S3_ACCESS_KEY_ID: "key",
+          S3_SECRET_ACCESS_KEY: "secret",
+        },
+        runBuilder,
+      }),
+    ).rejects.toThrow("cluster serialization failed");
+
+    expect(runBuilder).toHaveBeenCalledOnce();
+  });
+
+  it("restores the pre-existing manifest when a failed builder clobbers it", async () => {
+    await writeManifest();
+    const manifestPath = path.join(tmpDir, "generated/photos-manifest.json");
+    const originalManifest = await fs.readFile(manifestPath, "utf-8");
+    runBuilder.mockImplementationOnce(async () => {
+      await fs.writeFile(
+        manifestPath,
+        JSON.stringify(createManifest({ generatedAt: "2099-01-01T00:00:00Z" })),
+      );
+      throw new Error("network unavailable");
+    });
+
+    await precheck({
+      workdir: tmpDir,
+      env: {
+        S3_BUCKET_NAME: "bucket",
+        S3_ACCESS_KEY_ID: "key",
+        S3_SECRET_ACCESS_KEY: "secret",
+      },
+      runBuilder,
+    });
+
+    expect(await fs.readFile(manifestPath, "utf-8")).toBe(originalManifest);
+  });
 });

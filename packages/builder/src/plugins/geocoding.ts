@@ -124,6 +124,10 @@ export default function geocodingPlugin(
 
   return {
     name: PLUGIN_NAME,
+    serializablePluginReference: {
+      plugin: "geocoding",
+      options: normalizedOptions,
+    },
     hooks: {
       onInit: () => {
         settings = createResolvedGeocodingSettings(normalizedOptions);

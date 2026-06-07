@@ -1,8 +1,11 @@
+import { serialize } from "node:v8";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDefaultBuilderConfig } from "../../config/defaults.js";
 import type { BuilderServices } from "../../core/contracts/services.js";
 import { logger } from "../../logger/index.js";
+import geocodingPlugin from "../../plugins/geocoding.js";
 import { StorageManager } from "../../storage/index.js";
 import type { StorageObject } from "../../storage/interfaces.js";
 import type { BuilderConfig } from "../../types/config.js";
@@ -400,6 +403,47 @@ describe("PhotoTaskProcessor", () => {
       livePhotoMap,
       photoIdCollisionKeys: ["collision.jpg"],
     });
+  });
+
+  it("passes a serializable built-in plugin descriptor to cluster workers", async () => {
+    const session = createSession({
+      concurrencyLimit: 2,
+      isForceMode: true,
+    });
+    session.config.system.observability.performance.worker.useClusterMode = true;
+    session.config.plugins = [
+      geocodingPlugin({
+        enable: true,
+        locales: "en,zh-CN",
+        provider: "nominatim",
+      }),
+    ];
+    const tasks: StorageObject[] = [
+      { key: "a.jpg" },
+      { key: "b.jpg" },
+      { key: "c.jpg" },
+      { key: "d.jpg" },
+    ];
+
+    await new PhotoTaskProcessor().process(
+      session,
+      tasks,
+      new Map<string, PhotoManifestItem>(),
+      new Map<string, StorageObject>(),
+    );
+
+    const { sharedData } = processorMocks.clusterPoolInstances[0].options;
+    expect(sharedData?.builderConfig.plugins).toEqual([
+      {
+        plugin: "geocoding",
+        options: expect.objectContaining({
+          enable: true,
+          locales: ["en", "zh-CN"],
+          provider: "nominatim",
+        }),
+      },
+    ]);
+    expect(() => serialize(sharedData)).not.toThrow();
   });
 
   it("emits completion for an empty run", () => {

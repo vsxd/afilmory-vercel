@@ -1,5 +1,6 @@
 import type { PhotoProcessorOptions } from "../../photo/processor.js";
 import { processPhoto } from "../../photo/processor.js";
+import { createSerializableBuilderConfigForWorker } from "../../plugins/serializable.js";
 import type { StorageObject } from "../../storage/interfaces.js";
 import type {
   PhotoManifestItem,
@@ -162,7 +163,9 @@ export class PhotoTaskProcessor {
         existingManifestMap,
         livePhotoMap,
         imageObjects: tasksToProcess,
-        builderConfig: session.getConfig(),
+        builderConfig: createSerializableBuilderConfigForWorker(
+          session.getConfig(),
+        ),
         builderOptions: session.options,
         photoIdCollisionKeys: Array.from(session.getPhotoIdCollisionKeys()),
       },
