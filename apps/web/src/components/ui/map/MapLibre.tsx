@@ -1,7 +1,8 @@
 // Styles
 import "maplibre-gl/dist/maplibre-gl.css";
+import "./MapLibre.css";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MapMouseEvent, MapRef } from "react-map-gl/maplibre";
 import Map from "react-map-gl/maplibre";
@@ -34,6 +35,52 @@ import {
 } from "./shared";
 
 const DEFAULT_REGIONS: GeographicRegion[] = [];
+const MAP_DATA_ATTRIBUTION = "© CARTO, © OpenStreetMap contributors";
+
+const MapAttribution = ({ geocodingLabel }: { geocodingLabel: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const label = `${geocodingLabel} | ${MAP_DATA_ATTRIBUTION}`;
+
+  return (
+    <div
+      className="afilmory-map-attribution"
+      data-state={isOpen ? "open" : "closed"}
+      data-testid="map-attribution"
+    >
+      {isOpen && (
+        <div className="afilmory-map-attribution-panel">
+          <span>{geocodingLabel}</span>
+          <span aria-hidden="true">|</span>
+          <a
+            href="https://carto.com/attributions"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            © CARTO
+          </a>
+          <span aria-hidden="true">,</span>
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            © OpenStreetMap contributors
+          </a>
+        </div>
+      )}
+      <button
+        type="button"
+        className="afilmory-map-attribution-button"
+        aria-label={label}
+        aria-expanded={isOpen}
+        title={label}
+        onClick={() => setIsOpen((value) => !value)}
+      >
+        <span aria-hidden="true">i</span>
+      </button>
+    </div>
+  );
+};
 
 export interface PureMaplibreProps {
   id?: string;
@@ -83,6 +130,8 @@ export const Maplibre = ({
   syncViewStateOnInitialViewStateChange = true,
 }: PureMaplibreProps) => {
   const { t } = useTranslation();
+  const internalMapRef = useRef<MapRef | null>(null);
+  const resolvedMapRef = mapRef ?? internalMapRef;
   const [currentZoom, setCurrentZoom] = useState(initialViewState.zoom);
   const [viewState, setViewState] = useState(initialViewState);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -160,7 +209,7 @@ export const Maplibre = ({
         return;
       }
 
-      const map = mapRef?.current?.getMap?.();
+      const map = resolvedMapRef.current?.getMap?.();
       const nextViewState = createClusterZoomViewState({
         currentViewState: viewState,
         longitude,
@@ -179,7 +228,7 @@ export const Maplibre = ({
       setViewState(nextViewState);
       setCurrentZoom(nextViewState.zoom);
     },
-    [mapRef, onClusterClick, viewState],
+    [resolvedMapRef, onClusterClick, viewState],
   );
 
   // 自动适配到包含所有照片的区域 - 只在初次加载时执行
@@ -211,10 +260,10 @@ export const Maplibre = ({
     }
 
     // 使用 mapRef 的 fitBounds 方法（推荐方式）
-    if (mapRef?.current?.getMap) {
+    if (resolvedMapRef.current?.getMap) {
       // 计算动态padding，确保照片区域控制在窗口的80%内
       // 这意味着每边留出10%的空间作为缓冲区
-      const mapContainer = mapRef.current.getContainer();
+      const mapContainer = resolvedMapRef.current.getContainer();
       const containerWidth = mapContainer.offsetWidth;
       const containerHeight = mapContainer.offsetHeight;
 
@@ -230,7 +279,7 @@ export const Maplibre = ({
       };
 
       try {
-        const map = mapRef.current.getMap();
+        const map = resolvedMapRef.current.getMap();
         map.fitBounds(
           [
             [bounds.minLng, bounds.minLat], // 西南角
@@ -262,19 +311,25 @@ export const Maplibre = ({
       setViewState(newViewState);
       setCurrentZoom(newViewState.zoom);
     }
-  }, [fitMarkers, autoFitBounds, isMapLoaded, mapRef, hasInitialFitCompleted]);
+  }, [
+    fitMarkers,
+    autoFitBounds,
+    isMapLoaded,
+    resolvedMapRef,
+    hasInitialFitCompleted,
+  ]);
 
   // 当地图加载完成时触发适配
   const handleMapLoad = useCallback(() => {
     setIsMapLoaded(true);
-    if (mapRef?.current?.getMap) {
-      const map = mapRef.current.getMap();
+    if (resolvedMapRef.current?.getMap) {
+      const map = resolvedMapRef.current.getMap();
       const projectionType = siteConfig.mapProjection || "mercator";
       map.setProjection({
         type: projectionType,
       });
     }
-  }, [mapRef]);
+  }, [resolvedMapRef]);
 
   // 当标记点变化时，重新适配边界
   useEffect(() => {
@@ -287,17 +342,14 @@ export const Maplibre = ({
   }, [fitMapToBounds]);
 
   return (
-    <div className={className} style={style}>
+    <div className={`afilmory-map ${className}`} style={style}>
       <Map
         id={id}
-        ref={mapRef}
+        ref={resolvedMapRef}
         {...viewState}
         style={{ width: "100%", height: "100%" }}
         mapStyle={getMapStyle()}
-        attributionControl={{
-          compact: true,
-          customAttribution: t("explore.attribution.geocoding"),
-        }}
+        attributionControl={false}
         interactiveLayerIds={geoJsonData ? ["data"] : undefined}
         onClick={onGeoJsonClick}
         onLoad={handleMapLoad}
@@ -309,6 +361,7 @@ export const Maplibre = ({
       >
         {/* Map Controls */}
         <MapControls onGeolocate={onGeolocate} />
+        <MapAttribution geocodingLabel={t("explore.attribution.geocoding")} />
 
         {/* Photo Markers */}
         {clusteredMarkers.map((clusterPoint) => {

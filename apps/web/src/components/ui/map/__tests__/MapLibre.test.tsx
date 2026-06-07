@@ -35,26 +35,25 @@ vi.mock("react-map-gl/maplibre", async () => {
       getContainer: () => { offsetWidth: number; offsetHeight: number };
     } | null | null>;
   }) => {
-    if (ref && typeof ref === "object") {
-      ref.current = {
-        getMap: () => ({
-          setProjection: (...args: unknown[]) => setProjectionMock(...args),
-          fitBounds: (...args: unknown[]) => fitBoundsMock(...args),
-          flyTo: (...args: unknown[]) => flyToMock(...args),
-        }),
-        getContainer: () => ({
-          offsetWidth: 1200,
-          offsetHeight: 800,
-        }),
-      };
-    }
+    const containerRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
+      if (ref && typeof ref === "object") {
+        ref.current = {
+          getMap: () => ({
+            setProjection: (...args: unknown[]) => setProjectionMock(...args),
+            fitBounds: (...args: unknown[]) => fitBoundsMock(...args),
+            flyTo: (...args: unknown[]) => flyToMock(...args),
+          }),
+          getContainer: () => containerRef.current as HTMLDivElement,
+        };
+      }
       onLoad?.();
-    }, [onLoad]);
+    }, [onLoad, ref]);
 
     return (
       <div
+        ref={containerRef}
         data-testid="map"
         data-longitude={String(longitude)}
         data-latitude={String(latitude)}
@@ -208,6 +207,39 @@ describe("Maplibre", () => {
     expect(screen.getByTestId("map").dataset.longitude).toBe("121.5");
     expect(screen.getByTestId("map").dataset.latitude).toBe("31.2");
     expect(screen.getByTestId("map").dataset.zoom).toBe("9");
+  });
+
+  it("renders the custom map attribution collapsed by default", () => {
+    render(<Maplibre autoFitBounds={false} markers={[]} />);
+
+    const attribution = screen.getByTestId("map-attribution");
+    const attributionToggle = screen.getByRole("button", {
+      name: "explore.attribution.geocoding | © CARTO, © OpenStreetMap contributors",
+    });
+
+    expect(attribution.dataset.state).toBe("closed");
+    expect(attributionToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("© CARTO")).toBeNull();
+
+    fireEvent.click(attributionToggle);
+    expect(attribution.dataset.state).toBe("open");
+    expect(attributionToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.queryByText("explore.attribution.geocoding")).not.toBeNull();
+    expect(screen.queryByText("© CARTO")).not.toBeNull();
+    expect(screen.queryByText("© OpenStreetMap contributors")).not.toBeNull();
+
+    fireEvent.click(attributionToggle);
+    expect(attribution.dataset.state).toBe("closed");
+    expect(attributionToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("© CARTO")).toBeNull();
+  });
+
+  it("disables native MapLibre attribution", () => {
+    render(<Maplibre autoFitBounds={false} markers={[]} />);
+
+    expect(
+      screen.getByTestId("map").querySelector(".maplibregl-ctrl-attrib"),
+    ).toBeNull();
   });
 
   it("can preserve the current view state when initialViewState changes after selection is cleared", () => {
