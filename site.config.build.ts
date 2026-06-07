@@ -14,12 +14,12 @@ import type { SiteConfig } from "./site.config";
 import { siteConfig as baseSiteConfig } from "./site.config";
 
 const envConfig: Partial<SiteConfig> = {
-  name: env.SITE_NAME,
-  title: env.SITE_TITLE,
-  description: env.SITE_DESCRIPTION,
-  url: env.SITE_URL,
-  accentColor: env.SITE_ACCENT_COLOR,
-  language: env.SITE_LANGUAGE,
+  name: env.SITE_NAME || baseSiteConfig.name,
+  title: env.SITE_TITLE || baseSiteConfig.title,
+  description: env.SITE_DESCRIPTION || baseSiteConfig.description,
+  url: env.SITE_URL || baseSiteConfig.url,
+  accentColor: env.SITE_ACCENT_COLOR || baseSiteConfig.accentColor,
+  language: env.SITE_LANGUAGE || baseSiteConfig.language,
   author: {
     name: env.AUTHOR_NAME || baseSiteConfig.author.name,
     url: env.AUTHOR_URL || baseSiteConfig.author.url,
@@ -46,8 +46,8 @@ const envConfig: Partial<SiteConfig> = {
       },
     },
   },
-  mapStyle: env.MAP_STYLE,
-  mapProjection: env.MAP_PROJECTION,
+  mapStyle: env.MAP_STYLE || baseSiteConfig.mapStyle,
+  mapProjection: env.MAP_PROJECTION || baseSiteConfig.mapProjection,
 };
 
 function mergeSiteConfig(
