@@ -1,12 +1,17 @@
 /* eslint-disable no-console */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import sharp from "sharp";
 
 import { buildTimePhotoLoader } from "./photo-loader.js";
 import { renderSVGText, wrapSVGText } from "./svg-text-renderer.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const monorepoRoot = resolve(__dirname, "..");
+const webPublicDir = join(monorepoRoot, "apps/web/public");
 
 // 获取最新的照片
 async function getLatestPhotos(count = 4) {
@@ -31,7 +36,7 @@ async function downloadAndProcessThumbnail(thumbnailUrl: string, size = 150) {
   try {
     // 如果是本地路径，直接读取
     if (thumbnailUrl.startsWith("/")) {
-      const localPath = join(process.cwd(), "public", thumbnailUrl);
+      const localPath = join(webPublicDir, thumbnailUrl.slice(1));
       if (existsSync(localPath)) {
         return await sharp(localPath)
           .resize(size, size, { fit: "cover" })
@@ -164,7 +169,7 @@ export async function generateOGImage(options: OGImageOptions) {
     outputPath,
     includePhotos = true,
     photoCount = 4,
-    outputDir = join(process.cwd(), "public"),
+    outputDir = webPublicDir,
     writeToDisk = true,
   } = options;
 

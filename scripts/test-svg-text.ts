@@ -1,43 +1,52 @@
 /* eslint-disable no-console */
 
-import { writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import sharp from 'sharp'
+import sharp from "sharp";
 
-import { measureSVGText, renderSVGText, wrapSVGText } from './svg-text-renderer.js'
+import {
+  measureSVGText,
+  renderSVGText,
+  wrapSVGText,
+} from "./svg-text-renderer.js";
 
-async function generateTestImages() {
-  const width = 1200
-  const height = 630
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const monorepoRoot = resolve(__dirname, "..");
+const defaultOutputDir = join(monorepoRoot, "apps/web/public");
+
+async function generateTestImages(outputDir = defaultOutputDir) {
+  const width = 1200;
+  const height = 630;
 
   // 测试文本
   const testTexts = [
-    'Afilmory',
-    'Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.',
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-    'abcdefghijklmnopqrstuvwxyz',
-    '0123456789',
-    '!@#$%^&*()_+-=[]{}|;:,.<>?',
-    'The quick brown fox jumps over the lazy dog',
-    'Linux 系统字体渲染测试 - Font Rendering Test',
-  ]
+    "Afilmory",
+    "Capturing beautiful moments in life, documenting daily warmth and emotions through my lens.",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+    "0123456789",
+    "!@#$%^&*()_+-=[]{}|;:,.<>?",
+    "The quick brown fox jumps over the lazy dog",
+    "Linux 系统字体渲染测试 - Font Rendering Test",
+  ];
 
   // 生成 SVG 文本渲染测试图片
   const svgTextPaths = testTexts
     .map((text, index) => {
-      const y = 80 + index * 70
-      const fontSize = index < 2 ? 48 : 32
-      const fontWeight = index === 0 ? 'bold' : 'normal'
+      const y = 80 + index * 70;
+      const fontSize = index < 2 ? 48 : 32;
+      const fontWeight = index === 0 ? "bold" : "normal";
 
       return renderSVGText(text, 60, y, {
         fontSize,
-        fontWeight: fontWeight as 'normal' | 'bold',
-        color: 'white',
+        fontWeight: fontWeight as "normal" | "bold",
+        color: "white",
         letterSpacing: 1,
-      })
+      });
     })
-    .join('')
+    .join("");
 
   const svgTestImage = `
     <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
@@ -59,7 +68,7 @@ async function generateTestImages() {
         SVG Path-based Helvetica Font Rendering (Linux Compatible)
       </text>
     </svg>
-  `
+  `;
 
   // 生成传统字体渲染对比图片
   const traditionalTestImage = `
@@ -111,49 +120,58 @@ async function generateTestImages() {
         Linux 系统字体渲染测试 - Font Rendering Test
       </text>
     </svg>
-  `
+  `;
 
   try {
     // 生成 SVG 路径版本
-    const svgBuffer = await sharp(Buffer.from(svgTestImage)).png().toBuffer()
-    const svgPath = join(process.cwd(), 'public', 'test-svg-font-rendering.png')
-    writeFileSync(svgPath, svgBuffer)
-    console.info(`✅ SVG font test image generated: ${svgPath}`)
+    const svgBuffer = await sharp(Buffer.from(svgTestImage)).png().toBuffer();
+    const svgPath = join(outputDir, "test-svg-font-rendering.png");
+    writeFileSync(svgPath, svgBuffer);
+    console.info(`✅ SVG font test image generated: ${svgPath}`);
 
     // 生成传统字体版本
-    const traditionalBuffer = await sharp(Buffer.from(traditionalTestImage)).png().toBuffer()
-    const traditionalPath = join(process.cwd(), 'public', 'test-traditional-font-rendering.png')
-    writeFileSync(traditionalPath, traditionalBuffer)
-    console.info(`✅ Traditional font test image generated: ${traditionalPath}`)
+    const traditionalBuffer = await sharp(Buffer.from(traditionalTestImage))
+      .png()
+      .toBuffer();
+    const traditionalPath = join(
+      outputDir,
+      "test-traditional-font-rendering.png",
+    );
+    writeFileSync(traditionalPath, traditionalBuffer);
+    console.info(
+      `✅ Traditional font test image generated: ${traditionalPath}`,
+    );
 
     // 测试文本测量功能
-    console.info('\n📏 Text measurement tests:')
+    console.info("\n📏 Text measurement tests:");
     testTexts.forEach((text, index) => {
-      const fontSize = index < 2 ? 48 : 32
+      const fontSize = index < 2 ? 48 : 32;
       const { width: textWidth, height: textHeight } = measureSVGText(text, {
         fontSize,
-      })
+      });
       console.info(
-        `"${text.slice(0, 30)}${text.length > 30 ? '...' : ''}" - Width: ${Math.round(textWidth)}px, Height: ${Math.round(textHeight)}px`,
-      )
-    })
+        `"${text.slice(0, 30)}${text.length > 30 ? "..." : ""}" - Width: ${Math.round(textWidth)}px, Height: ${Math.round(textHeight)}px`,
+      );
+    });
 
     // 测试自动换行功能
-    console.info('\n📝 Text wrapping test:')
+    console.info("\n📝 Text wrapping test:");
     const longText =
-      'This is a very long text that should be wrapped automatically when it exceeds the maximum width limit that we have set for this test case.'
-    const wrappedText = wrapSVGText(longText, 800, { fontSize: 32 })
-    console.info(`Original: "${longText}"`)
-    console.info(`Wrapped:\n${wrappedText}`)
+      "This is a very long text that should be wrapped automatically when it exceeds the maximum width limit that we have set for this test case.";
+    const wrappedText = wrapSVGText(longText, 800, { fontSize: 32 });
+    console.info(`Original: "${longText}"`);
+    console.info(`Wrapped:\n${wrappedText}`);
   } catch (error) {
-    console.error('❌ Error generating test images:', error)
-    throw error
+    console.error("❌ Error generating test images:", error);
+    throw error;
   }
 }
 
 // 如果直接运行此脚本
 if (import.meta.url === `file://${process.argv[1]}`) {
-  generateTestImages().catch(console.error)
+  generateTestImages(
+    process.argv[2] ? resolve(process.argv[2]) : undefined,
+  ).catch(console.error);
 }
 
-export { generateTestImages }
+export { generateTestImages };
