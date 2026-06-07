@@ -123,7 +123,6 @@ export const FilterPanelContent = ({
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     }));
   };
 

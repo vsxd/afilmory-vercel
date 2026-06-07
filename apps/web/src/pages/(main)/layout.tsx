@@ -111,7 +111,6 @@ const useRestoreGalleryFilters = () => {
         | "selectedGeoRegions"
         | "selectedGeoCities"
         | "selectedGeoDistricts"
-        | "tagFilterMode"
       >,
     ) => {
       setGallerySetting((prev) => ({
@@ -123,7 +122,9 @@ const useRestoreGalleryFilters = () => {
   );
 };
 
-const useStateRestoreFromUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
+const useStateRestoreFromUrl = (
+  urlRestoreStateRef: RefObject<UrlRestoreState>,
+) => {
   const { currentIndex, goToIndex, isOpen, openViewer } = usePhotoViewer();
   const { photoId } = useParams();
   const runtime = useAfilmoryRuntime();
@@ -169,7 +170,13 @@ const useStateRestoreFromUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) 
         }
       }
     }
-  }, [location.search, photoId, restoreGalleryFilters, runtime, urlRestoreStateRef]);
+  }, [
+    location.search,
+    photoId,
+    restoreGalleryFilters,
+    runtime,
+    urlRestoreStateRef,
+  ]);
 };
 
 const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
@@ -188,7 +195,6 @@ const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
     selectedGeoCities,
     selectedGeoDistricts,
     sortOrder,
-    tagFilterMode,
   } = useAtomValue(gallerySettingAtom);
   const [, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -292,7 +298,6 @@ const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
     selectedGeoCities,
     selectedGeoDistricts,
     sortOrder,
-    tagFilterMode,
     urlRestoreStateRef,
   ]);
 
@@ -311,7 +316,6 @@ const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
       selectedGeoRegions,
       selectedGeoCities,
       selectedGeoDistricts,
-      tagFilterMode,
     });
 
     // Remove legacy rating filters; the static gallery does not support starring.
@@ -322,7 +326,9 @@ const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
       !hasLegacyRating &&
       !hasLegacyRegionId
     ) {
-      if (urlRestoreStateRef.current.pendingUrlRestoreSearch === location.search) {
+      if (
+        urlRestoreStateRef.current.pendingUrlRestoreSearch === location.search
+      ) {
         urlRestoreStateRef.current.pendingUrlRestoreSearch = null;
       }
       return;
@@ -348,7 +354,6 @@ const useSyncStateToUrl = (urlRestoreStateRef: RefObject<UrlRestoreState>) => {
     selectedGeoRegions,
     selectedGeoCities,
     selectedGeoDistricts,
-    tagFilterMode,
     setSearchParams,
     urlRestoreStateRef,
   ]);

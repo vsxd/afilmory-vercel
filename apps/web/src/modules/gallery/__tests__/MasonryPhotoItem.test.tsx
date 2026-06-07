@@ -17,7 +17,6 @@ let gallerySetting = {
   selectedGeoRegions: [],
   selectedGeoCities: [],
   selectedGeoDistricts: [],
-  tagFilterMode: "union" as const,
 };
 
 const photo = {
@@ -130,7 +129,6 @@ describe("MasonryPhotoItem", () => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     };
   });
 

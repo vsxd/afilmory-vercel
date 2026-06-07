@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { GallerySetting } from "~/atoms/app";
 import { gallerySettingAtom } from "~/atoms/app";
 import {
+  filterAndSortPhotos,
   getFilteredPhotos,
   getViewerPhotos,
   getViewerSourceMode,
@@ -30,7 +31,6 @@ const defaultGallerySetting: GallerySetting = {
   selectedGeoRegions: [],
   selectedGeoCities: [],
   selectedGeoDistricts: [],
-  tagFilterMode: "union",
   columns: "auto",
 };
 
@@ -118,6 +118,34 @@ describe("viewer photo resolution", () => {
 
     expect(filteredPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
     expect(viewerPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
+  });
+
+  it("uses OR within a filter group and AND across filter groups", () => {
+    const photos = [
+      createPhoto({
+        id: "sony-street",
+        tags: ["street"],
+        exif: { Make: "SONY", Model: "A7C" },
+      }),
+      createPhoto({
+        id: "sony-night",
+        tags: ["night"],
+        exif: { Make: "SONY", Model: "A7C" },
+      }),
+      createPhoto({
+        id: "fuji-night",
+        tags: ["night"],
+        exif: { Make: "FUJIFILM", Model: "X-T5" },
+      }),
+    ];
+
+    expect(
+      filterAndSortPhotos(photos, {
+        ...defaultGallerySetting,
+        selectedTags: ["street", "night"],
+        selectedCameras: ["SONY A7C"],
+      }).map((photo) => photo.id),
+    ).toEqual(["sony-street", "sony-night"]);
   });
 
   it("falls back to the full photo set when the requested photo is excluded by filters", () => {

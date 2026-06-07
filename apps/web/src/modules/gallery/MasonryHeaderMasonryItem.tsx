@@ -158,18 +158,6 @@ export const MasonryHeaderMasonryItem = ({
         label: regionLabelMaps.selectedGeoDistricts.get(id) ?? id,
         icon: "location" as const,
       })),
-      ...(gallerySetting.selectedTags.length > 1
-        ? [
-            {
-              id: `tag-mode-${gallerySetting.tagFilterMode}`,
-              label:
-                gallerySetting.tagFilterMode === "intersection"
-                  ? t("action.tag.match.all")
-                  : t("action.tag.match.any"),
-              icon: null,
-            },
-          ]
-        : []),
     ];
   }, [
     gallerySetting.selectedCameras,
@@ -179,10 +167,8 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedGeoRegions,
     gallerySetting.selectedLenses,
     gallerySetting.selectedTags,
-    gallerySetting.tagFilterMode,
     i18n.language,
     photos,
-    t,
   ]);
 
   useEffect(() => {

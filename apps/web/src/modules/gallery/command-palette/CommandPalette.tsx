@@ -359,51 +359,6 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           </div>
         )}
 
-        <div className="border-fill-secondary bg-fill-vibrant-quinary/35 text-text-secondary relative flex items-center justify-between gap-3 border-b px-6 py-4 text-sm">
-          <div className="flex items-center gap-2">
-            <i className="i-mingcute-filter-3-line text-sm" />
-            <span>{t("action.tag.match.label")}</span>
-          </div>
-          <div className="bg-fill-secondary/70 border-fill-tertiary flex shrink-0 rounded-full border p-0.5">
-            <button
-              type="button"
-              onClick={() =>
-                executeCommandAction({
-                  type: "set-tag-filter-mode",
-                  mode: "union",
-                })
-              }
-              className={clsxm(
-                "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
-                gallerySetting.tagFilterMode === "union"
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-text-secondary hover:text-text",
-              )}
-              aria-pressed={gallerySetting.tagFilterMode === "union"}
-            >
-              {t("action.tag.match.any")}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                executeCommandAction({
-                  type: "set-tag-filter-mode",
-                  mode: "intersection",
-                })
-              }
-              className={clsxm(
-                "focus-visible:ring-accent/45 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
-                gallerySetting.tagFilterMode === "intersection"
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-text-secondary hover:text-text",
-              )}
-              aria-pressed={gallerySetting.tagFilterMode === "intersection"}
-            >
-              {t("action.tag.match.all")}
-            </button>
-          </div>
-        </div>
-
         {/* Commands List */}
         <div
           ref={listRef}
@@ -490,7 +445,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Footer */}
-        <div className="pb-safe border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-6 pt-3 pb-4">
+        <div className="border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4">
           <div className="text-text-secondary flex items-center justify-between text-xs">
             <span>{resultSummary}</span>
             {hasFilters && (

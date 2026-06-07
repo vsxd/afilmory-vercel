@@ -41,10 +41,8 @@ export const filterAndSortPhotos = (
     | "selectedGeoCities"
     | "selectedGeoDistricts"
     | "sortOrder"
-    | "tagFilterMode"
   >,
 ) => {
-  // 根据 tags、cameras 和 lenses 筛选
   let filteredPhotos = photos;
   const {
     selectedTags,
@@ -55,23 +53,16 @@ export const filterAndSortPhotos = (
     selectedGeoCities,
     selectedGeoDistricts,
     sortOrder,
-    tagFilterMode = "union",
   } = gallerySetting;
 
-  // Tags 筛选：根据模式进行并集或交集筛选
+  // Same filter group uses OR semantics. Different groups are applied in
+  // sequence, which gives cross-group AND semantics.
   if (selectedTags.length > 0) {
-    filteredPhotos = filteredPhotos.filter((photo) => {
-      if (tagFilterMode === "intersection") {
-        // 交集模式：照片必须包含所有选中的标签
-        return selectedTags.every((tag) => photo.tags.includes(tag));
-      } else {
-        // 并集模式：照片必须包含至少一个选中的标签
-        return selectedTags.some((tag) => photo.tags.includes(tag));
-      }
-    });
+    filteredPhotos = filteredPhotos.filter((photo) =>
+      selectedTags.some((tag) => photo.tags.includes(tag)),
+    );
   }
 
-  // Cameras 筛选：照片的相机必须匹配选中的相机之一
   if (selectedCameras.length > 0) {
     filteredPhotos = filteredPhotos.filter((photo) => {
       if (!photo.exif?.Make || !photo.exif?.Model) return false;
@@ -80,7 +71,6 @@ export const filterAndSortPhotos = (
     });
   }
 
-  // Lenses 筛选：照片的镜头必须匹配选中的镜头之一
   if (selectedLenses.length > 0) {
     filteredPhotos = filteredPhotos.filter((photo) => {
       if (!photo.exif?.LensModel) return false;
@@ -107,7 +97,6 @@ export const filterAndSortPhotos = (
     );
   }
 
-  // 然后排序
   const sortedPhotos = sortPhotos(filteredPhotos, sortOrder);
 
   return sortedPhotos;

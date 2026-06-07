@@ -43,7 +43,6 @@ export type CommandAction =
   | { type: "toggle-camera"; camera: string }
   | { type: "toggle-lens"; lens: string }
   | { type: "toggle-geo"; field: GeoFilterField; id: string }
-  | { type: "set-tag-filter-mode"; mode: GallerySetting["tagFilterMode"] }
   | { type: "clear-filters" }
   | { type: "open-photo"; photoId: string };
 
@@ -219,25 +218,6 @@ export function buildCommandIndex(input: {
     gallerySetting,
   });
 
-  if (allTags.length > 0) {
-    const isUnionMode = gallerySetting.tagFilterMode === "union";
-    commands.push({
-      id: "tag-filter-mode-toggle",
-      type: "action",
-      title: isUnionMode
-        ? t("action.tag.match.any")
-        : t("action.tag.match.all"),
-      subtitle: t("action.tag.match.label"),
-      icon: "i-mingcute-switch-line",
-      badge: isUnionMode ? t("action.tag.mode.or") : t("action.tag.mode.and"),
-      action: {
-        type: "set-tag-filter-mode",
-        mode: isUnionMode ? "intersection" : "union",
-      },
-      keywords: ["tag", "filter", "mode", "toggle"],
-    });
-  }
-
   if (hasFilters) {
     commands.push({
       id: "clear-filters",
@@ -315,12 +295,6 @@ export function applyGalleryCommandAction(
         [action.field]: toggleValue(gallerySetting[action.field], action.id),
       };
     }
-    case "set-tag-filter-mode": {
-      return {
-        ...gallerySetting,
-        tagFilterMode: action.mode,
-      };
-    }
     case "clear-filters": {
       return clearFilters(gallerySetting);
     }
@@ -359,7 +333,6 @@ function clearFilters(gallerySetting: GallerySetting): GallerySetting {
     selectedGeoRegions: [],
     selectedGeoCities: [],
     selectedGeoDistricts: [],
-    tagFilterMode: "union",
   };
 }
 

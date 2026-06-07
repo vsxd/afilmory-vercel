@@ -20,7 +20,6 @@ const gallerySetting: GallerySetting = {
   selectedGeoRegions: [],
   selectedGeoCities: [],
   selectedGeoDistricts: [],
-  tagFilterMode: "union",
   columns: "auto",
 };
 
@@ -146,7 +145,6 @@ describe("command-palette-model", () => {
       ),
     ).toMatchObject({
       selectedTags: [],
-      tagFilterMode: "union",
     });
   });
 });
