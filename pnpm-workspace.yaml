@@ -23,6 +23,7 @@ catalog:
 onlyBuiltDependencies:
   - esbuild
   - puppeteer
+  - unrs-resolver
 
 overrides:
   defu: 6.1.7

@@ -144,7 +144,7 @@
 | 环境变量           | 说明                                                          |
 | ------------------ | ------------------------------------------------------------- |
 | `REPO_URL`         | 用于缓存生成的 `photos-manifest.json` 和缩略图的 Git 仓库地址 |
-| `REPO_TOKEN`       | 缓存同步插件推送更新时使用的 token                            |
+| `REPO_TOKEN`       | artifact cache 脚本推送缓存更新时使用的 token                 |
 | `BUILDER_REPO_URL` | `REPO_URL` 的兼容别名                                         |
 | `GIT_TOKEN`        | `REPO_TOKEN` 的兼容别名                                       |
 
@@ -281,6 +281,8 @@ Vercel 使用：
 
 - **构建命令：** `sh scripts/build-static.sh`
 - **输出目录：** `apps/web/dist`
+
+配置了 `REPO_URL` 和 `REPO_TOKEN` 时，`scripts/build-static.sh` 会先恢复缓存中的 manifest、geocoding cache 和缩略图，再判断是否需要 S3。构建成功后，它会把最新构建产物同步回缓存仓库。
 
 S3 凭据完整时，`scripts/build-static.sh` 会运行 `pnpm build`。缺少 S3 凭据但存在可复用 `generated/photos-manifest.json` 时，它会运行 `pnpm build:web`，让 Preview 部署仍可成功。
 

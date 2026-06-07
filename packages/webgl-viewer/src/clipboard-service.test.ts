@@ -19,13 +19,12 @@ class ClipboardItemMock implements ClipboardItem {
   }
 }
 
-function mockFetchBlob(blob: Blob): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn<typeof fetch>(
-    async () =>
-      new Response(blob, {
-        headers: { "Content-Type": blob.type },
-      }),
-  );
+type BlobFetch = (input: RequestInfo | URL) => Promise<Pick<Response, "blob">>;
+
+function mockFetchBlob(blob: Blob): ReturnType<typeof vi.fn<BlobFetch>> {
+  const fetchMock = vi.fn<BlobFetch>(async () => ({
+    blob: async () => blob,
+  }));
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }

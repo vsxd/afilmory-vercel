@@ -144,7 +144,7 @@ The default static site configuration only supports S3-compatible source photos.
 | Variable           | Description                                                                  |
 | ------------------ | ---------------------------------------------------------------------------- |
 | `REPO_URL`         | Git repository used to cache generated `photos-manifest.json` and thumbnails |
-| `REPO_TOKEN`       | Token used by the cache sync plugin when pushing cache updates               |
+| `REPO_TOKEN`       | Token used by the artifact cache script when pushing cache updates           |
 | `BUILDER_REPO_URL` | Backward-compatible alias for `REPO_URL`                                     |
 | `GIT_TOKEN`        | Backward-compatible alias for `REPO_TOKEN`                                   |
 
@@ -281,6 +281,8 @@ Vercel uses:
 
 - **Build command:** `sh scripts/build-static.sh`
 - **Output directory:** `apps/web/dist`
+
+When `REPO_URL` and `REPO_TOKEN` are configured, `scripts/build-static.sh` restores cached manifest, geocoding cache, and thumbnails before deciding whether it needs S3. After a successful build it pushes the refreshed artifacts back to the cache repository.
 
 `scripts/build-static.sh` runs `pnpm build` when required S3 credentials are present. If S3 credentials are missing but a reusable `generated/photos-manifest.json` exists, it runs `pnpm build:web` so preview deployments can still succeed.
 
