@@ -22,8 +22,6 @@ import {
   calculateWorkersToStart,
   createInitialTaskQueue,
   getAvailableWorkerSlots,
-  getRequeueTaskIndexes,
-  removeRequeuedPendingTasks,
   selectBatchTaskAssignments,
 } from "./cluster-scheduler.js";
 import type { TaskCompletedPayload } from "./pool.js";
@@ -98,6 +96,11 @@ export class ClusterPool<T> extends EventEmitter {
     this.logger.main.info(
       `开始集群模式处理任务，进程数：${this.concurrency}，总任务数：${this.totalTasks}`,
     );
+
+    if (this.totalTasks === 0) {
+      this.taskQueue = [];
+      return [];
+    }
 
     this.taskQueue = createInitialTaskQueue(this.totalTasks);
 
@@ -240,22 +243,13 @@ export class ClusterPool<T> extends EventEmitter {
           workerLogger.error(
             `Worker ${workerId} 意外退出 (code: ${code}, signal: ${signal})`,
           );
-          const pending = this.workerPendingTasks.get(workerId);
-          const requeue = getRequeueTaskIndexes(pending);
-          if (pending) pending.clear();
-          this.workerTaskCounts.set(workerId, 0);
-          removeRequeuedPendingTasks(this.pendingTasks, workerId, requeue);
-
-          for (const taskIndex of requeue) {
-            this.taskQueue.unshift({ taskIndex });
-          }
-
-          if (requeue.length > 0) {
-            workerLogger.warn(`已将 ${requeue.length} 个未完成任务重新入队`);
-          }
-
-          // 重启 worker
-          setTimeout(() => this.createWorker(workerId), 1000);
+          clearTimeout(startupTimer);
+          this.clearWorkerState(workerId);
+          this.fail(
+            new Error(
+              `Worker ${workerId} exited unexpectedly (code: ${code ?? "null"}, signal: ${signal ?? "null"})`,
+            ),
+          );
         } else {
           workerLogger.info(`Worker ${workerId} 正常退出`);
         }
@@ -540,6 +534,15 @@ export class ClusterPool<T> extends EventEmitter {
     return new Error(`Worker task ${taskId} failed: ${message}`);
   }
 
+  private clearWorkerState(workerId: number): void {
+    this.workers.delete(workerId);
+    this.workerStats.delete(workerId);
+    this.readyWorkers.delete(workerId);
+    this.initializedWorkers.delete(workerId);
+    this.workerPendingTasks.delete(workerId);
+    this.workerTaskCounts.delete(workerId);
+  }
+
   private fail(error: Error): void {
     if (this.hasFailed || this.isShuttingDown) return;
 
@@ -548,6 +551,8 @@ export class ClusterPool<T> extends EventEmitter {
     this.pendingTasks.clear();
     this.workerPendingTasks.clear();
     this.workerTaskCounts.clear();
+    this.readyWorkers.clear();
+    this.initializedWorkers.clear();
 
     if (this.listenerCount("error") > 0) {
       this.emit("error", error);
@@ -587,6 +592,11 @@ export class ClusterPool<T> extends EventEmitter {
     await Promise.all(shutdownPromises);
     this.workers.clear();
     this.workerStats.clear();
+    this.pendingTasks.clear();
+    this.workerPendingTasks.clear();
+    this.workerTaskCounts.clear();
+    this.readyWorkers.clear();
+    this.initializedWorkers.clear();
   }
 
   // 获取 worker 统计信息

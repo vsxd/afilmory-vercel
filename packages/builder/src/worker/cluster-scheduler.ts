@@ -82,26 +82,3 @@ export function selectBatchTaskAssignments({
     })),
   };
 }
-
-export function getRequeueTaskIndexes(
-  workerPending: Map<string, number> | undefined,
-): number[] {
-  return workerPending ? Array.from(workerPending.values()) : [];
-}
-
-export function removeRequeuedPendingTasks<T>(
-  pendingTasks: Map<string, T>,
-  workerId: number,
-  taskIndexes: number[],
-): void {
-  const taskIndexSet = new Set(taskIndexes);
-  for (const [taskId] of pendingTasks) {
-    const [taskWorkerId, rawTaskIndex] = taskId.split("-");
-    if (
-      Number(taskWorkerId) === workerId &&
-      taskIndexSet.has(Number(rawTaskIndex))
-    ) {
-      pendingTasks.delete(taskId);
-    }
-  }
-}

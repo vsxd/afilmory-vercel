@@ -155,6 +155,29 @@ async function startReadyWorker<T>(pool: ClusterPool<T>): Promise<{
   return { run, worker };
 }
 
+async function startReadyWorkers<T>(
+  pool: ClusterPool<T>,
+  count: number,
+): Promise<{
+  run: Promise<T[]>;
+  workers: Array<(typeof clusterMocks.workers)[number]>;
+}> {
+  const run = pool.execute();
+  const workers = Array.from({ length: count }, (_value, index) =>
+    getWorker(index),
+  );
+  for (const worker of workers) {
+    worker.emitOnline();
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  for (const [index, worker] of workers.entries()) {
+    const workerId = index + 1;
+    worker.emitMessage({ type: "ready", workerId });
+    worker.emitMessage({ type: "init-complete", workerId });
+  }
+  return { run, workers };
+}
+
 describe("ClusterPool", () => {
   beforeEach(() => {
     clusterMocks.fork.mockClear();
@@ -165,6 +188,18 @@ describe("ClusterPool", () => {
 
   afterEach(() => {
     setConsoleForwarding(true);
+  });
+
+  it("resolves an empty task set without starting cluster workers", async () => {
+    const pool = new ClusterPool<string>({
+      concurrency: 2,
+      totalTasks: 0,
+      workerConcurrency: 2,
+    });
+
+    await expect(pool.execute()).resolves.toEqual([]);
+    expect(clusterMocks.setupPrimary).not.toHaveBeenCalled();
+    expect(clusterMocks.fork).not.toHaveBeenCalled();
   });
 
   it("resolves successful batch results and shuts down workers", async () => {
@@ -198,6 +233,32 @@ describe("ClusterPool", () => {
     ]);
     expect(
       worker.sentMessages.some((message) => message.type === "shutdown"),
+    ).toBe(true);
+  });
+
+  it("rejects and shuts down remaining workers when a worker exits unexpectedly", async () => {
+    const pool = new ClusterPool<string>({
+      concurrency: 2,
+      totalTasks: 4,
+      workerConcurrency: 2,
+    });
+
+    const { run, workers } = await startReadyWorkers(pool, 2);
+    const [exitedWorker, remainingWorker] = workers;
+    if (!exitedWorker || !remainingWorker) {
+      throw new Error("Expected two workers.");
+    }
+    expect(getLastBatchTaskMessage(exitedWorker).tasks).toHaveLength(2);
+    expect(getLastBatchTaskMessage(remainingWorker).tasks).toHaveLength(2);
+
+    exitedWorker.emitExit(1, null);
+
+    await expect(run).rejects.toThrow("Worker 1 exited unexpectedly");
+    expect(clusterMocks.fork).toHaveBeenCalledTimes(2);
+    expect(
+      remainingWorker.sentMessages.some(
+        (message) => message.type === "shutdown",
+      ),
     ).toBe(true);
   });
 

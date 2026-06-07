@@ -4,8 +4,6 @@ import {
   calculateWorkersToStart,
   createInitialTaskQueue,
   getAvailableWorkerSlots,
-  getRequeueTaskIndexes,
-  removeRequeuedPendingTasks,
   selectBatchTaskAssignments,
 } from "./cluster-scheduler.js";
 
@@ -31,6 +29,7 @@ describe("cluster-scheduler", () => {
       requiredWorkers: 5,
       workersToStart: 2,
     });
+    expect(getAvailableWorkerSlots(2, 5)).toBe(3);
   });
 
   it("selects deterministic batch assignments without mutating the queue", () => {
@@ -48,24 +47,5 @@ describe("cluster-scheduler", () => {
     ]);
     expect(batch.remainingQueue).toEqual([{ taskIndex: 2 }, { taskIndex: 3 }]);
     expect(queue).toEqual(createInitialTaskQueue(4));
-  });
-
-  it("derives requeue task indexes and removes matching pending tasks", () => {
-    const workerPending = new Map([
-      ["3-1-100-0", 1],
-      ["3-4-100-1", 4],
-    ]);
-    const pendingTasks = new Map<string, string>([
-      ["3-1-100-0", "a"],
-      ["3-4-100-1", "b"],
-      ["2-4-100-0", "other-worker"],
-    ]);
-
-    const requeue = getRequeueTaskIndexes(workerPending);
-    removeRequeuedPendingTasks(pendingTasks, 3, requeue);
-
-    expect(requeue).toEqual([1, 4]);
-    expect([...pendingTasks.keys()]).toEqual(["2-4-100-0"]);
-    expect(getAvailableWorkerSlots(2, 5)).toBe(3);
   });
 });

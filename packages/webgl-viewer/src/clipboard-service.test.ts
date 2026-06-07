@@ -84,13 +84,29 @@ describe("copyImageUrlToClipboard", () => {
 
   it("returns false when Clipboard write is unavailable", async () => {
     const blob = new Blob(["photo"], { type: "image/png" });
-    mockFetchBlob(blob);
+    const fetchMock = mockFetchBlob(blob);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: undefined,
     });
 
     await expect(copyImageUrlToClipboard("photo.png")).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns false without fetching when ClipboardItem is unavailable", async () => {
+    const blob = new Blob(["photo"], { type: "image/png" });
+    const fetchMock = mockFetchBlob(blob);
+    const write = vi.fn(async (_items: ClipboardItem[]) => {});
+    vi.stubGlobal("ClipboardItem", void 0);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { write },
+    });
+
+    await expect(copyImageUrlToClipboard("photo.png")).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
   });
 
   it("propagates fetch failures", async () => {
@@ -99,6 +115,12 @@ describe("copyImageUrlToClipboard", () => {
       throw error;
     });
     vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        write: vi.fn(async (_items: ClipboardItem[]) => {}),
+      },
+    });
 
     await expect(copyImageUrlToClipboard("photo.png")).rejects.toThrow(error);
   });
