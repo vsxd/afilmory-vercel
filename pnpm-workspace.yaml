@@ -4,11 +4,11 @@ packages:
   - packages/*/*
 
 catalog:
-  '@egoist/tailwindcss-icons': 1.9.0
-  '@iconify-json/mingcute': 1.2.5
-  '@t3-oss/env-core': 0.13.8
-  '@tailwindcss/postcss': 4.1.16
-  '@tailwindcss/typography': 0.5.19
+  "@egoist/tailwindcss-icons": 1.9.0
+  "@iconify-json/mingcute": 1.2.5
+  "@t3-oss/env-core": 0.13.8
+  "@tailwindcss/postcss": 4.1.16
+  "@tailwindcss/typography": 0.5.19
   dotenv-expand: 12.0.3
   exiftool-vendored: 35.20.0
   tailwind-scrollbar: 4.0.2
@@ -23,7 +23,11 @@ catalog:
 onlyBuiltDependencies:
   - esbuild
   - puppeteer
+  - sharp
   - unrs-resolver
+
+ignoredBuiltDependencies:
+  - simple-git-hooks
 
 overrides:
   defu: 6.1.7
