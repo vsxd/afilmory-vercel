@@ -118,6 +118,11 @@ function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
   config.system.processing.defaultConcurrency = 2;
   config.system.observability.performance.worker.useClusterMode = false;
   config.system.observability.performance.worker.workerConcurrency = 3;
+  const logger = {
+    main: {
+      info: vi.fn(),
+    },
+  };
 
   return {
     config,
@@ -132,7 +137,7 @@ function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
       ...options,
     },
     runState: { runShared: new Map() },
-    services: { marker: "services" },
+    services: { logger, marker: "services" },
   } as unknown as BuildSession;
 }
 
@@ -202,6 +207,9 @@ describe("PhotoTaskProcessor", () => {
     expect(output.results).toEqual(results);
     expect(processorMocks.workerPoolInstances).toHaveLength(1);
     expect(processorMocks.clusterPoolInstances).toHaveLength(0);
+    expect(processorMocks.workerPoolInstances[0].options.logger).toBe(
+      session.services.logger,
+    );
     expect(session.emit).toHaveBeenCalledWith("beforeProcessTasks", {
       concurrency: 2,
       mode: "worker",
@@ -301,6 +309,9 @@ describe("PhotoTaskProcessor", () => {
     expect(processorMocks.processPhoto).not.toHaveBeenCalled();
     expect(processorMocks.workerPoolInstances).toHaveLength(0);
     expect(processorMocks.clusterPoolInstances).toHaveLength(1);
+    expect(processorMocks.clusterPoolInstances[0].options.logger).toBe(
+      session.services.logger,
+    );
     expect(processorMocks.clusterPoolInstances[0].options).toMatchObject({
       concurrency: 2,
       totalTasks: tasks.length,

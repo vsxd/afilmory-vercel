@@ -1,0 +1,35 @@
+import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
+
+import { getImageFormat } from "~/lib/image-utils";
+import { convertExifGPSToDecimal } from "~/lib/map-utils";
+
+import { formatExifData } from "./formatExifData";
+
+export function createExifPanelViewModel({
+  currentPhoto,
+  exifData,
+}: {
+  currentPhoto: PhotoManifestItem;
+  exifData: PickedExif | null;
+}) {
+  const formattedExifData = formatExifData(exifData);
+  const gpsData = convertExifGPSToDecimal(exifData);
+  const decimalLatitude = gpsData?.latitude ?? null;
+  const decimalLongitude = gpsData?.longitude ?? null;
+  const imageFormat = getImageFormat(
+    currentPhoto.originalUrl || currentPhoto.s3Key || "",
+  );
+  const megaPixels = Math.trunc(
+    (currentPhoto.height * currentPhoto.width) / 1_000_000,
+  ).toString();
+
+  return {
+    decimalLatitude,
+    decimalLongitude,
+    formattedExifData,
+    imageFormat,
+    megaPixels,
+  };
+}
+
+export type ExifPanelViewModel = ReturnType<typeof createExifPanelViewModel>;

@@ -211,7 +211,7 @@ const hyobanConfig = await defineConfig(
           patterns: [
             ...restrictedImports.patterns,
             {
-              group: ["@afilmory/builder", "@afilmory/builder/*"],
+              group: ["@afilmory/builder"],
               message:
                 "Builder internals should use relative imports instead of importing their own package entrypoints.",
             },

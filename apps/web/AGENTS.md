@@ -18,7 +18,7 @@
 - Tailwind CSS 4
 - Radix UI
 - Motion
-- `@afilmory/ui`
+- `@afilmory/ui`（只从包根入口导入，不使用 UI 包子路径）
 - `@afilmory/webgl-viewer`
 
 ### 状态和数据

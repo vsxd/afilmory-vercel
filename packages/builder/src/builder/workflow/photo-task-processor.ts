@@ -1,4 +1,3 @@
-import { logger } from "../../logger/index.js";
 import type { PhotoProcessorOptions } from "../../photo/processor.js";
 import { processPhoto } from "../../photo/processor.js";
 import type { StorageObject } from "../../storage/interfaces.js";
@@ -94,7 +93,7 @@ export class PhotoTaskProcessor {
     });
     emitProgress();
 
-    logger.main.info(
+    session.services.logger.main.info(
       `开始${shouldUseCluster ? "多进程" : "并发"}处理任务，${shouldUseCluster ? "进程" : "Worker"}数：${concurrency}${shouldUseCluster ? `，每进程并发：${session.config.system.observability.performance.worker.workerConcurrency}` : ""}`,
     );
 
@@ -155,7 +154,7 @@ export class PhotoTaskProcessor {
     const clusterPool = new ClusterPool<ProcessPhotoResult>({
       concurrency,
       totalTasks: tasksToProcess.length,
-      logger,
+      logger: session.services.logger,
       workerConcurrency:
         session.config.system.observability.performance.worker
           .workerConcurrency,
@@ -187,7 +186,7 @@ export class PhotoTaskProcessor {
     const workerPool = new WorkerPool<ProcessPhotoResult>({
       concurrency,
       totalTasks: tasksToProcess.length,
-      logger,
+      logger: session.services.logger,
       onTaskCompleted,
     });
 

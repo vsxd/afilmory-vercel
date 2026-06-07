@@ -1,3 +1,4 @@
+import { TransformAnimationController } from "./animation-controller";
 import { copyImageUrlToClipboard } from "./clipboard-service";
 import { createWebGLDebugInfo } from "./debug-adapter";
 import { LoadingState } from "./enum";
@@ -14,11 +15,12 @@ import {
   SIMPLE_LOD_LEVELS,
   TILE_CACHE_SIZE,
 } from "./tile-cache";
+import { TileRequestRuntime } from "./tile-request-runtime";
 import {
   calculateVisibleTiles as calculateVisibleTilesForViewport,
   createViewportHash,
-  selectPendingTileBatch,
 } from "./tile-scheduler";
+import { cleanupTileTextures } from "./tile-texture-cleanup";
 import type {
   TransformBounds,
   TransformState,
@@ -54,19 +56,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   private isDoubleClickZoomed = false;
 
   // 动画状态
-  private isAnimating = false;
   private isDestroyed = false;
   private animationFrameId: number | null = null;
   private tileUpdateTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private animationStartTime = 0;
-  private animationDuration = 300;
-  private startScale = 1;
-  private targetScale = 1;
-  private startTranslateX = 0;
-  private startTranslateY = 0;
-  private targetTranslateX = 0;
-  private targetTranslateY = 0;
-  private animationStartLOD = -1;
+  private readonly animationController = new TransformAnimationController();
 
   // 简化的纹理管理
   // 配置和回调
@@ -79,7 +72,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     quality?: "high" | "medium" | "low" | "unknown",
   ) => void;
   private onImagePainted?: () => void;
-  private onDebugUpdate?: React.RefObject<(debugInfo: any) => void>;
+  private onDebugUpdate?: React.RefObject<(debugInfo: DebugInfo) => void>;
   private inputController: WebGLInputController | null = null;
 
   // 当前质量状态
@@ -93,8 +86,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   // 瓦片系统
   private tileCache = new Map<TileKey, TileInfo>();
-  private loadingTiles = new Map<TileKey, { priority: number }>();
-  private pendingTileRequests = new Map<TileKey, number>();
+  private tileRequestRuntime = new TileRequestRuntime();
   private tileProcessingFrameId: number | null = null;
 
   // Reusable buffers
@@ -252,14 +244,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
     if (type === "tile-created") {
       const { key, imageBitmap, lodLevel } = payload;
-      const loadingInfo = this.loadingTiles.get(key);
+      const loadingInfo = this.tileRequestRuntime.getLoadingInfo(key);
       const tileInfoInCache = this.tileCache.get(key);
 
       // Tile might have been loaded by other means or is no longer needed
       if (!this.currentVisibleTiles.has(key)) {
         imageBitmap.close();
         if (loadingInfo) {
-          this.loadingTiles.delete(key);
+          this.tileRequestRuntime.markLoaded(key);
         }
         return;
       }
@@ -285,19 +277,19 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         this.tileCache.set(key, tileInfo);
 
         if (loadingInfo) {
-          this.loadingTiles.delete(key);
+          this.tileRequestRuntime.markLoaded(key);
         }
 
         if (this.currentVisibleTiles.has(key)) {
           this.render();
         }
       } else if (loadingInfo) {
-        this.loadingTiles.delete(key);
+        this.tileRequestRuntime.markFailed(key);
       }
     } else if (type === "tile-error") {
       const { key, error } = payload;
       console.warn(`Worker failed to create tile: ${key}`, error);
-      this.loadingTiles.delete(key);
+      this.tileRequestRuntime.markFailed(key);
     }
   }
 
@@ -349,8 +341,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private selectOptimalLOD(): number {
-    if (this.isAnimating && this.animationStartLOD > -1) {
-      return this.animationStartLOD;
+    if (
+      this.animationController.isAnimating &&
+      this.animationController.startLOD > -1
+    ) {
+      return this.animationController.startLOD;
     }
     if (!this.imageLoaded) return 1;
 
@@ -368,27 +363,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     return SIMPLE_LOD_LEVELS.length - 1;
   }
 
-  // 缓动函数
-  private easeOutQuart(t: number): number {
-    return 1 - Math.pow(1 - t, 4);
-  }
-
   private startAnimation(
     targetScale: number,
     targetTranslateX: number,
     targetTranslateY: number,
     animationTime?: number,
   ) {
-    this.isAnimating = true;
-    this.animationStartTime = performance.now();
-    this.animationDuration = animationTime || (this.config.smooth ? 300 : 0);
-    this.startScale = this.scale;
-    this.targetScale = targetScale;
-    this.startTranslateX = this.translateX;
-    this.startTranslateY = this.translateY;
-    this.targetTranslateX = targetTranslateX;
-    this.targetTranslateY = targetTranslateY;
-    this.animationStartLOD = this.selectOptimalLOD();
+    const startTransform = this.getTransformState();
+    const startLOD = this.selectOptimalLOD();
 
     // 约束目标位置
     const tempScale = this.scale;
@@ -400,50 +382,42 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.translateY = targetTranslateY;
     this.constrainImagePosition();
 
-    this.targetTranslateX = this.translateX;
-    this.targetTranslateY = this.translateY;
+    const targetTransform = this.getTransformState();
 
     // 恢复当前状态
     this.scale = tempScale;
     this.translateX = tempTranslateX;
     this.translateY = tempTranslateY;
 
+    this.animationController.start({
+      duration: animationTime || (this.config.smooth ? 300 : 0),
+      from: startTransform,
+      startLOD,
+      startTime: performance.now(),
+      to: targetTransform,
+    });
     this.animate();
   }
 
   private animate() {
-    if (this.isDestroyed || !this.isAnimating) return;
+    if (this.isDestroyed || !this.animationController.isAnimating) return;
 
-    const now = performance.now();
-    const elapsed = now - this.animationStartTime;
-    const progress = Math.min(elapsed / this.animationDuration, 1);
-    const easedProgress = this.config.smooth
-      ? this.easeOutQuart(progress)
-      : progress;
+    const step = this.animationController.step(
+      performance.now(),
+      this.config.smooth,
+    );
+    if (!step) return;
 
-    this.scale =
-      this.startScale + (this.targetScale - this.startScale) * easedProgress;
-    this.translateX =
-      this.startTranslateX +
-      (this.targetTranslateX - this.startTranslateX) * easedProgress;
-    this.translateY =
-      this.startTranslateY +
-      (this.targetTranslateY - this.startTranslateY) * easedProgress;
-
+    this.applyTransformState(step.transform);
     this.render();
     this.notifyZoomChange();
 
-    if (progress < 1) {
+    if (!step.done) {
       this.animationFrameId = requestAnimationFrame(() => {
         this.animationFrameId = null;
         this.animate();
       });
     } else {
-      this.isAnimating = false;
-      this.animationStartLOD = -1;
-      this.scale = this.targetScale;
-      this.translateX = this.targetTranslateX;
-      this.translateY = this.targetTranslateY;
       this.render();
       this.notifyZoomChange();
       // 动画结束后，立即更新瓦片
@@ -584,22 +558,14 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       const key = this.getTileKey(tile.x, tile.y, tile.lodLevel);
       newVisibleTiles.add(key);
 
-      const pendingPriority = this.pendingTileRequests.get(key);
-
-      if (
-        !this.tileCache.has(key) &&
-        !this.loadingTiles.has(key) &&
-        pendingPriority === undefined
-      ) {
-        this.pendingTileRequests.set(key, tile.priority);
-        addedNewRequest = true;
-      } else if (pendingPriority !== undefined) {
-        // Update priority when tile stays in view to keep ordering useful
-        this.pendingTileRequests.set(
+      addedNewRequest =
+        this.tileRequestRuntime.queueVisibleTile({
+          hasCachedTile: this.tileCache.has(key),
           key,
-          Math.min(pendingPriority, tile.priority),
-        );
-      } else if (this.tileCache.has(key)) {
+          priority: tile.priority,
+        }) || addedNewRequest;
+
+      if (this.tileCache.has(key)) {
         // 更新使用时间
         const tileInfo = this.tileCache.get(key)!;
         tileInfo.lastUsed = performance.now();
@@ -612,43 +578,20 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     if (
       viewportChanged ||
       addedNewRequest ||
-      this.pendingTileRequests.size > 0
+      this.tileRequestRuntime.hasPendingWork
     ) {
       this.processPendingTileRequests();
     }
   }
 
   private cleanupOldTiles(): void {
-    const now = performance.now();
-    const maxAge = 30000; // 30 秒后清理不再使用的瓦片
-
-    // 如果缓存过大，强制清理
-    if (this.tileCache.size > TILE_CACHE_SIZE) {
-      const tilesToRemove = Array.from(this.tileCache.entries())
-        .filter(([key]) => !this.currentVisibleTiles.has(key))
-        .sort(([, a], [, b]) => a.lastUsed - b.lastUsed)
-        .slice(0, this.tileCache.size - TILE_CACHE_SIZE + 5); // 清理多一些
-
-      for (const [key, tileInfo] of tilesToRemove) {
-        if (tileInfo.texture) {
-          this.gl.deleteTexture(tileInfo.texture);
-        }
-        this.tileCache.delete(key);
-      }
-    }
-
-    // 清理过期的瓦片
-    for (const [key, tileInfo] of this.tileCache.entries()) {
-      if (
-        !this.currentVisibleTiles.has(key) &&
-        now - tileInfo.lastUsed > maxAge
-      ) {
-        if (tileInfo.texture) {
-          this.gl.deleteTexture(tileInfo.texture);
-        }
-        this.tileCache.delete(key);
-      }
-    }
+    cleanupTileTextures({
+      currentVisibleTiles: this.currentVisibleTiles,
+      deleteTexture: (texture) => this.gl.deleteTexture(texture),
+      maxCacheSize: TILE_CACHE_SIZE,
+      now: performance.now(),
+      tileCache: this.tileCache,
+    });
   }
 
   private processPendingTileRequests(): void {
@@ -658,7 +601,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       return;
     }
 
-    if (this.pendingTileRequests.size === 0) {
+    if (!this.tileRequestRuntime.hasPendingWork) {
       if (this.tileProcessingFrameId !== null) {
         cancelAnimationFrame(this.tileProcessingFrameId);
         this.tileProcessingFrameId = null;
@@ -666,20 +609,15 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       return;
     }
 
-    const batch = selectPendingTileBatch(
-      this.pendingTileRequests,
-      MAX_TILES_PER_FRAME,
-    );
+    const batch = this.tileRequestRuntime.selectBatch(MAX_TILES_PER_FRAME);
 
     for (const request of batch) {
-      const { key, priority } = request;
-      this.pendingTileRequests.delete(key); // Remove processed request from map
+      const { key } = request;
 
-      if (this.loadingTiles.has(key) || this.tileCache.has(key)) {
+      if (this.tileCache.has(key)) {
+        this.tileRequestRuntime.markLoaded(key);
         continue;
       }
-
-      this.loadingTiles.set(key, { priority });
 
       // 解析瓦片坐标
       const [x, y, lodLevel] = key.split("-").map(Number);
@@ -697,7 +635,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     if (
-      this.pendingTileRequests.size > 0 &&
+      this.tileRequestRuntime.hasPendingWork &&
       this.tileProcessingFrameId === null
     ) {
       this.tileProcessingFrameId = requestAnimationFrame(() => {
@@ -754,7 +692,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
     // 定期更新瓦片缓存
     if (
-      !this.isAnimating &&
+      !this.animationController.isAnimating &&
       performance.now() - this.lastTileUpdateTime > 100
     ) {
       // 100ms 防抖
@@ -891,8 +829,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     if (this.isDestroyed) return;
 
     this.isDestroyed = true;
-    this.isAnimating = false;
-    this.animationStartLOD = -1;
+    this.animationController.cancel();
 
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -922,6 +859,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
     this.workerBridge?.dispose();
     this.workerBridge = null;
+    this.tileRequestRuntime.clear();
   }
 
   private updateDebugInfo() {
@@ -954,8 +892,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         lodTextureCount: this.textureManager.textureCount,
         tileCache: this.tileCache,
         currentVisibleTiles: this.currentVisibleTiles,
-        loadingTiles: this.loadingTiles,
-        pendingTileRequests: this.pendingTileRequests,
+        loadingTiles: this.tileRequestRuntime.loadingTiles,
+        pendingTileRequests: this.tileRequestRuntime.pendingTileRequests,
       }),
     );
   }
@@ -988,7 +926,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   // 事件处理
   private setupEventListeners() {
     this.inputController = new WebGLInputController(this.canvas, this.config, {
-      isAnimating: () => this.isAnimating,
+      isAnimating: () => this.animationController.isAnimating,
       stopAnimation: () => this.stopAnimation(),
       panBy: (deltaX, deltaY) => this.panBy(deltaX, deltaY),
       zoomAt: (x, y, scaleFactor, animated) =>
@@ -999,8 +937,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private stopAnimation(): void {
-    this.isAnimating = false;
-    this.animationStartLOD = -1;
+    this.animationController.cancel();
   }
 
   private panBy(deltaX: number, deltaY: number): void {
@@ -1011,8 +948,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private performDoubleClickAction(x: number, y: number) {
-    this.isAnimating = false;
-    this.animationStartLOD = -1;
+    this.animationController.cancel();
 
     if (this.config.doubleClick.mode === "toggle") {
       const fitToScreenScale = this.getFitToScreenScale();

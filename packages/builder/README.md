@@ -99,6 +99,11 @@ await builder.buildManifest({
 
 Most repository workflows should use `pnpm build:manifest` instead of constructing the builder manually.
 
+The package root is intentionally narrow. It exposes the builder class,
+configuration helpers, official plugins, and the types needed to configure or
+observe a build. Internal workflow modules, image pipeline helpers, worker
+pools, and storage managers are not public API.
+
 ## Processing Pipeline
 
 For each changed photo, the builder:

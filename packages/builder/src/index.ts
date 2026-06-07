@@ -4,17 +4,6 @@ export { createDefaultBuilderConfig } from "./config/defaults.js";
 export { defineBuilderConfig } from "./config/helper.js";
 export type { LoadBuilderConfigOptions } from "./config/index.js";
 export { resolveBuilderConfig } from "./config/index.js";
-export type {
-  PhotoProcessingContext,
-  ProcessedImageData,
-} from "./photo/image-pipeline.js";
-export {
-  executePhotoProcessingPipeline,
-  preprocessImage,
-  processImageWithSharp,
-  processPhotoWithPipeline,
-} from "./photo/image-pipeline.js";
-export type { PhotoProcessorOptions } from "./photo/processor.js";
 export type { GeocodingPluginOptions } from "./plugins/geocoding.js";
 export { default as geocodingPlugin } from "./plugins/geocoding.js";
 export type { ThumbnailStoragePluginOptions } from "./plugins/thumbnail-storage/index.js";
@@ -37,19 +26,10 @@ export type {
   ScanProgress,
   StorageConfig,
   StorageObject,
-  StorageProvider,
 } from "./storage/index.js";
-export { StorageManager } from "./storage/index.js";
 export type { BuilderConfig, BuilderConfigInput } from "./types/config.js";
 export type {
-  AfilmoryManifest,
-  CameraInfo,
-  LensInfo,
-  ManifestSource,
-} from "./types/manifest.js";
-export type {
-  FujiRecipe,
-  PhotoManifestItem,
-  PickedExif,
-  ToneAnalysis,
-} from "./types/photo.js";
+  BuildProgressListener,
+  BuildProgressSnapshot,
+  BuildProgressStartPayload,
+} from "./types/options.js";

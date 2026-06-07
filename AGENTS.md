@@ -59,6 +59,8 @@ Builder 主流程使用 `packages/builder/src/builder/workflow` 分层：`BuildS
 - `@afilmory/schema` 定义 `AfilmoryManifest`、`PhotoManifestItem`、`PickedExif` 等共享 schema 类型和 manifest v2 解析。
 - `@afilmory/media` 提供 `u8array` 压缩/解压等纯 media helper。
 - UI 不依赖 manifest schema；web 和 builder 使用 schema，thumbhash 等二进制工具使用 media。
+- `@afilmory/ui` 只允许从包根入口导入，不提供 UI 包子路径 API。
+- `@afilmory/builder` 根入口只公开 Builder、配置 helper、官方插件和必要类型；内部 workflow、image pipeline、worker/storage manager 不作为 public API。
 
 ### Web (`@afilmory/web`)
 

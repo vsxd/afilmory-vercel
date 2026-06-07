@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { NominatimGeocodingProvider } from "./geocoding.js";
+import {
+  createGeocodingProvider,
+  NominatimGeocodingProvider,
+} from "./geocoding.js";
 
 const locationLogger = vi.hoisted(() => ({
   error: vi.fn(),
@@ -122,5 +125,65 @@ describe("NominatimGeocodingProvider", () => {
       region: "英格蘭",
       city: "倫敦市",
     });
+  });
+});
+
+describe("createGeocodingProvider", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses Mapbox in auto mode when a token is configured", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => {
+      return new Response(
+        JSON.stringify({
+          features: [
+            {
+              properties: {
+                context: {
+                  country: {
+                    country_code: "es",
+                    name: "Spain",
+                  },
+                  place: {
+                    name: "Barcelona",
+                  },
+                  region: {
+                    name: "Catalonia",
+                  },
+                },
+                full_address: "Barcelona, Catalonia, Spain",
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = createGeocodingProvider(
+      "auto",
+      "mapbox-token",
+      undefined,
+      "en",
+    );
+    const location = await provider?.reverseGeocode(41.4031, 2.174);
+
+    expect(location).toMatchObject({
+      admin: {
+        city: "Barcelona",
+        country: "Spain",
+        countryCode: "ES",
+        region: "Catalonia",
+      },
+      locationName: "Barcelona, Catalonia, Spain",
+    });
+    const [url] = fetchMock.mock.calls[0];
+    const requestUrl = new URL(String(url));
+    expect(requestUrl.hostname).toBe("api.mapbox.com");
+    expect(requestUrl.searchParams.get("access_token")).toBe("mapbox-token");
+    expect(requestUrl.searchParams.get("language")).toBe("en");
   });
 });

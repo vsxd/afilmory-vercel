@@ -7,11 +7,38 @@ import { serialize } from "node:v8";
 
 import type { Logger } from "../logger/index.js";
 import { logger } from "../logger/index.js";
-import type { StorageObject } from "../storage/interfaces.js";
-import type { BuilderConfig } from "../types/config.js";
-import type { BuilderOptions } from "../types/options.js";
-import type { PhotoManifestItem } from "../types/photo.js";
+import type {
+  BatchTaskMessage,
+  BatchTaskResult,
+  ClusterWorkerMessage,
+  ClusterWorkerSharedData,
+  TaskResult,
+  WorkerInitMessage,
+  WorkerReadyMessage,
+  WorkerStats,
+} from "./cluster-protocol.js";
+import type { QueuedClusterTask } from "./cluster-scheduler.js";
+import {
+  calculateWorkersToStart,
+  createInitialTaskQueue,
+  getAvailableWorkerSlots,
+  getRequeueTaskIndexes,
+  removeRequeuedPendingTasks,
+  selectBatchTaskAssignments,
+} from "./cluster-scheduler.js";
 import type { TaskCompletedPayload } from "./pool.js";
+
+export type {
+  BatchTaskMessage,
+  BatchTaskResult,
+  ClusterWorkerMessage,
+  ClusterWorkerSharedData,
+  TaskMessage,
+  TaskResult,
+  WorkerInitMessage,
+  WorkerReadyMessage,
+  WorkerStats,
+} from "./cluster-protocol.js";
 
 const WORKER_SHUTDOWN_GRACE_MS = 5_000;
 
@@ -25,63 +52,6 @@ export interface ClusterPoolOptions<T> {
   onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void;
 }
 
-export interface ClusterWorkerSharedData {
-  existingManifestMap: Map<string, PhotoManifestItem>;
-  livePhotoMap: Map<string, StorageObject>;
-  imageObjects: StorageObject[];
-  builderConfig: BuilderConfig;
-  builderOptions: BuilderOptions;
-  photoIdCollisionKeys?: string[];
-}
-
-export interface WorkerReadyMessage {
-  type: "ready" | "pong";
-  workerId: number;
-}
-
-export interface TaskMessage {
-  type: "task";
-  taskId: string;
-  taskIndex: number;
-  workerId: number;
-}
-
-export interface BatchTaskMessage {
-  type: "batch-task";
-  tasks: Array<{
-    taskId: string;
-    taskIndex: number;
-  }>;
-  workerId: number;
-}
-
-export interface TaskResult {
-  type: "result" | "error";
-  taskId: string;
-  result?: unknown;
-  error?: string;
-}
-
-export interface BatchTaskResult {
-  type: "batch-result";
-  results: TaskResult[];
-}
-
-export interface WorkerStats {
-  workerId: number;
-  processedTasks: number;
-  isIdle: boolean;
-  isReady: boolean;
-}
-
-export interface WorkerInitMessage {
-  type: "init";
-  sharedData: {
-    data: number[]; // Buffer 转换为数组传输
-    length: number;
-  };
-}
-
 // 基于 Node.js cluster 的 Worker 池管理器
 export class ClusterPool<T> extends EventEmitter {
   private concurrency: number;
@@ -92,7 +62,7 @@ export class ClusterPool<T> extends EventEmitter {
   private sharedData?: ClusterPoolOptions<T>["sharedData"];
   private onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void;
 
-  private taskQueue: Array<{ taskIndex: number }> = [];
+  private taskQueue: QueuedClusterTask[] = [];
   private workers = new Map<number, Worker>();
   private workerStats = new Map<number, WorkerStats>();
   private pendingTasks = new Map<
@@ -128,12 +98,7 @@ export class ClusterPool<T> extends EventEmitter {
       `开始集群模式处理任务，进程数：${this.concurrency}，总任务数：${this.totalTasks}`,
     );
 
-    // 准备任务队列 - 只包含 taskIndex
-    for (let i = 0; i < this.totalTasks; i++) {
-      this.taskQueue.push({
-        taskIndex: i,
-      });
-    }
+    this.taskQueue = createInitialTaskQueue(this.totalTasks);
 
     // 启动 worker 进程
     await this.startWorkers();
@@ -161,11 +126,11 @@ export class ClusterPool<T> extends EventEmitter {
       silent: false,
     });
 
-    // 根据任务数量和每个 worker 的并发能力决定启动多少个 worker
-    // 需要的 worker 数 = Math.ceil(总任务数 / 每个 worker 并发数)
-    // 但不能超过 concurrency 限制
-    const requiredWorkers = Math.ceil(this.totalTasks / this.workerConcurrency);
-    const workersToStart = Math.min(this.concurrency, requiredWorkers);
+    const { requiredWorkers, workersToStart } = calculateWorkersToStart({
+      concurrency: this.concurrency,
+      totalTasks: this.totalTasks,
+      workerConcurrency: this.workerConcurrency,
+    });
 
     this.logger.main.info(
       `计算 worker 数量：总任务 ${this.totalTasks}，每个 worker 并发 ${this.workerConcurrency}，需要 ${requiredWorkers} 个，实际启动 ${workersToStart} 个`,
@@ -210,41 +175,29 @@ export class ClusterPool<T> extends EventEmitter {
         resolve();
       });
 
-      worker.on(
-        "message",
-        (
-          message:
-            | TaskResult
-            | BatchTaskResult
-            | WorkerReadyMessage
-            | { type: "init-complete"; workerId: number },
-        ) => {
-          switch (message.type) {
-            case "ready":
-            case "pong": {
-              this.handleWorkerReady(workerId, message as WorkerReadyMessage);
+      worker.on("message", (message: ClusterWorkerMessage) => {
+        switch (message.type) {
+          case "ready":
+          case "pong": {
+            this.handleWorkerReady(workerId, message as WorkerReadyMessage);
 
-              break;
-            }
-            case "init-complete": {
-              this.handleWorkerInitComplete(workerId);
-
-              break;
-            }
-            case "batch-result": {
-              this.handleWorkerBatchResult(
-                workerId,
-                message as BatchTaskResult,
-              );
-
-              break;
-            }
-            default: {
-              this.handleWorkerMessage(workerId, message as TaskResult);
-            }
+            break;
           }
-        },
-      );
+          case "init-complete": {
+            this.handleWorkerInitComplete(workerId);
+
+            break;
+          }
+          case "batch-result": {
+            this.handleWorkerBatchResult(workerId, message as BatchTaskResult);
+
+            break;
+          }
+          default: {
+            this.handleWorkerMessage(workerId, message as TaskResult);
+          }
+        }
+      });
 
       worker.on("error", (error) => {
         workerLogger.error(`Worker ${workerId} 进程错误:`, error);
@@ -256,19 +209,13 @@ export class ClusterPool<T> extends EventEmitter {
           workerLogger.error(
             `Worker ${workerId} 意外退出 (code: ${code}, signal: ${signal})`,
           );
-          // 将该 worker 未完成的任务重新入队
           const pending = this.workerPendingTasks.get(workerId);
-          const requeue: number[] = pending ? Array.from(pending.values()) : [];
+          const requeue = getRequeueTaskIndexes(pending);
           if (pending) pending.clear();
           this.workerTaskCounts.set(workerId, 0);
+          removeRequeuedPendingTasks(this.pendingTasks, workerId, requeue);
 
           for (const taskIndex of requeue) {
-            // 清理挂起映射并重新入队
-            for (const [taskId] of this.pendingTasks) {
-              if (taskId.startsWith(`${workerId}-${taskIndex}-`)) {
-                this.pendingTasks.delete(taskId);
-              }
-            }
             this.taskQueue.unshift({ taskIndex });
           }
 
@@ -360,33 +307,27 @@ export class ClusterPool<T> extends EventEmitter {
     )
       return;
 
-    // 如果当前 worker 的任务数已达到并发限制，则不分配新任务
-    if (currentTaskCount >= this.workerConcurrency) return;
+    const availableSlots = getAvailableWorkerSlots(
+      currentTaskCount,
+      this.workerConcurrency,
+    );
+    if (availableSlots === 0) return;
 
-    // 计算可以分配的任务数量
-    const availableSlots = this.workerConcurrency - currentTaskCount;
-    const tasksToAssign = Math.min(availableSlots, this.taskQueue.length);
+    const { remainingQueue, tasks } = selectBatchTaskAssignments({
+      availableSlots,
+      taskQueue: this.taskQueue,
+      timestamp: Date.now(),
+      workerId,
+    });
+    this.taskQueue = remainingQueue;
+    if (tasks.length === 0) return;
 
-    if (tasksToAssign === 0) return;
-
-    // 分配一批任务
-    const tasks: Array<{ taskId: string; taskIndex: number }> = [];
     const workerPending =
       this.workerPendingTasks.get(workerId) || new Map<string, number>();
     this.workerPendingTasks.set(workerId, workerPending);
 
-    for (let i = 0; i < tasksToAssign; i++) {
-      const task = this.taskQueue.shift();
-      if (!task) break;
-
-      const taskId = `${workerId}-${task.taskIndex}-${Date.now()}-${i}`;
-      tasks.push({
-        taskId,
-        taskIndex: task.taskIndex,
-      });
-
-      // 设置待处理任务的 Promise
-      this.pendingTasks.set(taskId, {
+    for (const task of tasks) {
+      this.pendingTasks.set(task.taskId, {
         resolve: (_value: T) => {
           // Promise resolve callback
         },
@@ -395,8 +336,7 @@ export class ClusterPool<T> extends EventEmitter {
         },
       });
 
-      // 标记该任务分配给此 worker
-      workerPending.set(taskId, task.taskIndex);
+      workerPending.set(task.taskId, task.taskIndex);
     }
 
     // 更新 worker 状态

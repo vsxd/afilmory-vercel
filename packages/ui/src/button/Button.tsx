@@ -3,7 +3,6 @@
 /* eslint-disable react-refresh/only-export-components */
 
 import { Slot } from "@radix-ui/react-slot";
-import { m } from "motion/react";
 import * as React from "react";
 import type { VariantProps } from "tailwind-variants";
 import { tv } from "tailwind-variants";
@@ -13,6 +12,7 @@ import { clsxm, focusRing } from "../utils/cn";
 const buttonVariants = tv({
   base: [
     "relative inline-flex items-center justify-center whitespace-nowrap rounded text-center font-medium transition-all duration-100 ease-in-out",
+    "active:scale-95",
     "disabled:pointer-events-none",
     focusRing,
   ],
@@ -97,21 +97,13 @@ const Button = ({
   size,
   flat,
   children,
+  type = "button",
   ...props
 }: ButtonProps & {
-  ref?: React.RefObject<HTMLButtonElement>;
+  ref?: React.Ref<HTMLButtonElement>;
 }) => {
-  const Component = asChild ? Slot : m.button;
-  return (
-    // @ts-expect-error
-    <Component
-      ref={forwardedRef}
-      className={clsxm(buttonVariants({ variant, size, flat }), className)}
-      disabled={disabled || isLoading}
-      data-tremor-id="tremor-raw"
-      whileTap={{ scale: 0.95 }}
-      {...props}
-    >
+  const content = (
+    <>
       {isLoading ? (
         <span className="pointer-events-none inline-flex items-center justify-center gap-1.5">
           <i
@@ -122,12 +114,54 @@ const Button = ({
             aria-hidden="true"
           />
           <span className="sr-only">{loadingText ?? "Loading"}</span>
-          <span className="inline-block">{loadingText ?? children}</span>
+          <span className="inline-block">
+            {loadingText ??
+              (React.isValidElement<{ children?: React.ReactNode }>(children)
+                ? children.props.children
+                : children)}
+          </span>
         </span>
       ) : (
         children
       )}
-    </Component>
+    </>
+  );
+
+  const resolvedClassName = clsxm(
+    buttonVariants({ variant, size, flat }),
+    className,
+  );
+
+  if (asChild) {
+    const slotChild =
+      isLoading &&
+      React.isValidElement<{ children?: React.ReactNode }>(children)
+        ? React.cloneElement(children, undefined, content)
+        : content;
+
+    return (
+      <Slot
+        ref={forwardedRef}
+        className={resolvedClassName}
+        data-tremor-id="tremor-raw"
+        {...props}
+      >
+        {slotChild}
+      </Slot>
+    );
+  }
+
+  return (
+    <button
+      ref={forwardedRef}
+      className={resolvedClassName}
+      disabled={disabled || isLoading}
+      data-tremor-id="tremor-raw"
+      type={type}
+      {...props}
+    >
+      {content}
+    </button>
   );
 };
 

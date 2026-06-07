@@ -6,7 +6,7 @@ import type { ExifDateTime, Tags } from "exiftool-vendored";
 import { ExifTool } from "exiftool-vendored";
 
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
-import type { PickedExif } from "../types/photo.js";
+import type { FujiRecipe, PickedExif, SonyRecipe } from "../types/photo.js";
 
 export class ExifService {
   private readonly exiftool: ExifTool;
@@ -149,7 +149,48 @@ const pickKeys: Array<keyof Tags | (string & {})> = [
   "MicroVideoOffset",
   "MicroVideoPresentationTimestampUs",
 ];
-function handleExifData(exifData: Tags): PickedExif {
+export function extractFujiRecipe(exifData: Tags): FujiRecipe | undefined {
+  if (!exifData.FilmMode) {
+    return undefined;
+  }
+
+  return {
+    FilmMode: exifData.FilmMode,
+    GrainEffectRoughness: exifData.GrainEffectRoughness,
+    GrainEffectSize: exifData.GrainEffectSize,
+    ColorChromeEffect: exifData.ColorChromeEffect,
+    ColorChromeFxBlue: exifData.ColorChromeFXBlue,
+    WhiteBalance:
+      exifData.WhiteBalance === undefined
+        ? undefined
+        : String(exifData.WhiteBalance),
+
+    DynamicRange: exifData.DynamicRange,
+    HighlightTone: exifData.HighlightTone,
+    ShadowTone: exifData.ShadowTone,
+    Saturation: exifData.Saturation,
+    NoiseReduction: exifData.NoiseReduction,
+    Clarity: exifData.Clarity,
+    ColorTemperature: exifData.ColorTemperature,
+    DevelopmentDynamicRange: exifData.DevelopmentDynamicRange,
+    DynamicRangeSetting: exifData.DynamicRangeSetting,
+  };
+}
+
+export function extractSonyRecipe(exifData: Tags): SonyRecipe | undefined {
+  if (isNil(exifData.CreativeStyle)) {
+    return undefined;
+  }
+
+  return {
+    CreativeStyle: exifData.CreativeStyle,
+    PictureEffect: exifData.PictureEffect,
+    Hdr: exifData.Hdr,
+    SoftSkinEffect: exifData.SoftSkinEffect,
+  };
+}
+
+export function handleExifData(exifData: Tags): PickedExif {
   const date = {
     DateTimeOriginal: formatExifDate(exifData.DateTimeOriginal),
     DateTimeDigitized: formatExifDate(exifData.DateTimeDigitized),
@@ -158,46 +199,13 @@ function handleExifData(exifData: Tags): PickedExif {
     OffsetTimeDigitized: exifData.OffsetTimeDigitized,
   };
 
-  let FujiRecipe: any = null;
-  if (exifData.FilmMode) {
-    FujiRecipe = {
-      FilmMode: exifData.FilmMode,
-      GrainEffectRoughness: exifData.GrainEffectRoughness,
-      GrainEffectSize: exifData.GrainEffectSize,
-      ColorChromeEffect: exifData.ColorChromeEffect,
-      ColorChromeFxBlue: exifData.ColorChromeFXBlue,
-      WhiteBalance: exifData.WhiteBalance,
-
-      DynamicRange: exifData.DynamicRange,
-      HighlightTone: exifData.HighlightTone,
-      ShadowTone: exifData.ShadowTone,
-      Saturation: exifData.Saturation,
-      // Sharpness: exifData.Sharpness,
-      NoiseReduction: exifData.NoiseReduction,
-      Clarity: exifData.Clarity,
-      ColorTemperature: exifData.ColorTemperature,
-      DevelopmentDynamicRange: (exifData as any).DevelopmentDynamicRange,
-      DynamicRangeSetting: exifData.DynamicRangeSetting,
-    };
-  }
-
-  let SonyRecipe: any = null;
-  if (!isNil(exifData.CreativeStyle)) {
-    SonyRecipe = {
-      CreativeStyle: exifData.CreativeStyle,
-      PictureEffect: exifData.PictureEffect,
-      Hdr: exifData.Hdr,
-      SoftSkinEffect: exifData.SoftSkinEffect,
-    };
-  }
+  const FujiRecipe = extractFujiRecipe(exifData);
+  const SonyRecipe = extractSonyRecipe(exifData);
   const size = {
     ImageWidth: exifData.ExifImageWidth,
     ImageHeight: exifData.ExifImageHeight,
   };
-  const result: any = structuredClone(exifData);
-  for (const key in result) {
-    Reflect.deleteProperty(result, key);
-  }
+  const result: Record<string, unknown> = {};
   for (const key of pickKeys) {
     result[key] = exifData[key as keyof Tags];
   }
