@@ -127,7 +127,7 @@ export const MobileActionButton = ({
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xl" />
           <Drawer.Content className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex max-h-[88vh] flex-col overflow-hidden rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl">
-            <div className="flex h-10 shrink-0 items-center justify-center">
+            <div className="flex h-10 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing">
               <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
             </div>
             {children}

@@ -39,6 +39,9 @@ interface CommandPaletteProps {
   onClose: () => void;
 }
 
+const DISMISS_DRAG_THRESHOLD = 72;
+type PanelDragInput = "pointer" | "mouse" | "touch";
+
 export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const { t, i18n } = useTranslation();
   const commandT = useCallback(
@@ -67,8 +70,16 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [panelDragOffset, setPanelDragOffset] = useState(0);
+  const [isDraggingPanel, setIsDraggingPanel] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const dragInputRef = useRef<PanelDragInput | null>(null);
+  const dragPointerIdRef = useRef<number | null>(null);
+  const dragTouchIdRef = useRef<number | null>(null);
+  const cleanupDragListenersRef = useRef<(() => void) | null>(null);
+  const panelDragOffsetRef = useRef(0);
 
   const activeFilterCount = getActiveFilterCount(gallerySetting);
 
@@ -81,6 +92,208 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       applyGalleryCommandAction(prev, { type: "clear-filters" }),
     );
   }, [setGallerySetting]);
+
+  const setPanelDrag = useCallback((offset: number) => {
+    panelDragOffsetRef.current = offset;
+    setPanelDragOffset(offset);
+  }, []);
+
+  const cleanupDragListeners = useCallback(() => {
+    cleanupDragListenersRef.current?.();
+    cleanupDragListenersRef.current = null;
+  }, []);
+
+  const resetPanelDrag = useCallback(() => {
+    cleanupDragListeners();
+    dragStartYRef.current = null;
+    dragInputRef.current = null;
+    dragPointerIdRef.current = null;
+    dragTouchIdRef.current = null;
+    setIsDraggingPanel(false);
+    setPanelDrag(0);
+  }, [cleanupDragListeners, setPanelDrag]);
+
+  const startPanelDrag = useCallback(
+    (input: PanelDragInput, clientY: number) => {
+      if (dragInputRef.current !== null) {
+        return false;
+      }
+
+      dragInputRef.current = input;
+      dragStartYRef.current = clientY;
+      setIsDraggingPanel(true);
+      setPanelDrag(0);
+      return true;
+    },
+    [setPanelDrag],
+  );
+
+  const updatePanelDrag = useCallback(
+    (clientY: number) => {
+      if (dragStartYRef.current === null) {
+        return 0;
+      }
+
+      const nextOffset = Math.max(0, clientY - dragStartYRef.current);
+      setPanelDrag(nextOffset);
+      return nextOffset;
+    },
+    [setPanelDrag],
+  );
+
+  const finishPanelDrag = useCallback(() => {
+    if (panelDragOffsetRef.current >= DISMISS_DRAG_THRESHOLD) {
+      resetPanelDrag();
+      onClose();
+      return;
+    }
+
+    resetPanelDrag();
+  }, [onClose, resetPanelDrag]);
+
+  const handleDragHandlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || event.pointerType === "mouse") {
+        return;
+      }
+
+      if (!startPanelDrag("pointer", event.clientY)) {
+        return;
+      }
+
+      event.currentTarget.setPointerCapture(event.pointerId);
+      dragPointerIdRef.current = event.pointerId;
+    },
+    [startPanelDrag],
+  );
+
+  const handleDragHandlePointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (
+        dragInputRef.current !== "pointer" ||
+        dragPointerIdRef.current !== event.pointerId
+      ) {
+        return;
+      }
+
+      const nextOffset = updatePanelDrag(event.clientY);
+      if (nextOffset > 0) {
+        event.preventDefault();
+      }
+    },
+    [updatePanelDrag],
+  );
+
+  const handleDragHandlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (
+        dragInputRef.current !== "pointer" ||
+        dragPointerIdRef.current !== event.pointerId
+      ) {
+        return;
+      }
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      finishPanelDrag();
+    },
+    [finishPanelDrag],
+  );
+
+  const handleDragHandlePointerCancel = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (
+        dragInputRef.current === "pointer" &&
+        dragPointerIdRef.current === event.pointerId
+      ) {
+        resetPanelDrag();
+      }
+    },
+    [resetPanelDrag],
+  );
+
+  const handleDragHandleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || !startPanelDrag("mouse", event.clientY)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const nextOffset = updatePanelDrag(moveEvent.clientY);
+        if (nextOffset > 0) {
+          moveEvent.preventDefault();
+        }
+      };
+      const handleMouseUp = () => finishPanelDrag();
+
+      cleanupDragListeners();
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      cleanupDragListenersRef.current = () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    },
+    [cleanupDragListeners, finishPanelDrag, startPanelDrag, updatePanelDrag],
+  );
+
+  const handleDragHandleTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      const touch = event.changedTouches[0];
+      if (!touch || !startPanelDrag("touch", touch.clientY)) {
+        return;
+      }
+
+      event.preventDefault();
+      dragTouchIdRef.current = touch.identifier;
+
+      const findTrackedTouch = (touches: TouchList) => {
+        for (const touchItem of touches) {
+          if (touchItem.identifier === dragTouchIdRef.current) {
+            return touchItem;
+          }
+        }
+
+        return null;
+      };
+
+      const handleTouchMove = (moveEvent: TouchEvent) => {
+        const trackedTouch = findTrackedTouch(moveEvent.changedTouches);
+        if (!trackedTouch) {
+          return;
+        }
+
+        const nextOffset = updatePanelDrag(trackedTouch.clientY);
+        if (nextOffset > 0) {
+          moveEvent.preventDefault();
+        }
+      };
+      const handleTouchEnd = (endEvent: TouchEvent) => {
+        if (findTrackedTouch(endEvent.changedTouches)) {
+          finishPanelDrag();
+        }
+      };
+
+      cleanupDragListeners();
+      window.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      window.addEventListener("touchend", handleTouchEnd);
+      window.addEventListener("touchcancel", handleTouchEnd);
+      cleanupDragListenersRef.current = () => {
+        window.removeEventListener("touchmove", handleTouchMove);
+        window.removeEventListener("touchend", handleTouchEnd);
+        window.removeEventListener("touchcancel", handleTouchEnd);
+      };
+    },
+    [cleanupDragListeners, finishPanelDrag, startPanelDrag, updatePanelDrag],
+  );
+
+  useEffect(() => cleanupDragListeners, [cleanupDragListeners]);
 
   const geoRegions = useMemo(
     () => createGalleryGeoRegions(allPhotos),
@@ -106,10 +319,11 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     if (isOpen) {
       setQuery("");
       setSelectedIndex(0);
+      resetPanelDrag();
       const timer = setTimeout(() => inputRef.current?.focus(), 50);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, resetPanelDrag]);
 
   // Handle escape key
   useEffect(() => {
@@ -257,6 +471,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         style={{
           boxShadow:
             "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
+          transform: `translateY(${panelDragOffset}px)`,
+          transition: isDraggingPanel ? "none" : "transform 180ms ease-out",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -268,7 +484,15 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
           }}
         />
-        <div className="flex h-10 shrink-0 items-center justify-center">
+        <div
+          className="flex h-10 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+          onPointerDown={handleDragHandlePointerDown}
+          onPointerMove={handleDragHandlePointerMove}
+          onPointerUp={handleDragHandlePointerUp}
+          onPointerCancel={handleDragHandlePointerCancel}
+          onMouseDown={handleDragHandleMouseDown}
+          onTouchStart={handleDragHandleTouchStart}
+        >
           <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
         </div>
         {/* Search Input */}
