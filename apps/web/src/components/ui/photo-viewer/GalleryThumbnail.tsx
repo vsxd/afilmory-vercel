@@ -1,9 +1,10 @@
-import { clsxm, Spring, Thumbhash } from "@afilmory/ui";
+import { clsxm, Spring } from "@afilmory/ui";
 import { m } from "motion/react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { useMobile } from "~/hooks/useMobile";
 import { nextFrame } from "~/lib/dom";
 import type { PhotoManifest } from "~/types/photo";
@@ -194,20 +195,18 @@ export const GalleryThumbnail: FC<{
               title={photo.title || photo.id}
               onClick={() => onIndexChange(index)}
             >
-              {photo.thumbHash && (
-                <Thumbhash
-                  thumbHash={photo.thumbHash}
-                  className="size-fill absolute inset-0"
-                />
-              )}
-              <img
+              <ThumbnailImage
+                photoId={photo.id}
                 src={photo.thumbnailUrl}
                 alt={photo.title || photo.id}
+                thumbHash={photo.thumbHash}
                 loading={index === currentIndex ? "eager" : "lazy"}
                 fetchPriority={index === currentIndex ? "high" : "low"}
                 decoding="async"
                 draggable={false}
-                className="absolute inset-0 h-full w-full object-cover"
+                containerClassName="absolute inset-0"
+                imageClassName="h-full w-full object-cover"
+                placeholderClassName="size-fill"
               />
             </button>
           );

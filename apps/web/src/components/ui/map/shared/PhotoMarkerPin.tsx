@@ -3,13 +3,13 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  LazyImage,
 } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
 import { Link, useLocation } from "react-router";
 
+import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { buildPhotoDetailSearch } from "~/lib/return-to";
 
@@ -85,11 +85,14 @@ export const PhotoMarkerPin = ({
 
             {/* Photo background preview */}
             <div className="absolute inset-0 overflow-hidden rounded-full">
-              <LazyImage
+              <ThumbnailImage
+                photoId={marker.photo.id}
                 src={marker.photo.thumbnailUrl || marker.photo.originalUrl}
                 alt={marker.photo.title || marker.photo.id}
                 thumbHash={marker.photo.thumbHash}
-                className="h-full w-full object-cover opacity-40"
+                containerClassName="h-full w-full opacity-40"
+                imageClassName="h-full w-full object-cover"
+                loadPolicy="in-view"
                 rootMargin="100px"
                 threshold={0.1}
               />
@@ -148,11 +151,14 @@ export const PhotoMarkerPin = ({
 
             {/* Photo header */}
             <div className="relative h-32 overflow-hidden">
-              <LazyImage
+              <ThumbnailImage
+                photoId={marker.photo.id}
                 src={marker.photo.thumbnailUrl || marker.photo.originalUrl}
                 alt={marker.photo.title || marker.photo.id}
                 thumbHash={marker.photo.thumbHash}
-                className="h-full w-full object-cover"
+                containerClassName="h-full w-full"
+                imageClassName="h-full w-full object-cover"
+                loadPolicy="in-view"
                 rootMargin="200px"
                 threshold={0.1}
               />

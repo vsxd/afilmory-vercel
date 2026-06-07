@@ -104,8 +104,10 @@ describe("command-palette-model", () => {
         photoId: "photo",
       },
       thumbnail: {
+        photoId: "photo",
         src: "/thumb.jpg",
         alt: "action.search.photo-thumbnail:Mountains",
+        thumbHash: null,
       },
     });
   });

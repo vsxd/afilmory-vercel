@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
+import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import {
   getViewerPhotos,
   getViewerSourceMode,
@@ -406,10 +407,14 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                   }
                 >
                   {cmd.thumbnail ? (
-                    <img
+                    <ThumbnailImage
+                      photoId={cmd.thumbnail.photoId}
                       src={cmd.thumbnail.src}
                       alt={cmd.thumbnail.alt}
-                      className="h-10 w-10 rounded-xl object-cover"
+                      thumbHash={cmd.thumbnail.thumbHash}
+                      containerClassName="h-10 w-10 rounded-xl"
+                      imageClassName="h-full w-full rounded-xl object-cover"
+                      fetchPriority="low"
                     />
                   ) : (
                     <i className={cmd.icon} />

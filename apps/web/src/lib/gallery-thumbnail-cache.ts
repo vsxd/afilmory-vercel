@@ -1,20 +1,25 @@
-const loadedGalleryThumbnails = new Set<string>();
+import {
+  getThumbnailLoadCacheKey,
+  hasLoadedThumbnail,
+  markThumbnailLoaded,
+  resetThumbnailLoadCache,
+} from "./thumbnail-load-cache";
 
 export function getGalleryThumbnailCacheKey(
   photoId: string,
   thumbnailUrl: string | null | undefined,
 ): string {
-  return thumbnailUrl || photoId;
+  return getThumbnailLoadCacheKey(photoId, thumbnailUrl);
 }
 
 export function hasLoadedGalleryThumbnail(cacheKey: string): boolean {
-  return loadedGalleryThumbnails.has(cacheKey);
+  return hasLoadedThumbnail(cacheKey);
 }
 
 export function markGalleryThumbnailLoaded(cacheKey: string): void {
-  loadedGalleryThumbnails.add(cacheKey);
+  markThumbnailLoaded(cacheKey);
 }
 
 export function resetGalleryThumbnailCache(): void {
-  loadedGalleryThumbnails.clear();
+  resetThumbnailLoadCache();
 }

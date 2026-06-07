@@ -1,6 +1,18 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  getThumbnailLoadCacheKey,
+  hasLoadedThumbnail,
+  resetThumbnailLoadCache,
+} from "~/lib/thumbnail-load-cache";
 
 import { ProgressiveImage } from "../ProgressiveImage";
 
@@ -126,6 +138,7 @@ describe("ProgressiveImage", () => {
   afterEach(() => {
     hoisted.canUseWebGL = false;
     hoisted.failWebGL = false;
+    resetThumbnailLoadCache();
     vi.restoreAllMocks();
     cleanup();
   });
@@ -173,6 +186,46 @@ describe("ProgressiveImage", () => {
     expect(screen.getByAltText("Loading detail thumbnail").className).toContain(
       "opacity-0",
     );
+  });
+
+  it("marks the detail thumbnail as loaded in the shared thumbnail cache", () => {
+    const thumbnailSrc = "https://example.com/photo-thumb.jpg";
+
+    render(
+      <ProgressiveImage
+        photoId="photo-1"
+        src="https://example.com/photo.jpg"
+        thumbnailSrc={thumbnailSrc}
+        thumbHash="mock-thumbhash"
+        alt="Caching detail thumbnail"
+        isCurrentImage={false}
+        shouldRenderHighRes={false}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    );
+
+    fireEvent.load(screen.getByAltText("Caching detail thumbnail"));
+
+    expect(
+      hasLoadedThumbnail(getThumbnailLoadCacheKey("photo-1", thumbnailSrc)),
+    ).toBe(true);
+  });
+
+  it("keeps the thumbhash fallback when no detail thumbnail is available", () => {
+    render(
+      <ProgressiveImage
+        photoId="photo-1"
+        src="https://example.com/photo.jpg"
+        thumbHash="fallback-thumbhash"
+        alt="No detail thumbnail"
+        isCurrentImage={false}
+        shouldRenderHighRes={false}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    );
+
+    expect(screen.getByTestId("photo-detail-thumbhash")).toBeTruthy();
+    expect(screen.queryByAltText("No detail thumbnail")).toBeNull();
   });
 
   it("renders a DOM high-resolution image when WebGL is unavailable", async () => {

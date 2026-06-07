@@ -96,6 +96,7 @@ export const PhotoViewerMediaCarousel = ({
                 }}
               >
                 <ProgressiveImage
+                  photoId={photo.id}
                   loadingIndicatorRef={loadingIndicatorRef}
                   isCurrentImage={isCurrentImage}
                   src={photo.originalUrl}

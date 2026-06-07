@@ -20,8 +20,10 @@ export interface Command {
   badge?: string | number;
   active?: boolean;
   thumbnail?: {
+    photoId: string;
     src: string;
     alt: string;
+    thumbHash?: string | null;
   };
 }
 
@@ -244,10 +246,12 @@ export function buildCommandIndex(input: {
           `${photo.exif?.Model || t("action.search.photo")}`,
         icon: "photo-thumbnail",
         thumbnail: {
+          photoId: photo.id,
           src: photo.thumbnailUrl,
           alt: t("action.search.photo-thumbnail", {
             title: photo.title || photo.id,
           }),
+          thumbHash: photo.thumbHash,
         },
         action: { type: "open-photo", photoId: photo.id },
         keywords: [

@@ -14,6 +14,7 @@ export interface LivePhotoVideoHandle {
 export const SHOW_SCALE_INDICATOR_DURATION = 1000;
 
 export interface ProgressiveImageProps {
+  photoId?: string;
   src: string;
   thumbnailSrc?: string;
   thumbHash?: string | null;

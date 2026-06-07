@@ -1,4 +1,3 @@
-import { Thumbhash } from "@afilmory/ui";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { m } from "motion/react";
@@ -14,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
+import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { useLivePhotoHandler } from "~/hooks/useLivePhotoHandler";
 import { useContextPhotos, useOpenPhotoViewer } from "~/hooks/usePhotoViewer";
 import {
@@ -24,14 +24,13 @@ import {
 } from "~/icons";
 import { isMobileDevice } from "~/lib/device-viewport";
 import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
-import {
-  getGalleryThumbnailCacheKey,
-  hasLoadedGalleryThumbnail,
-  markGalleryThumbnailLoaded,
-} from "~/lib/gallery-thumbnail-cache";
 import { getImageFormat } from "~/lib/image-utils";
 import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { flushStartupMetrics, markStartupOnce } from "~/lib/startup-metrics";
+import {
+  getThumbnailLoadCacheKey,
+  hasLoadedThumbnail,
+} from "~/lib/thumbnail-load-cache";
 import type { PhotoManifest } from "~/types/photo";
 
 export const MasonryPhotoItem = memo(
@@ -50,16 +49,15 @@ export const MasonryPhotoItem = memo(
     const { t } = useTranslation();
     const location = useLocation();
     const routeNavigate = useNavigate();
-    const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
 
     const imageRef = useRef<HTMLImageElement>(null);
-    const thumbnailCacheKey = getGalleryThumbnailCacheKey(
+    const thumbnailCacheKey = getThumbnailLoadCacheKey(
       data.id,
       data.thumbnailUrl,
     );
-    const hasLoadedThumbnailBefore =
-      hasLoadedGalleryThumbnail(thumbnailCacheKey);
+    const hasLoadedThumbnailBefore = hasLoadedThumbnail(thumbnailCacheKey);
+    const [imageLoaded, setImageLoaded] = useState(hasLoadedThumbnailBefore);
 
     const {
       videoRef,
@@ -73,16 +71,14 @@ export const MasonryPhotoItem = memo(
     } = useLivePhotoHandler({ data, imageLoaded });
 
     useEffect(() => {
-      setImageLoaded(false);
+      setImageLoaded(hasLoadedThumbnail(thumbnailCacheKey));
       setImageError(false);
     }, [thumbnailCacheKey]);
 
     const handleImageLoad = () => {
-      markGalleryThumbnailLoaded(thumbnailCacheKey);
       if (markStartupOnce("first-thumbnail-loaded", { photoId: data.id })) {
         flushStartupMetrics("first-thumbnail-loaded");
       }
-      setImageLoaded(true);
     };
 
     const handleImageError = () => {
@@ -207,22 +203,23 @@ export const MasonryPhotoItem = memo(
         onMouseLeave={handleMouseLeave}
       >
         {/* Blurhash 占位符 */}
-        {data.thumbHash && (
-          <Thumbhash thumbHash={data.thumbHash} className="absolute inset-0" />
-        )}
-
         {!imageError && (
-          <img
+          <ThumbnailImage
             ref={imageRef}
+            photoId={data.id}
             src={data.thumbnailUrl}
             alt={data.title}
+            thumbHash={data.thumbHash}
             loading="lazy"
             fetchPriority="low"
-            className={clsx(
-              "absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105",
+            containerClassName="absolute inset-0"
+            imageClassName={clsx(
+              "h-full w-full object-cover duration-300 group-hover:scale-105",
             )}
+            placeholderClassName="h-full w-full"
             onLoad={handleImageLoad}
             onError={handleImageError}
+            onLoadStateChange={setImageLoaded}
           />
         )}
 

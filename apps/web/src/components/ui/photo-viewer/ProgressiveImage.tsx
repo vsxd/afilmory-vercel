@@ -8,6 +8,11 @@ import { useMediaQuery } from "usehooks-ts";
 
 import { useShowContextMenu } from "~/atoms/context-menu";
 import { canUseWebGL } from "~/lib/feature";
+import {
+  getThumbnailLoadCacheKey,
+  hasLoadedThumbnail,
+  markThumbnailLoaded,
+} from "~/lib/thumbnail-load-cache";
 
 import { SlidingNumber } from "../number/SlidingNumber";
 import { PHOTO_VIEWER_FIT_SCALE } from "./animations/utils";
@@ -36,6 +41,7 @@ const WEBGL_DEBUG_ENABLED =
   import.meta.env.DEV && import.meta.env.VITE_AFILMORY_WEBGL_DEBUG === "true";
 
 export const ProgressiveImage = ({
+  photoId,
   src,
   thumbnailSrc,
   thumbHash,
@@ -93,6 +99,10 @@ export const ProgressiveImage = ({
   const fallbackSourceRef = useRef(src);
   const useDomFallbackRef = useRef(useDomFallback);
   useDomFallbackRef.current = useDomFallback;
+  const thumbnailCacheKey =
+    photoId && thumbnailSrc
+      ? getThumbnailLoadCacheKey(photoId, thumbnailSrc)
+      : null;
 
   // Hooks
   const imageLoaderManagerRef = useImageLoader(
@@ -127,12 +137,20 @@ export const ProgressiveImage = ({
     useWebGLLoadingState(loadingIndicatorRef);
 
   const handleThumbnailLoad = useCallback(() => {
+    if (thumbnailCacheKey) {
+      markThumbnailLoaded(thumbnailCacheKey);
+    }
     setState.setIsThumbnailLoaded(true);
-  }, [setState]);
+  }, [setState, thumbnailCacheKey]);
 
   useEffect(() => {
     if (!thumbnailSrc) {
       setState.setIsThumbnailLoaded(false);
+      return;
+    }
+
+    if (thumbnailCacheKey && hasLoadedThumbnail(thumbnailCacheKey)) {
+      setState.setIsThumbnailLoaded(true);
       return;
     }
 
@@ -141,8 +159,12 @@ export const ProgressiveImage = ({
       thumbnailElement?.complete && thumbnailElement.naturalWidth > 0,
     );
 
+    if (isThumbnailReady && thumbnailCacheKey) {
+      markThumbnailLoaded(thumbnailCacheKey);
+    }
+
     setState.setIsThumbnailLoaded(isThumbnailReady);
-  }, [thumbnailSrc, setState]);
+  }, [thumbnailCacheKey, thumbnailSrc, setState]);
 
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {

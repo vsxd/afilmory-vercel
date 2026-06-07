@@ -1,12 +1,9 @@
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-  LazyImage,
-} from "@afilmory/ui";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
+
+import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
 import type { ClusterMarkerProps } from "./types";
@@ -95,14 +92,17 @@ export const ClusterMarker = ({
                         className="absolute opacity-30"
                         style={position}
                       >
-                        <LazyImage
+                        <ThumbnailImage
+                          photoId={photoMarker.photo.id}
                           src={
                             photoMarker.photo.thumbnailUrl ||
                             photoMarker.photo.originalUrl
                           }
                           alt={photoMarker.photo.title || photoMarker.photo.id}
                           thumbHash={photoMarker.photo.thumbHash}
-                          className="h-full w-full object-cover"
+                          containerClassName="h-full w-full"
+                          imageClassName="h-full w-full object-cover"
+                          loadPolicy="in-view"
                           rootMargin="100px"
                           threshold={0.1}
                         />
