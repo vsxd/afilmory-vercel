@@ -11,8 +11,6 @@ import { useVisiblePhotosDateRange } from "~/hooks/useVisiblePhotosDateRange";
 import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-target";
 
 import { ActionGroup } from "./ActionGroup";
-import type { PanelType } from "./ActionPanel";
-import { ActionPanel } from "./ActionPanel";
 import type { MasonryItemType } from "./gallery-layout";
 import {
   calculateGalleryColumnWidth,
@@ -50,8 +48,6 @@ export const MasonryRoot = () => {
     hasAnimatedRef.current = true;
   }, []);
   const isMobile = useMobile();
-
-  const [activePanel, setActivePanel] = useState<PanelType | null>(null);
 
   // 监听容器宽度变化
   useEffect(() => {
@@ -187,16 +183,6 @@ export const MasonryRoot = () => {
           )}
         />
       </div>
-
-      <ActionPanel
-        open={!!activePanel}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActivePanel(null);
-          }
-        }}
-        type={activePanel}
-      />
     </>
   );
 };

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # 静态站点构建脚本
@@ -17,14 +17,18 @@ if [ -n "$CACHE_REPO_URL" ] && [ -n "$CACHE_REPO_TOKEN" ]; then
     echo "⚠️  远程仓库缓存恢复失败，将继续使用本地文件或从 S3 重建"
   fi
 else
-  MISSING_CACHE_CONFIG=()
+  MISSING_CACHE_CONFIG=""
   if [ -z "$CACHE_REPO_URL" ]; then
-    MISSING_CACHE_CONFIG+=("REPO_URL/BUILDER_REPO_URL")
+    MISSING_CACHE_CONFIG="REPO_URL/BUILDER_REPO_URL"
   fi
   if [ -z "$CACHE_REPO_TOKEN" ]; then
-    MISSING_CACHE_CONFIG+=("REPO_TOKEN/GIT_TOKEN")
+    if [ -n "$MISSING_CACHE_CONFIG" ]; then
+      MISSING_CACHE_CONFIG="$MISSING_CACHE_CONFIG, REPO_TOKEN/GIT_TOKEN"
+    else
+      MISSING_CACHE_CONFIG="REPO_TOKEN/GIT_TOKEN"
+    fi
   fi
-  echo "ℹ️  远程仓库缓存未启用，缺少: ${MISSING_CACHE_CONFIG[*]}"
+  echo "ℹ️  远程仓库缓存未启用，缺少: $MISSING_CACHE_CONFIG"
 fi
 
 # 如果没有 S3 凭据但仓库里已有 manifest，则允许静态预览构建继续

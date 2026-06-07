@@ -72,6 +72,7 @@ export class ClusterPool<T> extends EventEmitter {
   private results: T[] = [];
   private completedTasks = 0;
   private isShuttingDown = false;
+  private hasFailed = false;
   private readyWorkers = new Set<number>();
   private workerTaskCounts = new Map<number, number>(); // 追踪每个 worker 当前正在处理的任务数
   private initializedWorkers = new Set<number>(); // 追踪已初始化的 worker
@@ -100,21 +101,51 @@ export class ClusterPool<T> extends EventEmitter {
 
     this.taskQueue = createInitialTaskQueue(this.totalTasks);
 
-    // 启动 worker 进程
-    await this.startWorkers();
-
-    // 等待所有任务完成
     return new Promise((resolve, reject) => {
-      this.on("allTasksCompleted", () => {
+      let settled = false;
+      const cleanupListeners = () => {
+        this.removeListener("allTasksCompleted", handleAllTasksCompleted);
+        this.removeListener("error", handleError);
+      };
+      const settleWithError = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
+        void this.shutdown()
+          .catch((shutdownError: unknown) => {
+            this.logger.main.warn(
+              `关闭进程池时发生错误: ${
+                shutdownError instanceof Error
+                  ? shutdownError.message
+                  : String(shutdownError)
+              }`,
+            );
+          })
+          .finally(() => {
+            reject(error);
+          });
+      };
+      const handleAllTasksCompleted = () => {
+        if (settled) return;
+        settled = true;
+        cleanupListeners();
         this.logger.main.success(`所有任务完成，开始关闭进程池`);
         this.shutdown()
           .then(() => {
             resolve(this.results);
           })
           .catch(reject);
-      });
+      };
+      const handleError = (error: Error) => {
+        settleWithError(error);
+      };
 
-      this.on("error", reject);
+      this.once("allTasksCompleted", handleAllTasksCompleted);
+      this.once("error", handleError);
+
+      void this.startWorkers().catch((error: unknown) => {
+        this.fail(this.normalizeTaskError("cluster-startup", error));
+      });
     });
   }
 
@@ -205,7 +236,7 @@ export class ClusterPool<T> extends EventEmitter {
       });
 
       worker.on("exit", (code, signal) => {
-        if (!this.isShuttingDown) {
+        if (!this.isShuttingDown && !this.hasFailed) {
           workerLogger.error(
             `Worker ${workerId} 意外退出 (code: ${code}, signal: ${signal})`,
           );
@@ -292,7 +323,8 @@ export class ClusterPool<T> extends EventEmitter {
   }
 
   private assignBatchTasksToWorker(workerId: number): void {
-    if (this.taskQueue.length === 0) return;
+    if (this.hasFailed || this.isShuttingDown || this.taskQueue.length === 0)
+      return;
 
     const worker = this.workers.get(workerId);
     const stats = this.workerStats.get(workerId);
@@ -401,11 +433,16 @@ export class ClusterPool<T> extends EventEmitter {
           result,
         });
       } else if (taskResult.type === "error") {
+        const taskError = this.normalizeTaskError(
+          taskResult.taskId,
+          taskResult.error,
+        );
         workerLogger.error(
           `任务执行失败：${taskResult.taskId}`,
           taskResult.error,
         );
-        pendingTask.reject(new Error(taskResult.error));
+        this.fail(taskError);
+        return;
       }
     }
 
@@ -475,8 +512,10 @@ export class ClusterPool<T> extends EventEmitter {
         return;
       }
     } else if (message.type === "error") {
+      const taskError = this.normalizeTaskError(message.taskId, message.error);
       workerLogger.error(`任务执行失败：${message.taskId}`, message.error);
-      pendingTask.reject(new Error(message.error));
+      this.fail(taskError);
+      return;
     }
 
     // 为该 worker 分配下一批任务
@@ -489,7 +528,33 @@ export class ClusterPool<T> extends EventEmitter {
       stats.isIdle = true;
     }
 
-    this.emit("error", error);
+    this.fail(error);
+  }
+
+  private normalizeTaskError(taskId: string, error: unknown): Error {
+    if (error instanceof Error) return error;
+    const message =
+      typeof error === "string" && error.length > 0
+        ? error
+        : "Unknown worker task error";
+    return new Error(`Worker task ${taskId} failed: ${message}`);
+  }
+
+  private fail(error: Error): void {
+    if (this.hasFailed || this.isShuttingDown) return;
+
+    this.hasFailed = true;
+    this.taskQueue = [];
+    this.pendingTasks.clear();
+    this.workerPendingTasks.clear();
+    this.workerTaskCounts.clear();
+
+    if (this.listenerCount("error") > 0) {
+      this.emit("error", error);
+      return;
+    }
+
+    this.logger.main.error("进程池发生错误但没有活跃的执行监听器", error);
   }
 
   private async shutdown(): Promise<void> {
