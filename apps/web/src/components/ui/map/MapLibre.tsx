@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { MapMouseEvent, MapRef } from "react-map-gl/maplibre";
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
@@ -15,6 +16,10 @@ import type {
   PhotoMarker,
 } from "~/types/map";
 
+import {
+  createClusterZoomViewState,
+  createFallbackBoundsViewState,
+} from "./map-view-state";
 import {
   ClusterMarker,
   clusterMarkers,
@@ -45,13 +50,13 @@ export interface PureMaplibreProps {
   geoJsonData?: GeoJSON.FeatureCollection;
   onMarkerClick?: (marker: PhotoMarker) => void;
   onRegionClick?: (region: GeographicRegion) => void;
-  onGeoJsonClick?: (event: any) => void;
+  onGeoJsonClick?: (event: MapMouseEvent) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
   onZoomChange?: (zoom: number) => void;
   onClusterClick?: (longitude: number, latitude: number) => void;
   className?: string;
   style?: React.CSSProperties;
-  mapRef?: React.RefObject<any>;
+  mapRef?: React.RefObject<MapRef | null>;
   autoFitBounds?: boolean;
   syncViewStateOnInitialViewStateChange?: boolean;
 }
@@ -83,8 +88,7 @@ export const Maplibre = ({
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasInitialFitCompleted, setHasInitialFitCompleted] = useState(false);
   const fitMarkers = useMemo(
-    () =>
-      displayMode === "regions" ? createRegionMarkers(regions) : markers,
+    () => (displayMode === "regions" ? createRegionMarkers(regions) : markers),
     [displayMode, regions, markers],
   );
 
@@ -156,40 +160,27 @@ export const Maplibre = ({
         return;
       }
 
-      const nextZoom = Math.min(currentZoom + 2, 18);
       const map = mapRef?.current?.getMap?.();
+      const nextViewState = createClusterZoomViewState({
+        currentViewState: viewState,
+        longitude,
+        latitude,
+      });
 
       if (map) {
         map.flyTo({
           center: [longitude, latitude],
-          zoom: nextZoom,
+          zoom: nextViewState.zoom,
           duration: 500,
         });
         return;
       }
 
-      setViewState((currentViewState) => ({
-        ...currentViewState,
-        longitude,
-        latitude,
-        zoom: nextZoom,
-      }));
-      setCurrentZoom(nextZoom);
+      setViewState(nextViewState);
+      setCurrentZoom(nextViewState.zoom);
     },
-    [currentZoom, mapRef, onClusterClick],
+    [mapRef, onClusterClick, viewState],
   );
-
-  // 计算合适的缩放级别
-  const calculateZoomLevel = useCallback((latDiff: number, lngDiff: number) => {
-    const maxDiff = Math.max(latDiff, lngDiff);
-
-    if (maxDiff < 0.001) return 16; // 非常接近的点
-    if (maxDiff < 0.01) return 14; // 很接近的点
-    if (maxDiff < 0.1) return 11; // 附近的点
-    if (maxDiff < 1) return 8; // 同一城市
-    if (maxDiff < 10) return 5; // 同一国家/地区
-    return 2; // 跨洲
-  }, []);
 
   // 自动适配到包含所有照片的区域 - 只在初次加载时执行
   const fitMapToBounds = useCallback(() => {
@@ -266,28 +257,12 @@ export const Maplibre = ({
     ) {
       if (!bounds) return;
 
-      const latDiff = bounds.maxLat - bounds.minLat;
-      const lngDiff = bounds.longitudeSpan;
-      // 为备用方案也增加一些缓冲，降低一级缩放
-      const zoom = Math.max(calculateZoomLevel(latDiff, lngDiff) - 1, 2);
-
-      const newViewState = {
-        longitude: bounds.centerLng,
-        latitude: bounds.centerLat,
-        zoom,
-      };
+      const newViewState = createFallbackBoundsViewState(bounds);
 
       setViewState(newViewState);
-      setCurrentZoom(zoom);
+      setCurrentZoom(newViewState.zoom);
     }
-  }, [
-    fitMarkers,
-    autoFitBounds,
-    isMapLoaded,
-    mapRef,
-    calculateZoomLevel,
-    hasInitialFitCompleted,
-  ]);
+  }, [fitMarkers, autoFitBounds, isMapLoaded, mapRef, hasInitialFitCompleted]);
 
   // 当地图加载完成时触发适配
   const handleMapLoad = useCallback(() => {

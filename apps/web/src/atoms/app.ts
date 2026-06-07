@@ -13,7 +13,6 @@ export interface GallerySetting {
   selectedGeoRegions: string[];
   selectedGeoCities: string[];
   selectedGeoDistricts: string[];
-  tagFilterMode: "union" | "intersection";
   columns: number | "auto";
 }
 
@@ -27,7 +26,6 @@ export const gallerySettingAtom = atom<GallerySetting>({
   selectedGeoRegions: [],
   selectedGeoCities: [],
   selectedGeoDistricts: [],
-  tagFilterMode: "union",
   columns: "auto",
 });
 

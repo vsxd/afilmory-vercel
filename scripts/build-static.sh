@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # 静态站点构建脚本
@@ -8,6 +8,28 @@ echo "🚀 开始构建静态站点..."
 
 MANIFEST_PATH="generated/photos-manifest.json"
 BUILD_COMMAND="pnpm build"
+CACHE_REPO_URL="${REPO_URL:-${BUILDER_REPO_URL:-}}"
+CACHE_REPO_TOKEN="${REPO_TOKEN:-${GIT_TOKEN:-}}"
+
+if [ -n "$CACHE_REPO_URL" ] && [ -n "$CACHE_REPO_TOKEN" ]; then
+  echo "♻️  尝试从远程仓库缓存恢复 manifest 和缩略图..."
+  if ! pnpm exec tsx scripts/artifact-cache.ts restore; then
+    echo "⚠️  远程仓库缓存恢复失败，将继续使用本地文件或从 S3 重建"
+  fi
+else
+  MISSING_CACHE_CONFIG=""
+  if [ -z "$CACHE_REPO_URL" ]; then
+    MISSING_CACHE_CONFIG="REPO_URL/BUILDER_REPO_URL"
+  fi
+  if [ -z "$CACHE_REPO_TOKEN" ]; then
+    if [ -n "$MISSING_CACHE_CONFIG" ]; then
+      MISSING_CACHE_CONFIG="$MISSING_CACHE_CONFIG, REPO_TOKEN/GIT_TOKEN"
+    else
+      MISSING_CACHE_CONFIG="REPO_TOKEN/GIT_TOKEN"
+    fi
+  fi
+  echo "ℹ️  远程仓库缓存未启用，缺少: $MISSING_CACHE_CONFIG"
+fi
 
 # 如果没有 S3 凭据但仓库里已有 manifest，则允许静态预览构建继续
 if [ -z "$S3_BUCKET_NAME" ] || [ -z "$S3_ACCESS_KEY_ID" ] || [ -z "$S3_SECRET_ACCESS_KEY" ]; then
@@ -36,6 +58,15 @@ echo "📦 构建中..."
 if ! $BUILD_COMMAND; then
   echo "❌ 构建失败"
   exit 1
+fi
+
+if [ -n "$CACHE_REPO_URL" ] && [ -n "$CACHE_REPO_TOKEN" ]; then
+  echo "♻️  同步最新 manifest 和缩略图到远程仓库缓存..."
+  if ! pnpm exec tsx scripts/artifact-cache.ts save; then
+    echo "⚠️  远程仓库缓存同步失败，静态站点产物已生成但下次构建可能无法复用缓存"
+  fi
+else
+  echo "ℹ️  远程仓库缓存未启用，跳过同步 manifest 和缩略图"
 fi
 
 # 验证构建输出

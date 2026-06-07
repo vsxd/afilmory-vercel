@@ -1,3 +1,4 @@
+import { buildGeoRegionId } from "@afilmory/schema";
 import {
   GlassButton,
   HoverCard,
@@ -11,7 +12,7 @@ import { Marker } from "react-map-gl/maplibre";
 import { useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
-import { buildGeoRegionId, getRegionDisplayName } from "~/lib/geo-regions";
+import { getRegionDisplayName } from "~/lib/geo-regions";
 import type { GeographicRegion } from "~/types/map";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";

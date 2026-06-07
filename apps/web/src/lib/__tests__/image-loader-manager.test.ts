@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  clearRegularImageCache,
+  createRegularImageCache,
   ImageLoaderManager,
 } from "../image-loader-manager";
 
@@ -66,17 +66,14 @@ describe("ImageLoaderManager", () => {
     vi.useFakeTimers();
     MockXMLHttpRequest.instances = [];
 
-    globalThis.XMLHttpRequest =
-      MockXMLHttpRequest as unknown as typeof XMLHttpRequest;
+    vi.stubGlobal("XMLHttpRequest", MockXMLHttpRequest);
     URL.createObjectURL = vi.fn(() => "blob:mock-image");
     URL.revokeObjectURL = vi.fn();
-    clearRegularImageCache();
   });
 
   afterEach(() => {
-    clearRegularImageCache();
     vi.useRealTimers();
-    globalThis.XMLHttpRequest = originalXMLHttpRequest;
+    vi.stubGlobal("XMLHttpRequest", originalXMLHttpRequest);
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
     vi.restoreAllMocks();
@@ -123,7 +120,8 @@ describe("ImageLoaderManager", () => {
   });
 
   it("returns cached regular images before starting another network request", async () => {
-    const firstManager = new ImageLoaderManager();
+    const cache = createRegularImageCache();
+    const firstManager = new ImageLoaderManager(cache);
     const firstResultPromise = firstManager.loadImage(
       "https://img.misfork.com/afilmory/A7C02615.jpg",
     );
@@ -135,7 +133,7 @@ describe("ImageLoaderManager", () => {
       blob: MockXMLHttpRequest.instances[0].response,
     });
 
-    const secondManager = new ImageLoaderManager();
+    const secondManager = new ImageLoaderManager(cache);
     const secondResult = await secondManager.loadImage(
       "https://img.misfork.com/afilmory/A7C02615.jpg",
     );

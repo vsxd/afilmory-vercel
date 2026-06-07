@@ -13,11 +13,11 @@ function manualClone<T>(value: T, seen = new WeakMap<object, unknown>()): T {
   }
 
   if (value instanceof Date) {
-    return new Date(value) as unknown as T;
+    return new Date(value) as T;
   }
 
   if (value instanceof RegExp) {
-    return new RegExp(value.source, value.flags) as unknown as T;
+    return new RegExp(value.source, value.flags) as T;
   }
 
   if (value instanceof Map) {
@@ -26,7 +26,7 @@ function manualClone<T>(value: T, seen = new WeakMap<object, unknown>()): T {
     for (const [key, val] of value.entries()) {
       result.set(manualClone(key, seen), manualClone(val, seen));
     }
-    return result as unknown as T;
+    return result as T;
   }
 
   if (value instanceof Set) {
@@ -35,7 +35,7 @@ function manualClone<T>(value: T, seen = new WeakMap<object, unknown>()): T {
     for (const item of value.values()) {
       result.add(manualClone(item, seen));
     }
-    return result as unknown as T;
+    return result as T;
   }
 
   if (seen.has(value as object)) {
@@ -48,7 +48,7 @@ function manualClone<T>(value: T, seen = new WeakMap<object, unknown>()): T {
     for (const item of value) {
       result.push(manualClone(item, seen));
     }
-    return result as unknown as T;
+    return result as T;
   }
 
   const proto = Object.getPrototypeOf(value);

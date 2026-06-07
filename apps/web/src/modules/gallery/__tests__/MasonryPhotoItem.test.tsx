@@ -17,21 +17,28 @@ let gallerySetting = {
   selectedGeoRegions: [],
   selectedGeoCities: [],
   selectedGeoDistricts: [],
-  tagFilterMode: "union" as const,
 };
 
 const photo = {
-  id: "photo-1",
-  title: "A7C01202",
-  description: "",
-  thumbnailUrl: "/thumb.jpg",
-  originalUrl: "/original.jpg",
-  width: 6000,
-  height: 4000,
   aspectRatio: 1.5,
+  dateTaken: "2026-06-06T00:00:00.000Z",
+  description: "",
+  etag: "etag-photo-1",
+  exif: null,
+  height: 4000,
+  id: "photo-1",
+  lastModified: "2026-06-06T00:00:00.000Z",
+  location: null,
+  originalUrl: "/original.jpg",
+  s3Key: "photo-1.jpg",
+  size: 1024,
   tags: [],
-  exif: {},
-} as unknown as PhotoManifest;
+  thumbnailUrl: "/thumb.jpg",
+  thumbHash: null,
+  title: "A7C01202",
+  toneAnalysis: null,
+  width: 6000,
+} satisfies PhotoManifest;
 
 vi.mock("@afilmory/ui", () => ({
   Thumbhash: ({ className }: { className?: string }) => (
@@ -122,7 +129,6 @@ describe("MasonryPhotoItem", () => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     };
   });
 

@@ -9,126 +9,23 @@ import { useMobile } from "~/hooks/useMobile";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { useVisiblePhotosDateRange } from "~/hooks/useVisiblePhotosDateRange";
 import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-target";
-import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
-import type { PanelType } from "./ActionPanel";
-import { ActionPanel } from "./ActionPanel";
-import type { MasonryLayoutMetrics, MasonryRef } from "./Masonic";
+import type { MasonryItemType } from "./gallery-layout";
+import {
+  calculateGalleryColumnWidth,
+  createMasonryItems,
+  estimatePhotoVirtualRect,
+  getMasonryAnimationDelay,
+  getMasonryItemKey,
+  getPhotoSetKey,
+  MasonryHeaderItem,
+  shouldAnimateMasonryItem,
+} from "./gallery-layout";
+import type { MasonryRef } from "./Masonic";
 import { Masonry } from "./Masonic";
 import { MasonryHeaderMasonryItem } from "./MasonryHeaderMasonryItem";
 import { MasonryPhotoItem } from "./MasonryPhotoItem";
-
-class MasonryHeaderItem {
-  static default = new MasonryHeaderItem();
-}
-
-type MasonryItemType = PhotoManifest | MasonryHeaderItem;
-
-const FIRST_SCREEN_ITEMS_COUNT = 30;
-
-const COLUMN_WIDTH_CONFIG = {
-  auto: {
-    mobile: 150,
-    desktop: 250,
-    maxColumns: 8,
-  },
-  min: {
-    mobile: 120,
-    desktop: 200,
-  },
-  max: {
-    mobile: 250,
-    desktop: 500,
-  },
-};
-
-const getPhotoSetKey = (photos: PhotoManifest[]) => {
-  let hash = 2166136261;
-
-  for (const photo of photos) {
-    for (const char of photo.id) {
-      hash ^= char.codePointAt(0) ?? 0;
-      hash = Math.imul(hash, 16777619);
-    }
-    hash ^= 31;
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return `${photos.length}:${hash >>> 0}:${photos[0]?.id ?? ""}:${photos.at(-1)?.id ?? ""}`;
-};
-
-const getShortestColumnIndex = (columnHeights: number[]) => {
-  let shortestIndex = 0;
-  let shortestHeight = columnHeights[0] ?? 0;
-
-  for (let index = 1; index < columnHeights.length; index += 1) {
-    const height = columnHeights[index] ?? 0;
-    if (height < shortestHeight) {
-      shortestIndex = index;
-      shortestHeight = height;
-    }
-  }
-
-  return shortestIndex;
-};
-
-const estimatePhotoVirtualRect = ({
-  headerHeight,
-  isMobile,
-  metrics,
-  photoIndex,
-  photos,
-}: {
-  headerHeight: number;
-  isMobile: boolean;
-  metrics: MasonryLayoutMetrics;
-  photoIndex: number;
-  photos: PhotoManifest[];
-}) => {
-  const { columnCount, columnGutter, columnWidth, containerRect, rowGutter } =
-    metrics;
-  if (columnCount <= 0 || columnWidth <= 0) {
-    return null;
-  }
-
-  const columnHeights = Array.from({ length: columnCount }, () => 0);
-  if (!isMobile && columnHeights.length > 0 && headerHeight > 0) {
-    columnHeights[0] = headerHeight + rowGutter;
-  }
-
-  for (let index = 0; index <= photoIndex; index += 1) {
-    const photo = photos[index];
-    if (!photo) {
-      return null;
-    }
-
-    const rawAspectRatio =
-      photo.aspectRatio || (photo.height ? photo.width / photo.height : 1);
-    const aspectRatio =
-      Number.isFinite(rawAspectRatio) && rawAspectRatio > 0
-        ? rawAspectRatio
-        : 1;
-    const height = columnWidth / aspectRatio;
-    const column = getShortestColumnIndex(columnHeights);
-    const left = column * (columnWidth + columnGutter);
-    const top = columnHeights[column] ?? 0;
-
-    if (index === photoIndex) {
-      return {
-        left: containerRect.left + left,
-        top: containerRect.top + top,
-        width: columnWidth,
-        height,
-        borderRadius: 0,
-      };
-    }
-
-    columnHeights[column] = top + height + rowGutter;
-  }
-
-  return null;
-};
 
 export const MasonryRoot = () => {
   const { columns } = useAtomValue(gallerySettingAtom);
@@ -152,8 +49,6 @@ export const MasonryRoot = () => {
   }, []);
   const isMobile = useMobile();
 
-  const [activePanel, setActivePanel] = useState<PanelType | null>(null);
-
   // 监听容器宽度变化
   useEffect(() => {
     const updateContainerWidth = () => {
@@ -168,38 +63,15 @@ export const MasonryRoot = () => {
     };
   }, []);
 
-  // 动态计算列宽
-  const columnWidth = useMemo(() => {
-    const { auto, min, max } = COLUMN_WIDTH_CONFIG;
-    const gutter = 4; // 列间距
-    const availableWidth = containerWidth - (isMobile ? 8 : 32); // 移动端和桌面端的 padding 不同
-
-    if (columns === "auto") {
-      const autoWidth = isMobile ? auto.mobile : auto.desktop;
-      if (!isMobile) {
-        const { maxColumns } = auto;
-        // 当屏幕宽度超过一定阈值时，通过计算动态列宽来限制最大列数
-        const colCount = Math.floor(
-          (availableWidth + gutter) / (autoWidth + gutter),
-        );
-
-        if (colCount > maxColumns) {
-          return (availableWidth - (maxColumns - 1) * gutter) / maxColumns;
-        }
-      }
-
-      return autoWidth;
-    }
-
-    // 自定义列数模式：根据容器宽度和列数计算列宽
-    const calculatedWidth = (availableWidth - (columns - 1) * gutter) / columns;
-
-    // 根据设备类型设置最小和最大列宽
-    const minWidth = isMobile ? min.mobile : min.desktop;
-    const maxWidth = isMobile ? max.mobile : max.desktop;
-
-    return Math.max(Math.min(calculatedWidth, maxWidth), minWidth);
-  }, [isMobile, columns, containerWidth]);
+  const columnWidth = useMemo(
+    () =>
+      calculateGalleryColumnWidth({
+        columns,
+        containerWidth,
+        isMobile,
+      }),
+    [columns, containerWidth, isMobile],
+  );
 
   // 监听滚动，控制浮动组件的显示
   useEffect(() => {
@@ -287,7 +159,7 @@ export const MasonryRoot = () => {
           key={`${isMobile ? "mobile" : "desktop"}:${photosKey}`}
           ref={masonryRef}
           items={useMemo(
-            () => (isMobile ? photos : [MasonryHeaderItem.default, ...photos]),
+            () => createMasonryItems(photos, isMobile),
             [photos, isMobile],
           )}
           render={useCallback(
@@ -305,24 +177,12 @@ export const MasonryRoot = () => {
           columnGutter={4}
           rowGutter={4}
           itemHeightEstimate={400}
-          itemKey={useCallback((data: MasonryItemType, _index: number) => {
-            if (data instanceof MasonryHeaderItem) {
-              return "header";
-            }
-            return (data as PhotoManifest).id;
-          }, [])}
+          itemKey={useCallback(
+            (data: MasonryItemType) => getMasonryItemKey(data),
+            [],
+          )}
         />
       </div>
-
-      <ActionPanel
-        open={!!activePanel}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActivePanel(null);
-          }
-        }}
-        type={activePanel}
-      />
     </>
   );
 };
@@ -342,23 +202,13 @@ export const MasonryItem = memo(
     hasAnimated: boolean;
     onAnimationComplete: () => void;
   }) => {
-    // 为每个 item 生成唯一的 key 用于追踪
-    const itemKey = useMemo(() => {
-      if (data instanceof MasonryHeaderItem) {
-        return "header";
-      }
-      return (data as PhotoManifest).id;
-    }, [data]);
-
-    // 只对第一屏的 items 做动画，且只在首次加载时
-    const shouldAnimate = !hasAnimated && index < FIRST_SCREEN_ITEMS_COUNT;
-
-    // 计算动画延迟
-    const delay = shouldAnimate
-      ? data instanceof MasonryHeaderItem
-        ? 0
-        : Math.min(index * 0.05, 0.3)
-      : 0;
+    const itemKey = useMemo(() => getMasonryItemKey(data), [data]);
+    const shouldAnimate = shouldAnimateMasonryItem({ hasAnimated, index });
+    const delay = getMasonryAnimationDelay({
+      data,
+      index,
+      shouldAnimate,
+    });
 
     // Framer Motion 动画变体
     const itemVariants = useMemo(
@@ -394,11 +244,7 @@ export const MasonryItem = memo(
           animate="visible"
           onAnimationComplete={shouldAnimate ? onAnimationComplete : undefined}
         >
-          <MasonryPhotoItem
-            data={data as PhotoManifest}
-            width={width}
-            index={index}
-          />
+          <MasonryPhotoItem data={data} width={width} index={index} />
         </m.div>
       );
     }

@@ -1,4 +1,4 @@
-import { createContext, use, useMemo } from "react";
+import { createContext, createElement, use, useMemo } from "react";
 
 import type { ModalComponent, ModalContentConfig, ModalItem } from "./types";
 
@@ -9,15 +9,23 @@ export class ModalManager {
   private listeners = new Set<ModalListener>();
   private closeRegistry = new Map<string, () => void>();
 
-  present<P = unknown>(
+  present<P extends object = Record<string, never>>(
     Component: ModalComponent<P>,
     props?: P,
     modalContent?: ModalContentConfig,
   ): string {
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const componentProps = props ?? ({} as P);
     this.items = [
       ...this.items,
-      { id, component: Component as ModalComponent<any>, props, modalContent },
+      {
+        id,
+        render: (modalProps) =>
+          createElement(Component, { ...componentProps, ...modalProps }),
+        contentProps: Component.contentProps,
+        contentClassName: Component.contentClassName,
+        modalContent,
+      },
     ];
     this.emit();
     return id;
@@ -69,7 +77,9 @@ export const ModalManagerContext = createContext<ModalManager | null>(null);
 export function useModalManager(): ModalManager {
   const manager = use(ModalManagerContext);
   if (!manager) {
-    throw new Error("ModalManager is not initialized. Render ModalProvider first.");
+    throw new Error(
+      "ModalManager is not initialized. Render ModalProvider first.",
+    );
   }
   return manager;
 }

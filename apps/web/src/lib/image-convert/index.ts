@@ -6,7 +6,7 @@ import { getI18n } from "~/i18n";
 import { debugLog } from "~/lib/debug-log";
 import { detectFileTypeFromBlob } from "~/lib/file-type";
 
-import type { LoadingCallbacks } from "../image-loader-manager";
+import type { LoadingCallbacks } from "../image-loading-types";
 import type { PipelineOptions } from "./pipeline";
 import { ImageConversionPipeline } from "./pipeline";
 import { HeicConverterStrategy } from "./strategies/heic";

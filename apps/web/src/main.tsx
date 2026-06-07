@@ -76,9 +76,9 @@ async function bootstrap() {
     const [manifest] = await Promise.all(startupTasks);
     markStartup("manifest-ready", {
       photos: Array.isArray(
-        (manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).data,
+        (manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).photos,
       )
-        ? (manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).data
+        ? (manifest as Awaited<ReturnType<typeof loadManifestRuntime>>).photos
             .length
         : undefined,
     });

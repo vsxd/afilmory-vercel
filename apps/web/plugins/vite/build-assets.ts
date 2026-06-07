@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
+import { assertManifest } from "@afilmory/schema";
 import type { Plugin } from "vite";
 
 import { generateOGImage } from "../../../../scripts/generate-og-image.js";
@@ -74,12 +75,12 @@ export function buildAssetsPlugin(
     },
     generateBundle() {
       try {
-        const photosData: PhotoManifestItem[] = JSON.parse(
-          readFileSync(MANIFEST_PATH, "utf-8"),
-        ).data;
+        const manifest = assertManifest(
+          JSON.parse(readFileSync(MANIFEST_PATH, "utf-8")),
+        );
 
         // Sort photos by date taken (newest first)
-        const sortedPhotos = photosData.sort(
+        const sortedPhotos = [...manifest.photos].sort(
           (a, b) =>
             new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
         );

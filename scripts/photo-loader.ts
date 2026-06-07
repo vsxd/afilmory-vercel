@@ -1,42 +1,44 @@
 /* eslint-disable no-console */
 
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import type { PhotoManifestItem } from '@afilmory/data'
+import type { PhotoManifestItem } from "@afilmory/schema";
+import { assertManifest } from "@afilmory/schema";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const monorepoRoot = path.resolve(__dirname, '..')
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const monorepoRoot = path.resolve(__dirname, "..");
+const manifestPath = path.join(
+  monorepoRoot,
+  "generated",
+  "photos-manifest.json",
+);
 
 class BuildTimePhotoLoader {
-  private photos: PhotoManifestItem[] = []
-  private photoMap: Record<string, PhotoManifestItem> = {}
+  private photoMap: Map<string, PhotoManifestItem> | null = null;
+  private photos: PhotoManifestItem[] | null = null;
 
-  constructor() {
-    try {
-      const manifestPath = path.join(monorepoRoot, 'generated', 'photos-manifest.json')
-      const manifestContent = readFileSync(manifestPath, 'utf-8')
-      this.photos = JSON.parse(manifestContent).data as PhotoManifestItem[]
+  private loadPhotos(): PhotoManifestItem[] {
+    if (this.photos) return this.photos;
 
-      this.photos.forEach((photo) => {
-        this.photoMap[photo.id] = photo
-      })
+    const manifestContent = readFileSync(manifestPath, "utf-8");
+    const manifest = assertManifest(JSON.parse(manifestContent));
+    this.photos = manifest.photos;
+    this.photoMap = new Map(this.photos.map((photo) => [photo.id, photo]));
 
-      console.info(`📚 Loaded ${this.photos.length} photos from manifest`)
-    } catch (error) {
-      console.error('❌ Failed to load photos manifest:', error)
-      this.photos = []
-    }
+    console.info(`📚 Loaded ${this.photos.length} photos from manifest`);
+    return this.photos;
   }
 
   getPhotos() {
-    return this.photos
+    return this.loadPhotos();
   }
 
   getPhoto(id: string) {
-    return this.photoMap[id]
+    this.loadPhotos();
+    return this.photoMap?.get(id);
   }
 }
 
-export const buildTimePhotoLoader = new BuildTimePhotoLoader()
+export const buildTimePhotoLoader = new BuildTimePhotoLoader();

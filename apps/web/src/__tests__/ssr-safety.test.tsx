@@ -33,7 +33,6 @@ vi.mock("jotai", async (importOriginal) => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     }),
     useSetAtom: () => vi.fn(),
   };

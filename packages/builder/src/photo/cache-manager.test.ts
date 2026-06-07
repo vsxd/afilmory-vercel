@@ -39,10 +39,10 @@ describe("shouldProcessPhoto", () => {
       "photo",
       createExistingPhoto(),
       {
-        Key: "photo.jpg",
-        LastModified: new Date("2024-01-01T00:00:00.000Z"),
-        Size: 2,
-        ETag: "old",
+        key: "photo.jpg",
+        lastModified: new Date("2024-01-01T00:00:00.000Z"),
+        size: 2,
+        etag: "old",
       },
       {
         isForceMode: false,
@@ -59,10 +59,10 @@ describe("shouldProcessPhoto", () => {
       "photo",
       createExistingPhoto(),
       {
-        Key: "photo.jpg",
-        LastModified: new Date("2024-01-01T00:00:00.000Z"),
-        Size: 1,
-        ETag: "new",
+        key: "photo.jpg",
+        lastModified: new Date("2024-01-01T00:00:00.000Z"),
+        size: 1,
+        etag: "new",
       },
       {
         isForceMode: false,

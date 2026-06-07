@@ -24,6 +24,59 @@ const rootIgnores = globalIgnores([
   "packages/webgl-viewer/src/shaders.js",
 ]);
 
+const restrictedImports = {
+  paths: [
+    {
+      name: "zustand",
+      message: "UI state uses Jotai in this app.",
+    },
+    {
+      name: "zustand/shallow",
+      message: "Use a local equality helper with Jotai selectors.",
+    },
+    {
+      name: "@afilmory/data",
+      message: "Use @afilmory/schema or @afilmory/media.",
+    },
+    {
+      name: "~/data-runtime/photo-loader",
+      message:
+        "Use AppRuntime PhotoRepository instead of a module singleton.",
+    },
+    {
+      name: "~/lib/jotai",
+      importNames: ["jotaiStore", "createAtomAccessor"],
+      message: "Use the Provider-scoped Jotai store from AppRuntime.",
+    },
+    {
+      name: "../output-paths.js",
+      importNames: ["setBuilderOutputSettings", "getBuilderOutputSettings"],
+      message:
+        "Use runWithBuilderOutputSettings/getScopedBuilderOutputSettings.",
+    },
+  ],
+  patterns: [
+    {
+      group: ["zustand/*", "@afilmory/data/*"],
+      message: "UI state uses Jotai in this app.",
+    },
+  ],
+};
+
+/** @type {import("eslint").Linter.Config} */
+const i18nJsonConfig = {
+  files: ["locales/**/*.json"],
+  plugins: {
+    "recursive-sort": recursiveSort,
+    "check-i18n-json": checkI18nJson,
+  },
+  rules: {
+    "recursive-sort/recursive-sort": "error",
+    "check-i18n-json/valid-i18n-keys": "error",
+    "check-i18n-json/no-extra-keys": "error",
+  },
+};
+
 const hyobanConfig = await defineConfig(
   {
     formatting: false,
@@ -53,6 +106,15 @@ const hyobanConfig = await defineConfig(
     rules: {
       "unicorn/no-abusive-eslint-disable": 0,
       "@typescript-eslint/triple-slash-reference": 0,
+      "@typescript-eslint/ban-ts-comment": [
+        "error",
+        {
+          "ts-check": false,
+          "ts-expect-error": true,
+          "ts-ignore": true,
+          "ts-nocheck": true,
+        },
+      ],
       "unicorn/prefer-math-trunc": "off",
       "unicorn/no-static-only-class": "off",
       "@eslint-react/no-clone-element": 0,
@@ -94,43 +156,7 @@ const hyobanConfig = await defineConfig(
       ],
       "no-restricted-imports": [
         "error",
-        {
-          paths: [
-            {
-              name: "zustand",
-              message: "UI state uses Jotai in this app.",
-            },
-            {
-              name: "zustand/shallow",
-              message: "Use a local equality helper with Jotai selectors.",
-            },
-            {
-              name: "~/data-runtime/photo-loader",
-              message:
-                "Use AppRuntime PhotoRepository instead of a module singleton.",
-            },
-            {
-              name: "~/lib/jotai",
-              importNames: ["jotaiStore", "createAtomAccessor"],
-              message: "Use the Provider-scoped Jotai store from AppRuntime.",
-            },
-            {
-              name: "../output-paths.js",
-              importNames: [
-                "setBuilderOutputSettings",
-                "getBuilderOutputSettings",
-              ],
-              message:
-                "Use runWithBuilderOutputSettings/getScopedBuilderOutputSettings.",
-            },
-          ],
-          patterns: [
-            {
-              group: ["zustand/*"],
-              message: "UI state uses Jotai in this app.",
-            },
-          ],
-        },
+        restrictedImports,
       ],
       "no-restricted-properties": [
         "error",
@@ -174,27 +200,98 @@ const hyobanConfig = await defineConfig(
           message:
             "Use scoped builder services instead of legacy global helpers.",
         },
+        {
+          selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword']",
+          message:
+            "Do not cast to any; model the boundary with an explicit type or test fixture.",
+        },
+        {
+          selector:
+            "TSAsExpression[expression.type='TSAsExpression'][expression.typeAnnotation.type='TSUnknownKeyword']",
+          message:
+            "Do not double-cast through unknown; introduce a typed seam, guard, or fixture.",
+        },
       ],
     },
   },
 
-  // @ts-expect-error
-  {
-    files: ["locales/**/*.json"],
-    plugins: {
-      "recursive-sort": recursiveSort,
-      "check-i18n-json": checkI18nJson,
-    },
-    rules: {
-      "recursive-sort/recursive-sort": "error",
-      "check-i18n-json/valid-i18n-keys": "error",
-      "check-i18n-json/no-extra-keys": "error",
-    },
-  },
+  i18nJsonConfig,
   {
     files: ["**/*.tsx"],
     rules: {
       "@stylistic/jsx-self-closing-comp": "error",
+    },
+  },
+
+  {
+    files: ["packages/builder/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: restrictedImports.paths,
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: ["@afilmory/builder"],
+              message:
+                "Builder internals should use relative imports instead of importing their own package entrypoints.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    files: ["packages/ui/src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            ...restrictedImports.paths,
+            {
+              name: "@afilmory/schema",
+              message: "UI primitives must not depend on manifest schema.",
+            },
+          ],
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: ["@afilmory/schema/*"],
+              message: "UI primitives must not depend on manifest schema.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  {
+    files: ["apps/web/src/lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: restrictedImports.paths,
+          patterns: [
+            ...restrictedImports.patterns,
+            {
+              group: [
+                "~/components/*",
+                "~/modules/*",
+                "~/pages/*",
+                "../**/components/*",
+                "../**/modules/*",
+                "../**/pages/*",
+              ],
+              message:
+                "web lib modules must not depend on feature/component layers.",
+            },
+          ],
+        },
+      ],
     },
   },
 

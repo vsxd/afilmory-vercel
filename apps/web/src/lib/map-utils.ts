@@ -1,4 +1,4 @@
-import type { PhotoManifestItem, PickedExif } from "@afilmory/data";
+import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
 
 import type {
   GPSCoordinates,

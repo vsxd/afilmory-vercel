@@ -43,19 +43,7 @@ export function createStorageKeyNormalizer(
 ): (key: string) => string {
   let basePrefix = "";
 
-  switch (storageConfig.provider) {
-    case "s3": {
-      basePrefix = sanitizeStoragePath(storageConfig.prefix);
-      break;
-    }
-    case "github": {
-      basePrefix = sanitizeStoragePath(storageConfig.path);
-      break;
-    }
-    default: {
-      basePrefix = "";
-    }
-  }
+  basePrefix = sanitizeStoragePath(storageConfig.prefix);
 
   const prefixWithSlash = basePrefix ? `${basePrefix}/` : "";
 

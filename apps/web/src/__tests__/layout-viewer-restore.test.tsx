@@ -32,7 +32,6 @@ let gallerySetting = {
   selectedGeoCities: [],
   selectedGeoDistricts: [],
   sortOrder: "desc",
-  tagFilterMode: "union" as const,
 };
 
 let locationState = {
@@ -131,7 +130,6 @@ describe("main layout viewer URL restore", () => {
       selectedGeoCities: [],
       selectedGeoDistricts: [],
       sortOrder: "desc",
-      tagFilterMode: "union",
     };
     locationState = {
       pathname: "/photos/hidden-photo",
@@ -301,7 +299,6 @@ describe("main layout viewer URL restore", () => {
       selectedGeoCities: [],
       selectedGeoDistricts: [],
       sortOrder: "desc",
-      tagFilterMode: "union",
     };
     getViewerPhotos.mockReturnValue([visiblePhoto]);
 
@@ -341,7 +338,6 @@ describe("main layout viewer URL restore", () => {
         selectedGeoCities: [],
         selectedGeoDistricts: [],
         sortOrder: "desc",
-        tagFilterMode: "union",
       }),
     ).toMatchObject({
       selectedTags: [],
@@ -351,7 +347,6 @@ describe("main layout viewer URL restore", () => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     });
     expect(setSearchParams).not.toHaveBeenCalled();
   });
@@ -378,7 +373,6 @@ describe("main layout viewer URL restore", () => {
       selectedGeoCities: [],
       selectedGeoDistricts: [],
       sortOrder: "desc",
-      tagFilterMode: "union",
     };
     getViewerPhotos.mockReturnValue([visiblePhoto]);
 

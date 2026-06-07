@@ -1,5 +1,5 @@
+import type { ExifReaderService } from "../../image/exif.js";
 import type { Logger } from "../../logger/index.js";
-import type { StorageProviderFactory } from "../../storage/factory.js";
 import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
 import type { BuilderConfig } from "../../types/config.js";
@@ -22,11 +22,8 @@ export interface BuilderServicesBacking {
   logger: Logger;
   getStorageConfig: () => StorageConfig;
   getStorageManager: () => StorageManager;
+  getExifService: () => ExifReaderService;
   createStorageManager: (config: StorageConfig) => StorageManager;
-  registerStorageProvider: (
-    name: string,
-    factory: StorageProviderFactory,
-  ) => void;
   hasPhotoIdCollision: (key: string) => boolean;
   getPhotoIdForKey: (key: string, existingItem?: PhotoManifestItem) => string;
   setPhotoIdCollisionKeys: (keys: Iterable<string>) => void;
@@ -40,8 +37,6 @@ export function createBuilderServices(
     createManager: (config) => backing.createStorageManager(config),
     getConfig: () => backing.getStorageConfig(),
     getManager: () => backing.getStorageManager(),
-    registerProvider: (name, factory) =>
-      backing.registerStorageProvider(name, factory),
   };
 
   const output: OutputPathsService = {
@@ -56,6 +51,7 @@ export function createBuilderServices(
   };
 
   return {
+    exif: backing.getExifService(),
     storage,
     output,
     photoId,

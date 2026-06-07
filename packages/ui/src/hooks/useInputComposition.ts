@@ -1,24 +1,27 @@
-import type { CompositionEventHandler } from "react";
+import type {
+  CompositionEventHandler,
+  KeyboardEventHandler,
+  MutableRefObject,
+} from "react";
 import { useCallback, useEffect, useRef } from "react";
 
-type InputElementAttributes = React.DetailedHTMLProps<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  HTMLInputElement
+type CompositionInputElement = HTMLInputElement | HTMLTextAreaElement;
+
+type InputCompositionProps<E extends CompositionInputElement> = Pick<
+  React.HTMLAttributes<E>,
+  "onCompositionEnd" | "onCompositionStart" | "onKeyDown" | "onKeyDownCapture"
 >;
-type TextareaElementAttributes = React.DetailedHTMLProps<
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-  HTMLTextAreaElement
->;
-export const useInputComposition = <E = HTMLInputElement>(
-  props: Pick<
-    E extends HTMLInputElement
-      ? InputElementAttributes
-      : E extends HTMLTextAreaElement
-        ? TextareaElementAttributes
-        : never,
-    "onKeyDown" | "onCompositionEnd" | "onCompositionStart" | "onKeyDownCapture"
-  >,
-) => {
+
+export const useInputComposition = <
+  E extends CompositionInputElement = HTMLInputElement,
+>(
+  props: InputCompositionProps<E>,
+): {
+  isCompositionRef: MutableRefObject<boolean>;
+  onCompositionEnd: CompositionEventHandler<E>;
+  onCompositionStart: CompositionEventHandler<E>;
+  onKeyDown: KeyboardEventHandler<E>;
+} => {
   const { onKeyDown, onCompositionStart, onCompositionEnd } = props;
 
   const isCompositionRef = useRef(false);
@@ -30,7 +33,7 @@ export const useInputComposition = <E = HTMLInputElement>(
       currentInputTargetRef.current = e.target as E;
 
       isCompositionRef.current = true;
-      onCompositionStart?.(e as any);
+      onCompositionStart?.(e);
     },
     [onCompositionStart],
   );
@@ -39,13 +42,13 @@ export const useInputComposition = <E = HTMLInputElement>(
     (e) => {
       currentInputTargetRef.current = null;
       isCompositionRef.current = false;
-      onCompositionEnd?.(e as any);
+      onCompositionEnd?.(e);
     },
     [onCompositionEnd],
   );
 
-  const handleKeyDown: React.KeyboardEventHandler<E> = useCallback(
-    (e: any) => {
+  const handleKeyDown: KeyboardEventHandler<E> = useCallback(
+    (e) => {
       // The keydown event stop emit when the composition is being entered
       if (isCompositionRef.current) {
         e.stopPropagation();
@@ -89,12 +92,7 @@ export const useInputComposition = <E = HTMLInputElement>(
     onCompositionEnd: handleCompositionEnd,
     onCompositionStart: handleCompositionStart,
     onKeyDown: handleKeyDown,
+    isCompositionRef,
   };
-  Object.defineProperty(ret, "isCompositionRef", {
-    value: isCompositionRef,
-    enumerable: false,
-  });
-  return ret as typeof ret & {
-    isCompositionRef: typeof isCompositionRef;
-  };
+  return ret;
 };

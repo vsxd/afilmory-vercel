@@ -1,5 +1,5 @@
+import type { ExifReaderService } from "../../image/exif.js";
 import type { Logger } from "../../logger/index.js";
-import type { StorageProviderFactory } from "../../storage/factory.js";
 import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
 import type {
@@ -12,7 +12,6 @@ export interface StorageService {
   createManager: (config: StorageConfig) => StorageManager;
   getConfig: () => StorageConfig;
   getManager: () => StorageManager;
-  registerProvider: (name: string, factory: StorageProviderFactory) => void;
 }
 
 export interface OutputPathsService {
@@ -31,6 +30,7 @@ export interface PhotoIdService {
  * plugins are event subscribers, not coordinators.
  */
 export interface BuilderServices {
+  exif: ExifReaderService;
   storage: StorageService;
   output: OutputPathsService;
   photoId: PhotoIdService;

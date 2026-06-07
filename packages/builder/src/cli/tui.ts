@@ -83,7 +83,7 @@ export class BuilderTUI {
   handleLog(message: LogMessage): void {
     const timestamp = formatTime(message.timestamp);
     const levelLabel = formatLevel(message.level);
-    const formatted = utilFormat(...(message.args as any[]));
+    const formatted = utilFormat(...message.args);
     const line = `${color(timestamp, "gray")} ${levelLabel} ${color(`[${message.tag}]`, "blue")} ${formatted}`;
     this.state.logs = [...this.state.logs, line].slice(-MAX_LOG_LINES);
     this.render();

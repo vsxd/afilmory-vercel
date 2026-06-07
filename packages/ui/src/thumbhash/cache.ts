@@ -1,4 +1,4 @@
-import { decompressUint8Array } from "@afilmory/data";
+import { decompressUint8Array } from "@afilmory/media";
 import { thumbHashToDataURL } from "thumbhash";
 
 const MAX_STRING_CACHE_ENTRIES = 512;

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { AFILMORY_MANIFEST_SCHEMA } from "@afilmory/schema";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -111,8 +112,23 @@ describe("loadExistingManifest", () => {
       loadExistingManifest(),
     );
 
+    expect(manifest.schema).toBe(AFILMORY_MANIFEST_SCHEMA);
     expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    expect(manifest.photos).toEqual([]);
     await expect(fs.access(manifestPath)).resolves.toBeUndefined();
+  });
+
+  it("rejects legacy manifests instead of migrating them", async () => {
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({ version: "v10", data: [{ id: "legacy" }] }),
+    );
+
+    await expect(
+      runWithBuilderOutputSettings(outputSettings, () =>
+        loadExistingManifest(),
+      ),
+    ).rejects.toThrow(/Invalid Afilmory manifest/);
   });
 
   it("preserves an unreadable manifest instead of overwriting it", async () => {
@@ -140,18 +156,18 @@ describe("needsUpdate", () => {
 
     expect(
       needsUpdate(existing, {
-        Key: "photo.jpg",
-        LastModified: new Date("2024-01-01T00:00:00.000Z"),
-        Size: 2,
-        ETag: "old",
+        key: "photo.jpg",
+        lastModified: new Date("2024-01-01T00:00:00.000Z"),
+        size: 2,
+        etag: "old",
       }),
     ).toBe(true);
     expect(
       needsUpdate(existing, {
-        Key: "photo.jpg",
-        LastModified: new Date("2024-01-01T00:00:00.000Z"),
-        Size: 1,
-        ETag: "new",
+        key: "photo.jpg",
+        lastModified: new Date("2024-01-01T00:00:00.000Z"),
+        size: 1,
+        etag: "new",
       }),
     ).toBe(true);
   });

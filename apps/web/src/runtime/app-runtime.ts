@@ -1,8 +1,11 @@
-import type { AfilmoryManifest } from "@afilmory/data";
+import type { AfilmoryManifest } from "@afilmory/schema";
 import { createStore } from "jotai";
 import { createContext, use } from "react";
 
 import { PhotoRepository } from "~/data-runtime/photo-repository";
+import type { RegularImageCache } from "~/lib/image-cache-service";
+import { createRegularImageCache } from "~/lib/image-cache-service";
+import { ImageLoaderManager } from "~/lib/image-loader-manager";
 
 import type { AfilmoryBrowserRuntime } from "./browser-runtime";
 import { ensureBrowserRuntime } from "./browser-runtime";
@@ -46,10 +49,42 @@ class BodyScrollLockManager {
   }
 }
 
+export interface ImageLoadingService {
+  createLoader: () => ImageLoaderManager;
+  cleanupLoader: (loader: ImageLoaderManager) => void;
+  cleanupAll: () => void;
+}
+
+class RuntimeImageLoadingService implements ImageLoadingService {
+  private readonly loaders = new Set<ImageLoaderManager>();
+
+  constructor(private readonly imageCache: RegularImageCache) {}
+
+  createLoader(): ImageLoaderManager {
+    const loader = new ImageLoaderManager(this.imageCache);
+    this.loaders.add(loader);
+    return loader;
+  }
+
+  cleanupLoader(loader: ImageLoaderManager): void {
+    loader.cleanup();
+    this.loaders.delete(loader);
+  }
+
+  cleanupAll(): void {
+    for (const loader of this.loaders) {
+      loader.cleanup();
+    }
+    this.loaders.clear();
+  }
+}
+
 export type AppRuntime = {
   bodyScrollLock: BodyScrollLockManager;
   browser: AfilmoryBrowserRuntime;
   criticalRoutePreloadCleanup?: () => void;
+  imageCache: RegularImageCache;
+  imageLoading: ImageLoadingService;
   photoRepository: PhotoRepository;
   store: ReturnType<typeof createStore>;
   dispose: () => void;
@@ -63,14 +98,20 @@ export function createAppRuntime({
   manifest: AfilmoryManifest;
 }): AppRuntime {
   const bodyScrollLock = new BodyScrollLockManager();
+  const imageCache = createRegularImageCache();
+  const imageLoading = new RuntimeImageLoadingService(imageCache);
 
   return {
     bodyScrollLock,
     browser: browserRuntime,
+    imageCache,
+    imageLoading,
     photoRepository: new PhotoRepository(manifest),
     store: createStore(),
     dispose() {
       this.criticalRoutePreloadCleanup?.();
+      imageLoading.cleanupAll();
+      this.imageCache.clear();
       bodyScrollLock.reset();
     },
   };

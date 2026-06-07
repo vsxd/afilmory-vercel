@@ -1,19 +1,16 @@
-import type { StorageRegistry } from "./factory.js";
-import { StorageFactory } from "./factory.js";
 import type {
   StorageConfig,
   StorageObject,
   StorageProvider,
   StorageUploadOptions,
 } from "./interfaces.js";
+import { S3StorageProvider } from "./providers/s3-provider.js";
 
 export class StorageManager {
   private provider: StorageProvider;
   private readonly excludeFilters: Array<(key: string) => boolean> = [];
-  private readonly registry?: StorageRegistry;
 
-  constructor(config: StorageConfig, registry?: StorageRegistry) {
-    this.registry = registry;
+  constructor(config: StorageConfig) {
     this.provider = this.createProvider(config);
   }
 
@@ -124,8 +121,6 @@ export class StorageManager {
   }
 
   private createProvider(config: StorageConfig): StorageProvider {
-    return this.registry
-      ? this.registry.createProvider(config)
-      : StorageFactory.createProvider(config);
+    return new S3StorageProvider(config);
   }
 }

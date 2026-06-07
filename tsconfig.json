@@ -3,7 +3,8 @@
   "references": [
     { "path": "./apps/web/tsconfig.json" },
     { "path": "./packages/builder/tsconfig.json" },
-    { "path": "./packages/data/tsconfig.json" },
+    { "path": "./packages/schema/tsconfig.json" },
+    { "path": "./packages/media/tsconfig.json" },
     { "path": "./packages/ui/tsconfig.json" },
     { "path": "./packages/webgl-viewer/tsconfig.json" }
   ],

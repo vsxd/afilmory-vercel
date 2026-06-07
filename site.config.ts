@@ -6,22 +6,22 @@
  *
  * - This file defines the static default configuration.
  * - Environment variable overrides are handled in 'site.config.build.ts'.
- * - Client-side code accesses the final config via 'window.__SITE_CONFIG__' injection.
+ * - Client-side code accesses the final config via 'window.__AFILMORY__.config'.
  */
 
 export interface SiteConfig {
-  name: string
-  title: string
-  description: string
-  url: string
-  accentColor: string
-  language?: string
-  author: Author
-  social?: Social
-  feed?: Feed
-  map?: MapConfig
-  mapStyle?: string
-  mapProjection?: 'globe' | 'mercator'
+  name: string;
+  title: string;
+  description: string;
+  url: string;
+  accentColor: string;
+  language?: string;
+  author: Author;
+  social?: Social;
+  feed?: Feed;
+  map?: MapConfig;
+  mapStyle?: string;
+  mapProjection?: "globe" | "mercator";
 }
 
 /**
@@ -29,55 +29,56 @@ export interface SiteConfig {
  * - A string for a single provider: 'maplibre'
  * - An array for multiple providers in priority order: ['maplibre']
  */
-type MapConfig = 'maplibre'[]
+type MapConfig = "maplibre"[];
 
 interface Feed {
   folo?: {
     challenge?: {
-      feedId: string
-      userId: string
-    }
-  }
+      feedId: string;
+      userId: string;
+    };
+  };
 }
 interface Author {
-  name: string
-  url: string
-  avatar?: string
+  name: string;
+  url: string;
+  avatar?: string;
 }
 interface Social {
-  twitter?: string
-  github?: string
-  rss?: boolean
+  twitter?: string;
+  github?: string;
+  rss?: boolean;
 }
 
 export const siteConfig: SiteConfig = {
-  name: 'Afilmory Vercel',
-  title: 'Afilmory Vercel',
-  description: 'A personal photography website',
-  url: 'https://afilmory.your.domain/',
-  accentColor: '#007bff',
-  language: 'en',
+  name: "Afilmory Vercel",
+  title: "Afilmory Vercel",
+  description: "A personal photography website",
+  url: "https://afilmory.your.domain/",
+  accentColor: "#007bff",
+  language: "en",
   author: {
-    name: 'Author',
-    url: 'https://your.domain',
-    avatar: 'https://raw.githubusercontent.com/vsxd/afilmory-vercel/main/logo.png',
+    name: "Author",
+    url: "https://your.domain",
+    avatar:
+      "https://raw.githubusercontent.com/vsxd/afilmory-vercel/main/logo.png",
   },
   social: {
-    github: '',
-    twitter: '',
+    github: "",
+    twitter: "",
     rss: false,
   },
   feed: {
     folo: {
       challenge: {
-        feedId: '',
-        userId: '',
+        feedId: "",
+        userId: "",
       },
     },
   },
-  map: ['maplibre'],
-  mapStyle: 'builtin',
-  mapProjection: 'mercator',
-}
+  map: ["maplibre"],
+  mapStyle: "builtin",
+  mapProjection: "mercator",
+};
 
-export default siteConfig
+export default siteConfig;

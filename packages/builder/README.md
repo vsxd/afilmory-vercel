@@ -7,6 +7,7 @@
 ```text
 src/
 ├── builder/                 # AfilmoryBuilder orchestration
+│   └── workflow/            # session, scan, diff, process, assemble, write
 ├── cli.ts                   # Builder CLI used by pnpm build:manifest
 ├── config/                  # define/load/resolve builder config
 ├── constants/               # supported image formats
@@ -15,9 +16,9 @@ src/
 │   └── services/            # service registry passed into plugins/pipeline
 ├── image/                   # EXIF, histogram, thumbnail, image preprocessing
 ├── logger/                  # tagged consola loggers
-├── manifest/                # manifest read/write/migration/version helpers
+├── manifest/                # manifest v2 read/write/version helpers
 ├── photo/                   # per-photo processing pipeline
-├── plugins/                 # storage, geocoding, thumbnail cache, repo sync
+├── plugins/                 # geocoding and artifact helpers
 ├── s3/                      # S3 client construction
 ├── storage/                 # storage interfaces, manager, S3 provider
 ├── types/                   # public builder option/config/photo types
@@ -25,7 +26,9 @@ src/
 └── worker/                  # worker pool and cluster pool
 ```
 
-The shared manifest and photo types are imported from `@afilmory/data`, with builder-specific options kept under `packages/builder/src/types`.
+The shared manifest and photo types are imported from `@afilmory/schema`, with builder-specific options kept under `packages/builder/src/types`.
+
+`AfilmoryBuilder` is intentionally thin. The build run is coordinated through `builder/workflow`: `BuildSession` carries explicit runtime state, `SourceScanner` reads S3 objects, `DiffPlanner` decides changed work, `PhotoTaskProcessor` runs worker/cluster execution, `ManifestAssembler` merges existing and processed items, and `ArtifactWriter` saves manifest artifacts. Keep new responsibilities in these workflow modules rather than growing the builder class again.
 
 ## Default Site Configuration
 
@@ -39,9 +42,8 @@ The root `builder.config.ts` is the source of truth for this repository:
 - `storage.region`: `S3_REGION`, defaulted by `env.ts` to `us-east-1`
 - `storage.endpoint`: `S3_ENDPOINT`, defaulted by `env.ts`
 - `storage.customDomain`: optional CDN/public domain
-- `repo.enable`: true only when `REPO_URL` and `REPO_TOKEN` (or compatibility aliases) are present
 
-The documented deployment path is S3-only. Some extension points and historical providers still exist in source, but they are not the supported static-site path for this repo.
+The documented and implemented deployment path is S3-only. Future photo-source support should be added through a typed `PhotoSourceAdapter`, not through a global storage registry.
 
 ## CLI Usage
 
@@ -97,6 +99,11 @@ await builder.buildManifest({
 
 Most repository workflows should use `pnpm build:manifest` instead of constructing the builder manually.
 
+The package root is intentionally narrow. It exposes the builder class,
+configuration helpers, official plugins, and the types needed to configure or
+observe a build. Internal workflow modules, image pipeline helpers, worker
+pools, and storage managers are not public API.
+
 ## Processing Pipeline
 
 For each changed photo, the builder:
@@ -120,10 +127,15 @@ The builder writes an `AfilmoryManifest`:
 
 ```ts
 type AfilmoryManifest = {
-  version: string;
-  data: PhotoManifestItem[];
-  cameras: CameraInfo[];
-  lenses: LensInfo[];
+  schema: "afilmory.manifest";
+  version: 2;
+  generatedAt: string;
+  source: { provider: "s3"; bucket?: string; prefix?: string };
+  photos: PhotoManifestItem[];
+  indexes: {
+    cameras: CameraInfo[];
+    lenses: LensInfo[];
+  };
 };
 ```
 
@@ -131,14 +143,10 @@ Photo items include `originalUrl`, `thumbnailUrl`, `thumbHash`, EXIF, tone analy
 
 ## Plugins and Cache
 
-Plugins are loaded automatically based on config and explicit `plugins` entries:
+Plugins are loaded from explicit `plugins` entries:
 
-- S3 storage plugin for the default storage provider.
 - Optional geocoding plugin when configured.
-- Optional Git repo sync plugin when `repo.enable` is true.
-- Optional thumbnail storage support for cache-aware builds.
-
-`REPO_URL`/`REPO_TOKEN` cache generated manifest/thumbnails in a Git repository. They do not change the source photo storage, which remains S3 for this project.
+- Optional thumbnail artifact upload support for cache-aware builds.
 
 ## Performance Notes
 
@@ -151,4 +159,4 @@ Plugins are loaded automatically based on config and explicit `plugins` entries:
 
 - [Photo pipeline](src/photo/README.md)
 - [S3 storage provider](src/storage/providers/README.md)
-- [Shared data types](../data/src/types.ts)
+- [Shared schema types](../schema/src/types.ts)

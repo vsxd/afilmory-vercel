@@ -1,6 +1,9 @@
 import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { VideoSource } from "~/lib/image-loading-types";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
+
+export type { VideoSource } from "~/lib/image-loading-types";
 
 export interface LivePhotoVideoHandle {
   play: () => void;
@@ -9,38 +12,6 @@ export interface LivePhotoVideoHandle {
 }
 
 export const SHOW_SCALE_INDICATOR_DURATION = 1000;
-
-// Video source 的 sum type：Live Photo 或 Motion Photo
-export type VideoSource =
-  | { type: "live-photo"; videoUrl: string }
-  | {
-      type: "motion-photo";
-      imageUrl: string;
-      offset: number;
-      size?: number;
-      presentationTimestamp?: number;
-    }
-  | { type: "none" };
-
-export function getVideoSourceKey(videoSource: VideoSource): string {
-  switch (videoSource.type) {
-    case "live-photo": {
-      return `live-photo:${videoSource.videoUrl}`;
-    }
-    case "motion-photo": {
-      return [
-        "motion-photo",
-        videoSource.imageUrl,
-        videoSource.offset,
-        videoSource.size ?? "",
-        videoSource.presentationTimestamp ?? "",
-      ].join(":");
-    }
-    case "none": {
-      return "none";
-    }
-  }
-}
 
 export interface ProgressiveImageProps {
   src: string;

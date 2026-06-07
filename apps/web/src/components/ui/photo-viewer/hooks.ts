@@ -13,7 +13,8 @@ import { toast } from "sonner";
 
 import { MenuItemSeparator, MenuItemText } from "~/atoms/context-menu";
 import { isMobileDevice } from "~/lib/device-viewport";
-import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
 import type { LivePhotoVideoHandle, ProgressiveImageState } from "./types";
@@ -96,13 +97,13 @@ export const useImageLoader = (
   setIsHighResImageRendered?: (rendered: boolean) => void,
 ) => {
   const { t } = useTranslation();
+  const runtime = useAfilmoryRuntime();
   const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null);
 
   useEffect(() => {
     if (highResLoaded || error || !isCurrentImage) return;
 
-    // Create new image loader manager
-    const imageLoaderManager = new ImageLoaderManager();
+    const imageLoaderManager = runtime.imageLoading.createLoader();
     imageLoaderManagerRef.current = imageLoaderManager;
 
     function cleanup() {
@@ -160,7 +161,7 @@ export const useImageLoader = (
 
     return () => {
       cancelled = true;
-      imageLoaderManager.cleanup();
+      runtime.imageLoading.cleanupLoader(imageLoaderManager);
     };
   }, [
     highResLoaded,
@@ -169,6 +170,7 @@ export const useImageLoader = (
     src,
     onError,
     isCurrentImage,
+    runtime.imageLoading,
     onBlobSrcChange,
     loadingIndicatorRef,
     t,

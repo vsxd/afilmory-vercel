@@ -33,6 +33,20 @@ vi.mock("~/lib/device-viewport", () => ({
   isMobileDevice: false,
 }));
 
+const runtimeMock = vi.hoisted(() => ({
+  imageCache: {},
+  imageLoading: {
+    createLoader: vi.fn(),
+    cleanupLoader: vi.fn((loader: { cleanup: () => void }) => {
+      loader.cleanup();
+    }),
+  },
+}));
+
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => runtimeMock,
+}));
+
 function LivePhotoHandlerHarness({
   data,
   tick,
@@ -80,6 +94,10 @@ describe("useLivePhotoHandler", () => {
   beforeEach(() => {
     processVideoMock = vi.fn();
     cleanupMock = vi.fn();
+    runtimeMock.imageLoading.createLoader.mockImplementation(() => ({
+      processVideo: (...args: unknown[]) => processVideoMock(...args),
+      cleanup: (...args: unknown[]) => cleanupMock(...args),
+    }));
 
     processVideoMock.mockImplementation(
       async (_videoSource, videoElement: HTMLVideoElement) => {
@@ -90,6 +108,8 @@ describe("useLivePhotoHandler", () => {
   });
 
   afterEach(() => {
+    runtimeMock.imageLoading.createLoader.mockReset();
+    runtimeMock.imageLoading.cleanupLoader.mockClear();
     cleanup();
   });
 

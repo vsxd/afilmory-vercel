@@ -1,4 +1,3 @@
-export * from "./GenericMap";
 export * from "./MapBackButton";
 export * from "./MapInfoPanel";
 export * from "./MapLoadingState";

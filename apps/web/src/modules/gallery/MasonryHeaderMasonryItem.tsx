@@ -8,15 +8,15 @@ import { gallerySettingAtom } from "~/atoms/app";
 import { siteConfig } from "~/config";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
-import {
-  createGeographicRegions,
-  getRegionDisplayName,
-} from "~/lib/geo-regions";
 import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
+import {
+  createGalleryGeoRegions,
+  createGeoRegionLabelMaps,
+} from "./filter-options";
 
 const getPhotoCameraName = (photo: PhotoManifest) => {
   const make = photo.exif?.Make?.trim();
@@ -81,7 +81,7 @@ export const MasonryHeaderMasonryItem = ({
     }
 
     const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
-    const cityCount = createGeographicRegions(photoMarkers, "city").length;
+    const cityCount = createGalleryGeoRegions(photos).city.length;
     const hasCityData = cityCount > 0;
 
     return [
@@ -117,33 +117,10 @@ export const MasonryHeaderMasonryItem = ({
   }, [photos, t]);
 
   const filterChips = useMemo(() => {
-    const photoMarkers = convertPhotosToMarkersFromEXIF(photos);
-    const regionLabelMaps = {
-      country: new Map(
-        createGeographicRegions(photoMarkers, "country").map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      region: new Map(
-        createGeographicRegions(photoMarkers, "region").map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      city: new Map(
-        createGeographicRegions(photoMarkers, "city").map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-      district: new Map(
-        createGeographicRegions(photoMarkers, "district").map((region) => [
-          region.id,
-          getRegionDisplayName(region, i18n.language),
-        ]),
-      ),
-    };
+    const regionLabelMaps = createGeoRegionLabelMaps(
+      createGalleryGeoRegions(photos),
+      i18n.language,
+    );
 
     return [
       ...gallerySetting.selectedTags.map((tag) => ({
@@ -163,36 +140,24 @@ export const MasonryHeaderMasonryItem = ({
       })),
       ...gallerySetting.selectedGeoCountries.map((id) => ({
         id: `geo-country-${id}`,
-        label: regionLabelMaps.country.get(id) ?? id,
+        label: regionLabelMaps.selectedGeoCountries.get(id) ?? id,
         icon: "location" as const,
       })),
       ...gallerySetting.selectedGeoRegions.map((id) => ({
         id: `geo-region-${id}`,
-        label: regionLabelMaps.region.get(id) ?? id,
+        label: regionLabelMaps.selectedGeoRegions.get(id) ?? id,
         icon: "location" as const,
       })),
       ...gallerySetting.selectedGeoCities.map((id) => ({
         id: `geo-city-${id}`,
-        label: regionLabelMaps.city.get(id) ?? id,
+        label: regionLabelMaps.selectedGeoCities.get(id) ?? id,
         icon: "location" as const,
       })),
       ...gallerySetting.selectedGeoDistricts.map((id) => ({
         id: `geo-district-${id}`,
-        label: regionLabelMaps.district.get(id) ?? id,
+        label: regionLabelMaps.selectedGeoDistricts.get(id) ?? id,
         icon: "location" as const,
       })),
-      ...(gallerySetting.selectedTags.length > 1
-        ? [
-            {
-              id: `tag-mode-${gallerySetting.tagFilterMode}`,
-              label:
-                gallerySetting.tagFilterMode === "intersection"
-                  ? t("action.tag.match.all")
-                  : t("action.tag.match.any"),
-              icon: null,
-            },
-          ]
-        : []),
     ];
   }, [
     gallerySetting.selectedCameras,
@@ -202,10 +167,8 @@ export const MasonryHeaderMasonryItem = ({
     gallerySetting.selectedGeoRegions,
     gallerySetting.selectedLenses,
     gallerySetting.selectedTags,
-    gallerySetting.tagFilterMode,
     i18n.language,
     photos,
-    t,
   ]);
 
   useEffect(() => {

@@ -4,12 +4,12 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { gallerySettingAtom } from "~/atoms/app";
-import {
-  createGeographicRegions,
-  getRegionDisplayName,
-} from "~/lib/geo-regions";
-import { convertPhotosToMarkersFromEXIF } from "~/lib/map-utils";
 import { usePhotoRepository } from "~/runtime/app-runtime";
+
+import {
+  createGalleryFilterItems,
+  createGalleryGeoRegions,
+} from "../filter-options";
 
 type FilterItem = {
   id: string;
@@ -83,7 +83,10 @@ export const FilterPanelContent = ({
   const { t, i18n } = useTranslation();
   const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
   const photoRepository = usePhotoRepository();
-  const allTags = useMemo(() => photoRepository.getAllTags(), [photoRepository]);
+  const allTags = useMemo(
+    () => photoRepository.getAllTags(),
+    [photoRepository],
+  );
   const allCameras = useMemo(
     () => photoRepository.getAllCameras(),
     [photoRepository],
@@ -94,19 +97,21 @@ export const FilterPanelContent = ({
   );
   const allPhotos = photoRepository.getPhotos();
 
-  const geoItems = useMemo(() => {
-    const markers = convertPhotosToMarkersFromEXIF(allPhotos);
-    const toItems = (level: Parameters<typeof createGeographicRegions>[1]) =>
-      createGeographicRegions(markers, level).map((region) => ({
-        id: region.id,
-        label: getRegionDisplayName(region, i18n.language),
-      }));
-
-    return {
-      countries: toItems("country"),
-      cities: toItems("city"),
-    };
-  }, [allPhotos, i18n.language]);
+  const geoRegions = useMemo(
+    () => createGalleryGeoRegions(allPhotos),
+    [allPhotos],
+  );
+  const filterItems = useMemo(
+    () =>
+      createGalleryFilterItems({
+        allTags,
+        allCameras,
+        allLenses,
+        geoRegions,
+        language: i18n.language,
+      }),
+    [allCameras, allLenses, allTags, geoRegions, i18n.language],
+  );
 
   const resetFilters = () => {
     setGallerySetting((prev) => ({
@@ -118,7 +123,6 @@ export const FilterPanelContent = ({
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     }));
   };
 
@@ -158,7 +162,7 @@ export const FilterPanelContent = ({
         <FilterSection
           title={t("action.tag.filter")}
           icon="i-mingcute-tag-line"
-          items={allTags.map((tag) => ({ id: tag, label: tag }))}
+          items={filterItems.tags}
           selected={gallerySetting.selectedTags}
           onToggle={(id) =>
             setGallerySetting((prev) => ({
@@ -170,10 +174,7 @@ export const FilterPanelContent = ({
         <FilterSection
           title={t("action.camera.filter")}
           icon="i-mingcute-camera-line"
-          items={allCameras.map((camera) => ({
-            id: camera.displayName,
-            label: camera.displayName,
-          }))}
+          items={filterItems.cameras}
           selected={gallerySetting.selectedCameras}
           onToggle={(id) =>
             setGallerySetting((prev) => ({
@@ -185,10 +186,7 @@ export const FilterPanelContent = ({
         <FilterSection
           title={t("action.lens.filter")}
           icon="i-mingcute-camera-2-line"
-          items={allLenses.map((lens) => ({
-            id: lens.displayName,
-            label: lens.displayName,
-          }))}
+          items={filterItems.lenses}
           selected={gallerySetting.selectedLenses}
           onToggle={(id) =>
             setGallerySetting((prev) => ({
@@ -200,7 +198,7 @@ export const FilterPanelContent = ({
         <FilterSection
           title={t("action.geo.country.filter")}
           icon="i-mingcute-world-line"
-          items={geoItems.countries}
+          items={filterItems.countries}
           selected={gallerySetting.selectedGeoCountries}
           onToggle={(id) =>
             setGallerySetting((prev) => ({
@@ -212,7 +210,7 @@ export const FilterPanelContent = ({
         <FilterSection
           title={t("action.geo.city.filter")}
           icon="i-mingcute-building-5-line"
-          items={geoItems.cities}
+          items={filterItems.cities}
           selected={gallerySetting.selectedGeoCities}
           onToggle={(id) =>
             setGallerySetting((prev) => ({

@@ -18,8 +18,6 @@ const missingS3Vars = Object.entries(requiredS3Vars)
   .filter(([, value]) => !value)
   .map(([key]) => key);
 
-const repoUrl = env.REPO_URL || env.BUILDER_REPO_URL || "";
-const repoToken = env.REPO_TOKEN || env.GIT_TOKEN || "";
 const geocodingLocales =
   env.GEOCODING_LOCALES || env.GEOCODING_LANGUAGE || "en,zh-CN";
 const geocodingCachePath =
@@ -43,7 +41,7 @@ if (missingS3Vars.length > 0) {
  *
  * 使用方式：
  * 1. 配置 .env 文件中的 S3 相关环境变量（必填）
- * 2. 可选：配置 REPO_URL 和 REPO_TOKEN 启用远程仓库缓存
+ * 2. 可选：配置 REPO_URL 和 REPO_TOKEN，让部署脚本启用远程产物缓存
  * 3. 运行 pnpm build:manifest 生成 manifest 和缩略图
  * 4. 再运行 pnpm build:web 或 pnpm build 打包静态站点
  * 5. 部署 apps/web/dist 目录到托管平台
@@ -54,13 +52,6 @@ export default defineBuilderConfig(() => ({
     thumbnailsDir: path.resolve(__dirname, "apps/web/public/thumbnails"),
     originalsDir: path.resolve(__dirname, "apps/web/public/originals"),
     geocodingCachePath,
-  },
-
-  // 远程仓库缓存 - 根据环境变量自动启用
-  repo: {
-    enable: !!(repoUrl && repoToken),
-    url: repoUrl,
-    token: repoToken,
   },
 
   // 使用 S3 存储

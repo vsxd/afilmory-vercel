@@ -2,4 +2,5 @@ export type {
   AfilmoryManifest,
   CameraInfo,
   LensInfo,
-} from "@afilmory/data/types";
+  ManifestSource,
+} from "@afilmory/schema/types";

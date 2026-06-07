@@ -402,7 +402,7 @@ const DebugInfoComponent = ({
             </div>
           </CollapsibleSection>
           {/* 新增：瓦片系统调试信息展示 */}
-          {renderTileSystem((debugInfo as any).tileSystem)}
+          {renderTileSystem(debugInfo.tileSystem)}
         </>
       )}
 

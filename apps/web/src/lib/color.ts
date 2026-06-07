@@ -1,4 +1,4 @@
-import { decompressUint8Array } from "@afilmory/data";
+import { decompressUint8Array } from "@afilmory/media";
 import { thumbHashToDataURL } from "thumbhash";
 
 const BG_HEX = "#1c1c1e";

@@ -11,6 +11,7 @@ export interface TaskCompletedPayload<T> {
 export interface WorkerPoolOptions<T> {
   concurrency: number;
   totalTasks: number;
+  logger?: Logger;
   onTaskCompleted?: (payload: TaskCompletedPayload<T>) => void;
 }
 
@@ -31,7 +32,7 @@ export class WorkerPool<T> {
   constructor(options: WorkerPoolOptions<T>) {
     this.concurrency = options.concurrency;
     this.totalTasks = options.totalTasks;
-    this.logger = logger;
+    this.logger = options.logger ?? logger;
     this.onTaskCompleted = options.onTaskCompleted;
   }
 

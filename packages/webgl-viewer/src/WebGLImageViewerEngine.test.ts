@@ -9,14 +9,20 @@ class ResizeObserverMock {
 }
 
 class WorkerMock {
+  static instances: WorkerMock[] = [];
+
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
   postMessage = vi.fn();
   terminate = vi.fn();
+
+  constructor() {
+    WorkerMock.instances.push(this);
+  }
 }
 
 function createWebGLMock(): WebGLRenderingContext {
-  return {
+  return Object.assign(Object.create(null), {
     ARRAY_BUFFER: 0x8892,
     BLEND: 0x0be2,
     CLAMP_TO_EDGE: 0x812f,
@@ -77,7 +83,7 @@ function createWebGLMock(): WebGLRenderingContext {
     useProgram: vi.fn(),
     vertexAttribPointer: vi.fn(),
     viewport: vi.fn(),
-  } as unknown as WebGLRenderingContext;
+  });
 }
 
 function createEngine(
@@ -119,6 +125,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
   const originalRevokeObjectURL = URL.revokeObjectURL;
 
   beforeEach(() => {
+    WorkerMock.instances = [];
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     vi.stubGlobal("Worker", WorkerMock);
     Object.defineProperty(URL, "createObjectURL", {
@@ -176,9 +183,10 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
     expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
     vi.mocked(gl.drawArrays).mockClear();
-    expect(pendingFrame).toBeDefined();
-    const frame = pendingFrame as FrameRequestCallback;
-    frame(16);
+    if (!pendingFrame) {
+      throw new Error("Expected a pending animation frame");
+    }
+    pendingFrame(16);
     expect(gl.drawArrays).not.toHaveBeenCalled();
   });
 
@@ -219,8 +227,10 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
   it("uses the double-click step as the fitted zoom target in toggle mode", () => {
     let now = 0;
+    let currentDateNow = 1000;
     let pendingFrame: FrameRequestCallback | undefined;
     vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(Date, "now").mockImplementation(() => currentDateNow);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       pendingFrame = callback;
       return 42;
@@ -259,20 +269,27 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     void engine.loadImage("blob:photo", 1000, 1000);
     expect(engine.getScale()).toBeCloseTo(0.1);
 
-    (
-      engine as unknown as {
-        performDoubleClickAction: (x: number, y: number) => void;
-      }
-    ).performDoubleClickAction(50, 50);
+    canvas.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 50,
+        clientY: 50,
+      }),
+    );
 
     runPendingFrame(200);
     expect(engine.getScale()).toBeCloseTo(0.2);
 
-    (
-      engine as unknown as {
-        performDoubleClickAction: (x: number, y: number) => void;
-      }
-    ).performDoubleClickAction(50, 50);
+    currentDateNow = 1400;
+    canvas.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 50,
+        clientY: 50,
+      }),
+    );
 
     runPendingFrame(400);
     expect(engine.getScale()).toBeCloseTo(0.1);
@@ -280,8 +297,10 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
   it("does not zoom past original size on double-click toggle", () => {
     let now = 0;
+    const currentDateNow = 1000;
     let pendingFrame: FrameRequestCallback | undefined;
     vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(Date, "now").mockImplementation(() => currentDateNow);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       pendingFrame = callback;
       return 42;
@@ -320,11 +339,14 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     void engine.loadImage("blob:photo", 1000, 1000);
     expect(engine.getScale()).toBeCloseTo(0.8);
 
-    (
-      engine as unknown as {
-        performDoubleClickAction: (x: number, y: number) => void;
-      }
-    ).performDoubleClickAction(400, 400);
+    canvas.dispatchEvent(
+      new MouseEvent("dblclick", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 400,
+        clientY: 400,
+      }),
+    );
 
     runPendingFrame(200);
     expect(engine.getScale()).toBeCloseTo(1);
@@ -350,8 +372,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
     void engine.loadImage("blob:photo", 100, 100, sourceBlob);
 
-    const {worker} = (engine as unknown as { worker: WorkerMock | null });
-    expect(worker?.postMessage).toHaveBeenCalledWith({
+    expect(WorkerMock.instances.at(-1)?.postMessage).toHaveBeenCalledWith({
       type: "load-image",
       payload: { url: "blob:photo", blob: sourceBlob },
     });

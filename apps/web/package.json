@@ -19,7 +19,8 @@
     "web": "vite"
   },
   "dependencies": {
-    "@afilmory/data": "workspace:*",
+    "@afilmory/media": "workspace:*",
+    "@afilmory/schema": "workspace:*",
     "@afilmory/ui": "workspace:*",
     "@afilmory/webgl-viewer": "workspace:*",
     "@essentials/request-timeout": "1.3.0",

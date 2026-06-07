@@ -2,7 +2,7 @@ import type { StyleSpecification } from "maplibre-gl";
 
 import { siteConfig } from "~/config";
 
-import BUILTIN_MAP_STYLE from "../../components/ui/map/MapLibreStyle.json";
+import BUILTIN_MAP_STYLE from "./MapLibreStyle.json";
 
 export const getMapStyle = (): string | StyleSpecification => {
   const builtinStyle = BUILTIN_MAP_STYLE as StyleSpecification;

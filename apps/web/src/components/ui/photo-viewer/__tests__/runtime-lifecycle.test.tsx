@@ -20,6 +20,13 @@ let processVideoMock: ReturnType<typeof vi.fn>;
 let cleanupMock: ReturnType<typeof vi.fn>;
 let animationStartMock: ReturnType<typeof vi.fn>;
 let animationSetMock: ReturnType<typeof vi.fn>;
+const runtimeMock = vi.hoisted(() => ({
+  imageCache: {},
+  imageLoading: {
+    cleanupLoader: vi.fn((loader: { cleanup: () => void }) => loader.cleanup()),
+    createLoader: vi.fn(),
+  },
+}));
 
 vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
@@ -38,6 +45,10 @@ vi.mock("~/lib/image-loader-manager", () => {
 
   return { ImageLoaderManager: MockImageLoaderManager };
 });
+
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => runtimeMock,
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -136,6 +147,12 @@ describe("photo viewer runtime lifecycle", () => {
     cleanupMock = vi.fn();
     animationStartMock = vi.fn().mockResolvedValue();
     animationSetMock = vi.fn();
+    runtimeMock.imageLoading.cleanupLoader.mockClear();
+    runtimeMock.imageLoading.createLoader.mockImplementation(() => ({
+      loadImage: (...args: unknown[]) => loadImageMock(...args),
+      processVideo: (...args: unknown[]) => processVideoMock(...args),
+      cleanup: (...args: unknown[]) => cleanupMock(...args),
+    }));
     loadSpy.mockClear();
     pauseSpy.mockClear();
     playSpy.mockClear();

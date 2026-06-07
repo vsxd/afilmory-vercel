@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { injectConfig, siteConfig } from "~/config";
 import type { PhotoManifest } from "~/types/photo";
 
+import { copyTextToClipboard } from "./clipboard-text";
+
 interface SharePanelProps {
   photo: PhotoManifest;
   trigger: React.ReactNode;
@@ -134,16 +136,10 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
         return;
       }
 
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(shareUrl);
-          toast.success(t("photo.share.link.copied"));
-          setIsOpen(false);
-          return;
-        } catch {
-          toast.error(t("photo.share.copy.failed"));
-          return;
-        }
+      if (await copyTextToClipboard(shareUrl)) {
+        toast.success(t("photo.share.link.copied"));
+        setIsOpen(false);
+        return;
       }
 
       toast.error(t("photo.share.copy.failed"));
@@ -151,27 +147,25 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
   }, [photo.title, blobSrc, photo.originalUrl, t]);
 
   const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
+    if (await copyTextToClipboard(window.location.href)) {
       toast.success(t("photo.share.link.copied"));
       setIsOpen(false);
-    } catch {
-      toast.error(t("photo.share.copy.failed"));
+      return;
     }
+
+    toast.error(t("photo.share.copy.failed"));
   }, [t]);
   const shareCodeRef = useRef<HTMLElement>(null);
 
   const handleCopyEmbedCode = useCallback(async () => {
-    try {
-      const embedCode = shareCodeRef.current?.textContent;
-      if (embedCode) {
-        await navigator.clipboard.writeText(embedCode);
-      }
+    const embedCode = shareCodeRef.current?.textContent;
+    if (embedCode && (await copyTextToClipboard(embedCode))) {
       toast.success(t("photo.share.embed.copied"));
       setIsOpen(false);
-    } catch {
-      toast.error(t("photo.share.copy.failed"));
+      return;
     }
+
+    toast.error(t("photo.share.copy.failed"));
   }, [t]);
 
   const handleSocialShare = useCallback(

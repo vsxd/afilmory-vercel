@@ -9,7 +9,6 @@ export type GalleryFilterState = Pick<
   | "selectedGeoRegions"
   | "selectedGeoCities"
   | "selectedGeoDistricts"
-  | "tagFilterMode"
 >;
 
 const getSearchList = (searchParams: URLSearchParams, key: string) => {
@@ -81,11 +80,6 @@ export const getGalleryFiltersFromSearch = (
   search: string | URLSearchParams,
 ): GalleryFilterState => {
   const searchParams = toSearchParams(search);
-  const tagModeFromSearchParams = searchParams.get("tag_mode") as
-    | "union"
-    | "intersection"
-    | null;
-
   const filters: GalleryFilterState = {
     selectedTags: getSearchList(searchParams, "tags"),
     selectedCameras: getSearchList(searchParams, "cameras"),
@@ -94,8 +88,6 @@ export const getGalleryFiltersFromSearch = (
     selectedGeoRegions: getSearchList(searchParams, "geo_region"),
     selectedGeoCities: getSearchList(searchParams, "geo_city"),
     selectedGeoDistricts: getSearchList(searchParams, "geo_district"),
-    tagFilterMode:
-      tagModeFromSearchParams === "intersection" ? "intersection" : "union",
   };
 
   applyRegionIdParam(filters, searchParams.get("regionId"));
@@ -115,10 +107,7 @@ export const applyGalleryFiltersToSearch = (
   setSearchList(searchParams, "geo_city", filters.selectedGeoCities);
   setSearchList(searchParams, "geo_district", filters.selectedGeoDistricts);
   searchParams.delete("regionId");
-
-  if (filters.tagFilterMode === "intersection")
-    searchParams.set("tag_mode", "intersection");
-  else searchParams.delete("tag_mode");
+  searchParams.delete("tag_mode");
 
   return searchParams;
 };
@@ -140,5 +129,4 @@ export const buildSingleTagFilterSearch = (tag: string): string =>
     selectedGeoRegions: [],
     selectedGeoCities: [],
     selectedGeoDistricts: [],
-    tagFilterMode: "union",
   });

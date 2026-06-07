@@ -1,42 +1,30 @@
 import type { BuilderServices } from "../core/contracts/services.js";
 import { createBuilderServices } from "../core/services/index.js";
-import { thumbnailExists } from "../image/thumbnail.js";
+import { ExifService } from "../image/exif.js";
 import { logger } from "../logger/index.js";
-import {
-  handleDeletedPhotos,
-  loadExistingManifest,
-  needsUpdate,
-  saveManifest,
-} from "../manifest/manager.js";
+import { loadExistingManifest } from "../manifest/manager.js";
 import { CURRENT_MANIFEST_VERSION } from "../manifest/version.js";
 import { runWithBuilderOutputSettings } from "../output-paths.js";
-import { createPhotoId, findPhotoIdCollisionKeys } from "../photo/id.js";
-import type { PhotoProcessorOptions } from "../photo/processor.js";
-import { processPhoto } from "../photo/processor.js";
+import { createPhotoId } from "../photo/id.js";
 import type { PluginRunState } from "../plugins/manager.js";
 import { PluginManager } from "../plugins/manager.js";
 import type {
   BuilderPluginConfigEntry,
-  BuilderPluginESMImporter,
   BuilderPluginEventPayloads,
 } from "../plugins/types.js";
-import type {
-  StorageConfig,
-  StorageProviderFactory,
-  StorageRegistry,
-} from "../storage/index.js";
-import { createStorageRegistry, StorageManager } from "../storage/index.js";
+import type { StorageConfig } from "../storage/index.js";
+import { StorageManager } from "../storage/index.js";
 import type { BuilderConfig, UserBuilderSettings } from "../types/config.js";
-import type {
-  AfilmoryManifest,
-  CameraInfo,
-  LensInfo,
-} from "../types/manifest.js";
+import type { AfilmoryManifest, ManifestSource } from "../types/manifest.js";
 import type { BuilderOptions, BuilderResult } from "../types/options.js";
 import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
-import { ClusterPool } from "../worker/cluster-pool.js";
-import type { TaskCompletedPayload } from "../worker/pool.js";
-import { WorkerPool } from "../worker/pool.js";
+import { ArtifactWriter } from "./workflow/artifact-writer.js";
+import { DiffPlanner } from "./workflow/diff-planner.js";
+import { ManifestAssembler } from "./workflow/manifest-assembler.js";
+import type { ProcessingStats } from "./workflow/photo-task-processor.js";
+import { PhotoTaskProcessor } from "./workflow/photo-task-processor.js";
+import { BuildSession } from "./workflow/session.js";
+import { SourceScanner } from "./workflow/source-scanner.js";
 
 export type {
   BuilderOptions,
@@ -46,6 +34,11 @@ export type {
   BuildProgressStartPayload,
 } from "../types/options.js";
 
+export interface AfilmoryBuilderRuntime {
+  exifService?: ExifService;
+  ownsExifService?: boolean;
+}
+
 export class AfilmoryBuilder {
   private storageManager: StorageManager | null = null;
   private config: BuilderConfig;
@@ -53,11 +46,13 @@ export class AfilmoryBuilder {
   private readonly pluginReferences: BuilderPluginConfigEntry[];
   private photoIdCollisionKeys = new Set<string>();
   private readonly servicesInstance: BuilderServices;
-  private readonly storageRegistry: StorageRegistry;
+  private readonly exifService: ExifService;
+  private readonly ownsExifService: boolean;
 
-  constructor(config: BuilderConfig) {
+  constructor(config: BuilderConfig, runtime: AfilmoryBuilderRuntime = {}) {
     this.config = config;
-    this.storageRegistry = createStorageRegistry();
+    this.exifService = runtime.exifService ?? new ExifService();
+    this.ownsExifService = runtime.ownsExifService ?? !runtime.exifService;
 
     this.pluginReferences = this.resolvePluginReferences();
 
@@ -70,9 +65,8 @@ export class AfilmoryBuilder {
       logger,
       getStorageConfig: () => this.getStorageConfig(),
       getStorageManager: () => this.getStorageManager(),
+      getExifService: () => this.exifService,
       createStorageManager: (config) => this.createStorageManager(config),
-      registerStorageProvider: (name, factory) =>
-        this.registerStorageProvider(name, factory),
       hasPhotoIdCollision: (key) => this.hasPhotoIdCollision(key),
       getPhotoIdForKey: (key, existingItem) =>
         this.getPhotoIdForKey(key, existingItem),
@@ -83,6 +77,12 @@ export class AfilmoryBuilder {
 
   get services(): BuilderServices {
     return this.servicesInstance;
+  }
+
+  dispose(): void {
+    if (this.ownsExifService) {
+      this.exifService.close();
+    }
   }
 
   async buildManifest(options: BuilderOptions): Promise<BuilderResult> {
@@ -104,29 +104,45 @@ export class AfilmoryBuilder {
   async #buildManifest(options: BuilderOptions): Promise<BuilderResult> {
     const startTime = Date.now();
     const runState = this.pluginManager.createRunState();
+    const session = new BuildSession({
+      config: this.config,
+      options,
+      services: this.services,
+      runState,
+      storageManager: this.getStorageManager(),
+      emitPluginEvent: (state, event, payload) =>
+        this.emitPluginEvent(state, event, payload),
+      getConfig: () => this.getConfig(),
+      getManifestSource: () => this.getManifestSource(),
+      getPhotoIdForKey: (key, existingItem) =>
+        this.getPhotoIdForKey(key, existingItem),
+      setPhotoIdCollisionKeys: (keys) => this.setPhotoIdCollisionKeys(keys),
+      getPhotoIdCollisionKeys: () => this.photoIdCollisionKeys,
+    });
+
     const manifest: PhotoManifestItem[] = [];
     const processingResults: ProcessPhotoResult[] = [];
-    let processedCount = 0;
-    let skippedCount = 0;
-    let newCount = 0;
-    let failedCount = 0;
-    let deletedCount = 0;
+    const processingStats: ProcessingStats = {
+      newCount: 0,
+      processedCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+    };
 
     try {
-      await this.emitPluginEvent(runState, "beforeBuild", {
+      await session.emit("beforeBuild", {
         options,
       });
 
       this.logBuildStart();
 
-      // 读取现有的 manifest（如果存在）
       const existingManifest = await this.loadExistingManifest(options);
-      const existingManifestItems = existingManifest.data;
+      const existingManifestItems = existingManifest.photos;
       const existingManifestMap = new Map(
         existingManifestItems.map((item) => [item.s3Key, item]),
       );
 
-      await this.emitPluginEvent(runState, "afterManifestLoad", {
+      await session.emit("afterManifestLoad", {
         options,
         manifest: existingManifest,
         manifestMap: existingManifestMap,
@@ -139,44 +155,8 @@ export class AfilmoryBuilder {
       const storageConfig = this.getStorageConfig();
       logger.main.info("使用存储提供商：", storageConfig.provider);
 
-      const storageManager = this.getStorageManager();
-
-      // 列出存储中的所有文件
-      const allObjects = await storageManager.listAllFiles();
-      logger.main.info(`存储中找到 ${allObjects.length} 个文件`);
-
-      await this.emitPluginEvent(runState, "afterAllFilesListed", {
-        options,
-        allObjects,
-      });
-
-      // 检测 Live Photo 配对（如果启用）
-      const livePhotoMap = await this.detectLivePhotos(allObjects);
-      if (this.config.system.processing.enableLivePhotoDetection) {
-        logger.main.info(`检测到 ${livePhotoMap.size} 个 Live Photo`);
-      }
-
-      await this.emitPluginEvent(runState, "afterLivePhotoDetection", {
-        options,
-        livePhotoMap,
-      });
-
-      // 列出存储中的所有图片文件
-      const imageObjects = await storageManager.listImages();
-      logger.main.info(`存储中找到 ${imageObjects.length} 张照片`);
-      this.setPhotoIdCollisionKeys(
-        findPhotoIdCollisionKeys(imageObjects.map((obj) => obj.key)),
-      );
-      if (this.photoIdCollisionKeys.size > 0) {
-        logger.main.warn(
-          `检测到 ${this.photoIdCollisionKeys.size} 张跨目录同名照片，将为这些照片 ID 添加路径摘要后缀以避免冲突`,
-        );
-      }
-
-      await this.emitPluginEvent(runState, "afterImagesListed", {
-        options,
-        imageObjects,
-      });
+      const sourceScan = await new SourceScanner().scan(session);
+      const { imageObjects, livePhotoMap } = sourceScan;
 
       if (imageObjects.length === 0) {
         logger.main.error("❌ 没有找到需要处理的照片");
@@ -189,7 +169,7 @@ export class AfilmoryBuilder {
           totalPhotos: 0,
         };
 
-        await this.emitPluginEvent(runState, "afterBuild", {
+        await session.emit("afterBuild", {
           options,
           result,
           manifest,
@@ -198,325 +178,92 @@ export class AfilmoryBuilder {
         return result;
       }
 
-      // 创建存储中存在的图片 key 集合，用于检测已删除的图片
-      const s3ImageKeys = new Set(imageObjects.map((obj) => obj.key));
-
-      // 筛选出实际需要处理的图片
-      let tasksToProcess = await this.filterTaskImages(
+      const diffPlan = await new DiffPlanner().plan(
+        session,
         imageObjects,
         existingManifestMap,
-        options,
       );
-
-      // 为减少尾部长耗时，按文件大小降序处理（优先处理大文件）
-      if (tasksToProcess.length > 1) {
-        const beforeFirst = tasksToProcess[0]?.key;
-        tasksToProcess = tasksToProcess.sort(
-          (a, b) => (b.size ?? 0) - (a.size ?? 0),
-        );
-        if (beforeFirst !== tasksToProcess[0]?.key) {
-          logger.main.info("已按文件大小降序重排处理队列");
-        }
-      }
-
-      await this.emitPluginEvent(runState, "afterTasksPrepared", {
-        options,
-        tasks: tasksToProcess,
-        totalImages: imageObjects.length,
-      });
-
-      logger.main.info(
-        `存储中找到 ${imageObjects.length} 张照片，实际需要处理 ${tasksToProcess.length} 张`,
-      );
-
-      const processorOptions: PhotoProcessorOptions = {
-        isForceMode: options.isForceMode,
-        isForceManifest: options.isForceManifest,
-        isForceThumbnails: options.isForceThumbnails,
-      };
-
-      const concurrency =
-        options.concurrencyLimit ??
-        this.config.system.processing.defaultConcurrency;
-      const { useClusterMode } =
-        this.config.system.observability.performance.worker;
-      const shouldUseCluster =
-        useClusterMode && tasksToProcess.length >= concurrency * 2;
-      const { progressListener } = options;
-
-      await this.emitPluginEvent(runState, "beforeProcessTasks", {
-        options,
-        tasks: tasksToProcess,
-        processorOptions,
-        mode: shouldUseCluster ? "cluster" : "worker",
-        concurrency,
-      });
+      const { s3ImageKeys, tasksToProcess } = diffPlan;
+      const taskProcessor = new PhotoTaskProcessor();
+      const assembler = new ManifestAssembler();
 
       if (tasksToProcess.length === 0) {
         logger.main.info("💡 没有需要处理的照片，使用现有 manifest");
-        for (const item of existingManifestItems) {
-          if (!s3ImageKeys.has(item.s3Key)) continue;
-
-          await this.emitPluginEvent(runState, "beforeAddManifestItem", {
-            options,
-            item,
-            pluginData: {},
-            resultType: "skipped",
-          });
-
-          manifest.push(item);
-        }
-      } else {
-        const totalTasks = tasksToProcess.length;
-        let completedTaskCount = 0;
-
-        const applyResultCounters = (
-          result: ProcessPhotoResult | null | undefined,
-        ): void => {
-          if (!result) return;
-
-          switch (result.type) {
-            case "new": {
-              newCount++;
-              processedCount++;
-              break;
-            }
-            case "processed": {
-              processedCount++;
-              break;
-            }
-            case "skipped": {
-              skippedCount++;
-              break;
-            }
-            case "failed": {
-              failedCount++;
-              break;
-            }
-          }
-        };
-
-        const emitProgress = (currentKey?: string): void => {
-          progressListener?.onProgress?.({
-            total: totalTasks,
-            completed: completedTaskCount,
-            newCount,
-            processedCount,
-            skippedCount,
-            failedCount,
-            currentKey,
-          });
-        };
-
-        const handleTaskCompleted = ({
-          result,
-          taskIndex,
-          completed,
-        }: TaskCompletedPayload<ProcessPhotoResult>): void => {
-          if (result) {
-            applyResultCounters(result);
-          }
-
-          completedTaskCount = completed;
-          const key = tasksToProcess[taskIndex]?.key;
-          emitProgress(key);
-        };
-
-        progressListener?.onStart?.({
-          total: totalTasks,
-          mode: shouldUseCluster ? "cluster" : "worker",
-          concurrency,
-        });
-        emitProgress();
-
-        let results: ProcessPhotoResult[];
-
-        logger.main.info(
-          `开始${shouldUseCluster ? "多进程" : "并发"}处理任务，${shouldUseCluster ? "进程" : "Worker"}数：${concurrency}${shouldUseCluster ? `，每进程并发：${this.config.system.observability.performance.worker.workerConcurrency}` : ""}`,
+        await assembler.addExistingItems(
+          session,
+          manifest,
+          existingManifestItems,
+          s3ImageKeys,
         );
+        taskProcessor.completeEmptyRun(session, processingStats);
+      } else {
+        const taskResult = await taskProcessor.process(
+          session,
+          tasksToProcess,
+          existingManifestMap,
+          livePhotoMap,
+        );
+        processingResults.push(...taskResult.results);
+        Object.assign(processingStats, taskResult.stats);
 
-        if (shouldUseCluster) {
-          const clusterPool = new ClusterPool<ProcessPhotoResult>({
-            concurrency,
-            totalTasks: tasksToProcess.length,
-            workerConcurrency:
-              this.config.system.observability.performance.worker
-                .workerConcurrency,
-            sharedData: {
-              existingManifestMap,
-              livePhotoMap,
-              imageObjects: tasksToProcess,
-              builderConfig: this.getConfig(),
-              builderOptions: options,
-              photoIdCollisionKeys: Array.from(this.photoIdCollisionKeys),
-            },
-            onTaskCompleted: handleTaskCompleted,
-          });
-
-          results = await clusterPool.execute();
-        } else {
-          const workerPool = new WorkerPool<ProcessPhotoResult>({
-            concurrency,
-            totalTasks: tasksToProcess.length,
-            onTaskCompleted: handleTaskCompleted,
-          });
-
-          results = await workerPool.execute(async (taskIndex, workerId) => {
-            const obj = tasksToProcess[taskIndex];
-
-            const legacyObj = {
-              Key: obj.key,
-              Size: obj.size,
-              LastModified: obj.lastModified,
-              ETag: obj.etag,
-            };
-
-            const legacyLivePhotoMap = new Map();
-            for (const [key, value] of livePhotoMap) {
-              legacyLivePhotoMap.set(key, {
-                Key: value.key,
-                Size: value.size,
-                LastModified: value.lastModified,
-                ETag: value.etag,
-              });
-            }
-
-            return await processPhoto(
-              legacyObj,
-              taskIndex,
-              workerId,
-              tasksToProcess.length,
-              existingManifestMap,
-              legacyLivePhotoMap,
-              processorOptions,
-              this.services,
-              (runState, event, payload) =>
-                this.emitPluginEvent(runState, event, payload),
-              {
-                runState,
-                builderOptions: options,
-              },
-            );
-          });
-        }
-
-        processingResults.push(...results);
-
-        for (const result of results) {
-          if (!result.item) continue;
-
-          await this.emitPluginEvent(runState, "beforeAddManifestItem", {
-            options,
-            item: result.item,
-            pluginData: result.pluginData ?? {},
-            resultType: result.type,
-          });
-
-          manifest.push(result.item);
-        }
-
-        completedTaskCount = Math.max(completedTaskCount, totalTasks);
-        emitProgress();
-        progressListener?.onComplete?.({
-          total: totalTasks,
-          completed: completedTaskCount,
-          newCount,
-          processedCount,
-          skippedCount,
-          failedCount,
-        });
-
-        for (const [key, item] of existingManifestMap) {
-          if (s3ImageKeys.has(key) && !manifest.some((m) => m.s3Key === key)) {
-            await this.emitPluginEvent(runState, "beforeAddManifestItem", {
-              options,
-              item,
-              pluginData: {},
-              resultType: "skipped",
-            });
-
-            manifest.push(item);
-            skippedCount++;
-          }
-        }
+        await assembler.addProcessedResults(
+          session,
+          manifest,
+          taskResult.results,
+        );
+        processingStats.skippedCount +=
+          await assembler.addUnchangedExistingItems(
+            session,
+            manifest,
+            existingManifestMap,
+            s3ImageKeys,
+          );
       }
 
-      if (tasksToProcess.length === 0 && progressListener) {
-        progressListener.onComplete?.({
-          total: 0,
-          completed: 0,
-          newCount,
-          processedCount,
-          skippedCount,
-          failedCount,
-        });
-      }
-
-      await this.emitPluginEvent(runState, "afterProcessTasks", {
+      await session.emit("afterProcessTasks", {
         options,
         tasks: tasksToProcess,
         results: processingResults,
         manifest,
         stats: {
-          newCount,
-          processedCount,
-          skippedCount,
+          newCount: processingStats.newCount,
+          processedCount: processingStats.processedCount,
+          skippedCount: processingStats.skippedCount,
         },
       });
 
-      // 检测并处理已删除的图片
-      deletedCount = await handleDeletedPhotos(manifest);
-
-      await this.emitPluginEvent(runState, "afterCleanup", {
-        options,
+      const { deletedCount } = await new ArtifactWriter().write(
+        session,
         manifest,
-        deletedCount,
-      });
-
-      // 生成相机和镜头集合
-      const cameras = this.generateCameraCollection(manifest);
-      const lenses = this.generateLensCollection(manifest);
-
-      await this.emitPluginEvent(runState, "beforeSaveManifest", {
-        options,
-        manifest,
-        cameras,
-        lenses,
-      });
-
-      await saveManifest(manifest, cameras, lenses);
-
-      await this.emitPluginEvent(runState, "afterSaveManifest", {
-        options,
-        manifest,
-        cameras,
-        lenses,
-      });
+      );
 
       if (this.config.system.observability.showDetailedStats) {
         this.logBuildResults(
           manifest,
           {
-            newCount,
-            processedCount,
-            skippedCount,
+            newCount: processingStats.newCount,
+            processedCount: processingStats.processedCount,
+            skippedCount: processingStats.skippedCount,
             deletedCount,
           },
           Date.now() - startTime,
         );
       }
 
-      const hasUpdates = newCount > 0 || processedCount > 0 || deletedCount > 0;
+      const hasUpdates =
+        processingStats.newCount > 0 ||
+        processingStats.processedCount > 0 ||
+        deletedCount > 0;
       const result: BuilderResult = {
         hasUpdates,
-        newCount,
-        processedCount,
-        skippedCount,
+        newCount: processingStats.newCount,
+        processedCount: processingStats.processedCount,
+        skippedCount: processingStats.skippedCount,
         deletedCount,
         totalPhotos: manifest.length,
       };
 
-      await this.emitPluginEvent(runState, "afterBuild", {
+      await session.emit("afterBuild", {
         options,
         result,
         manifest,
@@ -525,7 +272,7 @@ export class AfilmoryBuilder {
       return result;
     } catch (error) {
       options.progressListener?.onError?.(error);
-      await this.emitPluginEvent(runState, "onError", {
+      await session.emit("onError", {
         options,
         error,
       });
@@ -538,22 +285,26 @@ export class AfilmoryBuilder {
   ): Promise<AfilmoryManifest> {
     return options.isForceMode || options.isForceManifest
       ? {
+          schema: "afilmory.manifest",
           version: CURRENT_MANIFEST_VERSION,
-          data: [],
-          cameras: [],
-          lenses: [],
+          generatedAt: new Date().toISOString(),
+          source: this.getManifestSource(),
+          photos: [],
+          indexes: { cameras: [], lenses: [] },
         }
       : await loadExistingManifest();
   }
 
-  private async detectLivePhotos(
-    allObjects: Awaited<ReturnType<StorageManager["listAllFiles"]>>,
-  ): Promise<Map<string, (typeof allObjects)[0]>> {
-    if (!this.config.system.processing.enableLivePhotoDetection) {
-      return new Map();
-    }
-
-    return await this.getStorageManager().detectLivePhotos(allObjects);
+  private getManifestSource(): ManifestSource {
+    const storage = this.getStorageConfig();
+    return {
+      provider: "s3",
+      bucket: storage.bucket,
+      region: storage.region,
+      endpoint: storage.endpoint,
+      prefix: storage.prefix,
+      customDomain: storage.customDomain,
+    };
   }
 
   private logBuildStart(): void {
@@ -570,15 +321,6 @@ export class AfilmoryBuilder {
         logger.main.info(`🌐 自定义域名：${customDomain}`);
         logger.main.info(`🪣 存储桶：${bucket}`);
         logger.main.info(`📂 前缀：${prefix}`);
-        break;
-      }
-      case "github": {
-        const { owner, repo, branch, path } = storage;
-        logger.main.info("🚀 开始从存储获取照片列表...");
-        logger.main.info(`👤 仓库所有者：${owner}`);
-        logger.main.info(`🏷️ 仓库名称：${repo}`);
-        logger.main.info(`🌲 分支：${branch}`);
-        logger.main.info(`📂 路径：${path}`);
         break;
       }
     }
@@ -615,18 +357,6 @@ export class AfilmoryBuilder {
    */
   getStorageManager(): StorageManager {
     return this.ensureStorageManager();
-  }
-
-  registerStorageProvider(
-    provider: string,
-    factory: StorageProviderFactory,
-  ): void {
-    this.storageRegistry.registerProvider(provider, factory);
-
-    if (this.getStorageConfig().provider === provider) {
-      this.storageManager = null;
-      this.ensureStorageManager();
-    }
   }
 
   createPluginRunState(): PluginRunState {
@@ -700,43 +430,8 @@ export class AfilmoryBuilder {
       references.push(ref);
     };
 
-    const hasPluginWithName = (name: string): boolean => {
-      return references.some((ref) => {
-        if (typeof ref === "string") {
-          return false;
-        }
-        return ref.name === name;
-      });
-    };
-
-    const storagePluginByProvider: Record<string, BuilderPluginESMImporter> = {
-      s3: () => import("@afilmory/builder/plugins/storage/s3.js"),
-      github: () => import("@afilmory/builder/plugins/storage/github.js"),
-      eagle: () => import("@afilmory/builder/plugins/storage/eagle.js"),
-      local: () => import("@afilmory/builder/plugins/storage/local.js"),
-    };
-
-    const storageProvider = this.getStorageConfig().provider;
-    const storagePlugin = storagePluginByProvider[storageProvider];
-    if (storagePlugin) {
-      const expectedName = `afilmory:storage:${storageProvider}`;
-      if (hasPluginWithName(expectedName)) {
-        return references;
-      }
-      addReference(storagePlugin);
-    }
-
     for (const ref of this.config.plugins) {
       addReference(ref);
-    }
-
-    if (
-      this.getUserSettings().repo.enable &&
-      !hasPluginWithName("afilmory:github-repo-sync")
-    ) {
-      addReference(
-        () => import("@afilmory/builder/plugins/github-repo-sync.js"),
-      );
     }
 
     return references;
@@ -751,7 +446,7 @@ export class AfilmoryBuilder {
   }
 
   private createStorageManager(config: StorageConfig): StorageManager {
-    return new StorageManager(config, this.storageRegistry);
+    return new StorageManager(config);
   }
 
   private getUserSettings(): UserBuilderSettings {
@@ -778,128 +473,5 @@ export class AfilmoryBuilder {
    */
   getConfig(): BuilderConfig {
     return Object.freeze(this.config);
-  }
-
-  /**
-   * 筛选出实际需要处理的图片
-   * @param imageObjects 存储中的图片对象列表
-   * @param existingManifestMap 现有 manifest 的映射
-   * @param options 构建选项
-   * @returns 实际需要处理的图片数组
-   */
-  private async filterTaskImages(
-    imageObjects: Awaited<ReturnType<StorageManager["listImages"]>>,
-    existingManifestMap: Map<string, PhotoManifestItem>,
-    options: BuilderOptions,
-  ): Promise<Awaited<ReturnType<StorageManager["listImages"]>>> {
-    // 强制模式下所有图片都需要处理
-    if (options.isForceMode || options.isForceManifest) {
-      return imageObjects;
-    }
-
-    const tasksToProcess: Awaited<ReturnType<StorageManager["listImages"]>> =
-      [];
-
-    for (const obj of imageObjects) {
-      const { key } = obj;
-      const existingItem = existingManifestMap.get(key);
-      const photoId = this.getPhotoIdForKey(key, existingItem);
-
-      // 新图片需要处理
-      if (!existingItem) {
-        tasksToProcess.push(obj);
-        continue;
-      }
-
-      // 检查是否需要更新（基于修改时间）
-      const legacyObj = {
-        Key: key,
-        Size: obj.size,
-        LastModified: obj.lastModified,
-        ETag: obj.etag,
-      };
-
-      if (needsUpdate(existingItem, legacyObj)) {
-        tasksToProcess.push(obj);
-        continue;
-      }
-
-      // 检查缩略图是否存在，如果不存在或强制刷新缩略图则需要处理
-      const hasThumbnail = await thumbnailExists(photoId);
-      if (!hasThumbnail || options.isForceThumbnails) {
-        tasksToProcess.push(obj);
-        continue;
-      }
-
-      // 其他情况下跳过处理
-    }
-
-    return tasksToProcess;
-  }
-
-  /**
-   * 生成相机信息集合
-   * @param manifest 照片清单数组
-   * @returns 唯一相机信息数组
-   */
-  private generateCameraCollection(
-    manifest: PhotoManifestItem[],
-  ): CameraInfo[] {
-    const cameraMap = new Map<string, CameraInfo>();
-
-    for (const photo of manifest) {
-      if (!photo.exif?.Make || !photo.exif?.Model) continue;
-
-      const make = photo.exif.Make.trim();
-      const model = photo.exif.Model.trim();
-      const displayName = `${make} ${model}`;
-
-      // 使用 displayName 作为唯一键，避免重复
-      if (!cameraMap.has(displayName)) {
-        cameraMap.set(displayName, {
-          make,
-          model,
-          displayName,
-        });
-      }
-    }
-
-    // 按 displayName 排序返回
-    return Array.from(cameraMap.values()).sort((a, b) =>
-      a.displayName.localeCompare(b.displayName),
-    );
-  }
-
-  /**
-   * 生成镜头信息集合
-   * @param manifest 照片清单数组
-   * @returns 唯一镜头信息数组
-   */
-  private generateLensCollection(manifest: PhotoManifestItem[]): LensInfo[] {
-    const lensMap = new Map<string, LensInfo>();
-
-    for (const photo of manifest) {
-      if (!photo.exif?.LensModel) continue;
-
-      const lensModel = photo.exif.LensModel.trim();
-      const lensMake = photo.exif.LensMake?.trim();
-
-      // 生成显示名称：如果有厂商信息则包含，否则只显示型号
-      const displayName = lensMake ? `${lensMake} ${lensModel}` : lensModel;
-
-      // 使用 displayName 作为唯一键，避免重复
-      if (!lensMap.has(displayName)) {
-        lensMap.set(displayName, {
-          make: lensMake,
-          model: lensModel,
-          displayName,
-        });
-      }
-    }
-
-    // 按 displayName 排序返回
-    return Array.from(lensMap.values()).sort((a, b) =>
-      a.displayName.localeCompare(b.displayName),
-    );
   }
 }

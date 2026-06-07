@@ -5,11 +5,13 @@ import { pathToFileURL } from "node:url";
 import type {
   BuilderPlugin,
   BuilderPluginConfigEntry,
-  BuilderPluginESMImporter,
   BuilderPluginHooks,
-  BuilderPluginReference,
+  BuiltinBuilderPluginDescriptor,
 } from "./types.js";
-import { isPluginESMImporter } from "./types.js";
+import {
+  isBuiltinBuilderPluginDescriptor,
+  isPluginESMImporter,
+} from "./types.js";
 
 const requireResolver = createRequire(import.meta.url);
 
@@ -25,18 +27,8 @@ interface NormalizedDescriptor {
   options?: unknown;
 }
 
-function normalizeDescriptor(ref: string): NormalizedDescriptor;
-function normalizeDescriptor(
-  ref: BuilderPluginReference,
-): NormalizedDescriptor | BuilderPluginESMImporter;
-function normalizeDescriptor(
-  ref: BuilderPluginReference,
-): NormalizedDescriptor | BuilderPluginESMImporter {
-  if (typeof ref === "string") {
-    return { specifier: ref };
-  }
-
-  return ref;
+function normalizeDescriptor(ref: string): NormalizedDescriptor {
+  return { specifier: ref };
 }
 
 function resolveSpecifier(
@@ -97,6 +89,20 @@ async function instantiatePlugin(
   return picked as BuilderPlugin;
 }
 
+async function instantiateBuiltinPlugin(
+  descriptor: BuiltinBuilderPluginDescriptor,
+): Promise<BuilderPlugin> {
+  switch (descriptor.plugin) {
+    case "geocoding": {
+      const mod = await import("./geocoding.js");
+      return await instantiatePlugin(mod, descriptor.options);
+    }
+  }
+
+  const unsupportedPlugin: never = descriptor.plugin;
+  throw new Error(`Unsupported built-in plugin: ${unsupportedPlugin}`);
+}
+
 function normalizeHooks(plugin: BuilderPlugin): BuilderPluginHooks {
   const hooks: BuilderPluginHooks = {};
 
@@ -128,6 +134,19 @@ export async function loadPlugins(
   const results: LoadedPluginDefinition[] = [];
 
   for (const entry of entries) {
+    if (isBuiltinBuilderPluginDescriptor(entry)) {
+      const plugin = await instantiateBuiltinPlugin(entry);
+      const hooks = normalizeHooks(plugin);
+      const name = plugin.name || entry.name || entry.plugin;
+
+      results.push({
+        name,
+        hooks,
+        pluginOptions: entry.options,
+      });
+      continue;
+    }
+
     if (isPluginESMImporter(entry)) {
       const { default: pluginFactoryOrPlugin } = await entry();
       const plugin = await instantiatePlugin(pluginFactoryOrPlugin);

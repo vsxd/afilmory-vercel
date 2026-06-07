@@ -1,4 +1,4 @@
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { PhotoManifestItem } from "@afilmory/schema";
 
 /**
  * Extract a Date object from a photo's EXIF DateTimeOriginal or lastModified.

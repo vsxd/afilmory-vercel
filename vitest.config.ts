@@ -1,78 +1,104 @@
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath } from "node:url";
 
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   esbuild: {
-    jsx: 'automatic',
+    jsx: "automatic",
   },
   test: {
     projects: [
       {
         test: {
-          name: 'data',
-          root: './packages/data',
-          include: ['src/**/*.test.ts'],
-        },
-      },
-      {
-        esbuild: {
-          jsx: 'automatic',
-        },
-        test: {
-          name: 'ui',
-          root: './packages/ui',
-          include: ['src/**/*.test.{ts,tsx}'],
-          environment: 'jsdom',
+          name: "schema",
+          root: "./packages/schema",
+          include: ["src/**/*.test.ts"],
         },
       },
       {
         test: {
-          name: 'builder',
-          root: './packages/builder',
-          include: ['src/**/*.test.ts'],
+          name: "media",
+          root: "./packages/media",
+          include: ["src/**/*.test.ts"],
         },
       },
       {
         esbuild: {
-          jsx: 'automatic',
+          jsx: "automatic",
         },
         test: {
-          name: 'webgl-viewer',
-          root: './packages/webgl-viewer',
-          include: ['src/**/*.test.{ts,tsx}'],
-          environment: 'jsdom',
+          name: "ui",
+          root: "./packages/ui",
+          include: ["src/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+        },
+      },
+      {
+        test: {
+          name: "builder",
+          root: "./packages/builder",
+          include: ["src/**/*.test.ts"],
         },
       },
       {
         esbuild: {
-          jsx: 'automatic',
+          jsx: "automatic",
+        },
+        test: {
+          name: "webgl-viewer",
+          root: "./packages/webgl-viewer",
+          include: ["src/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+        },
+      },
+      {
+        esbuild: {
+          jsx: "automatic",
         },
         resolve: {
           alias: [
             {
               find: /^~\//,
-              replacement: `${fileURLToPath(new URL('apps/web/src', import.meta.url))}/`,
+              replacement: `${fileURLToPath(new URL("apps/web/src", import.meta.url))}/`,
             },
             {
-              find: '@pkg',
-              replacement: fileURLToPath(new URL('apps/web/package.json', import.meta.url)),
+              find: /^@locales\//,
+              replacement: `${fileURLToPath(new URL("locales", import.meta.url))}/`,
             },
             {
-              find: 'virtual:pwa-register',
+              find: "@pkg",
               replacement: fileURLToPath(
-                new URL('apps/web/src/test/stubs/pwa-register.ts', import.meta.url),
+                new URL("apps/web/package.json", import.meta.url),
+              ),
+            },
+            {
+              find: "@config",
+              replacement: fileURLToPath(
+                new URL("site.config.ts", import.meta.url),
+              ),
+            },
+            {
+              find: "@env",
+              replacement: fileURLToPath(new URL("env.ts", import.meta.url)),
+            },
+            {
+              find: "virtual:pwa-register",
+              replacement: fileURLToPath(
+                new URL(
+                  "apps/web/src/test/stubs/pwa-register.ts",
+                  import.meta.url,
+                ),
               ),
             },
           ],
         },
         test: {
-          name: 'web',
-          root: './apps/web',
-          include: ['src/**/*.test.{ts,tsx}'],
-          environment: 'jsdom',
+          name: "web",
+          root: "./apps/web",
+          include: ["src/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
         },
       },
     ],
   },
-})
+});

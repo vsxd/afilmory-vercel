@@ -13,12 +13,12 @@ export function localesJsonPlugin(): Plugin {
         return null;
       }
 
-      const content = JSON.parse(code);
-      const obj = {};
+      const content = JSON.parse(code) as Record<string, unknown>;
+      const obj: Record<string, unknown> = {};
 
-      const keys = Object.keys(content as object);
+      const keys = Object.keys(content);
       for (const accessorKey of keys) {
-        set(obj, accessorKey, (content as any)[accessorKey]);
+        set(obj, accessorKey, content[accessorKey]);
       }
 
       return {

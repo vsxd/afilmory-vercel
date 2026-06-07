@@ -1,5 +1,5 @@
 import type { StorageManager } from "../../storage/index.js";
-import type { StorageConfig } from "../../storage/interfaces.js";
+import type { S3Config } from "../../storage/interfaces.js";
 import type { BuilderPlugin } from "../types.js";
 import type { ThumbnailPluginData } from "./shared.js";
 import {
@@ -12,11 +12,9 @@ import {
 const PLUGIN_NAME = "afilmory:thumbnail-storage";
 const RUN_STATE_KEY = "state";
 
-type UploadableStorageConfig = Exclude<StorageConfig, { provider: "eagle" }>;
-
 interface ThumbnailStoragePluginOptions {
   directory?: string;
-  storageConfig?: UploadableStorageConfig;
+  storageConfig?: S3Config;
   contentType?: string;
 }
 
@@ -25,7 +23,7 @@ interface ResolvedPluginConfig {
   remotePrefix: string;
   contentType: string;
   useDefaultStorage: boolean;
-  storageConfig: UploadableStorageConfig | null;
+  storageConfig: S3Config | null;
   enabled: boolean;
 }
 
@@ -55,25 +53,9 @@ function joinSegments(...segments: Array<string | null | undefined>): string {
   return filtered.join("/");
 }
 
-function resolveRemotePrefix(
-  config: UploadableStorageConfig,
-  directory: string,
-): string {
-  switch (config.provider) {
-    case "s3": {
-      const base = trimSlashes(config.prefix);
-      return joinSegments(base, directory);
-    }
-    case "github": {
-      return joinSegments(directory);
-    }
-    case "local": {
-      return joinSegments(directory);
-    }
-    default: {
-      return joinSegments(directory);
-    }
-  }
+function resolveRemotePrefix(config: S3Config, directory: string): string {
+  const base = trimSlashes(config.prefix);
+  return joinSegments(base, directory);
 }
 
 function getOrCreateRunState(container: Map<string, unknown>): PluginRunState {
@@ -98,46 +80,30 @@ export default function thumbnailStoragePlugin(
     name: PLUGIN_NAME,
     [THUMBNAIL_PLUGIN_SYMBOL]: true,
     hooks: {
-      onInit: ({ services, config, logger }) => {
+      onInit: ({ services, config }) => {
         const fallbackStorage =
           config.user?.storage ?? services.storage.getConfig();
         const storageConfig = (options.storageConfig ??
-          fallbackStorage) as StorageConfig;
+          fallbackStorage) as S3Config;
         const directory = normalizeDirectory(options.directory);
         const contentType = options.contentType ?? DEFAULT_CONTENT_TYPE;
 
-        if (storageConfig.provider === "eagle") {
-          logger.thumbnail.warn(
-            "缩略图上传插件不支持 Eagle 存储提供商，已自动禁用。",
-          );
-          externalStorageManager = null;
-          resolved = {
-            directory,
-            remotePrefix: "",
-            contentType,
-            useDefaultStorage: !options.storageConfig,
-            storageConfig: null,
-            enabled: false,
-          };
-          return;
-        }
-
-        const uploadableConfig = storageConfig as UploadableStorageConfig;
-        const remotePrefix = resolveRemotePrefix(uploadableConfig, directory);
+        const remotePrefix = resolveRemotePrefix(storageConfig, directory);
 
         resolved = {
           directory,
           remotePrefix,
           contentType,
           useDefaultStorage: !options.storageConfig,
-          storageConfig: uploadableConfig,
+          storageConfig,
           enabled: true,
         };
 
         if (!options.storageConfig) {
           services.storage.getManager().addExcludePrefix(remotePrefix);
         } else {
-          externalStorageManager = services.storage.createManager(uploadableConfig);
+          externalStorageManager =
+            services.storage.createManager(storageConfig);
         }
       },
       afterPhotoProcess: async ({ services, payload, runShared, logger }) => {

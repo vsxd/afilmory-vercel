@@ -1,0 +1,16 @@
+{
+  "name": "@afilmory/schema",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "test": "pnpm --dir ../.. exec vitest run --project schema",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

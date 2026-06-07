@@ -20,7 +20,6 @@ describe("gallery filter URL helpers", () => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "intersection",
     });
   });
 
@@ -34,7 +33,6 @@ describe("gallery filter URL helpers", () => {
         selectedGeoRegions: [],
         selectedGeoCities: [],
         selectedGeoDistricts: [],
-        tagFilterMode: "union",
       }),
     ).toBe("?photoId=A7C09524&cameras=SONY+ILCE-7C");
   });
@@ -52,7 +50,6 @@ describe("gallery filter URL helpers", () => {
       selectedGeoRegions: [],
       selectedGeoCities: [],
       selectedGeoDistricts: [],
-      tagFilterMode: "union",
     });
   });
 
@@ -65,7 +62,6 @@ describe("gallery filter URL helpers", () => {
       selectedGeoRegions: ["region:country=cn|region=anhui"],
       selectedGeoCities: ["city:country=cn|city=hangzhou"],
       selectedGeoDistricts: ["district:country=cn|city=hangzhou|district=xihu"],
-      tagFilterMode: "union",
     });
 
     expect(search).toBe(
@@ -99,7 +95,6 @@ describe("gallery filter URL helpers", () => {
           selectedGeoRegions: ["region:country=cn|region=anhui"],
           selectedGeoCities: [],
           selectedGeoDistricts: [],
-          tagFilterMode: "union",
         },
       ),
     ).toBe("?geo_region=region%3Acountry%3Dcn%7Cregion%3Danhui");
@@ -115,7 +110,6 @@ describe("gallery filter URL helpers", () => {
         selectedGeoRegions: ["legacy"],
         selectedGeoCities: [],
         selectedGeoDistricts: ["legacy"],
-        tagFilterMode: "union",
       }),
     ).toBe("?geo_region=legacy&geo_district=legacy");
   });
@@ -150,7 +144,6 @@ describe("gallery filter URL helpers", () => {
           selectedGeoRegions: [],
           selectedGeoCities: [],
           selectedGeoDistricts: [],
-          tagFilterMode: "union",
         },
       ),
     ).toBe("");

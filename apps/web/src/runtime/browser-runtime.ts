@@ -1,4 +1,4 @@
-import type { AfilmoryManifest } from "@afilmory/data";
+import type { AfilmoryManifest } from "@afilmory/schema";
 import type { SiteConfig } from "@config";
 
 import type { InjectConfig } from "~/config/types";

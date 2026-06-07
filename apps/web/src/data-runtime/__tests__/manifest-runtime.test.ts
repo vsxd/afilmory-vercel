@@ -1,10 +1,34 @@
+import { createManifest } from "@afilmory/schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AfilmoryBrowserRuntime } from "~/runtime/browser-runtime";
+import type { PhotoManifest } from "~/types/photo";
 
 import { loadManifestRuntime } from "../manifest-runtime";
 
 const originalFetch = globalThis.fetch;
+
+function createPhoto(id: string): PhotoManifest {
+  return {
+    id,
+    title: id,
+    description: "",
+    dateTaken: "2024-01-01T00:00:00.000Z",
+    tags: [],
+    originalUrl: `https://example.com/${id}.jpg`,
+    thumbnailUrl: `https://example.com/${id}-thumb.jpg`,
+    thumbHash: null,
+    width: 100,
+    height: 100,
+    aspectRatio: 1,
+    s3Key: `${id}.jpg`,
+    lastModified: "2024-01-01T00:00:00.000Z",
+    size: 1,
+    exif: null,
+    toneAnalysis: null,
+    location: null,
+  };
+}
 
 describe("loadManifestRuntime", () => {
   beforeEach(() => {
@@ -26,12 +50,7 @@ describe("loadManifestRuntime", () => {
       version: 1,
       manifest: {
         mode: "inline",
-        data: {
-          version: "v6",
-          data: [{ id: "1", tags: [] }],
-          cameras: [],
-          lenses: [],
-        },
+        data: createManifest({ photos: [createPhoto("1")] }),
       },
     };
     const fetchSpy = vi.fn();
@@ -39,7 +58,7 @@ describe("loadManifestRuntime", () => {
 
     const manifest = await loadManifestRuntime();
 
-    expect(manifest.data).toHaveLength(1);
+    expect(manifest.photos).toHaveLength(1);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -53,18 +72,15 @@ describe("loadManifestRuntime", () => {
       manifest: {
         mode: "external",
         url: "/assets/photos-manifest.json",
-        promise: Promise.resolve({
-          version: "v6",
-          data: [{ id: "2", tags: [] }],
-          cameras: [],
-          lenses: [],
-        }),
+        promise: Promise.resolve(
+          createManifest({ photos: [createPhoto("2")] }),
+        ),
       },
     };
 
     const manifest = await loadManifestRuntime();
 
-    expect(manifest.data[0]?.id).toBe("2");
+    expect(manifest.photos[0]?.id).toBe("2");
   });
 
   it("fetches the external manifest when only a URL is injected", async () => {
@@ -81,12 +97,7 @@ describe("loadManifestRuntime", () => {
     };
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        version: "v6",
-        data: [{ id: "3", tags: [] }],
-        cameras: [],
-        lenses: [],
-      }),
+      json: async () => createManifest({ photos: [createPhoto("3")] }),
     });
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
@@ -96,7 +107,7 @@ describe("loadManifestRuntime", () => {
       "/assets/photos-manifest.json",
       expect.any(Object),
     );
-    expect(manifest.data[0]?.id).toBe("3");
+    expect(manifest.photos[0]?.id).toBe("3");
   });
 
   it("clears the cached promise after a failed fetch so retries can succeed", async () => {
@@ -120,12 +131,7 @@ describe("loadManifestRuntime", () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          version: "v6",
-          data: [{ id: "4", tags: [] }],
-          cameras: [],
-          lenses: [],
-        }),
+        json: async () => createManifest({ photos: [createPhoto("4")] }),
       });
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
@@ -135,6 +141,6 @@ describe("loadManifestRuntime", () => {
     const manifest = await loadManifestRuntime();
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(manifest.data[0]?.id).toBe("4");
+    expect(manifest.photos[0]?.id).toBe("4");
   });
 });

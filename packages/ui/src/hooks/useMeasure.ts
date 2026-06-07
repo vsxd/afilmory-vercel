@@ -4,17 +4,6 @@ import { debounce } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const createDebounce = debounce;
-declare type ResizeObserverCallback = (
-  entries: any[],
-  observer: ResizeObserver,
-) => void;
-declare class ResizeObserver {
-  constructor(callback: ResizeObserverCallback);
-  observe(target: Element, options?: any): void;
-  unobserve(target: Element): void;
-  disconnect(): void;
-  static toString(): string;
-}
 
 export interface RectReadOnly {
   readonly x: number;
@@ -102,7 +91,7 @@ export function useMeasure({
     const callback = () => {
       if (!state.current.element) return;
       const { left, top, width, height, bottom, right, x, y } =
-        state.current.element.getBoundingClientRect() as unknown as RectReadOnly;
+        state.current.element.getBoundingClientRect();
 
       const size = {
         left,

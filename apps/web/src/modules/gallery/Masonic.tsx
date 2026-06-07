@@ -34,6 +34,13 @@ export interface MasonryLayoutMetrics {
   containerRect: DOMRect;
   rowGutter: number;
 }
+
+type MasonryRuntimeProps<Item> = MasonryScrollerProps<Item> & {
+  containerRef: React.MutableRefObject<HTMLElement | null>;
+  isScrolling: boolean;
+  scrollTop: number;
+};
+
 /**
  * A "batteries included" masonry grid which includes all of the implementation details below. This component is the
  * easiest way to get off and running in your app, before switching to more advanced implementations, if necessary.
@@ -47,6 +54,7 @@ export const Masonry = <Item,>(
 ) => {
   const [scrollTop, setScrollTop] = React.useState(0);
   const [isScrolling, setIsScrolling] = React.useState(false);
+  const [positionIndex, setPositionIndex] = React.useState(0);
   const scrollElement = useScrollViewElement();
 
   const fps = props.scrollFps || 12;
@@ -95,53 +103,6 @@ export const Masonry = <Item,>(
   });
   const containerPos = useContainerPosition(containerRef, windowSize);
 
-  const nextProps = Object.assign(
-    {
-      offset: containerPos.offset,
-      width: containerPos.width || windowSize[0],
-      height: containerPos.height || windowSize[1],
-      containerRef,
-    },
-    props,
-  ) as any;
-
-  const [positionIndex, setPositionIndex] = React.useState(0);
-
-  React.useImperativeHandle(props.ref, () => ({
-    getLayoutMetrics: () => {
-      const container = containerRef.current;
-      if (!container) {
-        return null;
-      }
-
-      return {
-        columnCount: nextProps.positioner.columnCount,
-        columnGutter: props.columnGutter ?? 0,
-        columnWidth: nextProps.positioner.columnWidth,
-        containerRect: container.getBoundingClientRect(),
-        rowGutter: props.rowGutter ?? props.columnGutter ?? 0,
-      };
-    },
-    getItemRect: (index: number) => {
-      const item = nextProps.positioner.get(index);
-      const container = containerRef.current;
-      if (!item || !container) {
-        return null;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      return DOMRect.fromRect({
-        x: containerRect.left + item.left,
-        y: containerRect.top + item.top,
-        width: nextProps.positioner.columnWidth,
-        height: item.height,
-      });
-    },
-    reposition: () => {
-      setPositionIndex((i) => i + 1);
-    },
-  }));
-
   // Workaround for https://github.com/jaredLunde/masonic/issues/12
   const itemCounter = React.useRef<number>(props.items.length);
 
@@ -153,17 +114,64 @@ export const Masonry = <Item,>(
     itemCounter.current = props.items.length;
   }
 
-  nextProps.positioner = usePositioner(nextProps, [
+  const baseProps = {
+    ...props,
+    offset: containerPos.offset,
+    width: containerPos.width || windowSize[0],
+    height: containerPos.height || windowSize[1],
+    containerRef,
+  };
+
+  const positioner = usePositioner(baseProps, [
     shrunk ? Math.random() + positionIndex : positionIndex,
   ]);
+  const resizeObserver = useResizeObserver(positioner);
+  const runtimeProps: MasonryRuntimeProps<Item> = {
+    ...baseProps,
+    positioner,
+    resizeObserver,
+    scrollTop,
+    isScrolling,
+    height: windowSize[1],
+  };
 
-  nextProps.resizeObserver = useResizeObserver(nextProps.positioner);
-  nextProps.scrollTop = scrollTop;
-  nextProps.isScrolling = isScrolling;
-  nextProps.height = windowSize[1];
+  React.useImperativeHandle(props.ref, () => ({
+    getLayoutMetrics: () => {
+      const container = containerRef.current;
+      if (!container) {
+        return null;
+      }
 
-  const scrollToIndex = useScrollToIndex(nextProps.positioner, {
-    height: nextProps.height,
+      return {
+        columnCount: positioner.columnCount,
+        columnGutter: props.columnGutter ?? 0,
+        columnWidth: positioner.columnWidth,
+        containerRect: container.getBoundingClientRect(),
+        rowGutter: props.rowGutter ?? props.columnGutter ?? 0,
+      };
+    },
+    getItemRect: (index: number) => {
+      const item = positioner.get(index);
+      const container = containerRef.current;
+      if (!item || !container) {
+        return null;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      return DOMRect.fromRect({
+        x: containerRect.left + item.left,
+        y: containerRect.top + item.top,
+        width: positioner.columnWidth,
+        height: item.height,
+      });
+    },
+    reposition: () => {
+      setPositionIndex((i) => i + 1);
+    },
+  }));
+
+  const scrollToIndex = useScrollToIndex(positioner, {
+    height: runtimeProps.height,
     offset: containerPos.offset,
     align:
       typeof props.scrollToIndex === "object"
@@ -180,7 +188,7 @@ export const Masonry = <Item,>(
     if (index !== void 0) scrollToIndex(index);
   }, [index, scrollToIndex]);
 
-  return <MasonryScroller {...nextProps} />;
+  return <MasonryScroller {...runtimeProps} />;
 };
 
 function MasonryScroller<Item>(

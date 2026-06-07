@@ -1,3 +1,5 @@
+import type { LayerProps as MapLibreLayerProps } from "react-map-gl/maplibre";
+
 import type {
   GeographicRegion,
   MapDisplayMode,
@@ -5,12 +7,7 @@ import type {
 } from "~/types/map";
 
 // LayerProps type definition for compatibility
-export interface LayerProps {
-  id: string;
-  type: "fill" | "line" | "symbol" | "circle" | "raster" | "fill-extrusion";
-  paint?: Record<string, any>;
-  layout?: Record<string, any>;
-}
+export type LayerProps = MapLibreLayerProps;
 
 // Clustering utilities
 export interface ClusterPoint {

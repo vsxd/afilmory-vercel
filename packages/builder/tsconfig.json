@@ -10,13 +10,13 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noImplicitAny": true,
     "noEmit": true,
     "jsx": "preserve",
     "paths": {
-      "@afilmory/builder/*": ["./src/*"],
       "@pkg": ["./package.json"],
       "@env": ["../../env.ts"]
     }

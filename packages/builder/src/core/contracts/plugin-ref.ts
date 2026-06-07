@@ -16,6 +16,13 @@ export type PluginRunState = Map<string, Map<string, unknown>>;
 export interface MinimalBuilderPlugin {
   name?: string;
   hooks?: unknown;
+  serializablePluginReference?: BuiltinBuilderPluginDescriptor;
+}
+
+export interface BuiltinBuilderPluginDescriptor {
+  plugin: "geocoding";
+  options?: unknown;
+  name?: string;
 }
 
 export type BuilderPluginESMImporter = () => Promise<{
@@ -24,7 +31,10 @@ export type BuilderPluginESMImporter = () => Promise<{
     | MinimalBuilderPlugin;
 }>;
 
-export type BuilderPluginReference = string | BuilderPluginESMImporter;
+export type BuilderPluginReference =
+  | string
+  | BuiltinBuilderPluginDescriptor
+  | BuilderPluginESMImporter;
 
 export type BuilderPluginConfigEntry =
   | BuilderPluginReference
@@ -34,4 +44,15 @@ export function isPluginESMImporter(
   value: BuilderPluginConfigEntry,
 ): value is BuilderPluginESMImporter {
   return typeof value === "function" && value.length === 0;
+}
+
+export function isBuiltinBuilderPluginDescriptor(
+  value: BuilderPluginConfigEntry,
+): value is BuiltinBuilderPluginDescriptor {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "plugin" in value &&
+    value.plugin === "geocoding"
+  );
 }

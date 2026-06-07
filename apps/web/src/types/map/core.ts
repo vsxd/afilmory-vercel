@@ -1,4 +1,4 @@
-import type { PhotoManifestItem } from "@afilmory/data";
+import type { GeoRegionLevel, PhotoManifestItem } from "@afilmory/schema";
 
 /**
  * GPS Cardinal directions enum
@@ -38,7 +38,7 @@ export interface PhotoMarker {
 }
 
 export type MapDisplayMode = "regions" | "photos";
-export type GeographicRegionLevel = "country" | "region" | "city" | "district";
+export type GeographicRegionLevel = GeoRegionLevel;
 
 /**
  * Map bounds interface

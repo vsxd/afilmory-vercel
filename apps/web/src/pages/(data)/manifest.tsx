@@ -3,12 +3,79 @@ import { useMemo, useState } from "react";
 
 import { NotFound } from "~/components/common/NotFound";
 import { usePhotoRepository } from "~/runtime/app-runtime";
+import type { PhotoManifest } from "~/types/photo";
 
 const JSON_TOKEN_REGEX =
   /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
 
+interface ManifestInspectorData {
+  schema: "afilmory.manifest";
+  version: 2;
+  photos: PhotoManifest[];
+}
+
+interface ManifestStatsSummary {
+  totalPhotos: number;
+  totalSize: string;
+  uniqueTags: number;
+  uniqueCameras: number;
+}
+
+function createManifestInspectorData(
+  photos: PhotoManifest[],
+): ManifestInspectorData {
+  return {
+    schema: "afilmory.manifest",
+    version: 2,
+    photos,
+  };
+}
+
+function createManifestStats(photos: PhotoManifest[]): ManifestStatsSummary {
+  const totalPhotos = photos.length;
+  const totalSize = photos.reduce((sum, photo) => sum + (photo.size || 0), 0);
+
+  const uniqueTags = new Set<string>();
+  for (const photo of photos) {
+    for (const tag of photo.tags ?? []) {
+      uniqueTags.add(tag);
+    }
+  }
+
+  const cameras = new Set<string>();
+  for (const photo of photos) {
+    if (photo.exif?.Make && photo.exif?.Model) {
+      cameras.add(`${photo.exif.Make} ${photo.exif.Model}`);
+    }
+  }
+
+  return {
+    totalPhotos,
+    totalSize: (totalSize / (1024 * 1024 * 1024)).toFixed(2),
+    uniqueTags: uniqueTags.size,
+    uniqueCameras: cameras.size,
+  };
+}
+
+function filterManifestPhotos(
+  photos: PhotoManifest[],
+  searchTerm: string,
+): PhotoManifest[] {
+  const term = searchTerm.trim().toLowerCase();
+  if (!term) return photos;
+
+  return photos.filter(
+    (photo) =>
+      photo.title?.toLowerCase().includes(term) ||
+      photo.description?.toLowerCase().includes(term) ||
+      photo.tags?.some((tag) => tag.toLowerCase().includes(term)) ||
+      photo.exif?.Make?.toLowerCase().includes(term) ||
+      photo.exif?.Model?.toLowerCase().includes(term),
+  );
+}
+
 // JSON 语法高亮组件
-const JsonHighlight = ({ data }: { data: any }) => {
+const JsonHighlight = ({ data }: { data: unknown }) => {
   const jsonString = JSON.stringify(data, null, 2);
 
   const highlightJson = (str: string) => {
@@ -85,31 +152,8 @@ const StatCard = ({
 );
 
 // 统计信息组件
-const ManifestStats = ({ data }: { data: any[] }) => {
-  const stats = useMemo(() => {
-    const totalPhotos = data.length;
-    const totalSize = data.reduce((sum, photo) => sum + (photo.size || 0), 0);
-
-    const uniqueTags = new Set();
-    data.forEach((photo) => {
-      photo.tags?.forEach((tag: string) => uniqueTags.add(tag));
-    });
-
-    const cameras = new Set();
-    data.forEach((photo) => {
-      if (photo.exif?.Make && photo.exif?.Model) {
-        cameras.add(`${photo.exif.Make} ${photo.exif.Model}`);
-      }
-    });
-
-    return {
-      totalPhotos,
-      totalSize: (totalSize / (1024 * 1024 * 1024)).toFixed(2), // GB
-
-      uniqueTags: uniqueTags.size,
-      uniqueCameras: cameras.size,
-    };
-  }, [data]);
+const ManifestStats = ({ data }: { data: PhotoManifest[] }) => {
+  const stats = useMemo(() => createManifestStats(data), [data]);
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -123,7 +167,13 @@ const ManifestStats = ({ data }: { data: any[] }) => {
 };
 
 // 照片卡片组件
-const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
+const PhotoCard = ({
+  photo,
+  index,
+}: {
+  photo: PhotoManifest;
+  index: number;
+}) => (
   <div className="group relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/30 backdrop-blur-sm transition-all hover:border-zinc-700 hover:bg-zinc-900/50">
     <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/0 via-zinc-800/5 to-zinc-800/10 opacity-0 transition-opacity group-hover:opacity-100" />
 
@@ -135,7 +185,7 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
             <div className="relative overflow-hidden rounded-lg">
               <img
                 src={photo.thumbnailUrl}
-                alt={photo.title}
+                alt={photo.title || photo.id}
                 className="h-16 w-16 object-cover transition-transform group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -183,7 +233,7 @@ const PhotoCard = ({ photo, index }: { photo: any; index: number }) => (
           {/* 标签 */}
           {photo.tags && photo.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {photo.tags.slice(0, 3).map((tag: string) => (
+              {photo.tags.slice(0, 3).map((tag) => (
                 <span
                   key={`${photo.id}:${tag}`}
                   className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 ring-1 ring-blue-500/20"
@@ -210,24 +260,11 @@ const ManifestInspectorPage = () => {
   const photoRepository = usePhotoRepository();
 
   const photos = photoRepository.getPhotos();
-  const manifestData = {
-    version: "v6",
-    data: photos,
-  };
+  const manifestData = createManifestInspectorData(photos);
 
   // 搜索过滤
   const filteredPhotos = useMemo(() => {
-    if (!searchTerm) return photos;
-
-    const term = searchTerm.toLowerCase();
-    return photos.filter(
-      (photo) =>
-        photo.title?.toLowerCase().includes(term) ||
-        photo.description?.toLowerCase().includes(term) ||
-        photo.tags?.some((tag) => tag.toLowerCase().includes(term)) ||
-        photo.exif?.Make?.toLowerCase().includes(term) ||
-        photo.exif?.Model?.toLowerCase().includes(term),
-    );
+    return filterManifestPhotos(photos, searchTerm);
   }, [photos, searchTerm]);
 
   const handleExport = () => {
@@ -374,7 +411,11 @@ const ManifestInspectorPage = () => {
                     <JsonHighlight
                       data={
                         searchTerm
-                          ? { version: "v6", data: filteredPhotos }
+                          ? ({
+                              schema: "afilmory.manifest",
+                              version: 2,
+                              photos: filteredPhotos,
+                            } satisfies ManifestInspectorData)
                           : manifestData
                       }
                     />

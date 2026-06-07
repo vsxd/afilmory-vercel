@@ -1,17 +1,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import type { AfilmoryManifest } from "@afilmory/data";
+import type { AfilmoryManifest } from "@afilmory/schema";
+import { createManifest } from "@afilmory/schema";
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const manifest: AfilmoryManifest = {
-  version: "v8",
-  data: [],
-  cameras: [],
-  lenses: [],
-};
+const manifest: AfilmoryManifest = createManifest();
 
 describe("bootstrap splash", () => {
   beforeEach(() => {
@@ -73,8 +69,11 @@ describe("bootstrap splash", () => {
       },
       criticalRoutePreloadCleanup: undefined,
       dispose: vi.fn(),
+      imageCache: {
+        clear: vi.fn(),
+      },
       photoRepository: {
-        getPhotos: () => options.manifest.data,
+        getPhotos: () => options.manifest.photos,
       },
       store: {},
     }));

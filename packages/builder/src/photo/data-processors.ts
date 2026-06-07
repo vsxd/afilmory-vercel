@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { decompressUint8Array } from "@afilmory/data";
+import { decompressUint8Array } from "@afilmory/media";
 import type sharp from "sharp";
 
 import { HEIC_FORMATS } from "../constants/index.js";
 import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
+import type { ExifReaderService } from "../image/exif.js";
 import { extractExifData } from "../image/exif.js";
 import { calculateHistogramAndAnalyzeTone } from "../image/histogram.js";
 import {
@@ -90,6 +91,7 @@ export async function processExifData(
   photoKey: string,
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
+  exifService: ExifReaderService,
 ): Promise<PickedExif | null> {
   const loggers = getPhotoProcessingLoggers();
 
@@ -104,7 +106,7 @@ export async function processExifData(
   const ext = path.extname(photoKey).toLowerCase();
   const originalBuffer = HEIC_FORMATS.has(ext) ? rawImageBuffer : undefined;
 
-  return await extractExifData(imageBuffer, originalBuffer);
+  return await extractExifData(exifService, imageBuffer, originalBuffer);
 }
 
 /**

@@ -3,6 +3,15 @@ import * as React from "react";
 
 import { clsxm } from "../utils/cn";
 
+type HighlightStyle = React.CSSProperties & {
+  "--highlight-bg": string;
+};
+
+const highlightedItemStyle: HighlightStyle = {
+  "--highlight-bg":
+    "linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))",
+};
+
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
 const ContextMenuGroup = ContextMenuPrimitive.Group;
@@ -118,11 +127,7 @@ const ContextMenuItem = ({
       inset && "pl-8",
       className,
     )}
-    style={{
-      // @ts-ignore - CSS variable for data-highlighted state
-      "--highlight-bg":
-        "linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))",
-    }}
+    style={highlightedItemStyle}
     {...props}
   />
 );
@@ -149,11 +154,7 @@ const ContextMenuCheckboxItem = ({
       className,
     )}
     checked={checked}
-    style={{
-      // @ts-ignore - CSS variable for data-highlighted state
-      "--highlight-bg":
-        "linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))",
-    }}
+    style={highlightedItemStyle}
     {...props}
   >
     <span className="absolute left-2 flex items-center justify-center">

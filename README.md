@@ -71,7 +71,7 @@ Huge thanks to [Innei](https://innei.in) and the Afilmory team for creating this
 - ☁️ **S3-compatible source photos** - works with AWS S3, MinIO, Aliyun OSS, Tencent COS, and other S3-compatible services.
 - 🌍 **CDN-friendly URLs** - `S3_CUSTOM_DOMAIN` can be used for public photo URLs.
 - 📦 **Zero original photo bundling** - original photos remain in object storage; only generated thumbnails and web assets are deployed.
-- 🚀 **Static SPA runtime** - production builds default to an external `assets/photos-manifest.<hash>.json` loaded through `window.__MANIFEST_PROMISE__`.
+- 🚀 **Static SPA runtime** - production builds default to an external `assets/photos-manifest.<hash>.json` loaded through `window.__AFILMORY__.manifest`.
 
 ---
 
@@ -117,7 +117,7 @@ Click the button below and follow the prompts to configure S3-related environmen
 
 ## ⚙️ Environment Variables
 
-Environment overrides are merged into `site.config.ts` by `site.config.build.ts` during build. Client-side code receives the final config through `window.__SITE_CONFIG__`; it does not read `process.env` at runtime.
+Environment overrides are merged into `site.config.ts` by `site.config.build.ts` during build. Client-side code receives the final config through `window.__AFILMORY__.config`; it does not read `process.env` at runtime.
 
 ### Required for S3 source photos
 
@@ -144,7 +144,7 @@ The default static site configuration only supports S3-compatible source photos.
 | Variable           | Description                                                                  |
 | ------------------ | ---------------------------------------------------------------------------- |
 | `REPO_URL`         | Git repository used to cache generated `photos-manifest.json` and thumbnails |
-| `REPO_TOKEN`       | Token used by the cache sync plugin when pushing cache updates               |
+| `REPO_TOKEN`       | Token used by the artifact cache script when pushing cache updates           |
 | `BUILDER_REPO_URL` | Backward-compatible alias for `REPO_URL`                                     |
 | `GIT_TOKEN`        | Backward-compatible alias for `REPO_TOKEN`                                   |
 
@@ -282,6 +282,8 @@ Vercel uses:
 - **Build command:** `sh scripts/build-static.sh`
 - **Output directory:** `apps/web/dist`
 
+When `REPO_URL` and `REPO_TOKEN` are configured, `scripts/build-static.sh` restores cached manifest, geocoding cache, and thumbnails before deciding whether it needs S3. After a successful build it pushes the refreshed artifacts back to the cache repository.
+
 `scripts/build-static.sh` runs `pnpm build` when required S3 credentials are present. If S3 credentials are missing but a reusable `generated/photos-manifest.json` exists, it runs `pnpm build:web` so preview deployments can still succeed.
 
 ### Other static hosts
@@ -315,7 +317,7 @@ Use `pnpm build` as the build command.
 - Tailwind CSS 4
 - Radix UI
 - Motion
-- Jotai and Zustand
+- Jotai
 - TanStack Query
 - React Router 7
 - i18next and react-i18next

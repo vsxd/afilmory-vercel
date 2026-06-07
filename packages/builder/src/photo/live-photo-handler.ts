@@ -1,5 +1,3 @@
-import type { _Object } from "@aws-sdk/client-s3";
-
 import type { StorageManager } from "../storage/index.js";
 import type { StorageObject } from "../storage/interfaces.js";
 import { getPhotoProcessingLoggers } from "./logger-adapter.js";
@@ -19,7 +17,7 @@ export interface LivePhotoResult {
  */
 export async function processLivePhoto(
   photoKey: string,
-  livePhotoMap: Map<string, _Object | StorageObject>,
+  livePhotoMap: Map<string, StorageObject>,
   storageManager: StorageManager,
 ): Promise<LivePhotoResult> {
   const loggers = getPhotoProcessingLoggers();
@@ -30,15 +28,8 @@ export async function processLivePhoto(
     return { isLivePhoto: false };
   }
 
-  // 处理不同类型的视频对象
-  let videoKey: string;
-  if ("Key" in livePhotoVideo && livePhotoVideo.Key) {
-    // _Object 类型
-    videoKey = livePhotoVideo.Key;
-  } else if ("key" in livePhotoVideo && livePhotoVideo.key) {
-    // StorageObject 类型
-    videoKey = livePhotoVideo.key;
-  } else {
+  const videoKey = livePhotoVideo.key;
+  if (!videoKey) {
     return { isLivePhoto: false };
   }
 
@@ -54,15 +45,7 @@ export async function processLivePhoto(
 }
 
 /**
- * 创建 Live Photo 映射表 (兼容 _Object 类型)
- * 根据文件名匹配 Live Photo 的照片和视频文件
- * @param objects S3 对象列表
- * @returns Live Photo 映射表
- */
-export function createLivePhotoMap(objects: _Object[]): Map<string, _Object>;
-
-/**
- * 创建 Live Photo 映射表 (兼容 StorageObject 类型)
+ * 创建 Live Photo 映射表
  * 根据文件名匹配 Live Photo 的照片和视频文件
  * @param objects 存储对象列表
  * @returns Live Photo 映射表
@@ -72,17 +55,16 @@ export function createLivePhotoMap(
 ): Map<string, StorageObject>;
 
 export function createLivePhotoMap(
-  objects: _Object[] | StorageObject[],
-): Map<string, _Object | StorageObject> {
-  const livePhotoMap = new Map<string, _Object | StorageObject>();
+  objects: StorageObject[],
+): Map<string, StorageObject> {
+  const livePhotoMap = new Map<string, StorageObject>();
 
   // 分离照片和视频文件
-  const photos: (_Object | StorageObject)[] = [];
-  const videos: (_Object | StorageObject)[] = [];
+  const photos: StorageObject[] = [];
+  const videos: StorageObject[] = [];
 
   for (const obj of objects) {
-    // 获取 key，兼容两种类型
-    const key = "Key" in obj ? obj.Key : (obj as StorageObject).key;
+    const { key } = obj;
     if (!key) continue;
 
     const ext = key.toLowerCase().split(".").pop();
@@ -95,15 +77,14 @@ export function createLivePhotoMap(
 
   // 匹配 Live Photo
   for (const photo of photos) {
-    const photoKey = "Key" in photo ? photo.Key : (photo as StorageObject).key;
+    const photoKey = photo.key;
     if (!photoKey) continue;
 
     const photoBaseName = photoKey.replace(/\.[^/.]+$/, "");
 
     // 查找对应的视频文件
     const matchingVideo = videos.find((video) => {
-      const videoKey =
-        "Key" in video ? video.Key : (video as StorageObject).key;
+      const videoKey = video.key;
       if (!videoKey) return false;
       const videoBaseName = videoKey.replace(/\.[^/.]+$/, "");
       return videoBaseName === photoBaseName;

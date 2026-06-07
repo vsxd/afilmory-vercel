@@ -5,6 +5,7 @@ import type {
   HTMLMotionProps,
   LegacyAnimationControls,
   TargetAndTransition,
+  Transition,
   VariantLabels,
 } from "motion/react";
 import { m as motion } from "motion/react";
@@ -76,6 +77,26 @@ type SwitchThumbProps = Omit<
       | LegacyAnimationControls;
   };
 
+function getFlipDurationMs(transition: Transition): number {
+  return typeof transition.duration === "number"
+    ? transition.duration * 1000
+    : 200;
+}
+
+function getFlipEasing(transition: Transition): string {
+  if (typeof transition.ease === "string") {
+    return transition.ease;
+  }
+  if (
+    Array.isArray(transition.ease) &&
+    transition.ease.length === 4 &&
+    transition.ease.every((value) => typeof value === "number")
+  ) {
+    return `cubic-bezier(${transition.ease.join(", ")})`;
+  }
+  return "cubic-bezier(0.22, 1, 0.36, 1)";
+}
+
 function SwitchThumb({
   pressedAnimation,
   transition,
@@ -108,12 +129,8 @@ function SwitchThumb({
       const deltaY = prevRect.top - newRect.top;
 
       if (deltaX !== 0 || deltaY !== 0) {
-        const durationMs =
-          typeof (resolvedTransition as any)?.duration === "number"
-            ? (resolvedTransition as any).duration * 1000
-            : 200;
-        const easing =
-          (resolvedTransition as any)?.ease || "cubic-bezier(0.22, 1, 0.36, 1)";
+        const durationMs = getFlipDurationMs(resolvedTransition);
+        const easing = getFlipEasing(resolvedTransition);
 
         // Defer to next frame to ensure layout settles in scroll containers
         requestAnimationFrame(() => {
