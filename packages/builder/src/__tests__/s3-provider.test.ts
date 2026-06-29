@@ -189,6 +189,69 @@ describe("S3StorageProvider.getFile", () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
+  it("excludes keys matching S3_EXCLUDE_REGEX from both listImages and listAllFiles", async () => {
+    const makeSend = () =>
+      vi.fn<MockS3Send>().mockResolvedValue(
+        createListObjectsResponse({
+          Contents: [
+            { Key: "keep.jpg", Size: 1 },
+            { Key: "drafts/skip.jpg", Size: 2 },
+            { Key: "clip.mov", Size: 3 },
+          ],
+          IsTruncated: false,
+        }),
+      );
+
+    const imagesProvider = new S3StorageProvider(
+      { ...config, excludeRegex: "^drafts/" },
+      { s3Client: new MockS3Client(makeSend()) },
+    );
+    await expect(imagesProvider.listImages()).resolves.toEqual([
+      { key: "keep.jpg", size: 1, lastModified: undefined, etag: undefined },
+    ]);
+
+    const filesProvider = new S3StorageProvider(
+      { ...config, excludeRegex: "^drafts/" },
+      { s3Client: new MockS3Client(makeSend()) },
+    );
+    const allKeys = (await filesProvider.listAllFiles()).map((o) => o.key);
+    expect(allKeys).toEqual(["keep.jpg", "clip.mov"]);
+  });
+
+  it("ignores an invalid S3_EXCLUDE_REGEX instead of throwing", async () => {
+    const send = vi.fn<MockS3Send>().mockResolvedValue(
+      createListObjectsResponse({
+        Contents: [{ Key: "a.jpg", Size: 1 }],
+        IsTruncated: false,
+      }),
+    );
+    const provider = new S3StorageProvider(
+      { ...config, excludeRegex: "[" },
+      { s3Client: new MockS3Client(send) },
+    );
+    await expect(provider.listImages()).resolves.toEqual([
+      { key: "a.jpg", size: 1, lastModified: undefined, etag: undefined },
+    ]);
+  });
+
+  it("pairs live photos deterministically regardless of listing order", () => {
+    const provider = new S3StorageProvider(config);
+    const files = [
+      { key: "trip/IMG.heic" },
+      { key: "trip/IMG.jpg" },
+      { key: "trip/IMG.mov" },
+    ] as Parameters<typeof provider.detectLivePhotos>[0];
+
+    const forward = provider.detectLivePhotos(files);
+    const reversed = provider.detectLivePhotos([...files].reverse());
+
+    // "IMG.heic" sorts before "IMG.jpg", so it is the deterministic image side.
+    expect(forward.get("trip/IMG.heic")?.key).toBe("trip/IMG.mov");
+    expect([...reversed.entries()].map(([k, v]) => [k, v.key])).toEqual(
+      [...forward.entries()].map(([k, v]) => [k, v.key]),
+    );
+  });
+
   it("encodes object keys when generating public URLs", () => {
     const provider = new S3StorageProvider({
       ...config,

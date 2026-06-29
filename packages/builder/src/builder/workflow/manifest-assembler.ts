@@ -1,3 +1,4 @@
+import { logger } from "../../logger/index.js";
 import type { CameraInfo, LensInfo } from "../../types/manifest.js";
 import type {
   PhotoManifestItem,
@@ -50,6 +51,7 @@ export class ManifestAssembler {
     manifest: PhotoManifestItem[],
     existingManifestMap: Map<string, PhotoManifestItem>,
     s3ImageKeys: Set<string>,
+    reprocessedKeys = new Set<string>(),
   ): Promise<number> {
     let skippedCount = 0;
     const manifestKeys = new Set(manifest.map((item) => item.s3Key));
@@ -57,6 +59,17 @@ export class ManifestAssembler {
     for (const [key, item] of existingManifestMap) {
       if (!s3ImageKeys.has(key) || manifestKeys.has(key)) {
         continue;
+      }
+
+      // 一个 key 走到这里却又属于"本次计划重新处理"的任务，说明它的重新处理
+      // 失败了（否则它会出现在 manifest 中）。此时我们保留上一次的数据，避免照片
+      // 从图库消失，但必须醒目告警——它的 manifest 数据可能已过期，且该照片已被
+      // 计入 failedCount，不应再当作干净的 skip 统计。
+      const isFailedReprocess = reprocessedKeys.has(key);
+      if (isFailedReprocess) {
+        logger.main.warn(
+          `⚠️ 照片重新处理失败，保留上一次的 manifest 数据（可能已过期）：${key}`,
+        );
       }
 
       await session.emit("beforeAddManifestItem", {
@@ -68,7 +81,9 @@ export class ManifestAssembler {
 
       manifest.push(item);
       manifestKeys.add(item.s3Key);
-      skippedCount++;
+      if (!isFailedReprocess) {
+        skippedCount++;
+      }
     }
 
     return skippedCount;

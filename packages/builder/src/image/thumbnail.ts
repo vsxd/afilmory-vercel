@@ -10,7 +10,7 @@ import { generateBlurhash } from "./blurhash.js";
 import { SOURCE_SHARP_OPTIONS } from "./sharp-options.js";
 
 // 常量定义
-const THUMBNAIL_QUALITY = 100;
+const THUMBNAIL_QUALITY = 90;
 const THUMBNAIL_WIDTH = 600;
 
 // 获取缩略图路径信息

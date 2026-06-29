@@ -231,7 +231,12 @@ const formatExifDate = (date: string | ExifDateTime | undefined) => {
   }
 
   if (typeof date === "string") {
-    return new Date(date).toISOString();
+    const parsed = new Date(date);
+    // 无效日期字符串不要抛错——否则 extractExifData 的 try 会吞掉整张照片的 EXIF。
+    if (Number.isNaN(parsed.getTime())) {
+      return;
+    }
+    return parsed.toISOString();
   }
 
   return date.toISOString();

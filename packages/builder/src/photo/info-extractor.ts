@@ -45,33 +45,36 @@ export function extractPhotoInfo(
     }
   }
 
-  // 优先使用 EXIF 中的 DateTimeOriginal
+  // 优先使用 EXIF 中的 DateTimeOriginal（new Date 永远返回 Date，需用 getTime 判断有效性，
+  // 而不是恒为真的 instanceof Date）。无效时回退到文件名，再回退到默认值——绝不抛错。
+  let resolvedDate: Date | null = null;
   if (exifData?.DateTimeOriginal) {
-    try {
-      const dateTimeOriginal = new Date(exifData.DateTimeOriginal);
-
-      // 如果是 Date 对象，直接使用
-      if (dateTimeOriginal instanceof Date) {
-        dateTaken = dateTimeOriginal.toISOString();
-        log.info("使用 EXIF Date 对象作为拍摄时间");
-      } else {
-        log?.warn(
-          `未知的 DateTimeOriginal 类型：${typeof dateTimeOriginal}`,
-          dateTimeOriginal,
-        );
-      }
-    } catch (error) {
+    const candidate = new Date(exifData.DateTimeOriginal);
+    if (Number.isNaN(candidate.getTime())) {
       log?.warn(
-        `解析 EXIF DateTimeOriginal 失败：${exifData.DateTimeOriginal}`,
-        error,
+        `无效的 EXIF DateTimeOriginal，回退到文件名/默认：${String(
+          exifData.DateTimeOriginal,
+        )}`,
       );
+    } else {
+      resolvedDate = candidate;
     }
+  }
+
+  if (resolvedDate) {
+    dateTaken = resolvedDate.toISOString();
+    log.info("使用 EXIF 拍摄时间");
   } else {
-    // 如果 EXIF 中没有日期，尝试从文件名解析
+    // 如果 EXIF 中没有有效日期，尝试从文件名解析
     const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
     if (dateMatch) {
-      dateTaken = new Date(dateMatch[1]).toISOString();
-      log.info(`从文件名提取拍摄时间：${dateMatch[1]}`);
+      const fileDate = new Date(dateMatch[1]);
+      if (Number.isNaN(fileDate.getTime())) {
+        log?.warn(`文件名中的日期无效：${dateMatch[1]}`);
+      } else {
+        dateTaken = fileDate.toISOString();
+        log.info(`从文件名提取拍摄时间：${dateMatch[1]}`);
+      }
     }
   }
 

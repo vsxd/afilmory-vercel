@@ -202,17 +202,42 @@ export class S3StorageProvider implements StorageProvider {
     });
   }
 
+  // 编译并缓存 S3_EXCLUDE_REGEX。无效正则不应崩掉整个构建——记录告警并忽略。
+  private excludeRegexCache: RegExp | null | undefined;
+
+  private getExcludeRegex(): RegExp | null {
+    if (this.excludeRegexCache !== undefined) {
+      return this.excludeRegexCache;
+    }
+    if (!this.config.excludeRegex) {
+      this.excludeRegexCache = null;
+      return null;
+    }
+    try {
+      this.excludeRegexCache = new RegExp(this.config.excludeRegex);
+    } catch (error) {
+      logger.s3.warn(
+        `S3_EXCLUDE_REGEX 无效，已忽略：${this.config.excludeRegex}`,
+        error,
+      );
+      this.excludeRegexCache = null;
+    }
+    return this.excludeRegexCache;
+  }
+
+  private isExcluded(key: string | undefined): boolean {
+    const excludeRegex = this.getExcludeRegex();
+    return Boolean(key && excludeRegex && excludeRegex.test(key));
+  }
+
   async listImages(): Promise<StorageObject[]> {
     const objects = await this.listS3Objects();
-    const excludeRegex = this.config.excludeRegex
-      ? new RegExp(this.config.excludeRegex)
-      : null;
 
     // 过滤出图片文件并转换为通用格式
     const imageObjects = objects
       .filter((obj: _Object) => {
         if (!obj.Key) return false;
-        if (excludeRegex && excludeRegex.test(obj.Key)) return false;
+        if (this.isExcluded(obj.Key)) return false;
 
         const ext = path.extname(obj.Key).toLowerCase();
         return SUPPORTED_FORMATS.has(ext);
@@ -227,7 +252,11 @@ export class S3StorageProvider implements StorageProvider {
   ): Promise<StorageObject[]> {
     const objects = await this.listS3Objects();
 
-    return objects.map((obj) => convertS3ObjectToStorageObject(obj));
+    // 同样应用 S3_EXCLUDE_REGEX，使其与 listImages 一致——否则被排除的文件仍会
+    // 进入 Live Photo 检测和 afterAllFilesListed 插件载荷。
+    return objects
+      .filter((obj: _Object) => !this.isExcluded(obj.Key))
+      .map((obj) => convertS3ObjectToStorageObject(obj));
   }
 
   private async listS3Objects(): Promise<_Object[]> {
@@ -252,6 +281,16 @@ export class S3StorageProvider implements StorageProvider {
       if (remaining) {
         remaining -= pageObjects.length;
         if (remaining <= 0) {
+          // 不要静默截断：达到 maxFileLimit 时若仍有后续对象，明确告警，
+          // 否则超出上限的图片会被悄悄忽略。
+          if (
+            listResponse.IsTruncated ||
+            contents.length > pageObjects.length
+          ) {
+            logger.s3.warn(
+              `已达到 maxFileLimit=${this.config.maxFileLimit}，对象列举被截断；超出部分（含图片）将被忽略。`,
+            );
+          }
           break;
         }
       }
@@ -318,28 +357,26 @@ export class S3StorageProvider implements StorageProvider {
       fileGroups.get(groupKey)!.push(obj);
     }
 
-    // 在每个分组中寻找图片 + 视频配对
+    // 在每个分组中寻找图片 + 视频配对。先按 key 稳定排序，使配对结果与 S3 列举
+    // 顺序无关（否则同名多图时"最后一个胜出"会随列举顺序漂移）。
     for (const files of fileGroups.values()) {
-      let imageFile: StorageObject | null = null;
-      let videoFile: StorageObject | null = null;
+      const sorted = files
+        .filter((file) => file.key)
+        .sort((a, b) => String(a.key).localeCompare(String(b.key)));
 
-      for (const file of files) {
-        if (!file.key) continue;
-
-        const ext = path.extname(file.key).toLowerCase();
-
-        // 检查是否为支持的图片格式
-        if (SUPPORTED_FORMATS.has(ext)) {
-          imageFile = file;
-        }
-        // 检查是否为 .mov 视频文件
-        else if (ext === ".mov") {
-          videoFile = file;
-        }
-      }
+      const imageFile =
+        sorted.find(
+          (file) =>
+            file.key &&
+            SUPPORTED_FORMATS.has(path.extname(file.key).toLowerCase()),
+        ) ?? null;
+      const videoFile =
+        sorted.find(
+          (file) => file.key && path.extname(file.key).toLowerCase() === ".mov",
+        ) ?? null;
 
       // 如果找到配对，记录为 live photo
-      if (imageFile && videoFile && imageFile.key) {
+      if (imageFile?.key && videoFile) {
         livePhotoMap.set(imageFile.key, videoFile);
       }
     }

@@ -212,12 +212,19 @@ export class AfilmoryBuilder {
           manifest,
           taskResult.results,
         );
+        const reprocessedKeys = new Set<string>();
+        for (const task of tasksToProcess) {
+          if (task.key) {
+            reprocessedKeys.add(task.key);
+          }
+        }
         processingStats.skippedCount +=
           await assembler.addUnchangedExistingItems(
             session,
             manifest,
             existingManifestMap,
             s3ImageKeys,
+            reprocessedKeys,
           );
       }
 
