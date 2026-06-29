@@ -85,5 +85,12 @@ export async function loadManifestRuntime(): Promise<AfilmoryManifest> {
   });
   manifestRuntime.promise = manifestPromise;
 
-  return coerceManifest(await manifestPromise);
+  try {
+    return coerceManifest(await manifestPromise);
+  } catch (error) {
+    // 不只在 fetch 失败时清除——若 body 通过 schema 校验失败，缓存的 promise
+    // 也必须失效，否则下一次仍会拿到这个已损坏的结果（要再失败一次才自愈）。
+    manifestRuntime.promise = undefined;
+    throw error;
+  }
 }

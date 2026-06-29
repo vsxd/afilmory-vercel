@@ -76,7 +76,9 @@ export function getAvailableFilterCount(input: {
     input.allCameras.length +
     input.allLenses.length +
     input.geoRegions.country.length +
-    input.geoRegions.city.length
+    input.geoRegions.region.length +
+    input.geoRegions.city.length +
+    input.geoRegions.district.length
   );
 }
 
@@ -382,6 +384,18 @@ function addGeoCommands(input: {
       }),
     },
     {
+      regions: geoRegions.region,
+      selected: gallerySetting.selectedGeoRegions,
+      label: t("action.geo.region.filter"),
+      icon: "i-mingcute-map-pin-line",
+      keywords: ["region", "geo", "filter"],
+      action: (id: string): CommandAction => ({
+        type: "toggle-geo",
+        field: "selectedGeoRegions",
+        id,
+      }),
+    },
+    {
       regions: geoRegions.city,
       selected: gallerySetting.selectedGeoCities,
       label: t("action.geo.city.filter"),
@@ -390,6 +404,18 @@ function addGeoCommands(input: {
       action: (id: string): CommandAction => ({
         type: "toggle-geo",
         field: "selectedGeoCities",
+        id,
+      }),
+    },
+    {
+      regions: geoRegions.district,
+      selected: gallerySetting.selectedGeoDistricts,
+      label: t("action.geo.district.filter"),
+      icon: "i-mingcute-map-pin-line",
+      keywords: ["district", "geo", "filter"],
+      action: (id: string): CommandAction => ({
+        type: "toggle-geo",
+        field: "selectedGeoDistricts",
         id,
       }),
     },

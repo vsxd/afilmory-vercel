@@ -17,6 +17,24 @@ interface VisibleRange {
 }
 
 /**
+ * Resolve a value from a locale-keyed map, tolerant of region subtags:
+ * exact match (zh-CN) -> language match (zh) -> any same-language entry.
+ */
+function resolveLocalized<T>(
+  map: Record<string, T> | undefined,
+  locale: string,
+): T | undefined {
+  if (!map) return undefined;
+  if (map[locale]) return map[locale];
+  const language = locale.split("-")[0];
+  const key = Object.keys(map).find(
+    (candidate) =>
+      candidate === language || candidate.split("-")[0] === language,
+  );
+  return key ? map[key] : undefined;
+}
+
+/**
  * Hook to calculate the date range of currently visible photos in the viewport
  * Works with masonry onRender callback
  */
@@ -34,69 +52,58 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
 
   const formatDateRange = useCallback(
     (startDate: Date, endDate: Date): string => {
-      const startYear = startDate.getFullYear();
-      const endYear = endDate.getFullYear();
-      const startMonth = startDate.getMonth();
-      const endMonth = endDate.getMonth();
+      const sameDay = startDate.toDateString() === endDate.toDateString();
+      const sameMonth =
+        startDate.getFullYear() === endDate.getFullYear() &&
+        startDate.getMonth() === endDate.getMonth();
 
-      // 如果是同一天
-      if (startDate.toDateString() === endDate.toDateString()) {
-        return startDate.toLocaleDateString(i18n.language, {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+      // 全部走 Intl，按 locale 输出（包含天级精度仅在同月时显示），不再硬编码中文。
+      const formatter = new Intl.DateTimeFormat(i18n.language, {
+        year: "numeric",
+        month: "long",
+        ...(sameDay || sameMonth ? { day: "numeric" } : {}),
+      });
+
+      if (sameDay) {
+        return formatter.format(startDate);
       }
 
-      // 如果是同一年
-      if (startYear === endYear) {
-        // 如果是同一个月
-        if (startMonth === endMonth) {
-          return `${startYear}年${startDate.getMonth() + 1}月${startDate.getDate()}日 - ${endDate.getDate()}日`;
-        } else {
-          return `${startYear}年${startDate.getMonth() + 1}月 - ${endDate.getMonth() + 1}月`;
-        }
+      // formatRange 给出 locale 正确的区间（如 "January 5 – 8, 2024" / "2024年1月 – 3月"）。
+      if (typeof formatter.formatRange === "function") {
+        return formatter.formatRange(startDate, endDate);
       }
-
-      // 不同年份
-      return `${startYear}年${startDate.getMonth() + 1}月 - ${endYear}年${endDate.getMonth() + 1}月`;
+      return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
     },
     [i18n.language],
   );
 
   const extractLocation = useCallback(
     (photos: PhotoManifest[]): string | undefined => {
-      // 尝试从照片标签中提取位置信息
+      const locale = i18n.language;
+      // 使用结构化的地理编码数据（按 locale 本地化），不再用中文专有词扫描标签。
       for (const photo of photos) {
-        // 如果照片有位置标签，优先使用
-        if (photo.tags) {
-          const locationTag = photo.tags.find(
-            (tag) =>
-              tag.includes("省") ||
-              tag.includes("市") ||
-              tag.includes("区") ||
-              tag.includes("县") ||
-              tag.includes("镇") ||
-              tag.includes("村") ||
-              tag.includes("街道") ||
-              tag.includes("路") ||
-              tag.includes("北京") ||
-              tag.includes("上海") ||
-              tag.includes("广州") ||
-              tag.includes("深圳") ||
-              tag.includes("杭州") ||
-              tag.includes("南京") ||
-              tag.includes("成都"),
-          );
-          if (locationTag) {
-            return locationTag;
-          }
+        const { location } = photo;
+        if (!location) continue;
+
+        const localizedName =
+          resolveLocalized(location.locationNameI18n, locale) ??
+          location.locationName;
+        if (localizedName) {
+          return localizedName;
+        }
+
+        const admin =
+          resolveLocalized(location.adminI18n, locale) ?? location.admin;
+        const mostSpecific =
+          admin?.city ?? admin?.region ?? admin?.country ?? location.city;
+        if (mostSpecific) {
+          return mostSpecific;
         }
       }
 
       return undefined;
     },
-    [],
+    [i18n.language],
   );
 
   // 计算当前可视范围内照片的日期范围

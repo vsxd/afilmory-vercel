@@ -134,6 +134,12 @@ const MapSectionContent = () => {
     [searchParams, setSearchParams],
   );
 
+  // 稳定化 onZoomChange，否则内联回调每次渲染都换身份，导致地图反复重订阅事件。
+  const handleZoomChange = useCallback((zoomValue: number) => {
+    setRegionLevel(getRegionLevelForZoom(zoomValue));
+    setIsInitialLoad(false);
+  }, []);
+
   const hasRegionData = useMemo(
     () => Object.values(regionsByLevel).some((regions) => regions.length > 0),
     [regionsByLevel],
@@ -360,10 +366,7 @@ const MapSectionContent = () => {
           }
           onMarkerClick={handleMarkerClick}
           onRegionClick={handleRegionClick}
-          onZoomChange={(zoomValue) => {
-            setRegionLevel(getRegionLevelForZoom(zoomValue));
-            setIsInitialLoad(false);
-          }}
+          onZoomChange={handleZoomChange}
           className="h-full w-full"
         />
       </m.div>

@@ -61,7 +61,6 @@ export const Masonry = <Item,>(
   React.useEffect(() => {
     if (!scrollElement) return;
 
-    const scrollTimer: number | null = null;
     const handleScroll = throttle(() => {
       setIsScrolling(true);
       setScrollTop(scrollElement.scrollTop);
@@ -71,9 +70,8 @@ export const Masonry = <Item,>(
 
     return () => {
       scrollElement.removeEventListener("scroll", handleScroll);
-      if (scrollTimer) {
-        clearTimeout(scrollTimer);
-      }
+      // 取消可能挂起的尾随调用，避免监听器移除/卸载后再 setState。
+      handleScroll.cancel();
     };
   }, [fps, scrollElement]);
   const didMount = React.useRef(0);

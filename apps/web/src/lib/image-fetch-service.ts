@@ -15,6 +15,12 @@ export class ImageFetchService {
     const { priority, onProgress } = callbacks;
     const startDelay = priority === "high" ? 0 : 300;
 
+    // Single-flight: a new fetch on this instance supersedes any previous
+    // in-flight one, so the per-instance scalars (currentXHR / pendingReject /
+    // delayTimer) can't be orphaned (leaving the first request un-abortable and
+    // its promise unresolved).
+    this.cleanup();
+
     return new Promise((resolve, reject) => {
       this.pendingReject = reject;
 
@@ -95,17 +101,23 @@ export class ImageFetchService {
     if (this.delayTimer) {
       clearTimeout(this.delayTimer);
       this.delayTimer = null;
-
-      if (this.pendingReject) {
-        const reject = this.pendingReject;
-        this.pendingReject = null;
-        reject(createAbortError("Image load cancelled"));
-      }
     }
 
+    // Aborting the XHR triggers onabort -> rejectFetch, which settles the
+    // pending promise. Null currentXHR first so onabort's identity guard is a
+    // no-op and we don't fight over the field.
     if (this.currentXHR) {
-      this.currentXHR.abort();
+      const xhr = this.currentXHR;
       this.currentXHR = null;
+      xhr.abort();
+    }
+
+    // Settle the pending reject regardless of which phase (delay vs in-flight)
+    // we were in, so a cancelled request never leaves its promise hanging.
+    if (this.pendingReject) {
+      const reject = this.pendingReject;
+      this.pendingReject = null;
+      reject(createAbortError("Image load cancelled"));
     }
   }
 

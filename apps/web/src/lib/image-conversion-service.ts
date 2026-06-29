@@ -82,7 +82,11 @@ export class ImageConversionService {
           isVisible: false,
         });
         callbacks.onError?.();
-        throw conversionError;
+        // 同时保留转换错误和回退错误，避免丢掉真正导致失败的 fallbackError。
+        throw new AggregateError(
+          [conversionError, fallbackError],
+          "Image conversion failed and regular-image fallback also failed",
+        );
       }
     }
   }
