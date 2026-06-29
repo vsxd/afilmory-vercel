@@ -216,9 +216,11 @@ export function dataInjectPlugin(): Plugin {
         preloadLink.setAttribute("rel", "preload");
         preloadLink.setAttribute("as", "fetch");
         preloadLink.setAttribute("href", manifestAssetPublicPath);
-        // 不要设置 crossorigin="anonymous"：manifest 是同源资源，运行时用
-        // fetch(credentials: "same-origin") 加载。带 anonymous 会让 preload 与实际
-        // 请求的凭据模式不匹配，导致预载不被复用（浏览器告警 "preloaded but not used"）。
+        // crossorigin="anonymous" 让 preload 的模式为 cors + 凭据模式 same-origin，
+        // 与运行时 fetch(credentials: "same-origin", 默认 mode: cors) 匹配，preload 才会被复用。
+        // （SPA 在 JS 启动后才真正发起该 fetch，浏览器可能仍提示 "not used within a few
+        // seconds"，这是客户端渲染的固有时序提示，无害。）
+        preloadLink.setAttribute("crossorigin", "anonymous");
         document.head?.append(preloadLink);
       }
 
