@@ -23,6 +23,14 @@ export default defineConfig({
         },
       },
       {
+        test: {
+          name: "scripts",
+          root: ".",
+          include: ["scripts/**/*.test.ts"],
+          environment: "node",
+        },
+      },
+      {
         esbuild: {
           jsx: "automatic",
         },

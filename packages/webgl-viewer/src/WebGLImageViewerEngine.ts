@@ -21,7 +21,10 @@ import {
   calculateVisibleTiles as calculateVisibleTilesForViewport,
   createViewportHash,
 } from "./tile-scheduler";
-import { cleanupTileTextures } from "./tile-texture-cleanup";
+import {
+  cleanupTileTextures,
+  disposeAllTileTextures,
+} from "./tile-texture-cleanup";
 import type {
   TransformBounds,
   TransformState,
@@ -849,6 +852,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     // 清理 WebGL 资源
     this.textureManager.dispose();
     this.renderer.dispose();
+    // 释放所有瓦片纹理，避免复用同一 canvas/context 时 GPU 显存随换图累积泄漏。
+    disposeAllTileTextures({
+      deleteTexture: (texture) => this.gl.deleteTexture(texture),
+      tileCache: this.tileCache,
+    });
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }

@@ -108,7 +108,9 @@ function buildExifTags(photo: PhotoManifestItem): string {
 
   // --- Basic Camera Settings ---
   if (exif.FNumber) {
-    tags.push(`<exif:aperture>f/${exif.FNumber}</exif:aperture>`);
+    tags.push(
+      `<exif:aperture>f/${escapeXmlValue(exif.FNumber)}</exif:aperture>`,
+    );
   }
   if (exif.ExposureTime) {
     // Format shutter speed: if < 1, use fraction, else use seconds
@@ -127,10 +129,10 @@ function buildExifTags(photo: PhotoManifestItem): string {
     ) {
       ss = `${ss}s`;
     }
-    tags.push(`<exif:shutterSpeed>${ss}</exif:shutterSpeed>`);
+    tags.push(`<exif:shutterSpeed>${escapeXml(ss)}</exif:shutterSpeed>`);
   }
   if (exif.ISO) {
-    tags.push(`<exif:iso>${exif.ISO}</exif:iso>`);
+    tags.push(`<exif:iso>${escapeXmlValue(exif.ISO)}</exif:iso>`);
   }
   if (
     exif.ExposureCompensation !== undefined &&
@@ -147,25 +149,27 @@ function buildExifTags(photo: PhotoManifestItem): string {
   if (exif.FocalLength) {
     // Ensure 'mm' suffix
     const fl = String(exif.FocalLength).replace("mm", "").trim();
-    tags.push(`<exif:focalLength>${fl}mm</exif:focalLength>`);
+    tags.push(`<exif:focalLength>${escapeXml(fl)}mm</exif:focalLength>`);
   }
   if (exif.FocalLengthIn35mmFormat) {
     const fl35 = String(exif.FocalLengthIn35mmFormat).replace("mm", "").trim();
-    tags.push(`<exif:focalLength35mm>${fl35}mm</exif:focalLength35mm>`);
+    tags.push(
+      `<exif:focalLength35mm>${escapeXml(fl35)}mm</exif:focalLength35mm>`,
+    );
   }
   if (exif.LensModel) {
-    tags.push(`<exif:lens><![CDATA[${exif.LensModel}]]></exif:lens>`);
+    tags.push(`<exif:lens>${cdata(String(exif.LensModel))}</exif:lens>`);
   }
   if (exif.MaxApertureValue) {
     tags.push(
-      `<exif:maxAperture>f/${exif.MaxApertureValue}</exif:maxAperture>`,
+      `<exif:maxAperture>f/${escapeXmlValue(exif.MaxApertureValue)}</exif:maxAperture>`,
     );
   }
 
   // --- Device Info ---
   const camera = [exif.Make, exif.Model].filter(Boolean).join(" ");
   if (camera) {
-    tags.push(`<exif:camera><![CDATA[${camera}]]></exif:camera>`);
+    tags.push(`<exif:camera>${cdata(camera)}</exif:camera>`);
   }
 
   // --- Image Attributes ---
@@ -176,10 +180,14 @@ function buildExifTags(photo: PhotoManifestItem): string {
     tags.push(`<exif:imageHeight>${photo.height}</exif:imageHeight>`);
   }
   if (photo.dateTaken) {
-    tags.push(`<exif:dateTaken>${photo.dateTaken}</exif:dateTaken>`);
+    tags.push(
+      `<exif:dateTaken>${escapeXmlValue(photo.dateTaken)}</exif:dateTaken>`,
+    );
   }
   if (exif.Orientation) {
-    tags.push(`<exif:orientation>${exif.Orientation}</exif:orientation>`);
+    tags.push(
+      `<exif:orientation>${escapeXmlValue(exif.Orientation)}</exif:orientation>`,
+    );
   }
 
   // --- Location Info ---
@@ -191,29 +199,35 @@ function buildExifTags(photo: PhotoManifestItem): string {
 
   // --- Technical Parameters ---
   if (exif.WhiteBalance) {
-    tags.push(`<exif:whiteBalance>${exif.WhiteBalance}</exif:whiteBalance>`);
+    tags.push(
+      `<exif:whiteBalance>${escapeXmlValue(exif.WhiteBalance)}</exif:whiteBalance>`,
+    );
   }
   if (exif.MeteringMode) {
-    tags.push(`<exif:meteringMode>${exif.MeteringMode}</exif:meteringMode>`);
+    tags.push(
+      `<exif:meteringMode>${escapeXmlValue(exif.MeteringMode)}</exif:meteringMode>`,
+    );
   }
   // Flash is often a complex object or string in exiftool, simplify if possible or just dump string
   if (exif.Flash) {
     // Try to map to simple enum if possible, or just use what we have if it's readable
-    tags.push(`<exif:flashMode>${String(exif.Flash)}</exif:flashMode>`);
+    tags.push(`<exif:flashMode>${escapeXmlValue(exif.Flash)}</exif:flashMode>`);
   }
   if (exif.ColorSpace) {
-    tags.push(`<exif:colorSpace>${exif.ColorSpace}</exif:colorSpace>`);
+    tags.push(
+      `<exif:colorSpace>${escapeXmlValue(exif.ColorSpace)}</exif:colorSpace>`,
+    );
   }
 
   // --- Advanced Parameters ---
   if (exif.ExposureProgram) {
     tags.push(
-      `<exif:exposureProgram>${exif.ExposureProgram}</exif:exposureProgram>`,
+      `<exif:exposureProgram>${escapeXmlValue(exif.ExposureProgram)}</exif:exposureProgram>`,
     );
   }
   if (exif.SceneCaptureType) {
     tags.push(
-      `<exif:sceneMode><![CDATA[${exif.SceneCaptureType}]]></exif:sceneMode>`,
+      `<exif:sceneMode>${cdata(String(exif.SceneCaptureType))}</exif:sceneMode>`,
     );
   }
 
@@ -221,12 +235,12 @@ function buildExifTags(photo: PhotoManifestItem): string {
   if (exif.FujiRecipe) {
     if (exif.FujiRecipe.Sharpness) {
       tags.push(
-        `<exif:sharpness>${exif.FujiRecipe.Sharpness}</exif:sharpness>`,
+        `<exif:sharpness>${escapeXmlValue(exif.FujiRecipe.Sharpness)}</exif:sharpness>`,
       );
     }
     if (exif.FujiRecipe.Saturation) {
       tags.push(
-        `<exif:saturation>${exif.FujiRecipe.Saturation}</exif:saturation>`,
+        `<exif:saturation>${escapeXmlValue(exif.FujiRecipe.Saturation)}</exif:saturation>`,
       );
     }
     // Contrast is often "HighlightTone" and "ShadowTone" combined in Fuji,
@@ -277,6 +291,21 @@ function escapeXml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+/**
+ * Wrap arbitrary text in a CDATA section, neutralizing any literal `]]>` so the
+ * content cannot terminate the section early and inject markup. EXIF strings
+ * (lens/camera model, scene type) are attacker-influenceable metadata, so they
+ * must never be placed in CDATA verbatim.
+ */
+function cdata(value: string): string {
+  return `<![CDATA[${value.replaceAll("]]>", "]]]]><![CDATA[>")}]]>`;
+}
+
+/** Escape a value of unknown type for use inside an XML element body. */
+function escapeXmlValue(value: unknown): string {
+  return escapeXml(String(value));
 }
 
 function escapeHtmlBlock(value: string): string {

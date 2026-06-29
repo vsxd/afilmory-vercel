@@ -21,7 +21,7 @@
     "lint:fix": "eslint . --fix",
     "prepare": "simple-git-hooks",
     "preview": "pnpm --filter @afilmory/web serve",
-    "test": "pnpm --filter @afilmory/schema test && pnpm --filter @afilmory/media test && pnpm --filter @afilmory/ui test && pnpm --filter @afilmory/builder test && pnpm --filter @afilmory/webgl-viewer test && pnpm --filter @afilmory/web test",
+    "test": "pnpm --filter @afilmory/schema test && pnpm --filter @afilmory/media test && pnpm --filter @afilmory/ui test && pnpm --filter @afilmory/builder test && pnpm --filter @afilmory/webgl-viewer test && pnpm --filter @afilmory/web test && pnpm exec vitest run --project scripts",
     "test:e2e": "env -u NO_COLOR NODE_OPTIONS=--disable-warning=DEP0205 playwright test",
     "test:e2e:install": "env -u NO_COLOR NODE_OPTIONS=--disable-warning=DEP0205 playwright install chromium",
     "type-check": "pnpm --filter @afilmory/schema type-check && pnpm --filter @afilmory/media type-check && pnpm --filter @afilmory/ui type-check && pnpm --filter @afilmory/builder type-check && pnpm --filter @afilmory/webgl-viewer type-check && pnpm --filter @afilmory/web type-check"

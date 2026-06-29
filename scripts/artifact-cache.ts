@@ -4,7 +4,7 @@ import "dotenv-expand/config";
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { assertManifest } from "@afilmory/schema";
 
@@ -83,20 +83,43 @@ const sanitize = (value: string, config: ArtifactCacheConfig): string =>
     .replaceAll(config.repoToken, "[REPO_TOKEN]")
     .replaceAll(encodeURIComponent(config.repoToken), "[REPO_TOKEN]");
 
-const createAuthenticatedRepoUrl = (repoUrl: string, token: string): string => {
+const isLocalhostHostname = (hostname: string): boolean =>
+  hostname === "localhost" ||
+  hostname === "127.0.0.1" ||
+  hostname === "[::1]" ||
+  hostname === "::1";
+
+export const createAuthenticatedRepoUrl = (
+  repoUrl: string,
+  token: string,
+): string => {
+  let url: URL;
   try {
-    const url = new URL(repoUrl);
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return repoUrl;
-    }
-    if (!url.username) {
-      url.username = "x-access-token";
-    }
-    url.password = token;
-    return url.toString();
+    url = new URL(repoUrl);
   } catch {
+    // Not a URL we can embed credentials into (e.g. scp-style git@host:repo).
     return repoUrl;
   }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return repoUrl;
+  }
+
+  // Never transmit REPO_TOKEN over plaintext HTTP (it would be sent in the
+  // clear, and is also embedded in the URL). Allow http only for localhost so
+  // local testing against a throwaway git server still works.
+  if (url.protocol === "http:" && !isLocalhostHostname(url.hostname)) {
+    throw new Error(
+      "Refusing to send REPO_TOKEN over plaintext HTTP. " +
+        "Use an https:// REPO_URL (http is permitted only for localhost).",
+    );
+  }
+
+  if (!url.username) {
+    url.username = "x-access-token";
+  }
+  url.password = token;
+  return url.toString();
 };
 
 const run = async (
@@ -297,7 +320,14 @@ const main = async (): Promise<void> => {
   await saveArtifacts(config);
 };
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+// Only run when invoked as a script, so the module can be imported in tests
+// without executing git commands as a side effect.
+const isMainModule =
+  !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isMainModule) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

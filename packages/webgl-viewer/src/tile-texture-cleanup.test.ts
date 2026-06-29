@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { TileInfo } from "./tile-cache";
-import { cleanupTileTextures } from "./tile-texture-cleanup";
+import {
+  cleanupTileTextures,
+  disposeAllTileTextures,
+} from "./tile-texture-cleanup";
 
 const createTile = (lastUsed: number, texture: WebGLTexture): TileInfo => ({
   isLoading: false,
@@ -35,5 +38,25 @@ describe("cleanupTileTextures", () => {
     expect(removed).toBe(1);
     expect(deleteTexture).toHaveBeenCalledWith(oldTexture);
     expect([...tileCache.keys()]).toEqual(["0-0-0"]);
+  });
+});
+
+describe("disposeAllTileTextures", () => {
+  it("deletes every tile texture and clears the cache regardless of visibility/age", () => {
+    const textureA = {} as WebGLTexture;
+    const textureB = {} as WebGLTexture;
+    const tileCache = new Map([
+      ["0-0-0", createTile(Date.now(), textureA)],
+      ["1-0-0", createTile(Date.now(), textureB)],
+      ["2-0-0", { ...createTile(Date.now(), null as never), texture: null }],
+    ]);
+    const deleteTexture = vi.fn();
+
+    const removed = disposeAllTileTextures({ deleteTexture, tileCache });
+
+    expect(removed).toBe(2);
+    expect(deleteTexture).toHaveBeenCalledWith(textureA);
+    expect(deleteTexture).toHaveBeenCalledWith(textureB);
+    expect(tileCache.size).toBe(0);
   });
 });

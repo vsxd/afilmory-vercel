@@ -46,3 +46,27 @@ export function cleanupTileTextures({
 
   return removed;
 }
+
+/**
+ * Delete EVERY cached tile texture and clear the cache, regardless of
+ * visibility or age. Use this on engine teardown: the React wrapper reuses the
+ * same canvas/WebGL context across image changes, so tile textures left in the
+ * cache leak GPU memory that accumulates with every viewed photo.
+ */
+export function disposeAllTileTextures({
+  deleteTexture,
+  tileCache,
+}: {
+  deleteTexture: (texture: WebGLTexture) => void;
+  tileCache: Map<TileKey, TileInfo>;
+}): number {
+  let removed = 0;
+  for (const tileInfo of tileCache.values()) {
+    if (tileInfo.texture) {
+      deleteTexture(tileInfo.texture);
+      removed++;
+    }
+  }
+  tileCache.clear();
+  return removed;
+}
