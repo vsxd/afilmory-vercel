@@ -13,6 +13,7 @@ import type {
   ManifestSource,
 } from "../types/manifest.js";
 import type { PhotoManifestItem } from "../types/photo.js";
+import { writeFileAtomic } from "../utils/atomic-write.js";
 
 export async function loadExistingManifest(): Promise<AfilmoryManifest> {
   const { manifestPath } = getScopedBuilderOutputSettings();
@@ -83,8 +84,7 @@ export async function saveManifest(
     (a, b) => new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime(),
   );
 
-  await fs.mkdir(path.dirname(manifestPath), { recursive: true });
-  await fs.writeFile(
+  await writeFileAtomic(
     manifestPath,
     JSON.stringify(
       createManifest({

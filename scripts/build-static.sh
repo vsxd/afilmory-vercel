@@ -34,6 +34,14 @@ fi
 # 如果没有 S3 凭据但仓库里已有 manifest，则允许静态预览构建继续
 if [ -z "$S3_BUCKET_NAME" ] || [ -z "$S3_ACCESS_KEY_ID" ] || [ -z "$S3_SECRET_ACCESS_KEY" ]; then
   if [ -f "$MANIFEST_PATH" ]; then
+    # 生产构建要求新鲜数据：缺少 S3 凭据时硬失败，避免静默发布陈旧站点。
+    # Vercel 生产部署会注入 VERCEL_ENV=production；REPO_TOKEN 之外的平台可用 REQUIRE_FRESH_BUILD=true。
+    if [ "$VERCEL_ENV" = "production" ] || [ "$REQUIRE_FRESH_BUILD" = "true" ]; then
+      echo "❌ 错误: 生产构建要求新鲜数据，但缺少完整的 S3 环境变量"
+      echo "   拒绝使用现有 manifest 发布陈旧站点 (VERCEL_ENV=production 或 REQUIRE_FRESH_BUILD=true)"
+      echo "   请在部署平台配置 S3_BUCKET_NAME / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY"
+      exit 1
+    fi
     echo "⚠️  未检测到完整的 S3 环境变量，使用现有 manifest 继续构建 Preview"
     BUILD_COMMAND="pnpm build:web"
   else

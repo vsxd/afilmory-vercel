@@ -4,6 +4,7 @@ import path from "node:path";
 import { normalizeLocationInfoAdminAliases } from "@afilmory/schema";
 
 import type { LocationAdminInfo, LocationInfo } from "../types/photo.js";
+import { writeFileAtomic } from "../utils/atomic-write.js";
 import type { ResolvedGeocodingSettings } from "./geocoding-options.js";
 import { CANONICAL_GEOCODING_LOCALE } from "./geocoding-options.js";
 
@@ -166,8 +167,7 @@ export async function savePersistentCacheIfNeeded(
     entries[key] = value;
   }
 
-  await fs.mkdir(path.dirname(cachePath), { recursive: true });
-  await fs.writeFile(
+  await writeFileAtomic(
     cachePath,
     JSON.stringify(
       {

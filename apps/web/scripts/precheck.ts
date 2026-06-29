@@ -24,6 +24,11 @@ export const precheck = async (options: PrecheckOptions = {}) => {
   const workdir = options.workdir ?? path.resolve(__dirname, "../../..");
   const env = options.env ?? process.env;
   const shouldBuildManifest = env.SKIP_MANIFEST_BUILD !== "true";
+  // In production a stale/degraded build must fail loudly rather than silently
+  // publishing an old gallery. Vercel sets VERCEL_ENV=production for production
+  // deploys; REQUIRE_FRESH_BUILD=true is the platform-agnostic override.
+  const requireFreshBuild =
+    env.REQUIRE_FRESH_BUILD === "true" || env.VERCEL_ENV === "production";
   const requiredS3Vars = [
     "S3_BUCKET_NAME",
     "S3_ACCESS_KEY_ID",
@@ -61,6 +66,13 @@ export const precheck = async (options: PrecheckOptions = {}) => {
   }
 
   if (missingS3Vars.length > 0) {
+    if (requireFreshBuild) {
+      throw new Error(
+        `[precheck] Missing required S3 environment variables: ${missingS3Vars.join(", ")}. ` +
+          "A fresh build is required (VERCEL_ENV=production or REQUIRE_FRESH_BUILD=true); " +
+          "refusing to publish using an existing manifest.",
+      );
+    }
     try {
       await readExistingManifestSnapshot();
       console.warn(
@@ -104,7 +116,14 @@ export const precheck = async (options: PrecheckOptions = {}) => {
       BUILDER_CONFIG_PATH: env.BUILDER_CONFIG_PATH || "builder.config.ts",
     });
   } catch (error) {
-    if (!fallbackManifest) {
+    if (!fallbackManifest || requireFreshBuild) {
+      if (requireFreshBuild && fallbackManifest) {
+        console.error(
+          "[precheck] Builder failed and a fresh build is required " +
+            "(VERCEL_ENV=production or REQUIRE_FRESH_BUILD=true); refusing to " +
+            "publish the existing (stale) manifest.",
+        );
+      }
       throw error;
     }
 

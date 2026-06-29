@@ -31,6 +31,18 @@ export const LazyImage = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
+  // Reset load/error state whenever the source changes. This is React's
+  // documented "adjust state while rendering" pattern — it runs during render
+  // (no extra effect, no flash of the previous image), and prevents a prior
+  // `onError` from permanently sticking on "Failed to load image" after the
+  // parent swaps in a new `src`.
+  const [trackedSrc, setTrackedSrc] = useState(src);
+  if (src !== trackedSrc) {
+    setTrackedSrc(src);
+    setIsLoaded(false);
+    setHasError(false);
+  }
+
   const { ref, inView } = useInView({
     triggerOnce: true,
     rootMargin,

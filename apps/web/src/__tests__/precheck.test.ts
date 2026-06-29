@@ -118,6 +118,40 @@ describe("precheck", () => {
     expect(runBuilder).toHaveBeenCalledOnce();
   });
 
+  it("refuses to reuse a stale manifest in production when S3 credentials are missing", async () => {
+    await writeManifest();
+
+    await expect(
+      precheck({
+        workdir: tmpDir,
+        env: { VERCEL_ENV: "production" },
+        runBuilder,
+      }),
+    ).rejects.toThrow("fresh build is required");
+
+    expect(runBuilder).not.toHaveBeenCalled();
+  });
+
+  it("fails the build in production when the builder errors instead of falling back", async () => {
+    await writeManifest();
+    runBuilder.mockRejectedValueOnce(new Error("network unavailable"));
+
+    await expect(
+      precheck({
+        workdir: tmpDir,
+        env: {
+          S3_BUCKET_NAME: "bucket",
+          S3_ACCESS_KEY_ID: "key",
+          S3_SECRET_ACCESS_KEY: "secret",
+          REQUIRE_FRESH_BUILD: "true",
+        },
+        runBuilder,
+      }),
+    ).rejects.toThrow("network unavailable");
+
+    expect(runBuilder).toHaveBeenCalledOnce();
+  });
+
   it("restores the pre-existing manifest when a failed builder clobbers it", async () => {
     await writeManifest();
     const manifestPath = path.join(tmpDir, "generated/photos-manifest.json");
