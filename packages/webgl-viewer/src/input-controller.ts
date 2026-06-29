@@ -101,8 +101,9 @@ export class WebGLInputController {
   }
 
   private handleWheel(event: WheelEvent): void {
-    event.preventDefault();
+    // 先判断是否禁用滚轮缩放：禁用时不应吞掉页面滚动。
     if (this.config.wheel.wheelDisabled) return;
+    event.preventDefault();
 
     this.stopAnimationIfNeeded();
     const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
@@ -128,9 +129,9 @@ export class WebGLInputController {
   private handleTouchStart(event: TouchEvent): void {
     event.preventDefault();
 
-    if (this.stopAnimationIfNeeded()) {
-      return;
-    }
+    // 停止进行中的动画，但不要 early-return——否则中断动画的那一次手指按下会被
+    // 吞掉，用户必须再点一次才能开始拖动（鼠标路径也是停动画后继续）。
+    this.stopAnimationIfNeeded();
 
     if (event.touches.length === 1 && !this.config.panning.disabled) {
       const touch = event.touches[0];

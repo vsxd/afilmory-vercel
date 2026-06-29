@@ -48,4 +48,48 @@ describe("TileRequestRuntime", () => {
     runtime.clear();
     expect(runtime.hasPendingWork).toBe(false);
   });
+
+  it("prunes pending requests for tiles that are no longer visible", () => {
+    const runtime = new TileRequestRuntime();
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "0-0-0",
+      priority: 1,
+    });
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "1-0-0",
+      priority: 2,
+    });
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "2-0-0",
+      priority: 3,
+    });
+
+    const removed = runtime.pruneInvisiblePending(new Set(["1-0-0"]));
+
+    expect(removed).toBe(2);
+    expect([...runtime.pendingTileRequests.keys()]).toEqual(["1-0-0"]);
+  });
+
+  it("leaves in-flight (loading) tiles untouched when pruning", () => {
+    const runtime = new TileRequestRuntime();
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "0-0-0",
+      priority: 1,
+    });
+    runtime.selectBatch(1); // moves 0-0-0 into loadingTiles
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "9-9-0",
+      priority: 5,
+    });
+
+    runtime.pruneInvisiblePending(new Set()); // nothing visible
+
+    expect(runtime.getLoadingInfo("0-0-0")).toEqual({ priority: 1 });
+    expect(runtime.pendingTileRequests.size).toBe(0);
+  });
 });

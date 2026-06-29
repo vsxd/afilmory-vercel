@@ -289,6 +289,10 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
         if (this.loadImageReject) {
           this.loadImageReject(error as Error);
         }
+      } finally {
+        // 结算后清空 resolver，避免下一次 loadImage 把已结算的 promise 当作"被取代"。
+        this.loadImageResolve = null;
+        this.loadImageReject = null;
       }
       return;
     }
@@ -299,6 +303,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       if (this.loadImageReject) {
         this.loadImageReject(new Error("Failed to load image in worker"));
       }
+      this.loadImageResolve = null;
+      this.loadImageReject = null;
       return;
     }
 
@@ -379,6 +385,13 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.imageWidth = preknownWidth;
       this.imageHeight = preknownHeight;
       this.setupInitialScaling();
+    }
+
+    // 若上一次 loadImage 尚未结算就再次调用，先拒绝旧 promise，避免它永远挂起。
+    if (this.loadImageReject) {
+      this.loadImageReject(new Error("loadImage superseded by a newer call"));
+      this.loadImageResolve = null;
+      this.loadImageReject = null;
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -463,6 +476,13 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       startTime: performance.now(),
       to: targetTransform,
     });
+
+    // 取消上一段动画可能仍排队的帧，否则旧回调会启动第二条并行的 rAF 链，
+    // 在快速连续缩放时让渲染/动画步进翻倍。
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
     this.animate();
   }
 
@@ -640,6 +660,8 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     this.currentVisibleTiles = newVisibleTiles;
+    // 丢弃已不可见但尚未派发的瓦片请求，避免把过期瓦片排到可见瓦片之前。
+    this.tileRequestRuntime.pruneInvisiblePending(newVisibleTiles);
     this.cleanupOldTiles();
 
     if (

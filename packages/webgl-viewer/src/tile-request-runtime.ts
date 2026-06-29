@@ -36,6 +36,24 @@ export class TileRequestRuntime {
     return false;
   }
 
+  /**
+   * Drop queued-but-not-yet-dispatched requests for tiles that are no longer
+   * visible. During fast pan/zoom this prevents stale tiles from being
+   * dispatched (consuming per-frame dispatch slots and worker time) ahead of the
+   * tiles the user is actually looking at. In-flight (loading) tiles are left
+   * alone — they're cheap to discard on arrival.
+   */
+  pruneInvisiblePending(visibleTiles: Set<TileKey>): number {
+    let removed = 0;
+    for (const key of this.pendingTileRequests.keys()) {
+      if (!visibleTiles.has(key)) {
+        this.pendingTileRequests.delete(key);
+        removed++;
+      }
+    }
+    return removed;
+  }
+
   get hasPendingWork(): boolean {
     return this.pendingTileRequests.size > 0;
   }
