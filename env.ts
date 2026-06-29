@@ -38,7 +38,7 @@ export const env = createEnv({
     // 社交媒体(可选)
     SOCIAL_GITHUB: z.string().optional(),
     SOCIAL_TWITTER: z.string().optional(),
-    SOCIAL_RSS: z.string().optional(), // 'true' or 'false'
+    SOCIAL_RSS: z.enum(["true", "false"]).optional(), // 'true' or 'false'
 
     // Feed 配置(可选)
     FEED_FOLO_FEED_ID: z.string().optional(),
@@ -49,7 +49,8 @@ export const env = createEnv({
     MAP_PROJECTION: z.enum(["globe", "mercator"]).optional(),
 
     // 构建期反向地理编码（可选）
-    GEOCODING_ENABLED: z.string().default("true"),
+    // 布尔型开关用 enum 约束，输入拼写错误会在构建期立即失败，而不是被 `!== "false"` 静默当作 true。
+    GEOCODING_ENABLED: z.enum(["true", "false"]).default("true"),
     GEOCODING_PROVIDER: z.enum(["nominatim", "mapbox", "auto"]).optional(),
     GEOCODING_LOCALES: z.string().optional(),
     GEOCODING_LANGUAGE: z.string().optional(),
@@ -60,7 +61,7 @@ export const env = createEnv({
     MAPBOX_TOKEN: z.string().optional(),
 
     // Builder 性能配置（可选）
-    BUILDER_USE_CLUSTER_MODE: z.string().optional(),
+    BUILDER_USE_CLUSTER_MODE: z.enum(["true", "false"]).optional(),
   },
   runtimeEnv: process.env,
   isServer: typeof window === "undefined",

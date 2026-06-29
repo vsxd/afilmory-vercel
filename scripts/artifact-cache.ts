@@ -187,7 +187,13 @@ const copyArtifact = async (
 ): Promise<void> => {
   await fs.rm(targetPath, { force: true, recursive: true });
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
-  await fs.cp(sourcePath, targetPath, { force: true, recursive: true });
+  await fs.cp(sourcePath, targetPath, {
+    force: true,
+    recursive: true,
+    // 拒绝软链接：缓存仓库内容是不可信的，symlink 可能指向服务目录之外的任意文件，
+    // 被复制进 public/ 后会被静态站点直接对外提供。
+    filter: async (src) => !(await fs.lstat(src)).isSymbolicLink(),
+  });
 };
 
 const restoreArtifacts = async (config: ArtifactCacheConfig): Promise<void> => {

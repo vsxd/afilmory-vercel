@@ -139,6 +139,16 @@ The default static site configuration only supports S3-compatible source photos.
 | `S3_CUSTOM_DOMAIN` | Custom CDN domain         | empty                                | `https://cdn.example.com`              |
 | `S3_EXCLUDE_REGEX` | Regex for excluding files | empty                                | `.*\.txt$`                             |
 
+> ⚠️ **CORS requirement for the full-resolution viewer.** The WebGL viewer
+> fetches the original image bytes via `fetch`/XHR, so the host that serves your
+> originals (`S3_CUSTOM_DOMAIN` or the S3 endpoint) **must return an
+> `Access-Control-Allow-Origin` header that allows your site origin (`SITE_URL`)**
+> whenever the two are different origins (e.g. `cdn.example.com` vs
+> `gallery.example.com`). Thumbnails are same-origin (`/thumbnails`) and need no
+> CORS, so a missing CORS header shows as: thumbnails load fine but opening a
+> photo gets stuck on "Failed to load image". This also affects local
+> `vite preview` against a CDN that only allow-lists your production domain.
+
 ### Optional CI metadata cache
 
 | Variable           | Description                                                                  |

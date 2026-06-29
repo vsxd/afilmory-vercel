@@ -216,7 +216,9 @@ export function dataInjectPlugin(): Plugin {
         preloadLink.setAttribute("rel", "preload");
         preloadLink.setAttribute("as", "fetch");
         preloadLink.setAttribute("href", manifestAssetPublicPath);
-        preloadLink.setAttribute("crossorigin", "anonymous");
+        // 不要设置 crossorigin="anonymous"：manifest 是同源资源，运行时用
+        // fetch(credentials: "same-origin") 加载。带 anonymous 会让 preload 与实际
+        // 请求的凭据模式不匹配，导致预载不被复用（浏览器告警 "preloaded but not used"）。
         document.head?.append(preloadLink);
       }
 
