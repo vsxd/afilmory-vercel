@@ -11,6 +11,8 @@ export interface BuilderResult {
   newCount: number;
   processedCount: number;
   skippedCount: number;
+  /** 处理失败并被跳过的照片数量（这些照片不会写入 manifest）。 */
+  failedCount: number;
   deletedCount: number;
   totalPhotos: number;
 }

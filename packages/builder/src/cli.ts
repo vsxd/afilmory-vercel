@@ -177,6 +177,7 @@ async function main() {
   environmentCheck();
 
   // 启动构建过程
+  let buildResult: import("./types/options.js").BuilderResult | undefined;
   try {
     const result = await cliBuilder.buildManifest({
       isForceMode,
@@ -186,6 +187,7 @@ async function main() {
       progressListener,
     });
 
+    buildResult = result;
     tui?.markSuccess(result);
   } catch (error) {
     tui?.markError(error);
@@ -198,9 +200,25 @@ async function main() {
     cliBuilder.dispose();
   }
 
+  // 失败照片汇总：在 TUI detach 之后输出，确保用户能在终端看到。
+  // 默认 exit 0（让 Vercel 等部署在个别照片失败时仍能继续发布其余照片）；
+  // 设置 BUILDER_FAIL_ON_PHOTO_ERROR=true 可启用严格模式：任意照片失败即以非零码退出。
+  let exitCode = 0;
+  if (buildResult && buildResult.failedCount > 0) {
+    logger.main.warn(
+      `⚠️ 有 ${buildResult.failedCount} 张照片处理失败，已从 manifest 中跳过（未写入空字段）。请检查上方失败日志。`,
+    );
+    if (process.env.BUILDER_FAIL_ON_PHOTO_ERROR === "true") {
+      logger.main.error(
+        "BUILDER_FAIL_ON_PHOTO_ERROR=true，构建以非零状态码退出。",
+      );
+      exitCode = 1;
+    }
+  }
+
   // 清理 ExifTool 进程后退出
   // eslint-disable-next-line unicorn/no-process-exit
-  process.exit(0);
+  process.exit(exitCode);
 }
 
 // 运行主函数

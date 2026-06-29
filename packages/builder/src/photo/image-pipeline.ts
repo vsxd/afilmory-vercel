@@ -190,6 +190,13 @@ export async function executePhotoProcessingPipeline(
       options,
     );
 
+    // 缩略图生成失败：将该照片视为处理失败并跳过（会计入 failedCount），
+    // 而不是带着空 thumbnailUrl 继续构建一个“成功但损坏”的 manifest 项。
+    if (!thumbnailResult) {
+      loggers.image.error(`❌ 缩略图生成失败，跳过照片：${photoKey}`);
+      return null;
+    }
+
     context.pluginData[THUMBNAIL_PLUGIN_DATA_KEY] = {
       photoId,
       fileName: `${photoId}.jpg`,

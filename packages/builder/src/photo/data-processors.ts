@@ -37,7 +37,7 @@ export async function processThumbnailAndBlurhash(
   photoId: string,
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,
-): Promise<ThumbnailResult> {
+): Promise<ThumbnailResult | null> {
   const loggers = getPhotoProcessingLoggers();
 
   // 检查是否可以复用现有数据
@@ -74,10 +74,20 @@ export async function processThumbnailAndBlurhash(
     options.isForceMode || options.isForceThumbnails,
   );
 
+  // 生成失败时不要伪造非空断言：返回 null，让上层把该照片标记为失败并跳过，
+  // 绝不向 manifest 写入 thumbnailUrl: null（否则会污染 manifest 并导致后续构建在
+  // assertManifest 阶段直接抛错、永久失败）。
+  if (!result.thumbnailUrl || !result.thumbnailBuffer) {
+    loggers.thumbnail.error(
+      `缩略图生成失败，跳过该照片（不写入 manifest）：${photoId}`,
+    );
+    return null;
+  }
+
   return {
-    thumbnailUrl: result.thumbnailUrl!,
-    thumbnailBuffer: result.thumbnailBuffer!,
-    thumbHash: result.thumbHash!,
+    thumbnailUrl: result.thumbnailUrl,
+    thumbnailBuffer: result.thumbnailBuffer,
+    thumbHash: result.thumbHash,
   };
 }
 

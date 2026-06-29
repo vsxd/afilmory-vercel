@@ -165,6 +165,7 @@ export class AfilmoryBuilder {
           newCount: 0,
           processedCount: 0,
           skippedCount: 0,
+          failedCount: 0,
           deletedCount: 0,
           totalPhotos: 0,
         };
@@ -244,9 +245,17 @@ export class AfilmoryBuilder {
             newCount: processingStats.newCount,
             processedCount: processingStats.processedCount,
             skippedCount: processingStats.skippedCount,
+            failedCount: processingStats.failedCount,
             deletedCount,
           },
           Date.now() - startTime,
+        );
+      }
+
+      // 失败照片汇总：即使被跳过也要醒目提示，避免“绿色构建”掩盖照片丢失。
+      if (processingStats.failedCount > 0) {
+        logger.main.warn(
+          `⚠️ 有 ${processingStats.failedCount} 张照片处理失败并已从 manifest 中跳过，请检查上方失败日志。`,
         );
       }
 
@@ -259,6 +268,7 @@ export class AfilmoryBuilder {
         newCount: processingStats.newCount,
         processedCount: processingStats.processedCount,
         skippedCount: processingStats.skippedCount,
+        failedCount: processingStats.failedCount,
         deletedCount,
         totalPhotos: manifest.length,
       };
@@ -332,6 +342,7 @@ export class AfilmoryBuilder {
       newCount: number;
       processedCount: number;
       skippedCount: number;
+      failedCount: number;
       deletedCount: number;
     },
     totalDuration: number,
@@ -346,6 +357,11 @@ export class AfilmoryBuilder {
     logger.main.info(`   🆕 新增照片：${stats.newCount}`);
     logger.main.info(`   🔄 处理照片：${stats.processedCount}`);
     logger.main.info(`   ⏭️ 跳过照片：${stats.skippedCount}`);
+    if (stats.failedCount > 0) {
+      logger.main.warn(
+        `   ❌ 失败照片：${stats.failedCount}（已跳过，未写入 manifest）`,
+      );
+    }
     logger.main.info(`   🗑️ 删除照片：${stats.deletedCount}`);
     logger.main.info(
       `   ⏱️ 总耗时：${durationMinutes > 0 ? `${durationMinutes}分${remainingSeconds}秒` : `${durationSeconds}秒`}`,
