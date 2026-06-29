@@ -10,6 +10,22 @@ export type MasonryItemType = PhotoManifest | MasonryHeaderItem;
 
 export const FIRST_SCREEN_ITEMS_COUNT = 30;
 
+/**
+ * Resolve a safe, positive, finite aspect ratio for a photo. Falls back to the
+ * width/height ratio, then to 1, so a missing/zero/NaN `aspectRatio` can never
+ * produce an `Infinity`/`NaN` item height that corrupts the virtualized layout.
+ */
+export function resolveAspectRatio(photo: {
+  aspectRatio?: number;
+  width?: number;
+  height?: number;
+}): number {
+  const raw =
+    photo.aspectRatio ||
+    (photo.height && photo.width ? photo.width / photo.height : 1);
+  return Number.isFinite(raw) && raw > 0 ? raw : 1;
+}
+
 const COLUMN_WIDTH_CONFIG = {
   auto: {
     mobile: 150,
@@ -160,12 +176,7 @@ export function estimatePhotoVirtualRect({
       return null;
     }
 
-    const rawAspectRatio =
-      photo.aspectRatio || (photo.height ? photo.width / photo.height : 1);
-    const aspectRatio =
-      Number.isFinite(rawAspectRatio) && rawAspectRatio > 0
-        ? rawAspectRatio
-        : 1;
+    const aspectRatio = resolveAspectRatio(photo);
     const height = columnWidth / aspectRatio;
     const column = getShortestColumnIndex(columnHeights);
     const left = column * (columnWidth + columnGutter);

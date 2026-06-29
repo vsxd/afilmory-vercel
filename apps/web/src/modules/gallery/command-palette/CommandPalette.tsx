@@ -442,10 +442,19 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     }
   }, [selectedIndex]);
 
-  // Reset selected index when filtered commands change
+  // Stable signature of the filtered result set (ids + order). Filtering often
+  // changes the contents while keeping the same length, so resetting on length
+  // alone leaves the highlight pointing at a different command than shown —
+  // pressing Enter would then run the wrong command.
+  const filteredCommandsKey = useMemo(
+    () => filteredCommands.map((command) => command.id).join(" "),
+    [filteredCommands],
+  );
+
+  // Reset selected index whenever the filtered command set changes.
   useEffect(() => {
     setSelectedIndex(0);
-  }, [filteredCommands.length]);
+  }, [filteredCommandsKey]);
 
   if (!isOpen) return null;
 

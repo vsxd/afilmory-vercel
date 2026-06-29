@@ -10,8 +10,27 @@ import {
   getMasonryItemKey,
   getPhotoSetKey,
   MasonryHeaderItem,
+  resolveAspectRatio,
   shouldAnimateMasonryItem,
 } from "./gallery-layout";
+
+describe("resolveAspectRatio", () => {
+  it("returns the provided aspect ratio when valid", () => {
+    expect(resolveAspectRatio({ aspectRatio: 1.5 })).toBe(1.5);
+  });
+
+  it("falls back to width/height when aspectRatio is missing", () => {
+    expect(resolveAspectRatio({ width: 800, height: 400 })).toBe(2);
+  });
+
+  it("returns 1 for zero, NaN, negative, or unusable inputs", () => {
+    expect(resolveAspectRatio({ aspectRatio: 0, width: 0, height: 0 })).toBe(1);
+    expect(resolveAspectRatio({ aspectRatio: Number.NaN })).toBe(1);
+    expect(resolveAspectRatio({ aspectRatio: -2 })).toBe(1);
+    expect(resolveAspectRatio({ width: 100, height: 0 })).toBe(1);
+    expect(resolveAspectRatio({})).toBe(1);
+  });
+});
 
 const createPhoto = (id: string, aspectRatio = 1): PhotoManifest =>
   ({

@@ -61,6 +61,9 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   // 动画状态
   private isDestroyed = false;
+  private isContextLost = false;
+  private boundContextLost: (event: Event) => void = () => {};
+  private boundContextRestored: () => void = () => {};
   private animationFrameId: number | null = null;
   private tileUpdateTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private readonly animationController = new TransformAnimationController();
@@ -136,6 +139,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.boundResizeCanvas = () => this.resizeCanvas();
 
     this.setupCanvas();
+    this.setupContextLossHandlers();
     this.initWebGL();
     this.initWorker();
     this.setupEventListeners();
@@ -177,6 +181,65 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       this.constrainScaleAndPosition();
       this.render();
       this.notifyZoomChange();
+    }
+  }
+
+  private setupContextLossHandlers() {
+    this.boundContextLost = (event: Event) => this.handleContextLost(event);
+    this.boundContextRestored = () => this.handleContextRestored();
+    this.canvas.addEventListener("webglcontextlost", this.boundContextLost);
+    this.canvas.addEventListener(
+      "webglcontextrestored",
+      this.boundContextRestored,
+    );
+  }
+
+  private handleContextLost(event: Event) {
+    // preventDefault() is required for the browser to attempt restoration and
+    // later fire `webglcontextrestored`.
+    event.preventDefault();
+    this.isContextLost = true;
+
+    // Stop every render/animation loop: drawing into a lost context is a no-op
+    // that only produces console errors.
+    this.animationController.cancel();
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    if (this.tileProcessingFrameId !== null) {
+      cancelAnimationFrame(this.tileProcessingFrameId);
+      this.tileProcessingFrameId = null;
+    }
+
+    // All GPU textures are gone; drop our bookkeeping so a restore starts clean.
+    this.tileCache.clear();
+    this.tileRequestRuntime.clear();
+
+    console.warn("WebGL context lost; pausing rendering until restored.");
+  }
+
+  private handleContextRestored() {
+    if (this.isDestroyed) return;
+    this.isContextLost = false;
+
+    // Recreate all context-dependent resources (programs, buffers, textures).
+    this.textureManager = new TextureLodManager(this.gl);
+    this.initWebGL();
+    this.resizeCanvas();
+
+    // Re-decode and re-upload the current image if one was loaded; otherwise
+    // just repaint the (now empty) scene.
+    if (this.originalImageSrc) {
+      this.loadImage(
+        this.originalImageSrc,
+        this.imageWidth || undefined,
+        this.imageHeight || undefined,
+      ).catch((error) => {
+        console.error("Failed to reload image after context restore:", error);
+      });
+    } else {
+      this.render();
     }
   }
 
@@ -599,7 +662,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
   }
 
   private processPendingTileRequests(): void {
-    if (this.isDestroyed) return;
+    if (this.isDestroyed || this.isContextLost) return;
 
     if (!this.workerBridge || !this.textureWorkerInitialized) {
       return;
@@ -651,7 +714,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
 
   // 修改渲染方法以支持瓦片渲染
   private render() {
-    if (this.isDestroyed) return;
+    if (this.isDestroyed || this.isContextLost) return;
 
     this.renderer.prepareFrame(this.canvas.width, this.canvas.height);
 
@@ -846,6 +909,11 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     }
 
     window.removeEventListener("resize", this.boundResizeCanvas);
+    this.canvas.removeEventListener("webglcontextlost", this.boundContextLost);
+    this.canvas.removeEventListener(
+      "webglcontextrestored",
+      this.boundContextRestored,
+    );
     this.inputController?.dispose();
     this.inputController = null;
 

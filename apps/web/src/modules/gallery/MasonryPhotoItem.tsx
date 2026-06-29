@@ -33,6 +33,8 @@ import {
 } from "~/lib/thumbnail-load-cache";
 import type { PhotoManifest } from "~/types/photo";
 
+import { resolveAspectRatio } from "./gallery-layout";
+
 export const MasonryPhotoItem = memo(
   ({
     data,
@@ -138,8 +140,8 @@ export const MasonryPhotoItem = memo(
       [handleClick],
     );
 
-    // 计算基于宽度的高度
-    const calculatedHeight = width / data.aspectRatio;
+    // 计算基于宽度的高度（守卫 aspectRatio 为 0/NaN/缺失的情况，避免 Infinity/NaN 高度破坏虚拟列表）
+    const calculatedHeight = width / resolveAspectRatio(data);
 
     // 格式化 EXIF 数据
     const formatExifData = () => {

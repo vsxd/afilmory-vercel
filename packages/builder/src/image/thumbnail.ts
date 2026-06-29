@@ -7,6 +7,7 @@ import { getScopedBuilderOutputSettings } from "../output-paths.js";
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import type { ThumbnailResult } from "../types/photo.js";
 import { generateBlurhash } from "./blurhash.js";
+import { SOURCE_SHARP_OPTIONS } from "./sharp-options.js";
 
 // 常量定义
 const THUMBNAIL_QUALITY = 100;
@@ -98,7 +99,7 @@ async function generateNewThumbnail(
 
   try {
     // 创建 Sharp 实例，复用于缩略图和 blurhash 生成
-    const sharpInstance = sharp(imageBuffer).rotate(); // 自动根据 EXIF 旋转
+    const sharpInstance = sharp(imageBuffer, SOURCE_SHARP_OPTIONS).rotate(); // 自动根据 EXIF 旋转
 
     // 生成缩略图
     const thumbnailBuffer = await sharpInstance

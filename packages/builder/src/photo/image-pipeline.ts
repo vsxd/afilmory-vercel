@@ -9,6 +9,7 @@ import {
   isBitmap,
   preprocessImageBuffer,
 } from "../image/processor.js";
+import { SOURCE_SHARP_OPTIONS } from "../image/sharp-options.js";
 import { THUMBNAIL_PLUGIN_DATA_KEY } from "../plugins/thumbnail-storage/shared.js";
 import type { StorageObject } from "../storage/interfaces.js";
 import type { BuilderOptions } from "../types/options.js";
@@ -92,7 +93,7 @@ export async function processImageWithSharp(
 
   try {
     // 创建 Sharp 实例，复用于多个操作
-    let sharpInstance = sharp(imageBuffer);
+    let sharpInstance = sharp(imageBuffer, SOURCE_SHARP_OPTIONS);
     let processedBuffer = imageBuffer;
 
     // 处理 BMP
