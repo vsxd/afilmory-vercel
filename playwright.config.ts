@@ -23,7 +23,9 @@ export default defineConfig({
       AFILMORY_EMBED_MANIFEST: "true",
     },
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    // Cold Vite dep-optimization (heavy deps: maplibre, react, motion) can take
+    // well over a minute on a fresh CI cache; keep generous headroom.
+    timeout: 180_000,
     url: baseURL,
   },
   projects: [

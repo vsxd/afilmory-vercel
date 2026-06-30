@@ -108,5 +108,40 @@ export default defineConfig({
         },
       },
     ],
+    coverage: {
+      // 报告优先（非强制门禁）：先建立可见的基线，后续再决定阈值。
+      provider: "v8",
+      reporter: ["text", "text-summary", "json-summary", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      // all: true —— 把未被任何测试导入的源文件也计入分母，
+      // 这样未覆盖模块会显示成 0%，基线才真实。
+      all: true,
+      include: [
+        "packages/*/src/**/*.{ts,tsx}",
+        "apps/web/src/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+      ],
+      exclude: [
+        // 测试与测试基建本身
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "**/__tests__/**",
+        "**/__mocks__/**",
+        "**/test/**",
+        "apps/web/e2e/**",
+        // 构建产物与依赖
+        "**/dist/**",
+        "**/node_modules/**",
+        // 纯类型 / 声明，无可执行逻辑
+        "**/*.d.ts",
+        "**/types.ts",
+        "**/types/**",
+        "packages/builder/src/plugins/types.ts",
+        // 仅做 re-export 的桶文件，覆盖率无意义
+        "**/index.ts",
+        // 配置文件
+        "**/*.config.{ts,js,mjs}",
+      ],
+    },
   },
 });

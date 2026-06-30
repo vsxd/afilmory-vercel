@@ -87,6 +87,24 @@ async function stubOriginalImages(page: Page) {
   });
 }
 
+async function stubLocalThumbnails(page: Page) {
+  // Thumbnails are build-time assets that are gitignored and therefore absent in
+  // CI. Serve a tiny local PNG so the gallery grid renders without 404 console
+  // errors, which the diagnostics assertions below treat as failures. Harmless
+  // locally (real thumbnails are simply overridden by the same fixture image).
+  await page.route("**/thumbnails/**", async (route) => {
+    await route.fulfill({
+      contentType: "image/png",
+      headers: { "Cache-Control": "no-store" },
+      path: VIEWER_FIXTURE_IMAGE_PATH,
+    });
+  });
+}
+
+test.beforeEach(async ({ page }) => {
+  await stubLocalThumbnails(page);
+});
+
 test("loads the gallery from the unified browser runtime namespace", async ({
   page,
 }) => {

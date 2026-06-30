@@ -11,51 +11,98 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Lint, type-check, test, build
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
+      - name: Setup
+        uses: ./.github/actions/setup
       - name: Lint
         run: pnpm lint
 
+  type-check:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/setup
       - name: Type-check
         run: pnpm type-check
 
-      - name: Test
-        run: pnpm test
+  test:
+    name: Test + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Create manifest fixture
+        run: pnpm exec tsx scripts/ci-create-manifest-fixture.ts
+      - name: Run unit tests with coverage
+        run: pnpm test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node scripts/print-coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
 
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/setup
       - name: Dependency audit
         run: pnpm audit:prod
 
-      - name: Create CI manifest fixture
-        run: |
-          mkdir -p generated
-          pnpm exec tsx <<'EOF'
-          import { createManifest } from "@afilmory/schema";
-          import { writeFileSync } from "node:fs";
-
-          writeFileSync(
-            "generated/photos-manifest.json",
-            `${JSON.stringify(
-              createManifest({ generatedAt: "1970-01-01T00:00:00.000Z" }),
-            )}\n`,
-          );
-          EOF
-
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Create manifest fixture
+        run: pnpm exec tsx scripts/ci-create-manifest-fixture.ts
       - name: Build
         run: SKIP_MANIFEST_BUILD=true pnpm build
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Stage e2e manifest fixture
+        run: |
+          mkdir -p generated
+          cp apps/web/e2e/fixtures/photos-manifest.json generated/photos-manifest.json
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run e2e tests
+        run: pnpm test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
