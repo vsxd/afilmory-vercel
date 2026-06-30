@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { createStore, Provider } from "jotai";
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { gallerySettingAtom } from "~/atoms/app";
+import { navigateAtom, routeAtom } from "~/atoms/route";
 import type { PhotoManifest } from "~/types/photo";
 
 import { MasonryPhotoItem } from "../MasonryPhotoItem";
@@ -46,15 +49,6 @@ vi.mock("@afilmory/ui", () => ({
   ),
 }));
 
-vi.mock("jotai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("jotai")>();
-
-  return {
-    ...actual,
-    useAtomValue: () => gallerySetting,
-  };
-});
-
 vi.mock("motion/react", () => ({
   m: {
     div: ({
@@ -70,11 +64,6 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}));
-
-vi.mock("react-router", () => ({
-  useLocation: () => ({ search: "?cameras=SONY%20ILCE-7C" }),
-  useNavigate: () => navigate,
 }));
 
 vi.mock("~/hooks/useLivePhotoHandler", () => ({
@@ -114,6 +103,21 @@ vi.mock("~/lib/startup-metrics", () => ({
 }));
 
 describe("MasonryPhotoItem", () => {
+  let store: ReturnType<typeof createStore>;
+
+  // 组件现在通过 jotai store 读取路由/导航/画廊设置（而非订阅 react-router/atom），
+  // 因此用真实 store 播种这些值，并用 Provider 包裹渲染。
+  const renderItem = (props: {
+    data: PhotoManifest;
+    width: number;
+    index: number;
+  }) =>
+    render(<MasonryPhotoItem {...props} />, {
+      wrapper: ({ children }: PropsWithChildren) => (
+        <Provider store={store}>{children}</Provider>
+      ),
+    });
+
   afterEach(() => {
     cleanup();
   });
@@ -130,12 +134,24 @@ describe("MasonryPhotoItem", () => {
       selectedGeoCities: [],
       selectedGeoDistricts: [],
     };
+
+    store = createStore();
+    store.set(gallerySettingAtom, {
+      ...store.get(gallerySettingAtom),
+      ...gallerySetting,
+    });
+    store.set(routeAtom, {
+      ...store.get(routeAtom),
+      location: {
+        ...store.get(routeAtom).location,
+        search: "?cameras=SONY%20ILCE-7C",
+      },
+    });
+    store.set(navigateAtom, { fn: navigate });
   });
 
   it("opens a filtered viewer session and navigates to the photo detail route with filters intact", () => {
-    const { getByRole } = render(
-      <MasonryPhotoItem data={photo} width={300} index={0} />,
-    );
+    const { getByRole } = renderItem({ data: photo, width: 300, index: 0 });
 
     fireEvent.click(getByRole("button", { name: "A7C01202" }));
 
@@ -153,9 +169,7 @@ describe("MasonryPhotoItem", () => {
   it("still navigates when the current masonry index is temporarily missing from context photos", () => {
     contextPhotos = [];
 
-    const { getByRole } = render(
-      <MasonryPhotoItem data={photo} width={300} index={0} />,
-    );
+    const { getByRole } = renderItem({ data: photo, width: 300, index: 0 });
 
     fireEvent.click(getByRole("button", { name: "A7C01202" }));
 
@@ -167,9 +181,7 @@ describe("MasonryPhotoItem", () => {
   });
 
   it("eagerly loads the first few thumbnails as LCP candidates with high priority", () => {
-    const { getByAltText } = render(
-      <MasonryPhotoItem data={photo} width={300} index={0} />,
-    );
+    const { getByAltText } = renderItem({ data: photo, width: 300, index: 0 });
 
     const img = getByAltText("A7C01202");
     expect(img.getAttribute("fetchpriority")).toBe("high");
@@ -177,9 +189,7 @@ describe("MasonryPhotoItem", () => {
   });
 
   it("marks later thumbnails as low priority/lazy so detail images can win user-initiated loads", () => {
-    const { getByAltText } = render(
-      <MasonryPhotoItem data={photo} width={300} index={8} />,
-    );
+    const { getByAltText } = renderItem({ data: photo, width: 300, index: 8 });
 
     const img = getByAltText("A7C01202");
     expect(img.getAttribute("fetchpriority")).toBe("low");
@@ -194,9 +204,7 @@ describe("MasonryPhotoItem", () => {
       }),
     );
 
-    const { getByRole } = render(
-      <MasonryPhotoItem data={photo} width={300} index={0} />,
-    );
+    const { getByRole } = renderItem({ data: photo, width: 300, index: 0 });
 
     fireEvent.click(getByRole("button", { name: "A7C01202" }));
 

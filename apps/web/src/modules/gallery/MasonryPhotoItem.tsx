@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
+import { useStore } from "jotai";
 import { m } from "motion/react";
 import {
   Fragment,
@@ -10,9 +10,9 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
 
 import { gallerySettingAtom } from "~/atoms/app";
+import { navigateAtom, routeAtom } from "~/atoms/route";
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { useLivePhotoHandler } from "~/hooks/useLivePhotoHandler";
 import { useContextPhotos, useOpenPhotoViewer } from "~/hooks/usePhotoViewer";
@@ -46,11 +46,13 @@ export const MasonryPhotoItem = memo(
     index: number;
   }) => {
     const photos = useContextPhotos();
-    const gallerySetting = useAtomValue(gallerySettingAtom);
     const openViewer = useOpenPhotoViewer();
     const { t } = useTranslation();
-    const location = useLocation();
-    const routeNavigate = useNavigate();
+    // 通过 jotai store 在点击时按需读取路由 / 导航 / 画廊设置，避免订阅
+    // useLocation()/useNavigate()/gallerySettingAtom —— 否则打开查看器(URL 变化)
+    // 或调整任一筛选都会让全部可见的虚拟单元重渲染。沿用 StableRouterProvider 的
+    // 设计意图：路由状态存在 atom 里，读取时不触发组件重渲染。
+    const store = useStore();
     const [imageError, setImageError] = useState(false);
 
     const imageRef = useRef<HTMLImageElement>(null);
@@ -109,10 +111,14 @@ export const MasonryPhotoItem = memo(
         });
       };
 
-      const navigationResult = routeNavigate({
+      const navigate = store.get(navigateAtom).fn;
+      const navigationResult = navigate?.({
         pathname: buildPhotoDetailPathname(data.id),
-        search: buildGalleryFilterSearch(location.search, gallerySetting),
-      }) as void | PromiseLike<void>;
+        search: buildGalleryFilterSearch(
+          store.get(routeAtom).location.search,
+          store.get(gallerySettingAtom),
+        ),
+      }) as void | PromiseLike<void> | undefined;
 
       if (navigationResult && typeof navigationResult.then === "function") {
         void navigationResult.then(openPhotoViewer, openPhotoViewer);
@@ -120,15 +126,7 @@ export const MasonryPhotoItem = memo(
       }
 
       openPhotoViewer();
-    }, [
-      data.id,
-      gallerySetting,
-      index,
-      location.search,
-      openViewer,
-      photos,
-      routeNavigate,
-    ]);
+    }, [data.id, index, openViewer, photos, store]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
