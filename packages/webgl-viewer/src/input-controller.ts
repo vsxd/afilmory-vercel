@@ -22,6 +22,14 @@ export class WebGLInputController {
   private lastTouchTime = 0;
   private lastTouchX = 0;
   private lastTouchY = 0;
+  // 缓存 canvas 的视口矩形：canvas 是固定全屏覆盖层，其 rect 仅在尺寸变化时改变。
+  // 避免每个 wheel/pinch-move 事件都 getBoundingClientRect（在缩放途中若有 DOM
+  // 更新弄脏布局，会触发强制同步重排）。手势开始时刷新、resize 时失效、懒计算兜底。
+  private canvasRect: DOMRect | null = null;
+
+  private readonly boundInvalidateCanvasRect = () => {
+    this.canvasRect = null;
+  };
 
   private readonly boundHandleMouseDown = (event: MouseEvent) =>
     this.handleMouseDown(event);
@@ -51,6 +59,7 @@ export class WebGLInputController {
     this.canvas.addEventListener("touchstart", this.boundHandleTouchStart);
     this.canvas.addEventListener("touchmove", this.boundHandleTouchMove);
     this.canvas.addEventListener("touchend", this.boundHandleTouchEnd);
+    window.addEventListener("resize", this.boundInvalidateCanvasRect);
   }
 
   dispose(): void {
@@ -62,6 +71,7 @@ export class WebGLInputController {
     this.canvas.removeEventListener("touchstart", this.boundHandleTouchStart);
     this.canvas.removeEventListener("touchmove", this.boundHandleTouchMove);
     this.canvas.removeEventListener("touchend", this.boundHandleTouchEnd);
+    window.removeEventListener("resize", this.boundInvalidateCanvasRect);
   }
 
   private stopAnimationIfNeeded(): boolean {
@@ -77,6 +87,8 @@ export class WebGLInputController {
     this.stopAnimationIfNeeded();
     if (this.config.panning.disabled) return;
 
+    // 手势开始时刷新缓存的 rect，确保后续 wheel/double-click 映射准确。
+    this.canvasRect = this.canvas.getBoundingClientRect();
     this.isDragging = true;
     this.lastMouseX = event.clientX;
     this.lastMouseY = event.clientY;
@@ -132,6 +144,9 @@ export class WebGLInputController {
     // 停止进行中的动画，但不要 early-return——否则中断动画的那一次手指按下会被
     // 吞掉，用户必须再点一次才能开始拖动（鼠标路径也是停动画后继续）。
     this.stopAnimationIfNeeded();
+
+    // 手势开始时刷新缓存的 rect，pinch 途中的 touchmove 即可复用、不再逐帧读布局。
+    this.canvasRect = this.canvas.getBoundingClientRect();
 
     if (event.touches.length === 1 && !this.config.panning.disabled) {
       const touch = event.touches[0];
@@ -218,7 +233,9 @@ export class WebGLInputController {
     x: number;
     y: number;
   } {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect =
+      this.canvasRect ??
+      (this.canvasRect = this.canvas.getBoundingClientRect());
     return {
       x: clientX - rect.left,
       y: clientY - rect.top,
