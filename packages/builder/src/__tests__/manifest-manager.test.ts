@@ -151,8 +151,9 @@ describe("loadExistingManifest", () => {
     expect(rewritten.photos).toEqual([]);
   });
 
-  it("keeps valid photos and drops only the corrupt records from the cache", async () => {
-    // 个别照片字段损坏只跳过该张（会被当作新照片重新处理），其余照片照常复用。
+  it("keeps salvageable photos and drops only those missing a core field", async () => {
+    // 核心寻址字段（如 originalUrl）损坏的照片无法使用，跳过该张（会被当作新照片重新
+    // 处理）；仅可恢复字段损坏的照片由 normalizer 抢救后保留，其余照片照常复用。
     const validPhoto = {
       id: "good",
       originalUrl: "https://example.com/good.jpg",
@@ -180,7 +181,13 @@ describe("loadExistingManifest", () => {
         generatedAt: "2026-06-06T00:00:00.000Z",
         source: { provider: "s3", bucket: "photos", region: "us-east-1" },
         indexes: { cameras: [], lenses: [] },
-        photos: [validPhoto, { ...validPhoto, id: "bad", width: "oops" }],
+        photos: [
+          validPhoto,
+          // 可恢复字段损坏（数值），由 normalizer 抢救后保留
+          { ...validPhoto, id: "soft", width: "oops" },
+          // 核心寻址字段损坏，无法使用 → 跳过
+          { ...validPhoto, id: "fatal", originalUrl: 123 },
+        ],
       }),
     );
 
@@ -188,7 +195,7 @@ describe("loadExistingManifest", () => {
       loadExistingManifest(),
     );
 
-    expect(manifest.photos.map((photo) => photo.id)).toEqual(["good"]);
+    expect(manifest.photos.map((photo) => photo.id)).toEqual(["good", "soft"]);
   });
 });
 

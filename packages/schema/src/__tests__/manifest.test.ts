@@ -124,13 +124,14 @@ describe("manifest v2 schema", () => {
   });
 
   describe("parseManifestLenient", () => {
-    it("drops only the invalid photos and keeps the valid ones", () => {
+    it("drops only photos missing a core addressing field and keeps the rest", () => {
       const input = createManifest({
         generatedAt: "2026-06-06T00:00:00.000Z",
         source: { provider: "s3", bucket: "photos", region: "us-east-1" },
         photos: [
           createValidPhoto({ id: "good-1" }),
-          createValidPhoto({ id: "bad", width: "4000" as never }),
+          // originalUrl 是查看照片必需的核心字段，损坏即无法使用 → 丢弃
+          createValidPhoto({ id: "bad", originalUrl: 123 as never }),
           createValidPhoto({ id: "good-2" }),
         ],
       });
@@ -143,7 +144,26 @@ describe("manifest v2 schema", () => {
       ]);
       expect(skipped).toHaveLength(1);
       expect(skipped[0]).toMatchObject({ index: 1 });
-      expect(skipped[0].issues).toContain("photos[1].width must be a number");
+      expect(skipped[0].issues).toContain(
+        "photos[1].originalUrl must be a string",
+      );
+    });
+
+    it("salvages a photo whose only defect is a recoverable field", () => {
+      const input = createManifest({
+        generatedAt: "2026-06-06T00:00:00.000Z",
+        source: { provider: "s3", bucket: "photos", region: "us-east-1" },
+        photos: [
+          // 仅可默认的数值字段损坏（非核心寻址字段），由 normalizer 抢救后保留
+          createValidPhoto({ id: "soft", width: "4000" as never }),
+        ],
+      });
+
+      const { manifest, skipped } = parseManifestLenient(input);
+
+      expect(manifest.photos.map((photo) => photo.id)).toEqual(["soft"]);
+      expect(manifest.photos[0]!.width).toBe(0); // normalizer 默认值
+      expect(skipped).toEqual([]);
     });
 
     it("keeps every photo when all are valid", () => {
@@ -170,6 +190,33 @@ describe("manifest v2 schema", () => {
           photos: "not-an-array" as never,
         }),
       ).toThrow(ManifestValidationError);
+    });
+
+    it("drops malformed index entries instead of failing the whole manifest", () => {
+      const input = {
+        ...createManifest({
+          generatedAt: "2026-06-06T00:00:00.000Z",
+          source: { provider: "s3", bucket: "photos", region: "us-east-1" },
+          photos: [createValidPhoto({ id: "a" })],
+        }),
+        indexes: {
+          cameras: [
+            { make: "Sony", model: "A7C", displayName: "Sony A7C" },
+            { make: "Bad", model: 7 }, // model 非字符串 + 缺 displayName
+          ],
+          lenses: "not-an-array",
+        },
+      };
+
+      const { manifest, skipped } = parseManifestLenient(input);
+
+      expect(skipped).toEqual([]);
+      expect(manifest.photos).toHaveLength(1);
+      // 坏的 camera 条目被丢弃，好的保留；非数组 lenses 被规整为空数组
+      expect(manifest.indexes.cameras).toEqual([
+        { make: "Sony", model: "A7C", displayName: "Sony A7C" },
+      ]);
+      expect(manifest.indexes.lenses).toEqual([]);
     });
   });
 });

@@ -6,9 +6,9 @@ import {
   toSerializablePluginConfigEntry,
 } from "./serializable.js";
 import type {
+  BuilderPlugin,
   BuilderPluginConfigEntry,
   BuiltinBuilderPluginDescriptor,
-  MinimalBuilderPlugin,
 } from "./types.js";
 
 describe("toSerializablePluginConfigEntry", () => {
@@ -33,7 +33,7 @@ describe("toSerializablePluginConfigEntry", () => {
 
   it("throws for a zero-arg ESM importer function", () => {
     const importer: BuilderPluginConfigEntry = () =>
-      Promise.resolve({ default: { name: "x" } as MinimalBuilderPlugin });
+      Promise.resolve({ default: { name: "x" } as BuilderPlugin });
 
     expect(() => toSerializablePluginConfigEntry(importer)).toThrow(
       /Cluster mode cannot serialize plugin importer functions/,
@@ -42,7 +42,7 @@ describe("toSerializablePluginConfigEntry", () => {
 
   it("returns the declared serializablePluginReference for an inline plugin", () => {
     const reference: BuiltinBuilderPluginDescriptor = { plugin: "geocoding" };
-    const inline: MinimalBuilderPlugin = {
+    const inline: BuilderPlugin = {
       name: "my-inline",
       hooks: {},
       serializablePluginReference: reference,
@@ -53,7 +53,7 @@ describe("toSerializablePluginConfigEntry", () => {
   });
 
   it("throws and quotes the plugin name for a named inline plugin without a reference", () => {
-    const inline: MinimalBuilderPlugin = { name: "my-inline", hooks: {} };
+    const inline: BuilderPlugin = { name: "my-inline", hooks: {} };
 
     expect(() => toSerializablePluginConfigEntry(inline)).toThrow(
       /Cluster mode cannot serialize inline plugin "my-inline"\./,
@@ -61,7 +61,7 @@ describe("toSerializablePluginConfigEntry", () => {
   });
 
   it("throws with a generic message for an anonymous inline plugin without a reference", () => {
-    const inline: MinimalBuilderPlugin = { hooks: {} };
+    const inline: BuilderPlugin = { hooks: {} };
 
     expect(() => toSerializablePluginConfigEntry(inline)).toThrow(
       /Cluster mode cannot serialize inline plugin\. Use a string/,
@@ -73,7 +73,7 @@ describe("toSerializablePluginConfigEntry", () => {
     // an ESM importer. It is not a string/descriptor either, so it falls to the
     // generic inline-plugin branch where `entry.name` resolves to the function
     // name. This is not a valid config-entry type, but the runtime guards it.
-    function namedFactory(_opts: unknown): MinimalBuilderPlugin {
+    function namedFactory(_opts: unknown): BuilderPlugin {
       return { name: "from-factory" };
     }
 
@@ -100,7 +100,7 @@ describe("createSerializableBuilderConfigForWorker", () => {
   it("maps every plugin entry through toSerializablePluginConfigEntry", () => {
     const descriptor: BuiltinBuilderPluginDescriptor = { plugin: "geocoding" };
     const reference: BuiltinBuilderPluginDescriptor = { plugin: "geocoding" };
-    const inline: MinimalBuilderPlugin = {
+    const inline: BuilderPlugin = {
       name: "inline",
       serializablePluginReference: reference,
     };
@@ -136,7 +136,7 @@ describe("createSerializableBuilderConfigForWorker", () => {
 
   it("propagates the error when a plugin entry cannot be serialized", () => {
     const importer: BuilderPluginConfigEntry = () =>
-      Promise.resolve({ default: {} as MinimalBuilderPlugin });
+      Promise.resolve({ default: {} as BuilderPlugin });
     const config = baseConfig(["ok", importer]);
 
     expect(() => createSerializableBuilderConfigForWorker(config)).toThrow(

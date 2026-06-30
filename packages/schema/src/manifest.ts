@@ -665,10 +665,14 @@ export interface LenientManifestParseResult {
 }
 
 /**
- * 宽松解析：顶层结构（schema/version/generatedAt/source/indexes/photos 数组）仍严格——
+ * 宽松解析：信封层（schema/version/generatedAt/source、photos 是否为数组）仍严格——
  * 任一项无效都抛 {@link ManifestValidationError}，由调用方决定如何降级（运行时显示诊断页，
- * 构建期丢弃缓存做全量重建）。照片层面逐张校验，任一张不合法只跳过它并记入 `skipped`，
- * 保留其余照片，绝不让一张坏照片清空整个图库或砖掉后续构建。
+ * 构建期丢弃缓存做全量重建）。
+ *
+ * 派生 indexes 与照片逐条容错：坏的 camera/lens 条目由 normalizeIndexes 丢弃；照片仅在
+ * 无法寻址（非对象，或缺 id/originalUrl/s3Key 核心字段）时丢弃并记入 `skipped`，可恢复的
+ * 字段问题（损坏的可选字段、可默认的数值）由 normalizer 抢救后保留。绝不让一张坏照片或
+ * 一个坏索引条目清空整个图库或砖掉后续构建。
  *
  * 严格完整性仍由 {@link assertManifest} 提供，用于"刚生成的 manifest"等构建闸门。
  */
@@ -698,14 +702,15 @@ export function parseManifestLenient(
     "generatedAt must be a string",
   );
   const source = validateSource(input.source, envelopeIssues);
-  const indexes = validateIndexes(input.indexes, envelopeIssues);
+  // indexes 是派生数据：逐条容错。坏的 camera/lens 条目由 normalizeIndexes 丢弃，
+  // 绝不因单个坏索引条目抛掉整个 manifest（normalizeIndexes 永远返回一个对象）。
+  const indexes = normalizeIndexes(input.indexes);
   const photosAreArray = Array.isArray(input.photos);
   pushIssue(envelopeIssues, photosAreArray, "photos must be an array");
 
   if (
     envelopeIssues.length > 0 ||
     !source ||
-    !indexes ||
     generatedAt === null ||
     !photosAreArray
   ) {
@@ -716,10 +721,15 @@ export function parseManifestLenient(
   const skipped: SkippedPhoto[] = [];
   for (const [index, photo] of (input.photos as unknown[]).entries()) {
     const { item, issues } = validatePhoto(photo, index);
-    if (item && issues.length === 0) {
-      photos.push(item);
-    } else {
+    // 致命：无法构造照片对象，或缺少用于寻址/路由/查看的核心字段。其余问题
+    // （损坏的可选字段、可默认的数值）已被 normalizer 抢救，照片仍能正常渲染，
+    // 予以保留——只有真正无法使用的照片才丢弃并记入 `skipped`。
+    const isFatal =
+      item === null || !item.id || !item.originalUrl || !item.s3Key;
+    if (isFatal) {
       skipped.push({ index, issues });
+    } else {
+      photos.push(item);
     }
   }
 

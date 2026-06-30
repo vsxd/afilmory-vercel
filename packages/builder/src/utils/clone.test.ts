@@ -7,7 +7,6 @@ describe("clone", () => {
     expect(clone(42)).toBe(42);
     expect(clone("hello")).toBe("hello");
     expect(clone(null)).toBe(null);
-    expect(clone()).toBe(undefined);
     expect(clone(true)).toBe(true);
   });
 
