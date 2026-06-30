@@ -4,6 +4,7 @@ import * as React from "react";
 import type { MasonryCellLayout } from "./gallery-layout";
 import {
   computeMasonryLayout,
+  resolveEffectiveColumnWidth,
   resolveMasonryColumnCount,
   selectVisibleMasonryCells,
 } from "./gallery-layout";
@@ -140,13 +141,12 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
     columnWidth,
     columnGutter,
   });
-  const effectiveColumnWidth =
-    containerWidth > 0
-      ? Math.max(
-          1,
-          (containerWidth - (columnCount - 1) * columnGutter) / columnCount,
-        )
-      : columnWidth;
+  const effectiveColumnWidth = resolveEffectiveColumnWidth({
+    containerWidth,
+    columnCount,
+    columnGutter,
+    fallbackColumnWidth: columnWidth,
+  });
 
   const getHeight = React.useCallback(
     (item: Item, index: number): number => {

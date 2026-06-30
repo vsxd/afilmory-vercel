@@ -181,6 +181,28 @@ export function resolveMasonryColumnCount({
 }
 
 /**
+ * 实际列宽：把容器宽度（去掉列间距）按列数均分，使瀑布流填满容器、右侧不留白。
+ * 容器宽度未知（首帧为 0）时回退到目标列宽。
+ */
+export function resolveEffectiveColumnWidth({
+  containerWidth,
+  columnCount,
+  columnGutter,
+  fallbackColumnWidth,
+}: {
+  containerWidth: number;
+  columnCount: number;
+  columnGutter: number;
+  fallbackColumnWidth: number;
+}): number {
+  if (containerWidth <= 0 || columnCount <= 0) return fallbackColumnWidth;
+  return Math.max(
+    1,
+    (containerWidth - (columnCount - 1) * columnGutter) / columnCount,
+  );
+}
+
+/**
  * 纯计算瀑布流布局：item 高度已知（照片由 aspectRatio 算出，header 由 measure 提供），
  * 因此所有 cell 的位置可一次性算出，滚动时不再 measure DOM —— 这是消除 masonic 强制重排
  * 的关键。每个 item 放入当前最矮的列。

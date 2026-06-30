@@ -12,6 +12,7 @@ import {
   getPhotoSetKey,
   MasonryHeaderItem,
   resolveAspectRatio,
+  resolveEffectiveColumnWidth,
   resolveMasonryColumnCount,
   selectVisibleMasonryCells,
   shouldAnimateMasonryItem,
@@ -235,5 +236,91 @@ describe("selectVisibleMasonryCells", () => {
       overscanPx: 2000,
     });
     expect(visible.map((c) => c.index)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("resolveEffectiveColumnWidth", () => {
+  // 关键不变量：列宽拉伸后，columnCount 列 + gutters 必须正好等于容器宽 —— 即右侧零空白。
+  const fillsExactly = (
+    containerWidth: number,
+    columnCount: number,
+    columnGutter: number,
+  ) => {
+    const width = resolveEffectiveColumnWidth({
+      containerWidth,
+      columnCount,
+      columnGutter,
+      fallbackColumnWidth: 200,
+    });
+    return columnCount * width + (columnCount - 1) * columnGutter;
+  };
+
+  it("stretches columns to fill the container exactly across widths/counts", () => {
+    for (const [containerWidth, columnCount] of [
+      [382, 2],
+      [745, 4],
+      [1264, 5],
+      [1000, 3],
+      [320, 2],
+    ] as const) {
+      expect(fillsExactly(containerWidth, columnCount, 4)).toBeCloseTo(
+        containerWidth,
+        5,
+      );
+    }
+  });
+
+  it("works with zero gutter", () => {
+    expect(fillsExactly(600, 3, 0)).toBeCloseTo(600, 5);
+  });
+
+  it("falls back to the target column width when container width is unknown", () => {
+    expect(
+      resolveEffectiveColumnWidth({
+        containerWidth: 0,
+        columnCount: 3,
+        columnGutter: 4,
+        fallbackColumnWidth: 150,
+      }),
+    ).toBe(150);
+  });
+
+  it("never returns a non-positive width", () => {
+    expect(
+      resolveEffectiveColumnWidth({
+        containerWidth: 4,
+        columnCount: 5,
+        columnGutter: 10,
+        fallbackColumnWidth: 100,
+      }),
+    ).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("computeMasonryLayout edge cases", () => {
+  it("handles an empty item list", () => {
+    const { cells, totalHeight } = computeMasonryLayout({
+      items: [],
+      columnCount: 3,
+      columnWidth: 100,
+      columnGutter: 4,
+      rowGutter: 4,
+      getItemHeight: () => 100,
+    });
+    expect(cells).toEqual([]);
+    expect(totalHeight).toBe(0);
+  });
+
+  it("clamps a column count below 1 to a single column", () => {
+    const { columnCount, cells } = computeMasonryLayout({
+      items: [{ h: 50 }, { h: 50 }],
+      columnCount: 0,
+      columnWidth: 100,
+      columnGutter: 0,
+      rowGutter: 0,
+      getItemHeight: (item) => item.h,
+    });
+    expect(columnCount).toBe(1);
+    expect(cells.map((c) => c.column)).toEqual([0, 0]);
   });
 });
