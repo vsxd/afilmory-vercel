@@ -212,17 +212,18 @@ export const MasonryItem = memo(
     // Framer Motion 动画变体
     const itemVariants = useMemo(
       () => ({
+        // 入场动画刻意不用 filter: blur —— blur 滤镜动画对 GPU/合成极其昂贵，
+        // 首屏前 30 个 item 同时跑会显著拖慢首屏渲染（render delay）并掉帧。
+        // opacity + 位移 + 轻微缩放已足够呈现入场效果，且基本零合成成本。
         hidden: {
           opacity: 0,
           y: 30,
           scale: 0.95,
-          filter: "blur(4px)",
         },
         visible: {
           opacity: 1,
           y: 0,
           scale: 1,
-          filter: "blur(0px)",
           transition: {
             ...Spring.presets.smooth,
             delay,

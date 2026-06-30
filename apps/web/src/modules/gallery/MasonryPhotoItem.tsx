@@ -291,8 +291,11 @@ export const MasonryPhotoItem = memo(
           </div>
         )}
 
-        {/* 图片信息和 EXIF 覆盖层 */}
-        {shouldShowImageDetails && (
+        {/* 图片信息和 EXIF 覆盖层：仅非触摸（鼠标 hover）设备渲染。移动/触摸端
+            永远 opacity-0（没有 hover），却仍占满 DOM 并参与每帧 style recalc 与
+            backdrop-blur 合成 —— 直接不渲染可把每个 item 的 DOM 从 ~41 降到 ~5，
+            大幅减少滚动时的样式重算与掉帧。移动端看详情请点开查看器。 */}
+        {!isMobileDevice && shouldShowImageDetails && (
           <div className="pointer-events-none">
             {/* 渐变背景 - 独立的层 */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
