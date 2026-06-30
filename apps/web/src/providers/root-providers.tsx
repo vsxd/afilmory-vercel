@@ -21,7 +21,7 @@ export const RootProviders: FC<PropsWithChildren<{ runtime: AppRuntime }>> = ({
     strict
     key="framer"
   >
-    <MotionConfig transition={Spring.presets.smooth}>
+    <MotionConfig transition={Spring.presets.smooth} reducedMotion="user">
       <AfilmoryRuntimeProvider runtime={runtime}>
         <Provider store={runtime.store}>
           <ModalProvider>
