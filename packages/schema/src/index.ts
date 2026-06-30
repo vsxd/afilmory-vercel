@@ -21,7 +21,11 @@ export {
   photoMatchesGeoFilters,
   selectLocalizedAlias,
 } from "./geo.ts";
-export type { ManifestValidationResult } from "./manifest.ts";
+export type {
+  LenientManifestParseResult,
+  ManifestValidationResult,
+  SkippedPhoto,
+} from "./manifest.ts";
 export {
   assertManifest,
   createEmptyManifest,
@@ -29,6 +33,7 @@ export {
   isAfilmoryManifest,
   ManifestValidationError,
   parseManifest,
+  parseManifestLenient,
   validateManifest,
 } from "./manifest.ts";
 export type * from "./types.ts";

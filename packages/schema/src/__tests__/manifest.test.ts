@@ -8,6 +8,7 @@ import {
   createManifest,
   ManifestValidationError,
   parseManifest,
+  parseManifestLenient,
   validateManifest,
 } from "../index";
 
@@ -119,6 +120,56 @@ describe("manifest v2 schema", () => {
         "photos[0].originalUrl must be a string",
         "photos[0].tags must be a string array",
       ]),
+    });
+  });
+
+  describe("parseManifestLenient", () => {
+    it("drops only the invalid photos and keeps the valid ones", () => {
+      const input = createManifest({
+        generatedAt: "2026-06-06T00:00:00.000Z",
+        source: { provider: "s3", bucket: "photos", region: "us-east-1" },
+        photos: [
+          createValidPhoto({ id: "good-1" }),
+          createValidPhoto({ id: "bad", width: "4000" as never }),
+          createValidPhoto({ id: "good-2" }),
+        ],
+      });
+
+      const { manifest, skipped } = parseManifestLenient(input);
+
+      expect(manifest.photos.map((photo) => photo.id)).toEqual([
+        "good-1",
+        "good-2",
+      ]);
+      expect(skipped).toHaveLength(1);
+      expect(skipped[0]).toMatchObject({ index: 1 });
+      expect(skipped[0].issues).toContain("photos[1].width must be a number");
+    });
+
+    it("keeps every photo when all are valid", () => {
+      const input = createManifest({
+        generatedAt: "2026-06-06T00:00:00.000Z",
+        source: { provider: "s3", bucket: "photos", region: "us-east-1" },
+        photos: [createValidPhoto({ id: "a" }), createValidPhoto({ id: "b" })],
+      });
+
+      const { manifest, skipped } = parseManifestLenient(input);
+
+      expect(skipped).toEqual([]);
+      expect(manifest.photos).toHaveLength(2);
+    });
+
+    it("throws on top-level structural corruption (not a per-photo issue)", () => {
+      expect(() =>
+        parseManifestLenient({ version: "v10", data: [{ id: "legacy" }] }),
+      ).toThrow(ManifestValidationError);
+
+      expect(() =>
+        parseManifestLenient({
+          ...createManifest({ photos: [] }),
+          photos: "not-an-array" as never,
+        }),
+      ).toThrow(ManifestValidationError);
     });
   });
 });

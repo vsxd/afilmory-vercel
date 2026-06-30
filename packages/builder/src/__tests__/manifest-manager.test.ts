@@ -118,30 +118,77 @@ describe("loadExistingManifest", () => {
     await expect(fs.access(manifestPath)).resolves.toBeUndefined();
   });
 
-  it("rejects legacy manifests instead of migrating them", async () => {
+  it("discards a legacy manifest and rebuilds from scratch instead of throwing", async () => {
+    // 顶层结构无效（旧版 schema）不应让构建永久失败：丢弃缓存、全量重建。
     await fs.writeFile(
       manifestPath,
       JSON.stringify({ version: "v10", data: [{ id: "legacy" }] }),
     );
 
-    await expect(
-      runWithBuilderOutputSettings(outputSettings, () =>
-        loadExistingManifest(),
-      ),
-    ).rejects.toThrow(/Invalid Afilmory manifest/);
+    const manifest = await runWithBuilderOutputSettings(outputSettings, () =>
+      loadExistingManifest(),
+    );
+
+    expect(manifest.photos).toEqual([]);
+    expect(manifest.version).toBe(CURRENT_MANIFEST_VERSION);
+    // 损坏的缓存文件被覆盖为有效的空 manifest，下一次读取不会再失败。
+    const rewritten = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
+    expect(rewritten.schema).toBe(AFILMORY_MANIFEST_SCHEMA);
+    expect(rewritten.version).toBe(CURRENT_MANIFEST_VERSION);
+    expect(rewritten.photos).toEqual([]);
   });
 
-  it("preserves an unreadable manifest instead of overwriting it", async () => {
+  it("discards an unreadable manifest and rebuilds from scratch instead of throwing", async () => {
     await fs.writeFile(manifestPath, "{ invalid json");
 
-    await expect(
-      runWithBuilderOutputSettings(outputSettings, () =>
-        loadExistingManifest(),
-      ),
-    ).rejects.toThrow(/解析 manifest 失败/);
-    await expect(fs.readFile(manifestPath, "utf-8")).resolves.toBe(
-      "{ invalid json",
+    const manifest = await runWithBuilderOutputSettings(outputSettings, () =>
+      loadExistingManifest(),
     );
+
+    expect(manifest.photos).toEqual([]);
+    const rewritten = JSON.parse(await fs.readFile(manifestPath, "utf-8"));
+    expect(rewritten.version).toBe(CURRENT_MANIFEST_VERSION);
+    expect(rewritten.photos).toEqual([]);
+  });
+
+  it("keeps valid photos and drops only the corrupt records from the cache", async () => {
+    // 个别照片字段损坏只跳过该张（会被当作新照片重新处理），其余照片照常复用。
+    const validPhoto = {
+      id: "good",
+      originalUrl: "https://example.com/good.jpg",
+      thumbnailUrl: "/thumbnails/good.jpg",
+      thumbHash: null,
+      width: 4000,
+      height: 3000,
+      aspectRatio: 4 / 3,
+      s3Key: "good.jpg",
+      lastModified: "2026-06-06T00:00:00.000Z",
+      size: 1234,
+      exif: null,
+      toneAnalysis: null,
+      location: null,
+      title: "good",
+      dateTaken: "2026-06-06T00:00:00.000Z",
+      tags: [],
+      description: "",
+    };
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        schema: AFILMORY_MANIFEST_SCHEMA,
+        version: CURRENT_MANIFEST_VERSION,
+        generatedAt: "2026-06-06T00:00:00.000Z",
+        source: { provider: "s3", bucket: "photos", region: "us-east-1" },
+        indexes: { cameras: [], lenses: [] },
+        photos: [validPhoto, { ...validPhoto, id: "bad", width: "oops" }],
+      }),
+    );
+
+    const manifest = await runWithBuilderOutputSettings(outputSettings, () =>
+      loadExistingManifest(),
+    );
+
+    expect(manifest.photos.map((photo) => photo.id)).toEqual(["good"]);
   });
 });
 

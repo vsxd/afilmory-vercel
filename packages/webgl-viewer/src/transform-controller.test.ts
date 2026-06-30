@@ -30,6 +30,20 @@ describe("transform-controller", () => {
     });
   });
 
+  it("returns a safe scale of 1 for non-positive image dimensions", () => {
+    // 损坏的 manifest 会把 width/height 归一成 0；此时不能让 fit-scale 变成 Infinity/NaN。
+    for (const broken of [
+      { ...geometry, imageWidth: 0 },
+      { ...geometry, imageHeight: 0 },
+      { ...geometry, imageWidth: Number.NaN },
+      { ...geometry, imageHeight: Number.POSITIVE_INFINITY },
+    ]) {
+      const scale = getFitToScreenScale(broken);
+      expect(Number.isFinite(scale)).toBe(true);
+      expect(scale).toBe(1);
+    }
+  });
+
   it("constrains scale and translation to the configured bounds", () => {
     expect(
       constrainScaleAndPosition(

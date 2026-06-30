@@ -448,12 +448,14 @@ function normalizeExif(value: unknown): PickedExif | null {
 
 function validatePhoto(
   value: unknown,
-  issues: string[],
   index: number,
-): PhotoManifestItem | null {
+): { item: PhotoManifestItem | null; issues: string[] } {
+  // 每张照片用独立的 issues 数组，避免一张坏照片污染整个 manifest 的校验结果。
+  // 严格模式由调用方把这些 issues 汇入共享数组；宽松模式据此只丢弃出错的照片。
+  const issues: string[] = [];
   const path = `photos[${index}]`;
   pushIssue(issues, isRecord(value), `${path} must be an object`);
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) return { item: null, issues };
 
   for (const field of [
     "id",
@@ -541,7 +543,7 @@ function validatePhoto(
     item.video = video;
   }
 
-  return item;
+  return { item, issues };
 }
 
 export function createManifest({
@@ -613,9 +615,10 @@ export function validateManifest(input: unknown): ManifestValidationResult {
     issues.push("photos must be an array");
   } else {
     for (const [index, photo] of input.photos.entries()) {
-      const validatedPhoto = validatePhoto(photo, issues, index);
-      if (validatedPhoto) {
-        photos.push(validatedPhoto);
+      const { item, issues: photoIssues } = validatePhoto(photo, index);
+      issues.push(...photoIssues);
+      if (item) {
+        photos.push(item);
       }
     }
   }
@@ -649,4 +652,79 @@ export function assertManifest(input: unknown): AfilmoryManifest {
 export function parseManifest(input?: unknown): AfilmoryManifest {
   const result = validateManifest(input);
   return result.success ? result.manifest : createEmptyManifest();
+}
+
+export interface SkippedPhoto {
+  index: number;
+  issues: string[];
+}
+
+export interface LenientManifestParseResult {
+  manifest: AfilmoryManifest;
+  skipped: SkippedPhoto[];
+}
+
+/**
+ * 宽松解析：顶层结构（schema/version/generatedAt/source/indexes/photos 数组）仍严格——
+ * 任一项无效都抛 {@link ManifestValidationError}，由调用方决定如何降级（运行时显示诊断页，
+ * 构建期丢弃缓存做全量重建）。照片层面逐张校验，任一张不合法只跳过它并记入 `skipped`，
+ * 保留其余照片，绝不让一张坏照片清空整个图库或砖掉后续构建。
+ *
+ * 严格完整性仍由 {@link assertManifest} 提供，用于"刚生成的 manifest"等构建闸门。
+ */
+export function parseManifestLenient(
+  input: unknown,
+): LenientManifestParseResult {
+  if (!isRecord(input)) {
+    throw new ManifestValidationError(["manifest must be an object"]);
+  }
+
+  const envelopeIssues: string[] = [];
+  pushIssue(
+    envelopeIssues,
+    input.schema === AFILMORY_MANIFEST_SCHEMA,
+    `schema must be '${AFILMORY_MANIFEST_SCHEMA}'`,
+  );
+  pushIssue(
+    envelopeIssues,
+    input.version === CURRENT_MANIFEST_VERSION,
+    `version must be ${CURRENT_MANIFEST_VERSION}`,
+  );
+  const generatedAt =
+    typeof input.generatedAt === "string" ? input.generatedAt : null;
+  pushIssue(
+    envelopeIssues,
+    generatedAt !== null,
+    "generatedAt must be a string",
+  );
+  const source = validateSource(input.source, envelopeIssues);
+  const indexes = validateIndexes(input.indexes, envelopeIssues);
+  const photosAreArray = Array.isArray(input.photos);
+  pushIssue(envelopeIssues, photosAreArray, "photos must be an array");
+
+  if (
+    envelopeIssues.length > 0 ||
+    !source ||
+    !indexes ||
+    generatedAt === null ||
+    !photosAreArray
+  ) {
+    throw new ManifestValidationError(envelopeIssues);
+  }
+
+  const photos: PhotoManifestItem[] = [];
+  const skipped: SkippedPhoto[] = [];
+  for (const [index, photo] of (input.photos as unknown[]).entries()) {
+    const { item, issues } = validatePhoto(photo, index);
+    if (item && issues.length === 0) {
+      photos.push(item);
+    } else {
+      skipped.push({ index, issues });
+    }
+  }
+
+  return {
+    manifest: createManifest({ generatedAt, source, photos, indexes }),
+    skipped,
+  };
 }

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path, { basename } from "node:path";
 
-import { assertManifest, createManifest } from "@afilmory/schema";
+import { createManifest, parseManifestLenient } from "@afilmory/schema";
 
 import { logger } from "../logger/index.js";
 import { getScopedBuilderOutputSettings } from "../output-paths.js";
@@ -33,20 +33,31 @@ export async function loadExistingManifest(): Promise<AfilmoryManifest> {
     return createManifest();
   }
 
-  let manifest: AfilmoryManifest;
   try {
     const parsed = JSON.parse(manifestContent);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("manifest 内容不是有效的对象");
+    // 宽松解析：个别照片字段损坏只跳过该张（增量构建会把它当作新照片重新处理），
+    // 而不是让 assertManifest 抛错——否则一条坏记录会让此后每次构建都在解析阶段
+    // 永久失败，直到有人手动删 manifest（见 atomic-write.ts / data-processors.ts 注释）。
+    const { manifest, skipped } = parseManifestLenient(parsed);
+    if (skipped.length > 0) {
+      logger.fs.warn(
+        `⚠️  已有 manifest 中有 ${skipped.length} 条无效照片记录，已跳过（将重新处理）：${skipped
+          .map((entry) => `#${entry.index}`)
+          .join(", ")}`,
+      );
     }
-    manifest = assertManifest(parsed);
+    return manifest;
   } catch (error) {
-    throw new Error(
-      `解析 manifest 失败：${manifestPath} - ${error instanceof Error ? error.message : String(error)}`,
+    // 顶层结构损坏（schema/version/source/indexes/photos 非数组）：丢弃缓存做全量重建，
+    // 而不是永久抛错卡死整条构建流水线。
+    logger.fs.error(
+      `⚠️  已有 manifest 顶层结构无效，丢弃缓存并全量重建：${manifestPath} - ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
+    await saveManifest([]);
+    return createManifest();
   }
-
-  return manifest;
 }
 
 // 检查照片是否需要更新（基于最后修改时间、大小和可用 ETag）

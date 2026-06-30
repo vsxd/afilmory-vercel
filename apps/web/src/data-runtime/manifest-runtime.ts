@@ -1,5 +1,5 @@
 import type { AfilmoryManifest } from "@afilmory/schema";
-import { assertManifest } from "@afilmory/schema";
+import { parseManifestLenient } from "@afilmory/schema";
 
 import {
   ensureBrowserRuntime,
@@ -46,7 +46,15 @@ async function fetchManifest(url: string): Promise<unknown> {
 }
 
 function coerceManifest(input: unknown): AfilmoryManifest {
-  const manifest = assertManifest(input);
+  // 宽松解析：顶层结构损坏才抛错（冒泡到 bootstrap 显示 BootstrapError 诊断页）；
+  // 个别照片字段不合法只跳过该张，绝不让一张坏照片白屏整个图库。
+  const { manifest, skipped } = parseManifestLenient(input);
+  if (skipped.length > 0) {
+    console.warn(
+      `[manifest] Skipped ${skipped.length} invalid photo(s); rendering the remaining ${manifest.photos.length}.`,
+      skipped,
+    );
+  }
   setRuntimeManifest(manifest);
   return manifest;
 }

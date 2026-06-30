@@ -19,9 +19,23 @@ export interface TransformBounds {
 }
 
 export function getFitToScreenScale(geometry: ViewportGeometry): number {
-  const scaleX = geometry.canvasWidth / geometry.imageWidth;
-  const scaleY = geometry.canvasHeight / geometry.imageHeight;
-  return Math.min(scaleX, scaleY);
+  // 防御非正/非有限的图片尺寸：manifest 会把损坏的 width/height 归一成 0
+  // （schema manifest.ts），若直接相除会得到 Infinity/NaN 并污染整个 transform
+  // （scale → translate → zoomAtTransform 再除以 scale）。此时退回安全比例 1。
+  const { canvasWidth, canvasHeight, imageWidth, imageHeight } = geometry;
+  if (
+    !Number.isFinite(imageWidth) ||
+    !Number.isFinite(imageHeight) ||
+    imageWidth <= 0 ||
+    imageHeight <= 0
+  ) {
+    return 1;
+  }
+
+  const scaleX = canvasWidth / imageWidth;
+  const scaleY = canvasHeight / imageHeight;
+  const fit = Math.min(scaleX, scaleY);
+  return Number.isFinite(fit) && fit > 0 ? fit : 1;
 }
 
 export function createFitTransform(
