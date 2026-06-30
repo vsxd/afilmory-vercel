@@ -80,6 +80,10 @@ export class StorageManager {
     await this.provider.deleteFile(key);
   }
 
+  async listObjectKeys(prefix: string): Promise<string[]> {
+    return await this.provider.listObjectKeys(prefix);
+  }
+
   async uploadFile(
     key: string,
     data: Buffer,

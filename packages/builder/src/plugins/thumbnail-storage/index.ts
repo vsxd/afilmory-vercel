@@ -1,3 +1,5 @@
+import process from "node:process";
+
 import type { StorageManager } from "../../storage/index.js";
 import type { S3Config } from "../../storage/interfaces.js";
 import type { BuilderPlugin } from "../types.js";
@@ -164,6 +166,59 @@ export default function thumbnailStoragePlugin(
         }
 
         payload.result.item.thumbnailUrl = remoteUrl;
+      },
+      afterBuild: async ({ services, payload, logger }) => {
+        const config = resolved;
+        if (!config || !config.enabled) return;
+
+        const storageManager = config.useDefaultStorage
+          ? services.storage.getManager()
+          : externalStorageManager;
+        if (!storageManager) return;
+
+        // 期望存在的远端缩略图 key（来自最终 manifest）。
+        const expected = new Set(
+          payload.manifest.map((photo) =>
+            joinSegments(config.remotePrefix, `${photo.id}.jpg`),
+          ),
+        );
+
+        let remoteKeys: string[];
+        try {
+          remoteKeys = await storageManager.listObjectKeys(
+            `${config.remotePrefix}/`,
+          );
+        } catch (error) {
+          logger.thumbnail.warn("列举远端缩略图失败，跳过孤儿清理。", error);
+          return;
+        }
+
+        const orphans = remoteKeys.filter((key) => !expected.has(key));
+        if (orphans.length === 0) return;
+
+        // 破坏性删除默认走 dry-run：仅当显式设置 THUMBNAIL_STORAGE_CLEANUP=true 时才真正删除。
+        if (process.env.THUMBNAIL_STORAGE_CLEANUP !== "true") {
+          logger.thumbnail.warn(
+            `发现 ${orphans.length} 个远端缩略图孤儿（dry-run，未删除）。` +
+              `设置 THUMBNAIL_STORAGE_CLEANUP=true 可实际删除。示例：${orphans
+                .slice(0, 5)
+                .join(", ")}`,
+          );
+          return;
+        }
+
+        let deleted = 0;
+        for (const key of orphans) {
+          try {
+            await storageManager.deleteFile(key);
+            deleted++;
+          } catch (error) {
+            logger.thumbnail.warn(`删除远端缩略图孤儿失败：${key}`, error);
+          }
+        }
+        logger.thumbnail.info(
+          `已清理 ${deleted}/${orphans.length} 个远端缩略图孤儿。`,
+        );
       },
     },
   };

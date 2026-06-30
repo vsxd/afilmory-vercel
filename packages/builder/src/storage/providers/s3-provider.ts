@@ -393,6 +393,32 @@ export class S3StorageProvider implements StorageProvider {
     await this.s3Client.send(command);
   }
 
+  async listObjectKeys(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+
+    do {
+      const listResponse = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.config.bucket,
+          Prefix: prefix,
+          MaxKeys: 1000,
+          ContinuationToken: continuationToken,
+        }),
+      );
+
+      for (const object of listResponse.Contents ?? []) {
+        if (object.Key) keys.push(object.Key);
+      }
+
+      continuationToken = listResponse.IsTruncated
+        ? listResponse.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+
+    return keys;
+  }
+
   async uploadFile(
     key: string,
     data: Buffer,

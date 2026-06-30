@@ -252,6 +252,34 @@ describe("S3StorageProvider.getFile", () => {
     );
   });
 
+  it("listObjectKeys paginates and returns all keys under a prefix", async () => {
+    const send = vi
+      .fn<MockS3Send>()
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [{ Key: "thumbs/a.jpg" }, { Key: "thumbs/b.jpg" }],
+          IsTruncated: true,
+          NextContinuationToken: "page-2",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createListObjectsResponse({
+          Contents: [{ Key: "thumbs/c.jpg" }],
+          IsTruncated: false,
+        }),
+      );
+    const provider = new S3StorageProvider(config, {
+      s3Client: new MockS3Client(send),
+    });
+
+    await expect(provider.listObjectKeys("thumbs/")).resolves.toEqual([
+      "thumbs/a.jpg",
+      "thumbs/b.jpg",
+      "thumbs/c.jpg",
+    ]);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
   it("encodes object keys when generating public URLs", () => {
     const provider = new S3StorageProvider({
       ...config,

@@ -65,6 +65,12 @@ export interface StorageProvider {
   deleteFile: (key: string) => Promise<void>;
 
   /**
+   * 列出指定前缀下的所有对象 key（不应用 exclude/maxFileLimit）。
+   * 用于缩略图远端存储的孤儿清理等场景。
+   */
+  listObjectKeys: (prefix: string) => Promise<string[]>;
+
+  /**
    * 向存储上传文件
    * @param key 文件的键值/路径
    * @param data 文件数据
