@@ -188,6 +188,10 @@ export const MasonryPhotoItem = memo(
     // 使用通用的图片格式提取函数
     const imageFormat = getImageFormat(data.originalUrl || data.s3Key || "");
 
+    // 首屏首几张缩略图是 LCP 候选：立即加载并提高优先级，消除 LCP 的发现/加载延迟；
+    // 其余照片懒加载、低优先级，避免与首屏关键资源争抢带宽。
+    const isPriorityThumbnail = index < 4;
+
     return (
       <m.div
         role="button"
@@ -212,8 +216,8 @@ export const MasonryPhotoItem = memo(
             src={data.thumbnailUrl}
             alt={data.title}
             thumbHash={data.thumbHash}
-            loading="lazy"
-            fetchPriority="low"
+            loading={isPriorityThumbnail ? "eager" : "lazy"}
+            fetchPriority={isPriorityThumbnail ? "high" : "low"}
             containerClassName="absolute inset-0"
             imageClassName={clsx(
               "h-full w-full object-cover duration-300 group-hover:scale-105",

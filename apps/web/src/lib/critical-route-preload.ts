@@ -1,6 +1,8 @@
+// 仅首屏图库布局属于关键预热——它会阻塞首屏渲染（bootstrap 的 Promise.all）。
+// viewer（照片详情）路由改由 main 在首屏渲染后空闲时预热，避免把它的重依赖
+// （WebGLImageViewer / maplibre / swiper / zoom）拉进首屏关键路径而拖慢 LCP。
 const CRITICAL_GALLERY_ROUTE_MODULE_KEYS = [
   "./pages/(main)/layout.tsx",
-  "./pages/(main)/photos/[photoId]/index.tsx",
 ] as const;
 
 type CriticalRoutePreloadModules = Record<

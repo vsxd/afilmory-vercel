@@ -166,12 +166,24 @@ describe("MasonryPhotoItem", () => {
     });
   });
 
-  it("marks masonry thumbnails as low priority so detail images can win user-initiated loads", () => {
+  it("eagerly loads the first few thumbnails as LCP candidates with high priority", () => {
     const { getByAltText } = render(
       <MasonryPhotoItem data={photo} width={300} index={0} />,
     );
 
-    expect(getByAltText("A7C01202").getAttribute("fetchpriority")).toBe("low");
+    const img = getByAltText("A7C01202");
+    expect(img.getAttribute("fetchpriority")).toBe("high");
+    expect(img.getAttribute("loading")).toBe("eager");
+  });
+
+  it("marks later thumbnails as low priority/lazy so detail images can win user-initiated loads", () => {
+    const { getByAltText } = render(
+      <MasonryPhotoItem data={photo} width={300} index={8} />,
+    );
+
+    const img = getByAltText("A7C01202");
+    expect(img.getAttribute("fetchpriority")).toBe("low");
+    expect(img.getAttribute("loading")).toBe("lazy");
   });
 
   it("waits for async route navigation before opening the viewer", async () => {

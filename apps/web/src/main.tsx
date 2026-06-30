@@ -50,6 +50,27 @@ const criticalRoutePreloadModules = import.meta.glob([
   "./pages/(main)/photos/[photoId]/index.tsx",
 ]);
 
+const PHOTO_VIEWER_ROUTE_MODULE_KEY =
+  "./pages/(main)/photos/[photoId]/index.tsx";
+
+// 首屏渲染后、浏览器空闲时预热 viewer（照片详情）路由，把它的重依赖
+// （WebGLImageViewer / maplibre / swiper / zoom）移出首屏关键路径，避免拖慢 LCP。
+// 直接深链或点击进入 viewer 时，由 router 的懒加载兜底，体验不降。
+function schedulePhotoViewerPreload(
+  modules: Record<string, (() => Promise<unknown>) | undefined>,
+): void {
+  const preloadViewer = modules[PHOTO_VIEWER_ROUTE_MODULE_KEY];
+  if (!preloadViewer) return;
+  const run = () => {
+    void preloadViewer();
+  };
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(run, { timeout: 2000 });
+  } else {
+    setTimeout(run, 200);
+  }
+}
+
 async function bootstrap() {
   try {
     markStartup("manifest-start");
@@ -89,6 +110,7 @@ async function bootstrap() {
     markStartup("photo-repository-ready");
     markStartup("react-render-start");
     renderApp(<RouterProvider router={createAppRouter(runtime)} />);
+    schedulePhotoViewerPreload(criticalRoutePreloadModules);
   } catch (error) {
     console.error("[bootstrap] Failed to initialize application:", error);
     renderApp(<BootstrapError error={error} />);
