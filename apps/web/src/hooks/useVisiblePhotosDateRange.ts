@@ -8,30 +8,11 @@ interface DateRange {
   startDate: Date | null;
   endDate: Date | null;
   formattedRange: string;
-  location?: string;
 }
 
 interface VisibleRange {
   start: number;
   end: number;
-}
-
-/**
- * Resolve a value from a locale-keyed map, tolerant of region subtags:
- * exact match (zh-CN) -> language match (zh) -> any same-language entry.
- */
-function resolveLocalized<T>(
-  map: Record<string, T> | undefined,
-  locale: string,
-): T | undefined {
-  if (!map) return undefined;
-  if (map[locale]) return map[locale];
-  const language = locale.split("-")[0];
-  const key = Object.keys(map).find(
-    (candidate) =>
-      candidate === language || candidate.split("-")[0] === language,
-  );
-  return key ? map[key] : undefined;
 }
 
 /**
@@ -43,7 +24,6 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
     startDate: null,
     endDate: null,
     formattedRange: "",
-    location: undefined,
   });
 
   const currentRange = useRef<VisibleRange>({ start: 0, end: 0 });
@@ -77,35 +57,6 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
     [i18n.language],
   );
 
-  const extractLocation = useCallback(
-    (photos: PhotoManifest[]): string | undefined => {
-      const locale = i18n.language;
-      // 使用结构化的地理编码数据（按 locale 本地化），不再用中文专有词扫描标签。
-      for (const photo of photos) {
-        const { location } = photo;
-        if (!location) continue;
-
-        const localizedName =
-          resolveLocalized(location.locationNameI18n, locale) ??
-          location.locationName;
-        if (localizedName) {
-          return localizedName;
-        }
-
-        const admin =
-          resolveLocalized(location.adminI18n, locale) ?? location.admin;
-        const mostSpecific =
-          admin?.city ?? admin?.region ?? admin?.country ?? location.city;
-        if (mostSpecific) {
-          return mostSpecific;
-        }
-      }
-
-      return undefined;
-    },
-    [i18n.language],
-  );
-
   // 计算当前可视范围内照片的日期范围
   const calculateDateRange = useCallback(
     (
@@ -118,7 +69,6 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
           startDate: null,
           endDate: null,
           formattedRange: "",
-          location: undefined,
         });
         return;
       }
@@ -136,7 +86,6 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
           startDate: null,
           endDate: null,
           formattedRange: "",
-          location: undefined,
         });
         return;
       }
@@ -154,25 +103,22 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
           startDate: null,
           endDate: null,
           formattedRange: "",
-          location: undefined,
         });
         return;
       }
 
       const formattedRange = formatDateRange(startDate, endDate);
-      const location = extractLocation(visiblePhotos);
 
       setDateRange({
         startDate,
         endDate,
         formattedRange,
-        location,
       });
 
       // 更新当前范围
       currentRange.current = { start: startIndex, end: endIndex };
     },
-    [extractLocation, formatDateRange],
+    [formatDateRange],
   );
 
   // 用于传递给 masonry 的 onRender 回调

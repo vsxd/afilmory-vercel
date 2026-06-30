@@ -7,13 +7,12 @@ import { useMobile } from "~/hooks/useMobile";
 
 interface DateRangeIndicatorProps {
   dateRange: string;
-  location?: string;
   isVisible: boolean;
   className?: string;
 }
 
 export const DateRangeIndicator = memo(
-  ({ dateRange, location, isVisible, className }: DateRangeIndicatorProps) => {
+  ({ dateRange, isVisible, className }: DateRangeIndicatorProps) => {
     const { t } = useTranslation();
     const translateDay = (day: string | number) =>
       t(`date.day.${day}` as never);
@@ -100,11 +99,6 @@ export const DateRangeIndicator = memo(
               <span className="text-lg leading-tight font-bold tracking-tight text-white lg:text-4xl">
                 {formattedDate}
               </span>
-              {location && (
-                <span className="mt-0.5 text-sm font-medium text-white/75 lg:mt-1 lg:text-lg">
-                  {location}
-                </span>
-              )}
             </div>
           </m.div>
         )}
