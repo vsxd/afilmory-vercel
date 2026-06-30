@@ -121,8 +121,9 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
     return () => observer.disconnect();
   }, [scrollElement]);
 
-  // 容器宽度（决定列数）。
-  React.useEffect(() => {
+  // 容器宽度（决定列数/列宽）。用 useLayoutEffect 在首帧 paint 前同步测量，
+  // 避免初始 containerWidth=0 →（单列）→ 多列 的闪烁。
+  React.useLayoutEffect(() => {
     const element = containerRef.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const update = () => setContainerWidth(element.clientWidth);
@@ -132,22 +133,31 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
     return () => observer.disconnect();
   }, []);
 
+  // 列数按"目标列宽"推导，但实际列宽要把容器**填满**：否则固定列宽会在右侧留黑边。
+  // effectiveColumnWidth = (容器宽 - 所有 gutter) / 列数。
   const columnCount = resolveMasonryColumnCount({
     containerWidth: containerWidth || columnWidth,
     columnWidth,
     columnGutter,
   });
+  const effectiveColumnWidth =
+    containerWidth > 0
+      ? Math.max(
+          1,
+          (containerWidth - (columnCount - 1) * columnGutter) / columnCount,
+        )
+      : columnWidth;
 
   const getHeight = React.useCallback(
     (item: Item, index: number): number => {
       const measured = measuredHeights.get(index);
       if (measured && measured > 0) return measured;
-      const computed = itemHeight?.(item, columnWidth, index);
+      const computed = itemHeight?.(item, effectiveColumnWidth, index);
       if (computed && Number.isFinite(computed) && computed > 0)
         return computed;
       return itemHeightEstimate;
     },
-    [columnWidth, itemHeight, itemHeightEstimate, measuredHeights],
+    [effectiveColumnWidth, itemHeight, itemHeightEstimate, measuredHeights],
   );
 
   const layout = React.useMemo(
@@ -155,12 +165,19 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
       computeMasonryLayout({
         items,
         columnCount,
-        columnWidth,
+        columnWidth: effectiveColumnWidth,
         columnGutter,
         rowGutter,
         getItemHeight: getHeight,
       }),
-    [items, columnCount, columnWidth, columnGutter, rowGutter, getHeight],
+    [
+      items,
+      columnCount,
+      effectiveColumnWidth,
+      columnGutter,
+      rowGutter,
+      getHeight,
+    ],
   );
 
   const overscanPx = Math.max(viewportHeight || columnWidth, 1) * overscanBy;
@@ -183,11 +200,11 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
   const measureIndices = React.useMemo(() => {
     const set = new Set<number>();
     items.forEach((item, index) => {
-      const height = itemHeight?.(item, columnWidth, index);
+      const height = itemHeight?.(item, effectiveColumnWidth, index);
       if (!height || !Number.isFinite(height) || height <= 0) set.add(index);
     });
     return set;
-  }, [items, itemHeight, columnWidth]);
+  }, [items, itemHeight, effectiveColumnWidth]);
 
   React.useImperativeHandle(
     ref,
@@ -198,7 +215,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
         return {
           columnCount: layout.columnCount,
           columnGutter,
-          columnWidth,
+          columnWidth: effectiveColumnWidth,
           containerRect: container.getBoundingClientRect(),
           rowGutter,
         };
@@ -220,7 +237,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
         setMeasuredHeights((prev) => new Map(prev));
       },
     }),
-    [columnGutter, columnWidth, layout, rowGutter],
+    [columnGutter, effectiveColumnWidth, layout, rowGutter],
   );
 
   return (
