@@ -182,9 +182,6 @@ importers:
       '@radix-ui/react-dropdown-menu':
         specifier: 2.1.16
         version: 2.1.16(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      '@react-hook/window-size':
-        specifier: 3.1.1
-        version: 3.1.1(react@19.2.0)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.8(typescript@5.9.3)(valibot@1.4.1(typescript@5.9.3))(zod@4.1.12)
@@ -2696,31 +2693,6 @@ packages:
 
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
-
-  '@react-hook/debounce@3.0.0':
-    resolution: {integrity: sha512-ir/kPrSfAzY12Gre0sOHkZ2rkEmM4fS5M5zFxCi4BnCeXh2nvx9Ujd+U4IGpKCuPA+EQD0pg1eK2NGLvfWejag==}
-    peerDependencies:
-      react: '>=16.8'
-
-  '@react-hook/event@1.2.6':
-    resolution: {integrity: sha512-JUL5IluaOdn5w5Afpe/puPa1rj8X6udMlQ9dt4hvMuKmTrBS1Ya6sb4sVgvfe2eU4yDuOfAhik8xhbcCekbg9Q==}
-    peerDependencies:
-      react: '>=16.8'
-
-  '@react-hook/latest@1.0.3':
-    resolution: {integrity: sha512-dy6duzl+JnAZcDbNTfmaP3xHiKtbXYOaz3G51MGVljh548Y8MWzTr+PHLOfvpypEVW9zwvl+VyKjbWKEVbV1Rg==}
-    peerDependencies:
-      react: '>=16.8'
-
-  '@react-hook/throttle@2.2.0':
-    resolution: {integrity: sha512-LJ5eg+yMV8lXtqK3lR+OtOZ2WH/EfWvuiEEu0M3bhR7dZRfTyEJKxH1oK9uyBxiXPtWXiQggWbZirMCXam51tg==}
-    peerDependencies:
-      react: '>=16.8'
-
-  '@react-hook/window-size@3.1.1':
-    resolution: {integrity: sha512-yWnVS5LKnOUIrEsI44oz3bIIUYqflamPL27n+k/PC//PsX/YeWBky09oPeAoc9As6jSH16Wgo8plI+ECZaHk3g==}
-    peerDependencies:
-      react: '>=16.8'
 
   '@rolldown/binding-android-arm64@1.0.0-beta.45':
     resolution: {integrity: sha512-bfgKYhFiXJALeA/riil908+2vlyWGdwa7Ju5S+JgWZYdR4jtiPOGdM6WLfso1dojCh+4ZWeiTwPeV9IKQEX+4g==}
@@ -10276,31 +10248,6 @@ snapshots:
       '@types/react-dom': 19.2.2(@types/react@19.2.2)
 
   '@radix-ui/rect@1.1.1': {}
-
-  '@react-hook/debounce@3.0.0(react@19.2.0)':
-    dependencies:
-      '@react-hook/latest': 1.0.3(react@19.2.0)
-      react: 19.2.0
-
-  '@react-hook/event@1.2.6(react@19.2.0)':
-    dependencies:
-      react: 19.2.0
-
-  '@react-hook/latest@1.0.3(react@19.2.0)':
-    dependencies:
-      react: 19.2.0
-
-  '@react-hook/throttle@2.2.0(react@19.2.0)':
-    dependencies:
-      '@react-hook/latest': 1.0.3(react@19.2.0)
-      react: 19.2.0
-
-  '@react-hook/window-size@3.1.1(react@19.2.0)':
-    dependencies:
-      '@react-hook/debounce': 3.0.0(react@19.2.0)
-      '@react-hook/event': 1.2.6(react@19.2.0)
-      '@react-hook/throttle': 2.2.0(react@19.2.0)
-      react: 19.2.0
 
   '@rolldown/binding-android-arm64@1.0.0-beta.45':
     optional: true
