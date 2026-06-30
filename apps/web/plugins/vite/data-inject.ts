@@ -207,22 +207,11 @@ export function dataInjectPlugin(): Plugin {
         manifestScript.textContent = manifestScriptContent;
       }
 
-      if (!shouldEmbed) {
-        const manifestAssetPublicPath =
-          command === "serve"
-            ? MANIFEST_DEV_PUBLIC_PATH
-            : getBuildManifestAssetPublicPath();
-        const preloadLink = document.createElement("link");
-        preloadLink.setAttribute("rel", "preload");
-        preloadLink.setAttribute("as", "fetch");
-        preloadLink.setAttribute("href", manifestAssetPublicPath);
-        // crossorigin="anonymous" 让 preload 的模式为 cors + 凭据模式 same-origin，
-        // 与运行时 fetch(credentials: "same-origin", 默认 mode: cors) 匹配，preload 才会被复用。
-        // （SPA 在 JS 启动后才真正发起该 fetch，浏览器可能仍提示 "not used within a few
-        // seconds"，这是客户端渲染的固有时序提示，无害。）
-        preloadLink.setAttribute("crossorigin", "anonymous");
-        document.head?.append(preloadLink);
-      }
+      // 不再注入 <link rel="preload" as="fetch"> ——外部模式下，内联的 #manifest
+      // 脚本已在解析期立即发起 fetch(cache:"force-cache", accept:application/json) 做
+      // 早发现。preload 与该 fetch 几乎同时发起、请求参数又不同(cache 模式/accept 头)，
+      // 浏览器无法把 preload 复用给 fetch，结果 manifest 被并发下载两次(~86KB)。
+      // 内联 fetch 本身就是早发现机制，preload 纯属冗余，移除以消除重复下载。
 
       if (!document.querySelector(`#${INJECTED_SCRIPT_ID}`)) {
         const scriptEl = document.createElement("script", "text/javascript");
