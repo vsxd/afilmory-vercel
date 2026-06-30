@@ -20,6 +20,7 @@ import {
   getMasonryItemKey,
   getPhotoSetKey,
   MasonryHeaderItem,
+  resolveAspectRatio,
   shouldAnimateMasonryItem,
 } from "./gallery-layout";
 import type { MasonryRef } from "./Masonic";
@@ -176,6 +177,13 @@ export const MasonryRoot = () => {
           columnGutter={4}
           rowGutter={4}
           itemHeightEstimate={400}
+          itemHeight={useCallback(
+            (data: MasonryItemType, colWidth: number) =>
+              data instanceof MasonryHeaderItem
+                ? 0 // header 高度未知，交给虚拟列表 measure
+                : colWidth / resolveAspectRatio(data),
+            [],
+          )}
           itemKey={useCallback(
             (data: MasonryItemType) => getMasonryItemKey(data),
             [],

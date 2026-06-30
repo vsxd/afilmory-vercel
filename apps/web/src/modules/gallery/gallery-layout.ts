@@ -146,6 +146,115 @@ const getShortestColumnIndex = (columnHeights: number[]) => {
   return shortestIndex;
 };
 
+export interface MasonryCellLayout {
+  index: number;
+  column: number;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface MasonryGridLayout {
+  cells: MasonryCellLayout[];
+  totalHeight: number;
+  columnCount: number;
+}
+
+/**
+ * 根据容器宽度与列宽推导列数（与 calculateGalleryColumnWidth 配套）。
+ */
+export function resolveMasonryColumnCount({
+  containerWidth,
+  columnWidth,
+  columnGutter,
+}: {
+  containerWidth: number;
+  columnWidth: number;
+  columnGutter: number;
+}): number {
+  if (containerWidth <= 0 || columnWidth <= 0) return 1;
+  const count = Math.floor(
+    (containerWidth + columnGutter) / (columnWidth + columnGutter),
+  );
+  return Math.max(1, count);
+}
+
+/**
+ * 纯计算瀑布流布局：item 高度已知（照片由 aspectRatio 算出，header 由 measure 提供），
+ * 因此所有 cell 的位置可一次性算出，滚动时不再 measure DOM —— 这是消除 masonic 强制重排
+ * 的关键。每个 item 放入当前最矮的列。
+ */
+export function computeMasonryLayout<Item>({
+  items,
+  columnCount,
+  columnWidth,
+  columnGutter,
+  rowGutter,
+  getItemHeight,
+}: {
+  items: Item[];
+  columnCount: number;
+  columnWidth: number;
+  columnGutter: number;
+  rowGutter: number;
+  getItemHeight: (item: Item, index: number) => number;
+}): MasonryGridLayout {
+  const safeColumnCount = Math.max(1, columnCount);
+  const columnHeights = Array.from({ length: safeColumnCount }, () => 0);
+  const cells: MasonryCellLayout[] = items.map((item, index) => {
+    const rawHeight = getItemHeight(item, index);
+    const height = Number.isFinite(rawHeight) && rawHeight > 0 ? rawHeight : 1;
+    const column = getShortestColumnIndex(columnHeights);
+    const left = column * (columnWidth + columnGutter);
+    const top = columnHeights[column] ?? 0;
+    columnHeights[column] = top + height + rowGutter;
+    return { index, column, left, top, width: columnWidth, height };
+  });
+  const maxColumnHeight = columnHeights.reduce(
+    (max, height) => Math.max(max, height),
+    0,
+  );
+  // 末尾多加了一个 rowGutter，减回去得到真实内容高度。
+  const totalHeight = Math.max(0, maxColumnHeight - rowGutter);
+  return { cells, totalHeight, columnCount: safeColumnCount };
+}
+
+/**
+ * 虚拟化：从已算好的布局里挑出与可视区（含 overscan 上下缓冲）相交的 cell。
+ * O(n) 线性扫描；n 是照片总数（百量级），每帧执行成本可忽略。
+ */
+export function selectVisibleMasonryCells({
+  cells,
+  scrollTop,
+  viewportHeight,
+  overscanPx,
+}: {
+  cells: MasonryCellLayout[];
+  scrollTop: number;
+  viewportHeight: number;
+  overscanPx: number;
+}): { visible: MasonryCellLayout[]; startIndex: number; stopIndex: number } {
+  const top = scrollTop - overscanPx;
+  const bottom = scrollTop + viewportHeight + overscanPx;
+  const visible: MasonryCellLayout[] = [];
+  let startIndex = -1;
+  let stopIndex = -1;
+
+  for (const cell of cells) {
+    if (cell.top + cell.height < top || cell.top > bottom) continue;
+    visible.push(cell);
+    if (startIndex === -1 || cell.index < startIndex) startIndex = cell.index;
+    if (cell.index > stopIndex) stopIndex = cell.index;
+  }
+
+  return {
+    visible,
+    startIndex: startIndex === -1 ? 0 : startIndex,
+    stopIndex: stopIndex === -1 ? 0 : stopIndex,
+  };
+}
+
 export function estimatePhotoVirtualRect({
   headerHeight,
   isMobile,

@@ -1,25 +1,12 @@
-// @copy internal masonic hooks
 import { useScrollViewElement } from "@afilmory/ui";
-import {
-  clearRequestTimeout,
-  requestTimeout,
-} from "@essentials/request-timeout";
-import { useWindowSize } from "@react-hook/window-size";
-import { isEqual, throttle } from "es-toolkit/compat";
-import type {
-  ContainerPosition,
-  MasonryProps,
-  MasonryScrollerProps,
-  Positioner,
-} from "masonic";
-import {
-  createResizeObserver,
-  useMasonry,
-  usePositioner,
-  useScrollToIndex,
-} from "masonic";
-import { useForceUpdate } from "motion/react";
 import * as React from "react";
+
+import type { MasonryCellLayout } from "./gallery-layout";
+import {
+  computeMasonryLayout,
+  resolveMasonryColumnCount,
+  selectVisibleMasonryCells,
+} from "./gallery-layout";
 
 export interface MasonryRef {
   getLayoutMetrics: () => MasonryLayoutMetrics | null;
@@ -35,267 +22,287 @@ export interface MasonryLayoutMetrics {
   rowGutter: number;
 }
 
-type MasonryRuntimeProps<Item> = MasonryScrollerProps<Item> & {
-  containerRef: React.MutableRefObject<HTMLElement | null>;
-  isScrolling: boolean;
-  scrollTop: number;
-};
+export interface MasonryRenderProps<Item> {
+  index: number;
+  data: Item;
+  width: number;
+}
+
+export interface MasonryProps<Item> {
+  ref?: React.Ref<MasonryRef>;
+  items: Item[];
+  columnWidth: number;
+  columnGutter?: number;
+  rowGutter?: number;
+  /** 上下各预渲染多少个视口高度作为缓冲，默认 2。 */
+  overscanBy?: number;
+  /** 高度未知（需 measure）的 item 的初始估计高度。 */
+  itemHeightEstimate?: number;
+  itemKey?: (data: Item, index: number) => React.Key;
+  /**
+   * 返回 item 高度。返回非有限值 / <= 0 表示"高度未知，需要 measure"
+   * （例如桌面端的 header）。照片应根据 aspectRatio 返回确定高度，从而完全纯计算。
+   */
+  itemHeight?: (data: Item, columnWidth: number, index: number) => number;
+  render: (props: MasonryRenderProps<Item>) => React.ReactNode;
+  onRender?: (startIndex: number, stopIndex: number, items: Item[]) => void;
+  role?: string;
+  tabIndex?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}
 
 /**
- * A "batteries included" masonry grid which includes all of the implementation details below. This component is the
- * easiest way to get off and running in your app, before switching to more advanced implementations, if necessary.
- * It will change its column count to fit its container's width and will decide how many rows to render based upon
- * the height of the browser `window`.
+ * 纯计算虚拟瀑布流（替代 masonic）。
  *
- * @param props
+ * 核心：照片高度由 manifest 的 aspectRatio 直接算出，所有 cell 的位置一次性纯计算得到，
+ * 滚动时只做 `filter(可见)` + `transform` 定位，不再 measure DOM —— 因此没有 masonic
+ * 那样的强制重排（forced reflow），可每帧更新、跟手且稳定 60fps。仅高度未知的 header
+ * 才用 ResizeObserver measure（桌面 1 个，非滚动热路径）。
  */
-export const Masonry = <Item,>(
-  props: MasonryProps<Item> & { ref?: React.Ref<MasonryRef> },
-) => {
-  const [scrollTop, setScrollTop] = React.useState(0);
-  const [isScrolling, setIsScrolling] = React.useState(false);
-  const [positionIndex, setPositionIndex] = React.useState(0);
-  const scrollElement = useScrollViewElement();
+export const Masonry = <Item,>(props: MasonryProps<Item>) => {
+  const {
+    ref,
+    items,
+    columnWidth,
+    columnGutter = 0,
+    rowGutter = columnGutter,
+    overscanBy = 2,
+    itemHeightEstimate = 400,
+    itemKey,
+    itemHeight,
+    render,
+    onRender,
+    role,
+    tabIndex,
+    className,
+    style,
+  } = props;
 
-  const fps = props.scrollFps || 12;
+  const scrollElement = useScrollViewElement();
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [viewportHeight, setViewportHeight] = React.useState(0);
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  // 需 measure 的 item（如桌面 header）：index -> measured height。
+  const [measuredHeights, setMeasuredHeights] = React.useState<
+    ReadonlyMap<number, number>
+  >(() => new Map());
+
+  // 滚动监听：passive + rAF，每帧最多一次 setScrollTop —— 跟手且不抖动。
   React.useEffect(() => {
     if (!scrollElement) return;
-
-    const handleScroll = throttle(() => {
-      setIsScrolling(true);
-      setScrollTop(scrollElement.scrollTop);
-    }, 1000 / fps);
-
-    scrollElement.addEventListener("scroll", handleScroll);
-
-    return () => {
-      scrollElement.removeEventListener("scroll", handleScroll);
-      // 取消可能挂起的尾随调用，避免监听器移除/卸载后再 setState。
-      handleScroll.cancel();
-    };
-  }, [fps, scrollElement]);
-  const didMount = React.useRef(0);
-  React.useEffect(() => {
-    if (didMount.current === 1) setIsScrolling(true);
-    let didUnsubscribe = false;
-    const to = requestTimeout(
-      () => {
-        if (didUnsubscribe) return;
-        // This is here to prevent premature bail outs while maintaining high resolution
-        // unsets. Without it there will always bee a lot of unnecessary DOM writes to style.
-        setIsScrolling(false);
-      },
-      40 + 1000 / fps,
-    );
-    didMount.current = 1;
-    return () => {
-      didUnsubscribe = true;
-      clearRequestTimeout(to);
-    };
-  }, [fps, scrollTop]);
-
-  const containerRef = React.useRef<null | HTMLElement>(null);
-  const windowSize = useWindowSize({
-    initialWidth: props.ssrWidth,
-    initialHeight: props.ssrHeight,
-  });
-  const containerPos = useContainerPosition(containerRef, windowSize);
-
-  // Workaround for https://github.com/jaredLunde/masonic/issues/12
-  const itemCounter = React.useRef<number>(props.items.length);
-
-  let shrunk = false;
-
-  if (props.items.length !== itemCounter.current) {
-    if (props.items.length < itemCounter.current) shrunk = true;
-
-    itemCounter.current = props.items.length;
-  }
-
-  const baseProps = {
-    ...props,
-    offset: containerPos.offset,
-    width: containerPos.width || windowSize[0],
-    height: containerPos.height || windowSize[1],
-    containerRef,
-  };
-
-  const positioner = usePositioner(baseProps, [
-    shrunk ? Math.random() + positionIndex : positionIndex,
-  ]);
-  const resizeObserver = useResizeObserver(positioner);
-  const runtimeProps: MasonryRuntimeProps<Item> = {
-    ...baseProps,
-    positioner,
-    resizeObserver,
-    scrollTop,
-    isScrolling,
-    height: windowSize[1],
-  };
-
-  React.useImperativeHandle(props.ref, () => ({
-    getLayoutMetrics: () => {
-      const container = containerRef.current;
-      if (!container) {
-        return null;
-      }
-
-      return {
-        columnCount: positioner.columnCount,
-        columnGutter: props.columnGutter ?? 0,
-        columnWidth: positioner.columnWidth,
-        containerRect: container.getBoundingClientRect(),
-        rowGutter: props.rowGutter ?? props.columnGutter ?? 0,
-      };
-    },
-    getItemRect: (index: number) => {
-      const item = positioner.get(index);
-      const container = containerRef.current;
-      if (!item || !container) {
-        return null;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      return DOMRect.fromRect({
-        x: containerRect.left + item.left,
-        y: containerRect.top + item.top,
-        width: positioner.columnWidth,
-        height: item.height,
+    let rafId = 0;
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      rafId = requestAnimationFrame(() => {
+        queued = false;
+        setScrollTop(scrollElement.scrollTop);
       });
-    },
-    reposition: () => {
-      setPositionIndex((i) => i + 1);
-    },
-  }));
+    };
+    setScrollTop(scrollElement.scrollTop);
+    scrollElement.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scrollElement.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, [scrollElement]);
 
-  const scrollToIndex = useScrollToIndex(positioner, {
-    height: runtimeProps.height,
-    offset: containerPos.offset,
-    align:
-      typeof props.scrollToIndex === "object"
-        ? props.scrollToIndex.align
-        : void 0,
+  // 视口高度（滚动容器可视高度）。
+  React.useEffect(() => {
+    if (!scrollElement || typeof ResizeObserver === "undefined") return;
+    const update = () => setViewportHeight(scrollElement.clientHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(scrollElement);
+    return () => observer.disconnect();
+  }, [scrollElement]);
+
+  // 容器宽度（决定列数）。
+  React.useEffect(() => {
+    const element = containerRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const update = () => setContainerWidth(element.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const columnCount = resolveMasonryColumnCount({
+    containerWidth: containerWidth || columnWidth,
+    columnWidth,
+    columnGutter,
   });
-  const index =
-    props.scrollToIndex &&
-    (typeof props.scrollToIndex === "number"
-      ? props.scrollToIndex
-      : props.scrollToIndex.index);
+
+  const getHeight = React.useCallback(
+    (item: Item, index: number): number => {
+      const measured = measuredHeights.get(index);
+      if (measured && measured > 0) return measured;
+      const computed = itemHeight?.(item, columnWidth, index);
+      if (computed && Number.isFinite(computed) && computed > 0)
+        return computed;
+      return itemHeightEstimate;
+    },
+    [columnWidth, itemHeight, itemHeightEstimate, measuredHeights],
+  );
+
+  const layout = React.useMemo(
+    () =>
+      computeMasonryLayout({
+        items,
+        columnCount,
+        columnWidth,
+        columnGutter,
+        rowGutter,
+        getItemHeight: getHeight,
+      }),
+    [items, columnCount, columnWidth, columnGutter, rowGutter, getHeight],
+  );
+
+  const overscanPx = Math.max(viewportHeight || columnWidth, 1) * overscanBy;
+  const { visible, startIndex, stopIndex } = React.useMemo(
+    () =>
+      selectVisibleMasonryCells({
+        cells: layout.cells,
+        scrollTop,
+        viewportHeight: viewportHeight || columnWidth,
+        overscanPx,
+      }),
+    [layout.cells, scrollTop, viewportHeight, overscanPx, columnWidth],
+  );
 
   React.useEffect(() => {
-    if (index !== void 0) scrollToIndex(index);
-  }, [index, scrollToIndex]);
+    onRender?.(startIndex, stopIndex, items);
+  }, [onRender, startIndex, stopIndex, items]);
 
-  return <MasonryScroller {...runtimeProps} />;
+  // 哪些 index 的高度未知、需要 measure（itemHeight 返回非正值）。
+  const measureIndices = React.useMemo(() => {
+    const set = new Set<number>();
+    items.forEach((item, index) => {
+      const height = itemHeight?.(item, columnWidth, index);
+      if (!height || !Number.isFinite(height) || height <= 0) set.add(index);
+    });
+    return set;
+  }, [items, itemHeight, columnWidth]);
+
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      getLayoutMetrics: () => {
+        const container = containerRef.current;
+        if (!container) return null;
+        return {
+          columnCount: layout.columnCount,
+          columnGutter,
+          columnWidth,
+          containerRect: container.getBoundingClientRect(),
+          rowGutter,
+        };
+      },
+      getItemRect: (index: number) => {
+        const cell = layout.cells[index];
+        const container = containerRef.current;
+        if (!cell || !container) return null;
+        const containerRect = container.getBoundingClientRect();
+        return new DOMRect(
+          containerRect.left + cell.left,
+          containerRect.top + cell.top,
+          cell.width,
+          cell.height,
+        );
+      },
+      reposition: () => {
+        // 纯计算布局无需手动重排；保留接口以兼容旧调用方，触发一次重算即可。
+        setMeasuredHeights((prev) => new Map(prev));
+      },
+    }),
+    [columnGutter, columnWidth, layout, rowGutter],
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      role={role}
+      tabIndex={tabIndex}
+      className={className}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: layout.totalHeight,
+        ...style,
+      }}
+    >
+      {visible.map((cell) => {
+        const data = items[cell.index];
+        if (data === undefined) return null;
+        const key = itemKey ? itemKey(data, cell.index) : cell.index;
+        const needsMeasure = measureIndices.has(cell.index);
+        return (
+          <MasonryCell
+            key={key}
+            cell={cell}
+            needsMeasure={needsMeasure}
+            onMeasure={(height) =>
+              setMeasuredHeights((prev) => {
+                if (prev.get(cell.index) === height) return prev;
+                const next = new Map(prev);
+                next.set(cell.index, height);
+                return next;
+              })
+            }
+          >
+            {render({ index: cell.index, data, width: cell.width })}
+          </MasonryCell>
+        );
+      })}
+    </div>
+  );
 };
 
-function MasonryScroller<Item>(
-  props: MasonryScrollerProps<Item> & {
-    scrollTop: number;
-    isScrolling: boolean;
-  },
-) {
-  // We put this in its own layer because it's the thing that will trigger the most updates
-  // and we don't want to slower ourselves by cycling through all the functions, objects, and effects
-  // of other hooks
-  // const { scrollTop, isScrolling } = useScroller(props.offset, props.scrollFps)
-  // This is an update-heavy phase and while we could just Object.assign here,
-  // it is way faster to inline and there's a relatively low hit to he bundle
-  // size.
-
-  return useMasonry<Item>({
-    scrollTop: props.scrollTop,
-    isScrolling: props.isScrolling,
-    positioner: props.positioner,
-    resizeObserver: props.resizeObserver,
-    items: props.items,
-    onRender: props.onRender,
-    as: props.as,
-    id: props.id,
-    className: props.className,
-    style: props.style,
-    role: props.role,
-    tabIndex: props.tabIndex,
-    containerRef: props.containerRef,
-    itemAs: props.itemAs,
-    itemStyle: props.itemStyle,
-    itemHeightEstimate: props.itemHeightEstimate,
-    itemKey: props.itemKey,
-    overscanBy: props.overscanBy,
-    height: props.height,
-    render: props.render,
-  });
+interface MasonryCellProps {
+  cell: MasonryCellLayout;
+  needsMeasure: boolean;
+  onMeasure: (height: number) => void;
+  children: React.ReactNode;
 }
 
-function useContainerPosition(
-  elementRef: React.MutableRefObject<HTMLElement | null>,
-  deps: React.DependencyList = [],
-): ContainerPosition & {
-  height: number;
-} {
-  const [containerPosition, setContainerPosition] = React.useState<
-    ContainerPosition & {
-      height: number;
-    }
-  >({
-    offset: 0,
-    width: 0,
-    height: 0,
-  });
-
-  React.useLayoutEffect(() => {
-    const { current } = elementRef;
-    if (current !== null) {
-      let offset = 0;
-      let el = current;
-
-      do {
-        offset += el.offsetTop || 0;
-        el = el.offsetParent as HTMLElement;
-      } while (el);
-
-      if (
-        offset !== containerPosition.offset ||
-        current.offsetWidth !== containerPosition.width
-      ) {
-        setContainerPosition({
-          offset,
-          width: current.offsetWidth,
-          height: current.offsetHeight,
-        });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+const MasonryCell = ({
+  cell,
+  needsMeasure,
+  onMeasure,
+  children,
+}: MasonryCellProps) => {
+  const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const resizeObserver = new ResizeObserver(() => {
-      setContainerPosition((prev) => {
-        const next = {
-          ...prev,
-          width: elementRef.current?.offsetWidth || 0,
-        };
-        if (isEqual(next, prev)) return prev;
-        return next;
-      });
-    });
-    resizeObserver.observe(elementRef.current as HTMLElement);
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [containerPosition, elementRef]);
+    if (!needsMeasure || typeof ResizeObserver === "undefined") return;
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => onMeasure(element.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [needsMeasure, onMeasure]);
 
-  return containerPosition;
-}
-
-function useResizeObserver(positioner: Positioner) {
-  const [forceUpdate] = useForceUpdate();
-  const resizeObserver = createResizeObserver(
-    positioner,
-    throttle(forceUpdate, 1000 / 12),
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: cell.width,
+        transform: `translate(${cell.left}px, ${cell.top}px)`,
+        // 限制布局/重绘的影响范围到单个 cell，进一步减少滚动时的样式重算成本。
+        contain: "layout paint",
+      }}
+    >
+      {children}
+    </div>
   );
-  // Cleans up the resize observers when they change or the
-  // component unmounts
-  React.useEffect(() => () => resizeObserver.disconnect(), [resizeObserver]);
-  return resizeObserver;
-}
+};
