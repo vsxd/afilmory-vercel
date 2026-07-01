@@ -16,6 +16,14 @@ export const PhotoViewerTransitionPreview = ({
   onComplete,
 }: PhotoViewerTransitionPreviewProps) => {
   const baseTransition = Spring.snappy(0.5);
+  // 下滑关闭时把释放速度喂给 y 弹簧，使“甩动关闭”物理连续、无停顿
+  const flipTransition =
+    transition.velocityY != null
+      ? {
+          default: baseTransition,
+          y: { ...baseTransition, velocity: transition.velocityY },
+        }
+      : baseTransition;
   const thumbHash =
     typeof transition.thumbHash === "string" ? transition.thumbHash : null;
 
@@ -58,7 +66,7 @@ export const PhotoViewerTransitionPreview = ({
         borderRadius: to.borderRadius,
         opacity: 1,
       }}
-      transition={baseTransition}
+      transition={flipTransition}
       onAnimationComplete={onComplete}
     >
       <div className="relative h-full w-full overflow-hidden bg-black">

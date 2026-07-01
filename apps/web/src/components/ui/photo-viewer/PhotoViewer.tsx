@@ -28,6 +28,8 @@ import {
 } from "./PhotoViewerController";
 import { PhotoViewerMediaCarousel } from "./PhotoViewerMediaCarousel";
 import { PhotoViewerToolbar } from "./PhotoViewerToolbar";
+import type { DismissTransform } from "./useDismissGesture";
+import { useDismissGesture } from "./useDismissGesture";
 
 interface PhotoViewerProps {
   photos: PhotoManifest[];
@@ -56,6 +58,10 @@ export const PhotoViewer = ({
   const isMobile = useMobile();
   const currentPhoto = photos[currentIndex];
 
+  // 下滑关闭：把释放时的拖拽变换交给退出 FLIP，让照片从被拖到的位置无缝飞回原格子
+  const dismissTransformRef = useRef<DismissTransform | null>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
+
   const {
     containerRef,
     entryTransition,
@@ -73,6 +79,36 @@ export const PhotoViewer = ({
     currentPhoto,
     currentBlobSrc,
     isMobile,
+    dismissTransformRef,
+  });
+
+  const handleDismiss = useCallback(
+    (transform: DismissTransform) => {
+      dismissTransformRef.current = transform;
+      onClose();
+    },
+    [onClose],
+  );
+
+  const dismissEnabled =
+    isMobile &&
+    isViewerContentVisible &&
+    !isEntryAnimating &&
+    !showExifPanel &&
+    !isImageZoomed;
+
+  const {
+    contentY,
+    contentScale,
+    contentRadius,
+    chromeOpacity,
+    revealOpacity,
+  } = useDismissGesture({
+    enabled: dismissEnabled,
+    targetRef: mediaRef,
+    swiperRef,
+    isImageZoomed,
+    onDismiss: handleDismiss,
   });
 
   const { handlePrevious, handleNext, canGoPrevious, canGoNext } =
@@ -150,8 +186,13 @@ export const PhotoViewer = ({
             animate={{ opacity: isOpen ? 1 : 0 }}
             exit={{ opacity: 0 }}
             transition={Spring.presets.snappy}
-            className="bg-material-opaque fixed inset-0"
-          />
+            className="fixed inset-0"
+          >
+            <m.div
+              className="bg-material-opaque size-full"
+              style={{ opacity: revealOpacity }}
+            />
+          </m.div>
         )}
       </AnimatePresence>
       {/* 固定背景层防止透出 */}
@@ -166,12 +207,14 @@ export const PhotoViewer = ({
             transition={Spring.presets.snappy}
             className="fixed inset-0"
           >
-            {currentThumbHash && (
-              <Thumbhash
-                thumbHash={currentThumbHash}
-                className="size-fill scale-110"
-              />
-            )}
+            <m.div className="size-full" style={{ opacity: revealOpacity }}>
+              {currentThumbHash && (
+                <Thumbhash
+                  thumbHash={currentThumbHash}
+                  className="size-fill scale-110"
+                />
+              )}
+            </m.div>
           </m.div>
         )}
       </AnimatePresence>
@@ -199,16 +242,19 @@ export const PhotoViewer = ({
               className={`flex size-full ${isMobile ? "flex-col" : "flex-row"}`}
             >
               <div className="relative z-1 flex min-h-0 min-w-0 flex-1 flex-col">
-                <PhotoViewerToolbar
-                  currentPhoto={currentPhoto}
-                  currentBlobSrc={currentBlobSrc}
-                  isMobile={isMobile}
-                  isVisible={isViewerContentVisible}
-                  showExifPanel={showExifPanel}
-                  onToggleExifPanel={toggleExifPanel}
-                  onClose={onClose}
-                />
+                <m.div style={{ opacity: chromeOpacity }}>
+                  <PhotoViewerToolbar
+                    currentPhoto={currentPhoto}
+                    currentBlobSrc={currentBlobSrc}
+                    isMobile={isMobile}
+                    isVisible={isViewerContentVisible}
+                    showExifPanel={showExifPanel}
+                    onToggleExifPanel={toggleExifPanel}
+                    onClose={onClose}
+                  />
+                </m.div>
                 <PhotoViewerMediaCarousel
+                  ref={mediaRef}
                   photos={photos}
                   currentPhoto={currentPhoto}
                   currentIndex={currentIndex}
@@ -220,6 +266,9 @@ export const PhotoViewer = ({
                   canGoPrevious={canGoPrevious}
                   canGoNext={canGoNext}
                   loadingIndicatorRef={loadingIndicatorRef}
+                  contentY={contentY}
+                  contentScale={contentScale}
+                  contentRadius={contentRadius}
                   onSwiperReady={handleSwiperReady}
                   onSlideChange={handleSlideChange}
                   onPrevious={handlePrevious}
@@ -228,14 +277,16 @@ export const PhotoViewer = ({
                   onBlobSrcChange={handleBlobSrcChange}
                 />
 
-                <Suspense>
-                  <GalleryThumbnail
-                    currentIndex={currentIndex}
-                    photos={photos}
-                    onIndexChange={onIndexChange}
-                    visible={isViewerContentVisible}
-                  />
-                </Suspense>
+                <m.div className="shrink-0" style={{ opacity: chromeOpacity }}>
+                  <Suspense>
+                    <GalleryThumbnail
+                      currentIndex={currentIndex}
+                      photos={photos}
+                      onIndexChange={onIndexChange}
+                      visible={isViewerContentVisible}
+                    />
+                  </Suspense>
+                </m.div>
               </div>
 
               {/* ExifPanel - 在桌面端始终显示，在移动端根据状态显示 */}

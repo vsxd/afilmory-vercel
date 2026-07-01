@@ -1,4 +1,5 @@
 import { Spring } from "@afilmory/ui";
+import type { MotionValue } from "motion/react";
 import { m } from "motion/react";
 import type { RefObject } from "react";
 import { Fragment } from "react";
@@ -28,6 +29,12 @@ interface PhotoViewerMediaCarouselProps {
   canGoPrevious: boolean;
   canGoNext: boolean;
   loadingIndicatorRef: RefObject<LoadingIndicatorRef | null>;
+  /** 手势目标（媒体区根元素），下滑关闭在此以 capture 监听接管纵向拖拽 */
+  ref?: RefObject<HTMLDivElement | null>;
+  /** 下滑关闭跟手：图片包裹层的位移/缩放/圆角（未拖拽时为恒等） */
+  contentY: MotionValue<number>;
+  contentScale: MotionValue<number>;
+  contentRadius: MotionValue<number>;
   onSwiperReady: (swiper: SwiperType) => void;
   onSlideChange: (swiper: SwiperType) => void;
   onPrevious: () => void;
@@ -48,6 +55,10 @@ export const PhotoViewerMediaCarousel = ({
   canGoPrevious,
   canGoNext,
   loadingIndicatorRef,
+  ref,
+  contentY,
+  contentScale,
+  contentRadius,
   onSwiperReady,
   onSlideChange,
   onPrevious,
@@ -59,83 +70,98 @@ export const PhotoViewerMediaCarousel = ({
 
   return (
     <m.div
+      ref={ref}
       className="group relative flex min-h-0 min-w-0 flex-1"
       animate={{ opacity: isViewerContentVisible ? 1 : 0 }}
       transition={Spring.presets.snappy}
     >
       <LoadingIndicator ref={loadingIndicatorRef} />
-      <Swiper
-        modules={[Navigation, Virtual]}
-        spaceBetween={0}
-        slidesPerView={1}
-        initialSlide={currentIndex}
-        virtual
-        onSwiper={onSwiperReady}
-        onSlideChange={onSlideChange}
+      <m.div
         className="h-full w-full"
-        style={{ touchAction: isMobile ? "pan-x" : "pan-y" }}
+        style={{
+          y: contentY,
+          scale: contentScale,
+          borderRadius: contentRadius,
+          overflow: "hidden",
+        }}
       >
-        {photos.map((photo, index) => {
-          const isCurrentImage = index === currentIndex;
-          const hideCurrentImage = isEntryAnimating && isCurrentImage;
+        <Swiper
+          modules={[Navigation, Virtual]}
+          spaceBetween={0}
+          slidesPerView={1}
+          initialSlide={currentIndex}
+          virtual
+          onSwiper={onSwiperReady}
+          onSlideChange={onSlideChange}
+          className="h-full w-full"
+          style={{ touchAction: isMobile ? "pan-x" : "pan-y" }}
+        >
+          {photos.map((photo, index) => {
+            const isCurrentImage = index === currentIndex;
+            const hideCurrentImage = isEntryAnimating && isCurrentImage;
 
-          return (
-            <SwiperSlide
-              key={photo.id}
-              className="flex items-center justify-center"
-              virtualIndex={index}
-            >
-              <m.div
-                initial={{ opacity: 0.5, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={Spring.presets.smooth}
-                className="relative flex h-full w-full items-center justify-center"
-                style={{
-                  visibility: hideCurrentImage ? "hidden" : "visible",
-                }}
+            return (
+              <SwiperSlide
+                key={photo.id}
+                className="flex items-center justify-center"
+                virtualIndex={index}
               >
-                <ProgressiveImage
-                  photoId={photo.id}
-                  loadingIndicatorRef={loadingIndicatorRef}
-                  isCurrentImage={isCurrentImage}
-                  src={photo.originalUrl}
-                  thumbnailSrc={photo.thumbnailUrl}
-                  thumbHash={photo.thumbHash}
-                  alt={photo.title}
-                  width={isCurrentImage ? currentPhoto.width : undefined}
-                  height={isCurrentImage ? currentPhoto.height : undefined}
-                  className="h-full w-full object-contain"
-                  enablePan={isCurrentImage ? !isMobile || isImageZoomed : true}
-                  enableZoom={true}
-                  shouldRenderHighRes={isViewerContentVisible && isOpen}
-                  onZoomChange={isCurrentImage ? onZoomChange : undefined}
-                  onBlobSrcChange={isCurrentImage ? onBlobSrcChange : undefined}
-                  videoSource={
-                    photo.video?.type === "motion-photo"
-                      ? {
-                          type: "motion-photo",
-                          imageUrl: photo.originalUrl,
-                          offset: photo.video.offset,
-                          size: photo.video.size,
-                          presentationTimestamp:
-                            photo.video.presentationTimestamp,
-                        }
-                      : photo.video?.type === "live-photo"
+                <m.div
+                  initial={{ opacity: 0.5, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={Spring.presets.smooth}
+                  className="relative flex h-full w-full items-center justify-center"
+                  style={{
+                    visibility: hideCurrentImage ? "hidden" : "visible",
+                  }}
+                >
+                  <ProgressiveImage
+                    photoId={photo.id}
+                    loadingIndicatorRef={loadingIndicatorRef}
+                    isCurrentImage={isCurrentImage}
+                    src={photo.originalUrl}
+                    thumbnailSrc={photo.thumbnailUrl}
+                    thumbHash={photo.thumbHash}
+                    alt={photo.title}
+                    width={isCurrentImage ? currentPhoto.width : undefined}
+                    height={isCurrentImage ? currentPhoto.height : undefined}
+                    className="h-full w-full object-contain"
+                    enablePan={
+                      isCurrentImage ? !isMobile || isImageZoomed : true
+                    }
+                    enableZoom={true}
+                    shouldRenderHighRes={isViewerContentVisible && isOpen}
+                    onZoomChange={isCurrentImage ? onZoomChange : undefined}
+                    onBlobSrcChange={
+                      isCurrentImage ? onBlobSrcChange : undefined
+                    }
+                    videoSource={
+                      photo.video?.type === "motion-photo"
                         ? {
-                            type: "live-photo",
-                            videoUrl: photo.video.videoUrl,
+                            type: "motion-photo",
+                            imageUrl: photo.originalUrl,
+                            offset: photo.video.offset,
+                            size: photo.video.size,
+                            presentationTimestamp:
+                              photo.video.presentationTimestamp,
                           }
-                        : { type: "none" }
-                  }
-                  shouldAutoPlayVideoOnce={isCurrentImage}
-                  isHDR={photo.isHDR}
-                />
-              </m.div>
-            </SwiperSlide>
-          );
-        })}
-      </Swiper>
+                        : photo.video?.type === "live-photo"
+                          ? {
+                              type: "live-photo",
+                              videoUrl: photo.video.videoUrl,
+                            }
+                          : { type: "none" }
+                    }
+                    shouldAutoPlayVideoOnce={isCurrentImage}
+                    isHDR={photo.isHDR}
+                  />
+                </m.div>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+      </m.div>
 
       {!isMobile && (
         <Fragment>

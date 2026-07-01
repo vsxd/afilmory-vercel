@@ -207,6 +207,7 @@ export const ProgressiveImage = ({
       onMouseUp={handleLongPressEnd}
       onMouseLeave={handleLongPressEnd}
       onTouchStart={handleLongPressStart}
+      onTouchMove={handleLongPressEnd}
       onTouchEnd={handleLongPressEnd}
     >
       {shouldShowLowResPlaceholder && (

@@ -10,6 +10,7 @@ import {
 import { getGalleryVirtualPhotoTargetRect } from "~/lib/gallery-virtual-target";
 import type { PhotoManifest } from "~/types/photo";
 
+import type { DismissTransform } from "../useDismissGesture";
 import type {
   AnimationFrameRect,
   PhotoViewerTransition,
@@ -27,6 +28,11 @@ interface UsePhotoViewerTransitionsParams {
   currentPhoto: PhotoManifest | undefined;
   currentBlobSrc: string | null;
   isMobile: boolean;
+  /**
+   * 下滑关闭释放时的拖拽变换。存在时，退出 FLIP 的 `from` 用它做种子，
+   * 让照片从被拖到的位置无缝飞回原格子（否则从居中帧起飞会跳变）。
+   */
+  dismissTransformRef?: RefObject<DismissTransform | null>;
 }
 
 interface UsePhotoViewerTransitionsResult {
@@ -48,6 +54,7 @@ export const usePhotoViewerTransitions = ({
   currentPhoto,
   currentBlobSrc,
   isMobile,
+  dismissTransformRef,
 }: UsePhotoViewerTransitionsParams): UsePhotoViewerTransitionsResult => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cachedTriggerRef = useRef<HTMLElement | null>(triggerElement);
@@ -264,6 +271,12 @@ export const usePhotoViewerTransitions = ({
       return;
     }
 
+    // 消费本次关闭的下滑拖拽变换（若有）：用于把退出 FLIP 的起点定在被拖到的位置
+    const dismiss = dismissTransformRef?.current ?? null;
+    if (dismissTransformRef?.current) {
+      dismissTransformRef.current = null;
+    }
+
     if (typeof window === "undefined") {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
@@ -334,16 +347,32 @@ export const usePhotoViewerTransitions = ({
       hideTriggerElement(triggerEl);
     }
 
+    // 若为下滑关闭，把居中帧按拖拽的 {scale, y} 变换成实际被拖到的矩形作为起点
+    let fromRect = viewerFrame;
+    if (dismiss) {
+      const cx = viewerFrame.left + viewerFrame.width / 2;
+      const cy = viewerFrame.top + viewerFrame.height / 2;
+      const w = viewerFrame.width * dismiss.scale;
+      const h = viewerFrame.height * dismiss.scale;
+      fromRect = {
+        left: cx - w / 2 + dismiss.x,
+        top: cy - h / 2 + dismiss.y,
+        width: w,
+        height: h,
+        borderRadius: viewerFrame.borderRadius,
+      };
+    }
+
     const transitionState: PhotoViewerTransitionState = {
       photoId: currentPhoto.id,
       imageSrc,
       thumbHash: currentPhoto.thumbHash,
       from: {
-        left: viewerFrame.left,
-        top: viewerFrame.top,
-        width: viewerFrame.width,
-        height: viewerFrame.height,
-        borderRadius: viewerFrame.borderRadius,
+        left: fromRect.left,
+        top: fromRect.top,
+        width: fromRect.width,
+        height: fromRect.height,
+        borderRadius: fromRect.borderRadius,
       },
       to: {
         left: targetRect.left,
@@ -352,6 +381,8 @@ export const usePhotoViewerTransitions = ({
         height: targetRect.height,
         borderRadius,
       },
+      // 下滑关闭：把释放速度（px/ms → px/s）交给退出 FLIP 的 y 弹簧，实现速度连续
+      velocityY: dismiss ? dismiss.velocity * 1000 : undefined,
     };
 
     setExitTransition({ ...transitionState, variant: "exit" });
@@ -362,6 +393,7 @@ export const usePhotoViewerTransitions = ({
     currentPhoto,
     currentBlobSrc,
     isMobile,
+    dismissTransformRef,
     resolveTriggerElement,
     restoreTriggerElementVisibility,
     hideTriggerElement,
