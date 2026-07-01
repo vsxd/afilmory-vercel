@@ -282,13 +282,19 @@ export function useDismissGesture({
 
     // —— 鼠标（桌面）：mousedown 认领后在 window 以 capture 跟踪，先于 WebGL 的
     //    window mousemove 触发，stopPropagation 拦其平移；allowTouchMove 关掉拦 Swiper ——
-    const onWindowMouseMove = (e: MouseEvent) => {
-      move(e, e.clientX, e.clientY, e.timeStamp);
-    };
     const onWindowMouseUp = () => {
       end();
       window.removeEventListener("mousemove", onWindowMouseMove, true);
       window.removeEventListener("mouseup", onWindowMouseUp, true);
+    };
+    const onWindowMouseMove = (e: MouseEvent) => {
+      // 若已无按键按下（在窗口外松开鼠标 → mouseup 未派发到本页），按松手收尾。
+      // 否则残留监听会在鼠标重新进入时继续拖拽、并让之后任意一次 mouseup 误触发关闭。
+      if (e.buttons === 0) {
+        onWindowMouseUp();
+        return;
+      }
+      move(e, e.clientX, e.clientY, e.timeStamp);
     };
     const onMouseDown = (e: MouseEvent) => {
       if (!latestRef.current.enabled || e.button !== 0) return;

@@ -6,6 +6,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DismissSeed, DismissTransform } from "../useDismissGesture";
 import { useDismissGesture } from "../useDismissGesture";
 
+// 收集 snapBack 里 animate() 返回的 stop 句柄，用于精确验证「stopSnap 仅在认领时调用」。
+// jsdom 不跑真实动画，故 mock animate 只返回可追踪的 { stop }，不影响其余断言。
+const { animateStops } = vi.hoisted(() => ({
+  animateStops: [] as Array<() => void>,
+}));
+vi.mock("motion/react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("motion/react")>();
+  return {
+    ...actual,
+    animate: (..._args: unknown[]) => {
+      const stop = vi.fn();
+      animateStops.push(stop);
+      return { stop };
+    },
+  };
+});
+
 // 避免加载 @afilmory/ui 整个 barrel（sonner 用了测试环境无的 tw 宏）；hook 只用到 Spring。
 vi.mock("@afilmory/ui", () => ({
   Spring: {
@@ -43,6 +60,8 @@ function fireMouse(
   x: number,
   y: number,
   timeStamp = 0,
+  // 拖拽途中主键按下 buttons=1；松手 buttons=0。可覆盖以模拟窗口外松手（丢失 mouseup）。
+  buttons = type === "mouseup" ? 0 : 1,
 ) {
   const event = new MouseEvent(type, {
     bubbles: true,
@@ -50,6 +69,7 @@ function fireMouse(
     clientX: x,
     clientY: y,
     button: 0,
+    buttons,
   });
   Object.defineProperty(event, "timeStamp", { value: timeStamp });
   el.dispatchEvent(event);
@@ -236,6 +256,55 @@ describe("useDismissGesture", () => {
     fireTouch(t.el, "touchstart", [{ x: 200, y: 200 }]);
     fireTouch(t.el, "touchmove", [{ x: 200, y: 200 + OVER }]);
     fireTouch(t.el, "touchend", [{ x: 200, y: 200 + OVER }]);
+    expect(t.onDismiss).not.toHaveBeenCalled();
+  });
+
+  it("弹回途中单击不停住弹回；再次认领才停住（stopSnap 仅在认领时）", () => {
+    animateStops.length = 0;
+    const t = setup();
+    // 拖拽 + 松手（不过阈值）→ snapBack 启动，产生一批 stop 句柄
+    fireTouch(t.el, "touchstart", [{ x: 200, y: 200 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 216 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 200 + UNDER }]);
+    fireTouch(t.el, "touchend", [{ x: 200, y: 200 + UNDER }]);
+    const snapStops = [...animateStops];
+    expect(snapStops.length).toBeGreaterThan(0);
+
+    // 单击（down+up，不拖拽）：不应 stopSnap、不应关闭
+    fireMouse(t.el, "mousedown", 300, 300);
+    fireMouse(window, "mouseup", 300, 300);
+    expect(t.onDismiss).not.toHaveBeenCalled();
+    for (const stop of snapStops) expect(stop).not.toHaveBeenCalled();
+
+    // 再次认领：此时才 stopSnap
+    fireTouch(t.el, "touchstart", [{ x: 200, y: 200 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 216 }]);
+    for (const stop of snapStops) expect(stop).toHaveBeenCalled();
+  });
+
+  it("弹回途中再认领 → 以当前 MotionValue 为基准，无跳变到 0", () => {
+    const t = setup();
+    fireTouch(t.el, "touchstart", [{ x: 200, y: 200 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 216 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 240 }]);
+    fireTouch(t.el, "touchend", [{ x: 200, y: 240 }]); // snapBack
+    t.contentY.set(60); // jsdom 无动画，手动置于弹回中途
+    // 再次认领
+    fireTouch(t.el, "touchstart", [{ x: 200, y: 100 }]);
+    fireTouch(t.el, "touchmove", [{ x: 200, y: 116 }]); // claim → base = contentY.get() = 60
+    // 认领当帧 dy≈0，contentY = base(60) + 0 = 60，不应瞬跳到 0
+    expect(t.contentY.get()).toBe(60);
+  });
+
+  it("桌面：鼠标在窗口外松开（buttons=0 重入）→ 立即收尾，不因后续 mouseup 误关闭", () => {
+    const t = setup();
+    fireMouse(t.el, "mousedown", 200, 200);
+    fireMouse(window, "mousemove", 200, 216); // claim（buttons=1）
+    fireMouse(window, "mousemove", 200, 240); // 拖到 dy=24（不过阈值）
+    // 鼠标在窗口外松开、再重入到很靠下的位置（buttons=0）——无守卫时会把 dragDy 冲到过阈值
+    fireMouse(window, "mousemove", 200, 700, 0, 0);
+    // 之后的杂散 mouseup 不应触发关闭（守卫已用释放前的 dragDy 收尾为弹回、并移除监听）
+    fireMouse(window, "mouseup", 200, 700);
     expect(t.onDismiss).not.toHaveBeenCalled();
   });
 });
