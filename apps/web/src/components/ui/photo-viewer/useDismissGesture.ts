@@ -51,12 +51,15 @@ export function useDismissGesture({
   swiperRef,
   isImageZoomed,
   onDismiss,
+  onClaim,
 }: {
   enabled: boolean;
   targetRef: RefObject<HTMLElement | null>;
   swiperRef: RefObject<SwiperType | null>;
   isImageZoomed: boolean;
   onDismiss: (transform: DismissTransform) => void;
+  /** 认领纵向拖拽的那一刻触发（用于中断入场动画、立即显现内容） */
+  onClaim?: () => void;
 }): DismissGestureValues {
   const reduceMotion = useReducedMotion();
 
@@ -66,8 +69,8 @@ export function useDismissGesture({
   const revealOpacity = useMotionValue(1);
 
   // 通过 ref 读最新的 enabled / isImageZoomed / onDismiss，避免每次变化都重挂监听
-  const latestRef = useRef({ enabled, isImageZoomed, onDismiss });
-  latestRef.current = { enabled, isImageZoomed, onDismiss };
+  const latestRef = useRef({ enabled, isImageZoomed, onDismiss, onClaim });
+  latestRef.current = { enabled, isImageZoomed, onDismiss, onClaim };
 
   // 每次（重新）打开时把 MotionValue 归位，保证干净起点
   useEffect(() => {
@@ -173,6 +176,8 @@ export function useDismissGesture({
           lastT = e.timeStamp;
           const s = swiperRef.current;
           if (s) s.allowTouchMove = false;
+          // 认领瞬间中断入场动画：让内容立即显现，随后跟手下滑关闭
+          latestRef.current.onClaim?.();
         } else {
           status = "ignored"; // 横向/上滑/斜向 → 交回 swiper
           return;

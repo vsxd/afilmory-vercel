@@ -90,12 +90,10 @@ export const PhotoViewer = ({
     [onClose],
   );
 
+  // 注意：入场动画期间也允许下滑关闭（不再要求 !isEntryAnimating）——认领时会通过
+  // onClaim 立即完成入场，让用户能在打开动画未结束时就把照片甩走，更贴近原生。
   const dismissEnabled =
-    isMobile &&
-    isViewerContentVisible &&
-    !isEntryAnimating &&
-    !showExifPanel &&
-    !isImageZoomed;
+    isMobile && isViewerContentVisible && !showExifPanel && !isImageZoomed;
 
   const { contentY, contentScale, chromeOpacity, revealOpacity } =
     useDismissGesture({
@@ -104,6 +102,7 @@ export const PhotoViewer = ({
       swiperRef,
       isImageZoomed,
       onDismiss: handleDismiss,
+      onClaim: handleEntryAnimationComplete,
     });
 
   const { handlePrevious, handleNext, canGoPrevious, canGoNext } =
@@ -225,8 +224,8 @@ export const PhotoViewer = ({
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
               touchAction: isMobile ? "manipulation" : "none",
-              pointerEvents:
-                !isViewerContentVisible || isEntryAnimating ? "none" : "auto",
+              // 入场动画期间也允许触摸，以便下滑关闭手势能中断入场（见 useDismissGesture）
+              pointerEvents: !isViewerContentVisible ? "none" : "auto",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: isViewerContentVisible ? 1 : 0 }}
