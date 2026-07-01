@@ -18,9 +18,9 @@ const CHROME_FADE_RATIO = 0.12; // 顶栏/缩略图条 ~12% 屏高即淡尽
 const REVEAL_FADE_RATIO = 0.6; // 背景（露出瀑布流）淡出更缓
 
 export interface DismissTransform {
-  /** 相对居中帧的水平偏移（本手势只走竖直，恒为 0，保留以便 FLIP 种子通用） */
+  /** 释放时相对居中帧的水平偏移（正常关闭为 0；中断入场时含种子的水平偏移） */
   x: number;
-  /** 释放时的竖直位移（px） */
+  /** 释放时的竖直位移（px，含入场种子偏移） */
   y: number;
   /** 释放时的缩放 */
   scale: number;
@@ -28,7 +28,18 @@ export interface DismissTransform {
   velocity: number;
 }
 
+/**
+ * 中断入场动画时的“种子变换”：让 wrapper 从入场 FLIP 当前所在的位置/大小原地接管，
+ * 实现零跳变。x/y 为相对查看器取景框中心的偏移，scale 为相对取景框的缩放。
+ */
+export interface DismissSeed {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface DismissGestureValues {
+  contentX: MotionValue<number>;
   contentY: MotionValue<number>;
   contentScale: MotionValue<number>;
   /** 顶栏 + 底部缩略图条透明度 */
@@ -58,11 +69,15 @@ export function useDismissGesture({
   swiperRef: RefObject<SwiperType | null>;
   isImageZoomed: boolean;
   onDismiss: (transform: DismissTransform) => void;
-  /** 认领纵向拖拽的那一刻触发（用于中断入场动画、立即显现内容） */
-  onClaim?: () => void;
+  /**
+   * 认领纵向拖拽的那一刻触发（用于中断入场动画）。返回种子变换时，wrapper 从入场 FLIP
+   * 当前位置/大小原地接管（零跳变）；返回 void 则按普通关闭处理。
+   */
+  onClaim?: () => DismissSeed | void;
 }): DismissGestureValues {
   const reduceMotion = useReducedMotion();
 
+  const contentX = useMotionValue(0);
   const contentY = useMotionValue(0);
   const contentScale = useMotionValue(1);
   const chromeOpacity = useMotionValue(1);
@@ -75,11 +90,12 @@ export function useDismissGesture({
   // 每次（重新）打开时把 MotionValue 归位，保证干净起点
   useEffect(() => {
     if (!enabled) return;
+    contentX.set(0);
     contentY.set(0);
     contentScale.set(1);
     chromeOpacity.set(1);
     revealOpacity.set(1);
-  }, [enabled, contentY, contentScale, chromeOpacity, revealOpacity]);
+  }, [enabled, contentX, contentY, contentScale, chromeOpacity, revealOpacity]);
 
   useEffect(() => {
     const el = targetRef.current;
@@ -92,6 +108,9 @@ export function useDismissGesture({
     let lastY = 0;
     let lastT = 0;
     let velocity = 0;
+    // 入场中断的种子变换（null=普通关闭）；dragDy=原始拖拽距离（不含种子偏移，用于阈值）
+    let seed: DismissSeed | null = null;
+    let dragDy = 0;
     let snapControls: Array<{ stop: () => void }> = [];
 
     const stopSnap = () => {
@@ -100,11 +119,17 @@ export function useDismissGesture({
     };
 
     const applyDrag = (dy: number) => {
+      dragDy = dy;
       const vh = window.innerHeight || 1;
       const p = Math.min(Math.max(dy / vh, 0), 1);
-      contentY.set(dy);
+      // 在种子基础上叠加拖拽：从入场 FLIP 当前位置/大小连续过渡（种子为 null 时即普通关闭）
+      const sx = seed ? seed.x : 0;
+      const sy = seed ? seed.y : 0;
+      const ss = seed ? seed.scale : 1;
+      contentX.set(sx);
+      contentY.set(sy + dy);
       if (!reduceMotion) {
-        contentScale.set(Math.max(MIN_SCALE, 1 - SCALE_FACTOR * p));
+        contentScale.set(ss * Math.max(MIN_SCALE, 1 - SCALE_FACTOR * p));
       }
       chromeOpacity.set(
         Math.min(Math.max(1 - dy / (vh * CHROME_FADE_RATIO), 0), 1),
@@ -122,6 +147,7 @@ export function useDismissGesture({
         ? { duration: 0.01 }
         : Spring.presets.smooth;
       snapControls = [
+        animate(contentX, 0, transformT),
         animate(contentY, 0, transformT),
         animate(contentScale, 1, transformT),
         animate(chromeOpacity, 1, opacityT),
@@ -150,6 +176,8 @@ export function useDismissGesture({
       lastY = t.clientY;
       lastT = e.timeStamp;
       velocity = 0;
+      seed = null;
+      dragDy = 0;
       status = "detecting";
     };
 
@@ -176,8 +204,8 @@ export function useDismissGesture({
           lastT = e.timeStamp;
           const s = swiperRef.current;
           if (s) s.allowTouchMove = false;
-          // 认领瞬间中断入场动画：让内容立即显现，随后跟手下滑关闭
-          latestRef.current.onClaim?.();
+          // 认领瞬间中断入场动画：记录入场 FLIP 当前矩形作为种子，wrapper 原地接管（零跳变）
+          seed = latestRef.current.onClaim?.() ?? null;
         } else {
           status = "ignored"; // 横向/上滑/斜向 → 交回 swiper
           return;
@@ -205,15 +233,15 @@ export function useDismissGesture({
           DIST_THRESHOLD_MIN,
           vh * DIST_THRESHOLD_RATIO,
         );
-        const dy = contentY.get();
+        // 阈值判定用原始拖拽距离（不含入场种子偏移），才反映用户的下拉意图
         const shouldDismiss =
-          dy > distThreshold ||
-          (velocity > VELOCITY_THRESHOLD && dy > VELOCITY_MIN_TRAVEL);
+          dragDy > distThreshold ||
+          (velocity > VELOCITY_THRESHOLD && dragDy > VELOCITY_MIN_TRAVEL);
         if (shouldDismiss) {
-          // 把当前变换交给退出 FLIP（不复位实时层，让它随容器退出淡出，避免跳变）
+          // 交给退出 FLIP 的是 wrapper 的实际变换（含入场种子偏移），飞回原格子亦无缝
           latestRef.current.onDismiss({
-            x: 0,
-            y: dy,
+            x: contentX.get(),
+            y: contentY.get(),
             scale: contentScale.get(),
             velocity,
           });
@@ -247,6 +275,7 @@ export function useDismissGesture({
     targetRef,
     swiperRef,
     reduceMotion,
+    contentX,
     contentY,
     contentScale,
     chromeOpacity,
@@ -254,6 +283,7 @@ export function useDismissGesture({
   ]);
 
   return {
+    contentX,
     contentY,
     contentScale,
     chromeOpacity,

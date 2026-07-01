@@ -28,7 +28,7 @@ import {
 } from "./PhotoViewerController";
 import { PhotoViewerMediaCarousel } from "./PhotoViewerMediaCarousel";
 import { PhotoViewerToolbar } from "./PhotoViewerToolbar";
-import type { DismissTransform } from "./useDismissGesture";
+import type { DismissSeed, DismissTransform } from "./useDismissGesture";
 import { useDismissGesture } from "./useDismissGesture";
 
 interface PhotoViewerProps {
@@ -90,19 +90,41 @@ export const PhotoViewer = ({
     [onClose],
   );
 
-  // 注意：入场动画期间也允许下滑关闭（不再要求 !isEntryAnimating）——认领时会通过
-  // onClaim 立即完成入场，让用户能在打开动画未结束时就把照片甩走，更贴近原生。
+  // 认领下滑手势的那一刻：若入场动画仍在进行，完成入场并把入场 FLIP 当前所在的矩形
+  // 作为“种子”返回——wrapper 据此原地接管，实现零跳变（entryTransition.to 即查看器
+  // 取景框；[data-variant=…entry] 元素的实时 rect 即照片当前位置/大小）。
+  const handleDismissClaim = useCallback((): DismissSeed | undefined => {
+    const entry = entryTransition;
+    if (!entry) return undefined;
+    const flipEl = document.querySelector<HTMLElement>(
+      '[data-variant="photo-viewer-transition-entry"]',
+    );
+    const f = flipEl?.getBoundingClientRect();
+    handleEntryAnimationComplete();
+    if (!f || !f.width || !f.height || !entry.to.width || !entry.to.height) {
+      return undefined;
+    }
+    const { to } = entry;
+    return {
+      x: f.left + f.width / 2 - (to.left + to.width / 2),
+      y: f.top + f.height / 2 - (to.top + to.height / 2),
+      scale: f.width / to.width,
+    };
+  }, [entryTransition, handleEntryAnimationComplete]);
+
+  // 注意：入场动画期间也允许下滑关闭（不再要求 !isEntryAnimating）——认领时通过
+  // onClaim 中断入场并原地接管，让用户能在打开动画未结束时就把照片甩走，且无跳变。
   const dismissEnabled =
     isMobile && isViewerContentVisible && !showExifPanel && !isImageZoomed;
 
-  const { contentY, contentScale, chromeOpacity, revealOpacity } =
+  const { contentX, contentY, contentScale, chromeOpacity, revealOpacity } =
     useDismissGesture({
       enabled: dismissEnabled,
       targetRef: mediaRef,
       swiperRef,
       isImageZoomed,
       onDismiss: handleDismiss,
-      onClaim: handleEntryAnimationComplete,
+      onClaim: handleDismissClaim,
     });
 
   const { handlePrevious, handleNext, canGoPrevious, canGoNext } =
@@ -260,6 +282,7 @@ export const PhotoViewer = ({
                   canGoPrevious={canGoPrevious}
                   canGoNext={canGoNext}
                   loadingIndicatorRef={loadingIndicatorRef}
+                  contentX={contentX}
                   contentY={contentY}
                   contentScale={contentScale}
                   onSwiperReady={handleSwiperReady}

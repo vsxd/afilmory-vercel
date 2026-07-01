@@ -31,7 +31,8 @@ interface PhotoViewerMediaCarouselProps {
   loadingIndicatorRef: RefObject<LoadingIndicatorRef | null>;
   /** 手势目标（媒体区根元素），下滑关闭在此以 capture 监听接管纵向拖拽 */
   ref?: RefObject<HTMLDivElement | null>;
-  /** 下滑关闭跟手：图片包裹层的位移/缩放（未拖拽时为恒等） */
+  /** 下滑关闭跟手：图片包裹层的位移/缩放（未拖拽时为恒等；contentX 用于中断入场的水平接管） */
+  contentX: MotionValue<number>;
   contentY: MotionValue<number>;
   contentScale: MotionValue<number>;
   onSwiperReady: (swiper: SwiperType) => void;
@@ -55,6 +56,7 @@ export const PhotoViewerMediaCarousel = ({
   canGoNext,
   loadingIndicatorRef,
   ref,
+  contentX,
   contentY,
   contentScale,
   onSwiperReady,
@@ -77,6 +79,7 @@ export const PhotoViewerMediaCarousel = ({
       <m.div
         className="h-full w-full"
         style={{
+          x: contentX,
           y: contentY,
           scale: contentScale,
           overflow: "hidden",
