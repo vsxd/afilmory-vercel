@@ -23,7 +23,6 @@ interface PhotoViewerMediaCarouselProps {
   currentIndex: number;
   isOpen: boolean;
   isMobile: boolean;
-  isImageZoomed: boolean;
   isViewerContentVisible: boolean;
   isEntryAnimating: boolean;
   canGoPrevious: boolean;
@@ -49,7 +48,6 @@ export const PhotoViewerMediaCarousel = ({
   currentIndex,
   isOpen,
   isMobile,
-  isImageZoomed,
   isViewerContentVisible,
   isEntryAnimating,
   canGoPrevious,
@@ -130,10 +128,6 @@ export const PhotoViewerMediaCarousel = ({
                     width={isCurrentImage ? currentPhoto.width : undefined}
                     height={isCurrentImage ? currentPhoto.height : undefined}
                     className="h-full w-full object-contain"
-                    enablePan={
-                      isCurrentImage ? !isMobile || isImageZoomed : true
-                    }
-                    enableZoom={true}
                     shouldRenderHighRes={isViewerContentVisible && isOpen}
                     onZoomChange={isCurrentImage ? onZoomChange : undefined}
                     onBlobSrcChange={

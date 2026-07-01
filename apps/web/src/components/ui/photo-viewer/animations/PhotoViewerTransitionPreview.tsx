@@ -1,11 +1,14 @@
 import { Spring, Thumbhash } from "@afilmory/ui";
 import { m } from "motion/react";
+import type { RefObject } from "react";
 
 import type { PhotoViewerTransition } from "./types";
 
 interface PhotoViewerTransitionPreviewProps {
   transition: PhotoViewerTransition;
   onComplete: () => void;
+  /** 转发到根元素，供下滑关闭在中断入场时读取其实时矩形做种子 */
+  ref?: RefObject<HTMLDivElement | null>;
 }
 
 // 守卫目标尺寸为 0 的情况，避免 Infinity/NaN 的缩放比破坏动画。
@@ -14,6 +17,7 @@ const safeScale = (from: number, to: number) => (to > 0 ? from / to : 1);
 export const PhotoViewerTransitionPreview = ({
   transition,
   onComplete,
+  ref,
 }: PhotoViewerTransitionPreviewProps) => {
   const baseTransition = Spring.snappy(0.5);
   // 下滑关闭时把释放速度喂给 y 弹簧，使“甩动关闭”物理连续、无停顿
@@ -47,6 +51,7 @@ export const PhotoViewerTransitionPreview = ({
 
   return (
     <m.div
+      ref={ref}
       className="pointer-events-none fixed top-0 left-0 z-40 origin-top-left"
       data-variant={`photo-viewer-transition-${transition.variant}`}
       style={{ width: to.width, height: to.height }}

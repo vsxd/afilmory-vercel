@@ -28,8 +28,6 @@ export interface ProgressiveImageProps {
   onZoomChange?: (isZoomed: boolean) => void;
   onBlobSrcChange?: (blobSrc: string | null) => void;
 
-  enableZoom?: boolean;
-  enablePan?: boolean;
   maxZoom?: number;
   minZoom?: number;
 

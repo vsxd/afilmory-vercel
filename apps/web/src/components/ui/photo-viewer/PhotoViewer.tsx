@@ -61,6 +61,7 @@ export const PhotoViewer = ({
   // 下滑关闭：把释放时的拖拽变换交给退出 FLIP，让照片从被拖到的位置无缝飞回原格子
   const dismissTransformRef = useRef<DismissTransform | null>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
+  const entryFlipRef = useRef<HTMLDivElement>(null);
 
   const {
     containerRef,
@@ -96,10 +97,7 @@ export const PhotoViewer = ({
   const handleDismissClaim = useCallback((): DismissSeed | undefined => {
     const entry = entryTransition;
     if (!entry) return undefined;
-    const flipEl = document.querySelector<HTMLElement>(
-      '[data-variant="photo-viewer-transition-entry"]',
-    );
-    const f = flipEl?.getBoundingClientRect();
+    const f = entryFlipRef.current?.getBoundingClientRect();
     handleEntryAnimationComplete();
     if (!f || !f.width || !f.height || !entry.to.width || !entry.to.height) {
       return undefined;
@@ -112,10 +110,10 @@ export const PhotoViewer = ({
     };
   }, [entryTransition, handleEntryAnimationComplete]);
 
-  // 注意：入场动画期间也允许下滑关闭（不再要求 !isEntryAnimating）——认领时通过
+  // 全平台启用（触摸 + 桌面鼠标，见 useDismissGesture）；入场动画期间也允许——认领时通过
   // onClaim 中断入场并原地接管，让用户能在打开动画未结束时就把照片甩走，且无跳变。
   const dismissEnabled =
-    isMobile && isViewerContentVisible && !showExifPanel && !isImageZoomed;
+    isViewerContentVisible && !showExifPanel && !isImageZoomed;
 
   const { contentX, contentY, contentScale, chromeOpacity, revealOpacity } =
     useDismissGesture({
@@ -276,7 +274,6 @@ export const PhotoViewer = ({
                   currentIndex={currentIndex}
                   isOpen={isOpen}
                   isMobile={isMobile}
-                  isImageZoomed={isImageZoomed}
                   isViewerContentVisible={isViewerContentVisible}
                   isEntryAnimating={isEntryAnimating}
                   canGoPrevious={canGoPrevious}
@@ -327,6 +324,7 @@ export const PhotoViewer = ({
       {entryTransition && (
         <PhotoViewerTransitionPreview
           key={`${entryTransition.variant}-${entryTransition.photoId}`}
+          ref={entryFlipRef}
           transition={entryTransition}
           onComplete={handleEntryAnimationComplete}
         />

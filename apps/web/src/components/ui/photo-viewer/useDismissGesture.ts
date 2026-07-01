@@ -24,7 +24,7 @@ export interface DismissTransform {
   y: number;
   /** 释放时的缩放 */
   scale: number;
-  /** 释放时的竖直速度（px/ms），用于退出 FLIP 的速度连续性 */
+  /** 释放时的竖直速度（px/s，motion 弹簧初速度单位），用于退出 FLIP 的速度连续性 */
   velocity: number;
 }
 
@@ -107,9 +107,14 @@ export function useDismissGesture({
     let originY = 0;
     let lastY = 0;
     let lastT = 0;
-    let velocity = 0;
-    // 入场中断的种子变换（null=普通关闭）；dragDy=原始拖拽距离（不含种子偏移，用于阈值）
+    let velocity = 0; // px/ms（拖拽途中用于阈值；交给 onDismiss 时转 px/s）
+    // seed：中断入场的种子（null=普通关闭）。base：认领瞬间的基准变换 = 种子，或（无种子时）
+    // 当前 MotionValue —— 后者保证「弹回动画途中再次抓取」也从当前所在位置/大小连续接管、无跳变。
+    // dragDy：本次原始拖拽距离（不含 base 偏移，用于阈值）。
     let seed: DismissSeed | null = null;
+    let baseX = 0;
+    let baseY = 0;
+    let baseScale = 1;
     let dragDy = 0;
     let snapControls: Array<{ stop: () => void }> = [];
 
@@ -122,15 +127,14 @@ export function useDismissGesture({
       dragDy = dy;
       const vh = window.innerHeight || 1;
       const p = Math.min(Math.max(dy / vh, 0), 1);
-      // 在种子基础上叠加拖拽：从入场 FLIP 当前位置/大小连续过渡（种子为 null 时即普通关闭）
-      const sx = seed ? seed.x : 0;
-      const sy = seed ? seed.y : 0;
-      const ss = seed ? seed.scale : 1;
-      contentX.set(sx);
-      contentY.set(sy + dy);
-      if (!reduceMotion) {
-        contentScale.set(ss * Math.max(MIN_SCALE, 1 - SCALE_FACTOR * p));
-      }
+      // 在 base 基础上叠加拖拽，连续过渡、无跳变
+      contentX.set(baseX);
+      contentY.set(baseY + dy);
+      contentScale.set(
+        reduceMotion
+          ? baseScale
+          : baseScale * Math.max(MIN_SCALE, 1 - SCALE_FACTOR * p),
+      );
       chromeOpacity.set(
         Math.min(Math.max(1 - dy / (vh * CHROME_FADE_RATIO), 0), 1),
       );
@@ -160,6 +164,65 @@ export function useDismissGesture({
       if (s) s.allowTouchMove = !latestRef.current.isImageZoomed;
     };
 
+    // —— 触摸 / 鼠标共用的状态机 ——
+    // 注意：不在 begin 里 stopSnap——否则「弹回途中点一下但不拖」会停住弹回、把 wrapper
+    // 卡在中间位置。改为认领时才 stopSnap（点击不认领→弹回照常完成）。
+    const begin = (x: number, y: number, t: number) => {
+      originX = x;
+      originY = y;
+      lastY = y;
+      lastT = t;
+      velocity = 0;
+      seed = null;
+      dragDy = 0;
+      status = "detecting";
+    };
+
+    const move = (
+      e: TouchEvent | MouseEvent,
+      x: number,
+      y: number,
+      t: number,
+    ) => {
+      if (status === "idle" || status === "ignored") return;
+      const dx = x - originX;
+      const dy = y - originY;
+
+      if (status === "detecting") {
+        if (Math.hypot(dx, dy) < CLAIM_PX) return;
+        if (dy > 0 && dy > Math.abs(dx) * VERTICAL_RATIO) {
+          status = "dragging";
+          originY = y; // 重设基线，避免认领瞬间的跳变
+          lastY = y;
+          lastT = t;
+          stopSnap(); // 停住可能在跑的弹回，把其当前值作为下面的 base（连续、无跳变）
+          const s = swiperRef.current;
+          if (s) s.allowTouchMove = false;
+          // 认领：中断入场则拿种子；否则以当前 MotionValue 为基准（弹回途中再抓的连续性）
+          seed = latestRef.current.onClaim?.() ?? null;
+          baseX = seed ? seed.x : contentX.get();
+          baseY = seed ? seed.y : contentY.get();
+          baseScale = seed ? seed.scale : contentScale.get();
+        } else {
+          status = "ignored"; // 横向/上滑/斜向 → 交回 swiper
+          return;
+        }
+      }
+
+      if (status === "dragging") {
+        e.preventDefault();
+        // 认领后独占本次交互：capture 阶段阻断向下传播，避免 WebGL 画布的 input-controller
+        // 把这次纵向拖拽当成图片平移抢走（高清图加载中引擎边界未定、平移未被 limitToBounds
+        // 夹住时尤为明显——正是“加载中无法退出”的根因）。
+        e.stopPropagation();
+        const dt = t - lastT;
+        if (dt > 0) velocity = (y - lastY) / dt;
+        lastY = y;
+        lastT = t;
+        applyDrag(Math.max(0, y - originY));
+      }
+    };
+
     const onTouchStart = (e: TouchEvent) => {
       if (!latestRef.current.enabled || e.touches.length !== 1) {
         if (status === "dragging") {
@@ -169,20 +232,12 @@ export function useDismissGesture({
         status = "ignored";
         return;
       }
-      stopSnap();
       const t = e.touches[0];
-      originX = t.clientX;
-      originY = t.clientY;
-      lastY = t.clientY;
-      lastT = e.timeStamp;
-      velocity = 0;
-      seed = null;
-      dragDy = 0;
-      status = "detecting";
+      begin(t.clientX, t.clientY, e.timeStamp);
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (status === "idle" || status === "ignored") return;
+      // 多指（pinch）出现则中止本次下滑，交回 WebGL 缩放
       if (e.touches.length !== 1) {
         if (status === "dragging") {
           snapBack();
@@ -192,65 +247,56 @@ export function useDismissGesture({
         return;
       }
       const t = e.touches[0];
-      const dx = t.clientX - originX;
-      const dy = t.clientY - originY;
-
-      if (status === "detecting") {
-        if (Math.hypot(dx, dy) < CLAIM_PX) return;
-        if (dy > 0 && dy > Math.abs(dx) * VERTICAL_RATIO) {
-          status = "dragging";
-          originY = t.clientY; // 重设基线，避免认领瞬间的跳变
-          lastY = t.clientY;
-          lastT = e.timeStamp;
-          const s = swiperRef.current;
-          if (s) s.allowTouchMove = false;
-          // 认领瞬间中断入场动画：记录入场 FLIP 当前矩形作为种子，wrapper 原地接管（零跳变）
-          seed = latestRef.current.onClaim?.() ?? null;
-        } else {
-          status = "ignored"; // 横向/上滑/斜向 → 交回 swiper
-          return;
-        }
-      }
-
-      if (status === "dragging") {
-        e.preventDefault();
-        // 认领后独占本次触摸：capture 阶段阻断向下传播，避免 WebGL 画布的
-        // input-controller 把这次纵向拖拽当成图片平移抢走（高清图加载中引擎边界
-        // 未定、平移未被 limitToBounds 夹住时尤为明显——正是“加载中无法退出”的根因）。
-        e.stopPropagation();
-        const dt = e.timeStamp - lastT;
-        if (dt > 0) velocity = (t.clientY - lastY) / dt;
-        lastY = t.clientY;
-        lastT = e.timeStamp;
-        applyDrag(Math.max(0, t.clientY - originY));
-      }
+      move(e, t.clientX, t.clientY, e.timeStamp);
     };
 
-    const onTouchEnd = () => {
+    const end = () => {
       if (status === "dragging") {
         const vh = window.innerHeight || 1;
         const distThreshold = Math.max(
           DIST_THRESHOLD_MIN,
           vh * DIST_THRESHOLD_RATIO,
         );
-        // 阈值判定用原始拖拽距离（不含入场种子偏移），才反映用户的下拉意图
+        // 阈值判定用本次原始拖拽距离（不含 base 偏移），才反映用户的下拉意图
         const shouldDismiss =
           dragDy > distThreshold ||
           (velocity > VELOCITY_THRESHOLD && dragDy > VELOCITY_MIN_TRAVEL);
         if (shouldDismiss) {
-          // 交给退出 FLIP 的是 wrapper 的实际变换（含入场种子偏移），飞回原格子亦无缝
+          // 交给退出 FLIP 的是 wrapper 的实际变换（含 base 偏移），飞回原格子亦无缝。
+          // velocity 由 px/ms 转 px/s（motion 弹簧初速度单位）。
           latestRef.current.onDismiss({
             x: contentX.get(),
             y: contentY.get(),
             scale: contentScale.get(),
-            velocity,
+            velocity: velocity * 1000,
           });
+          // 关闭路径不 restoreSwiper：查看器即将卸载；此刻启用 Swiper 会让随后的
+          // touchend/mouseup 触发误切图（Swiper 收过 down 未收 move，横向漂移被当成滑动）。
         } else {
           snapBack();
+          restoreSwiper();
         }
-        restoreSwiper();
       }
       status = "idle";
+    };
+
+    // —— 鼠标（桌面）：mousedown 认领后在 window 以 capture 跟踪，先于 WebGL 的
+    //    window mousemove 触发，stopPropagation 拦其平移；allowTouchMove 关掉拦 Swiper ——
+    const onWindowMouseMove = (e: MouseEvent) => {
+      move(e, e.clientX, e.clientY, e.timeStamp);
+    };
+    const onWindowMouseUp = () => {
+      end();
+      window.removeEventListener("mousemove", onWindowMouseMove, true);
+      window.removeEventListener("mouseup", onWindowMouseUp, true);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (!latestRef.current.enabled || e.button !== 0) return;
+      begin(e.clientX, e.clientY, e.timeStamp);
+      window.addEventListener("mousemove", onWindowMouseMove, {
+        capture: true,
+      });
+      window.addEventListener("mouseup", onWindowMouseUp, { capture: true });
     };
 
     el.addEventListener("touchstart", onTouchStart, {
@@ -261,15 +307,19 @@ export function useDismissGesture({
       passive: false,
       capture: true,
     });
-    el.addEventListener("touchend", onTouchEnd, { capture: true });
-    el.addEventListener("touchcancel", onTouchEnd, { capture: true });
+    el.addEventListener("touchend", end, { capture: true });
+    el.addEventListener("touchcancel", end, { capture: true });
+    el.addEventListener("mousedown", onMouseDown, { capture: true });
 
     return () => {
       stopSnap();
+      window.removeEventListener("mousemove", onWindowMouseMove, true);
+      window.removeEventListener("mouseup", onWindowMouseUp, true);
       el.removeEventListener("touchstart", onTouchStart, true);
       el.removeEventListener("touchmove", onTouchMove, true);
-      el.removeEventListener("touchend", onTouchEnd, true);
-      el.removeEventListener("touchcancel", onTouchEnd, true);
+      el.removeEventListener("touchend", end, true);
+      el.removeEventListener("touchcancel", end, true);
+      el.removeEventListener("mousedown", onMouseDown, true);
     };
   }, [
     targetRef,

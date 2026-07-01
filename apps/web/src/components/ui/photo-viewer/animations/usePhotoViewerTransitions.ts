@@ -347,7 +347,7 @@ export const usePhotoViewerTransitions = ({
       hideTriggerElement(triggerEl);
     }
 
-    // 若为下滑关闭，把居中帧按拖拽的 {scale, y} 变换成实际被拖到的矩形作为起点
+    // 若为下滑关闭，把居中帧按拖拽的 {scale, x, y} 变换成实际被拖到的矩形作为起点
     let fromRect = viewerFrame;
     if (dismiss) {
       const cx = viewerFrame.left + viewerFrame.width / 2;
@@ -381,8 +381,8 @@ export const usePhotoViewerTransitions = ({
         height: targetRect.height,
         borderRadius,
       },
-      // 下滑关闭：把释放速度（px/ms → px/s）交给退出 FLIP 的 y 弹簧，实现速度连续
-      velocityY: dismiss ? dismiss.velocity * 1000 : undefined,
+      // 下滑关闭：把释放速度（px/s）交给退出 FLIP 的 y 弹簧，实现速度连续
+      velocityY: dismiss ? dismiss.velocity : undefined,
     };
 
     setExitTransition({ ...transitionState, variant: "exit" });
