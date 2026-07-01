@@ -31,10 +31,9 @@ interface PhotoViewerMediaCarouselProps {
   loadingIndicatorRef: RefObject<LoadingIndicatorRef | null>;
   /** 手势目标（媒体区根元素），下滑关闭在此以 capture 监听接管纵向拖拽 */
   ref?: RefObject<HTMLDivElement | null>;
-  /** 下滑关闭跟手：图片包裹层的位移/缩放/圆角（未拖拽时为恒等） */
+  /** 下滑关闭跟手：图片包裹层的位移/缩放（未拖拽时为恒等） */
   contentY: MotionValue<number>;
   contentScale: MotionValue<number>;
-  contentRadius: MotionValue<number>;
   onSwiperReady: (swiper: SwiperType) => void;
   onSlideChange: (swiper: SwiperType) => void;
   onPrevious: () => void;
@@ -58,7 +57,6 @@ export const PhotoViewerMediaCarousel = ({
   ref,
   contentY,
   contentScale,
-  contentRadius,
   onSwiperReady,
   onSlideChange,
   onPrevious,
@@ -81,8 +79,10 @@ export const PhotoViewerMediaCarousel = ({
         style={{
           y: contentY,
           scale: contentScale,
-          borderRadius: contentRadius,
           overflow: "hidden",
+          // 提升为独立合成层：拖拽时的位移/缩放变为纯 GPU 合成、无逐帧重栅格，
+          // 且避免拖拽开始瞬间才提升图层造成的首帧卡顿——顺滑跟手的关键。
+          willChange: "transform",
         }}
       >
         <Swiper

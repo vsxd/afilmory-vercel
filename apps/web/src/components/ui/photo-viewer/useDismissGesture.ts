@@ -16,8 +16,6 @@ const VELOCITY_THRESHOLD = 0.5; // px/ms，下行甩动
 const VELOCITY_MIN_TRAVEL = 40; // 甩动关闭的最小位移保护
 const CHROME_FADE_RATIO = 0.12; // 顶栏/缩略图条 ~12% 屏高即淡尽
 const REVEAL_FADE_RATIO = 0.6; // 背景（露出瀑布流）淡出更缓
-const RADIUS_MAX = 24;
-const RADIUS_RAMP = 0.3;
 
 export interface DismissTransform {
   /** 相对居中帧的水平偏移（本手势只走竖直，恒为 0，保留以便 FLIP 种子通用） */
@@ -33,7 +31,6 @@ export interface DismissTransform {
 export interface DismissGestureValues {
   contentY: MotionValue<number>;
   contentScale: MotionValue<number>;
-  contentRadius: MotionValue<number>;
   /** 顶栏 + 底部缩略图条透明度 */
   chromeOpacity: MotionValue<number>;
   /** backdrop + thumbhash 背景透明度（1=查看器完全遮挡，0=完全露出瀑布流） */
@@ -65,7 +62,6 @@ export function useDismissGesture({
 
   const contentY = useMotionValue(0);
   const contentScale = useMotionValue(1);
-  const contentRadius = useMotionValue(0);
   const chromeOpacity = useMotionValue(1);
   const revealOpacity = useMotionValue(1);
 
@@ -78,17 +74,9 @@ export function useDismissGesture({
     if (!enabled) return;
     contentY.set(0);
     contentScale.set(1);
-    contentRadius.set(0);
     chromeOpacity.set(1);
     revealOpacity.set(1);
-  }, [
-    enabled,
-    contentY,
-    contentScale,
-    contentRadius,
-    chromeOpacity,
-    revealOpacity,
-  ]);
+  }, [enabled, contentY, contentScale, chromeOpacity, revealOpacity]);
 
   useEffect(() => {
     const el = targetRef.current;
@@ -114,7 +102,6 @@ export function useDismissGesture({
       contentY.set(dy);
       if (!reduceMotion) {
         contentScale.set(Math.max(MIN_SCALE, 1 - SCALE_FACTOR * p));
-        contentRadius.set(Math.min(1, p / RADIUS_RAMP) * RADIUS_MAX);
       }
       chromeOpacity.set(
         Math.min(Math.max(1 - dy / (vh * CHROME_FADE_RATIO), 0), 1),
@@ -134,7 +121,6 @@ export function useDismissGesture({
       snapControls = [
         animate(contentY, 0, transformT),
         animate(contentScale, 1, transformT),
-        animate(contentRadius, 0, transformT),
         animate(chromeOpacity, 1, opacityT),
         animate(revealOpacity, 1, opacityT),
       ];
@@ -254,7 +240,6 @@ export function useDismissGesture({
     reduceMotion,
     contentY,
     contentScale,
-    contentRadius,
     chromeOpacity,
     revealOpacity,
   ]);
@@ -262,7 +247,6 @@ export function useDismissGesture({
   return {
     contentY,
     contentScale,
-    contentRadius,
     chromeOpacity,
     revealOpacity,
   };

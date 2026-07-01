@@ -97,19 +97,14 @@ export const PhotoViewer = ({
     !showExifPanel &&
     !isImageZoomed;
 
-  const {
-    contentY,
-    contentScale,
-    contentRadius,
-    chromeOpacity,
-    revealOpacity,
-  } = useDismissGesture({
-    enabled: dismissEnabled,
-    targetRef: mediaRef,
-    swiperRef,
-    isImageZoomed,
-    onDismiss: handleDismiss,
-  });
+  const { contentY, contentScale, chromeOpacity, revealOpacity } =
+    useDismissGesture({
+      enabled: dismissEnabled,
+      targetRef: mediaRef,
+      swiperRef,
+      isImageZoomed,
+      onDismiss: handleDismiss,
+    });
 
   const { handlePrevious, handleNext, canGoPrevious, canGoNext } =
     usePhotoNavigation({
@@ -268,7 +263,6 @@ export const PhotoViewer = ({
                   loadingIndicatorRef={loadingIndicatorRef}
                   contentY={contentY}
                   contentScale={contentScale}
-                  contentRadius={contentRadius}
                   onSwiperReady={handleSwiperReady}
                   onSlideChange={handleSlideChange}
                   onPrevious={handlePrevious}
