@@ -181,6 +181,10 @@ export function useDismissGesture({
 
       if (status === "dragging") {
         e.preventDefault();
+        // 认领后独占本次触摸：capture 阶段阻断向下传播，避免 WebGL 画布的
+        // input-controller 把这次纵向拖拽当成图片平移抢走（高清图加载中引擎边界
+        // 未定、平移未被 limitToBounds 夹住时尤为明显——正是“加载中无法退出”的根因）。
+        e.stopPropagation();
         const dt = e.timeStamp - lastT;
         if (dt > 0) velocity = (t.clientY - lastY) / dt;
         lastY = t.clientY;
