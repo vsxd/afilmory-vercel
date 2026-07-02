@@ -370,6 +370,58 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(engine.getScale()).toBeCloseTo(1);
   });
 
+  it("snaps a micro pinch-zoom back to the fitted scale on release", () => {
+    let now = 0;
+    let pendingFrame: FrameRequestCallback | undefined;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      pendingFrame = callback;
+      return 42;
+    });
+    const runPendingFrame = (timestamp: number) => {
+      const frame = pendingFrame;
+      expect(frame).toBeDefined();
+      if (!frame) {
+        throw new Error("Expected a pending animation frame");
+      }
+      pendingFrame = undefined;
+      now = timestamp;
+      frame(timestamp);
+    };
+
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+
+    const engine = createEngine(canvas);
+    void engine.loadImage("blob:photo", 1000, 1000);
+    expect(engine.getScale()).toBeCloseTo(0.1); // 贴合比例
+
+    // 双指捏合放大 5%（距离 20 → 21）：留下微小缩放残留
+    firePointer(canvas, "pointerdown", 40, 50, 1);
+    firePointer(canvas, "pointerdown", 60, 50, 2);
+    firePointer(canvas, "pointermove", 61, 50, 2);
+    expect(engine.getScale()).toBeCloseTo(0.105);
+
+    // 全部松手 → 回吸动画把残留吸回精确贴合（否则上层「已缩放」判定恒真，
+    // 下滑关闭手势永久失效）
+    firePointer(canvas, "pointerup", 40, 50, 1);
+    firePointer(canvas, "pointerup", 61, 50, 2);
+    runPendingFrame(400);
+    expect(engine.getScale()).toBeCloseTo(0.1);
+  });
+
   it("releases the WebGL context on destroy (WEBGL_lose_context)", () => {
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
@@ -432,6 +484,7 @@ describe("WebGLInputController pointer arbitration", () => {
       panBy: vi.fn(),
       zoomAt: vi.fn(),
       performDoubleClickAction: vi.fn(),
+      onPinchEnd: vi.fn(),
     };
   }
 
@@ -478,5 +531,26 @@ describe("WebGLInputController pointer arbitration", () => {
     firePointer(canvas, "pointermove", 260, 100, 2); // 距离 100 → 160
     expect(host.zoomAt).toHaveBeenCalled();
     expect(host.panBy).not.toHaveBeenCalled();
+  });
+
+  it("notifies onPinchEnd once when all fingers of a pinch gesture lift", () => {
+    const host = createHost();
+    const { canvas } = createController(host);
+    firePointer(canvas, "pointerdown", 100, 100, 1);
+    firePointer(canvas, "pointerdown", 200, 100, 2);
+    firePointer(canvas, "pointermove", 220, 100, 2);
+    firePointer(canvas, "pointerup", 100, 100, 1); // 还剩一指，不触发
+    expect(host.onPinchEnd).not.toHaveBeenCalled();
+    firePointer(canvas, "pointerup", 220, 100, 2); // 全部抬起 → 触发一次
+    expect(host.onPinchEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not notify onPinchEnd for a plain single-pointer pan", () => {
+    const host = createHost();
+    const { canvas } = createController(host);
+    firePointer(canvas, "pointerdown", 100, 100);
+    firePointer(canvas, "pointermove", 130, 150);
+    firePointer(canvas, "pointerup", 130, 150);
+    expect(host.onPinchEnd).not.toHaveBeenCalled();
   });
 });

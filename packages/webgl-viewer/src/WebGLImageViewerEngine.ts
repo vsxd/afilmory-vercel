@@ -903,6 +903,26 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.startAnimation(targetScale, 0, 0);
   }
 
+  // 松手回吸的判定上限：相对贴合 ≤10% 的缩放视为无意残留。
+  private static readonly SNAP_BACK_MAX_RELATIVE_SCALE = 1.1;
+
+  /**
+   * 捏合松手后的「回吸」（iOS 相册同款）：微小缩放残留（如 1.03×）视觉上与贴合
+   * 无异，却让上层「已缩放」判定恒真——下滑关闭手势随之永久失效。松手时若缩放
+   * 接近贴合，动画回正到精确贴合比例；动画每帧会 notifyZoomChange，上层状态自愈。
+   */
+  private snapBackFromMicroZoom() {
+    const restScale = this.getFitToScreenScale() * this.config.initialScale;
+    if (!(restScale > 0)) return;
+    const relative = this.scale / restScale;
+    if (
+      relative < WebGLImageViewerEngine.SNAP_BACK_MAX_RELATIVE_SCALE &&
+      Math.abs(relative - 1) > 1e-3
+    ) {
+      this.resetView();
+    }
+  }
+
   public getScale(): number {
     return this.scale;
   }
@@ -1039,6 +1059,7 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
       zoomAt: (x, y, scaleFactor, animated) =>
         this.zoomAt(x, y, scaleFactor, animated),
       performDoubleClickAction: (x, y) => this.performDoubleClickAction(x, y),
+      onPinchEnd: () => this.snapBackFromMicroZoom(),
     });
     this.inputController.connect();
   }

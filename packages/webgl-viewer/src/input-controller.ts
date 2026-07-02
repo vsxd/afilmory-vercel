@@ -11,6 +11,8 @@ export interface WebGLInputControllerHost {
     animated?: boolean,
   ) => void;
   performDoubleClickAction: (x: number, y: number) => void;
+  /** 一次含捏合的手势全部手指抬起时触发（宿主可借此做微小缩放的回吸贴合） */
+  onPinchEnd?: () => void;
 }
 
 /**
@@ -30,6 +32,9 @@ export class WebGLInputController {
   // 活跃指针位置（clientX/clientY）。size===1 → 平移；size>=2 → 缩放。
   private readonly pointers = new Map<number, { x: number; y: number }>();
   private lastPinchDistance = 0;
+  // 本次手势（从第一指按下到全部抬起）是否发生过捏合：全部抬起时通知宿主，
+  // 供其对微小缩放残留做回吸贴合。
+  private gestureHadPinch = false;
   // 由指针 tap 合成双击：记录上一次单指 tap 的时间/位置。
   private lastTapTime = 0;
   private lastTapX = 0;
@@ -116,6 +121,7 @@ export class WebGLInputController {
     if (this.pointers.size === 2 && !this.config.pinch.disabled) {
       const [a, b] = [...this.pointers.values()];
       this.lastPinchDistance = pointerDistance(a, b);
+      this.gestureHadPinch = true;
     }
 
     // 杀掉图片拖影/文本选择等默认行为（旧触摸路径即如此）。
@@ -194,6 +200,7 @@ export class WebGLInputController {
     if (this.pointers.size < 2) {
       this.lastPinchDistance = 0;
     }
+    this.notifyPinchEndIfGestureFinished();
   }
 
   // pointercancel 与 lostpointercapture 共用：移除该指针、清缩放基线，但不判双击
@@ -203,6 +210,13 @@ export class WebGLInputController {
     if (this.pointers.size < 2) {
       this.lastPinchDistance = 0;
     }
+    this.notifyPinchEndIfGestureFinished();
+  }
+
+  private notifyPinchEndIfGestureFinished(): void {
+    if (this.pointers.size > 0 || !this.gestureHadPinch) return;
+    this.gestureHadPinch = false;
+    this.host.onPinchEnd?.();
   }
 
   private handleWheel(event: WheelEvent): void {

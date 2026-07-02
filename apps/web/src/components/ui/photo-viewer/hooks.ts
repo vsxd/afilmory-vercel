@@ -231,7 +231,10 @@ export const useScaleIndicator = (
   // WebGL Image Viewer 的缩放变化处理
   const onTransformed = useCallback(
     (originalScale: number, relativeScale: number) => {
-      const isZoomed = Math.abs(relativeScale - 1) > 0.01;
+      // 2% 容差：isZoomed 会关掉下滑关闭手势与 Swiper 横滑，误判为“已缩放”的
+      // 代价远大于漏判。引擎侧已有捏合松手回吸（≤10% 残留动画回贴合）与越界
+      // 钳制兜底，这里的容差只为动画落点的浮点余量。
+      const isZoomed = Math.abs(relativeScale - 1) > 0.02;
       handleScaleChange(originalScale, isZoomed);
     },
     [handleScaleChange],

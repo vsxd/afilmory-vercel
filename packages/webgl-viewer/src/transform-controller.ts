@@ -117,15 +117,23 @@ export function zoomAtTransform(
   point: { x: number; y: number },
   scaleFactor: number,
 ): TransformState | null {
-  const newScale = transform.scale * scaleFactor;
+  const requestedScale = transform.scale * scaleFactor;
   const fitToScreenScale = getFitToScreenScale(geometry);
   const absoluteMinScale = fitToScreenScale * bounds.minScale;
   const originalSizeScale = 1;
   const userMaxScale = fitToScreenScale * bounds.maxScale;
   const effectiveMaxScale = Math.max(userMaxScale, originalSizeScale);
 
-  if (newScale < absoluteMinScale || newScale > effectiveMaxScale) {
-    return null;
+  // 越界不作废、而是钳制到边界：作废会让边界附近的整步缩放完全无响应——
+  // 例如滚轮从 1.2× 再缩小一步（×0.8）跌破下限，操作被吞掉，用户卡在放大态
+  // 回不到贴合，上层「已缩放」判定恒真、下滑关闭手势随之失效。钳制则让
+  // 缩到底精确落在贴合比例上。
+  const newScale = Math.max(
+    absoluteMinScale,
+    Math.min(effectiveMaxScale, requestedScale),
+  );
+  if (newScale === transform.scale) {
+    return null; // 已在边界上，无变化
   }
 
   const zoomX =

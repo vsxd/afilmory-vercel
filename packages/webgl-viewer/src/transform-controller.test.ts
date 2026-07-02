@@ -72,6 +72,8 @@ describe("transform-controller", () => {
       translateX: -250,
       translateY: 0,
     });
+    // 越界缩放钳制到边界（absoluteMin = fit 0.25 × minScale 0.5 = 0.125），
+    // 而非整体作废——作废会让边界附近的缩小操作无响应，用户卡在放大态。
     expect(
       zoomAtTransform(
         { scale: 0.25, translateX: 0, translateY: 0 },
@@ -79,6 +81,16 @@ describe("transform-controller", () => {
         bounds,
         { x: 500, y: 250 },
         0.1,
+      ),
+    ).toMatchObject({ scale: 0.125 });
+    // 已在边界上再往外缩 → 无变化，返回 null。
+    expect(
+      zoomAtTransform(
+        { scale: 0.125, translateX: 0, translateY: 0 },
+        geometry,
+        bounds,
+        { x: 500, y: 250 },
+        0.5,
       ),
     ).toBeNull();
   });
