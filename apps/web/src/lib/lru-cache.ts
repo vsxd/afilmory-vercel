@@ -9,18 +9,53 @@ import { useEffect, useRef } from "react";
 
 import { debugLog } from "./debug-log";
 
+export interface LRUCacheByteBudget<V> {
+  /** 总字节预算：超出时从最久未用开始逐出（至少保留最新一条） */
+  maxBytes: number;
+  /** 取单个条目的字节数（如 blob.size） */
+  sizeOf: (value: V) => number;
+}
+
 export class LRUCache<K, V> {
   private maxSize: number;
   private cache: Map<K, V>;
   private cleanupFn?: (value: V, key: K, reason: string) => void;
+  // 可选字节预算：条目数上限适合同质小对象；缓存 blob 等大小悬殊的对象时，
+  // 条目数无法约束真实内存占用（50 × 5MB 原图 ≈ 250MB），需按字节逐出。
+  private byteBudget?: LRUCacheByteBudget<V>;
+  private totalBytes = 0;
 
   constructor(
     maxSize = 10,
     cleanupFn?: (value: V, key: K, reason: string) => void,
+    byteBudget?: LRUCacheByteBudget<V>,
   ) {
     this.maxSize = maxSize;
     this.cache = new Map();
     this.cleanupFn = cleanupFn;
+    this.byteBudget = byteBudget;
+  }
+
+  private bytesOf(value: V): number {
+    if (!this.byteBudget) return 0;
+    const bytes = this.byteBudget.sizeOf(value);
+    return Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+  }
+
+  private evictUntilWithinByteBudget(): void {
+    if (!this.byteBudget) return;
+    while (this.totalBytes > this.byteBudget.maxBytes && this.cache.size > 1) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey === undefined) break;
+      const firstValue = this.cache.get(firstKey)!;
+      this._cleanup(
+        firstValue,
+        firstKey,
+        `Byte-budget eviction: ${String(firstKey)}`,
+      );
+      this.totalBytes -= this.bytesOf(firstValue);
+      this.cache.delete(firstKey);
+    }
   }
 
   get(key: K): V | undefined {
@@ -43,6 +78,7 @@ export class LRUCache<K, V> {
         key,
         `Replacing existing cache entry for ${String(key)}`,
       );
+      this.totalBytes -= this.bytesOf(oldValue);
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {
       // Remove least recently used (first item)
@@ -54,12 +90,15 @@ export class LRUCache<K, V> {
           firstKey,
           `LRU eviction: ${String(firstKey)}`,
         );
+        this.totalBytes -= this.bytesOf(firstValue);
         this.cache.delete(firstKey);
       }
     }
 
     // Add new item (most recently used)
     this.cache.set(key, value);
+    this.totalBytes += this.bytesOf(value);
+    this.evictUntilWithinByteBudget();
 
     debugLog(
       `LRU Cache: Added ${String(key)}, cache size: ${this.cache.size}/${this.maxSize}`,
@@ -73,6 +112,7 @@ export class LRUCache<K, V> {
     const value = this.cache.get(key);
     if (value !== undefined) {
       this._cleanup(value, key, `Manual deletion: ${String(key)}`);
+      this.totalBytes -= this.bytesOf(value);
       return this.cache.delete(key);
     }
     return false;
@@ -90,6 +130,7 @@ export class LRUCache<K, V> {
       cleanedCount++;
     }
     this.cache.clear();
+    this.totalBytes = 0;
     debugLog(`LRU Cache: Cleared ${cleanedCount} cached items`);
   }
 

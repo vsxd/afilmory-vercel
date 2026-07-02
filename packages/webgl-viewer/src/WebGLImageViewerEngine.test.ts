@@ -53,8 +53,15 @@ class WorkerMock {
   }
 }
 
-function createWebGLMock(): WebGLRenderingContext {
+function createWebGLMock(): WebGLRenderingContext & {
+  __loseContext: ReturnType<typeof vi.fn>;
+} {
+  const loseContext = vi.fn();
   return Object.assign(Object.create(null), {
+    __loseContext: loseContext,
+    getExtension: vi.fn((name: string) =>
+      name === "WEBGL_lose_context" ? { loseContext } : null,
+    ),
     ARRAY_BUFFER: 0x8892,
     BLEND: 0x0be2,
     CLAMP_TO_EDGE: 0x812f,
@@ -361,6 +368,31 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
     runPendingFrame(200);
     expect(engine.getScale()).toBeCloseTo(1);
+  });
+
+  it("releases the WebGL context on destroy (WEBGL_lose_context)", () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+
+    const engine = createEngine(canvas);
+    engine.destroy();
+
+    // 只删纹理/缓冲不够：不 loseContext 的话，每次查看器开关都遗留一个
+    // 满载绘制缓冲的上下文，iOS Safari 累积数次即触发整页强制重载。
+    expect(gl.getExtension).toHaveBeenCalledWith("WEBGL_lose_context");
+    expect(gl.__loseContext).toHaveBeenCalledTimes(1);
   });
 
   it("sends the decoded image blob to the texture worker when available", () => {

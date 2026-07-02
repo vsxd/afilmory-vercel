@@ -127,7 +127,9 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     const gl = canvas.getContext("webgl", {
       alpha: true,
       premultipliedAlpha: false,
-      antialias: true,
+      // 关闭 MSAA：渲染内容是贴满视口的纹理四边形，多重采样只作用于图元边缘、
+      // 对照片像素毫无收益，却让全屏抗锯齿后备缓冲的 GPU 内存翻倍（iOS 上尤其致命）。
+      antialias: false,
       powerPreference: "default",
     });
     if (!gl) {
@@ -959,6 +961,12 @@ export class WebGLImageViewerEngine extends ImageViewerEngineBase {
     this.workerBridge?.dispose();
     this.workerBridge = null;
     this.tileRequestRuntime.clear();
+
+    // 最后显式释放 WebGL 上下文本身。删除纹理/缓冲只回收了 GL 对象，上下文的
+    // 绘制缓冲与驱动侧内存要等 JS GC 才释放——iOS WebKit 的 GC 在内存压力下才跑、
+    // 且对同页存活上下文数量有硬上限：查看器每次开关都新建引擎，不 loseContext 会
+    // 逐次累积 GPU 内存，最终触发 Safari 强制整页重载（jetsam）。
+    this.gl.getExtension("WEBGL_lose_context")?.loseContext();
   }
 
   private updateDebugInfo() {

@@ -178,6 +178,72 @@ describe("LRUCache", () => {
   });
 });
 
+describe("LRUCache byte budget", () => {
+  interface Entry {
+    name: string;
+    bytes: number;
+  }
+
+  const byteBudget = (maxBytes: number) => ({
+    maxBytes,
+    sizeOf: (v: Entry) => v.bytes,
+  });
+
+  it("evicts least-recently-used entries until under the byte budget", () => {
+    const cleanup = vi.fn();
+    const cache = new LRUCache<string, Entry>(50, cleanup, byteBudget(10));
+
+    cache.set("a", { name: "a", bytes: 4 });
+    cache.set("b", { name: "b", bytes: 4 });
+    cache.set("c", { name: "c", bytes: 4 }); // 12 > 10 → 逐出 a
+
+    expect(cache.has("a")).toBe(false);
+    expect(cache.has("b")).toBe(true);
+    expect(cache.has("c")).toBe(true);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(cleanup.mock.calls[0][1]).toBe("a");
+  });
+
+  it("keeps at least the newest entry even when it alone exceeds the budget", () => {
+    const cache = new LRUCache<string, Entry>(50, undefined, byteBudget(10));
+    cache.set("huge", { name: "huge", bytes: 100 });
+    expect(cache.has("huge")).toBe(true);
+    expect(cache.size()).toBe(1);
+  });
+
+  it("accounts bytes on replace and delete", () => {
+    const cache = new LRUCache<string, Entry>(50, undefined, byteBudget(10));
+    cache.set("a", { name: "a", bytes: 8 });
+    cache.set("a", { name: "a2", bytes: 2 }); // 替换：8 → 2
+    cache.set("b", { name: "b", bytes: 8 }); // 2+8=10，恰好不逐出
+    expect(cache.has("a")).toBe(true);
+    expect(cache.has("b")).toBe(true);
+
+    cache.delete("a");
+    cache.set("c", { name: "c", bytes: 2 }); // 8+2=10，仍不逐出
+    expect(cache.has("b")).toBe(true);
+    expect(cache.has("c")).toBe(true);
+  });
+
+  it("recently-used entries survive byte eviction (LRU order respected)", () => {
+    const cache = new LRUCache<string, Entry>(50, undefined, byteBudget(10));
+    cache.set("a", { name: "a", bytes: 4 });
+    cache.set("b", { name: "b", bytes: 4 });
+    cache.get("a"); // a 变为最新
+    cache.set("c", { name: "c", bytes: 4 }); // 超预算 → 逐出 b（最久未用）
+    expect(cache.has("a")).toBe(true);
+    expect(cache.has("b")).toBe(false);
+    expect(cache.has("c")).toBe(true);
+  });
+
+  it("does not evict by bytes when no budget is configured (back-compat)", () => {
+    const cache = new LRUCache<string, Entry>(3);
+    cache.set("a", { name: "a", bytes: 1e9 });
+    cache.set("b", { name: "b", bytes: 1e9 });
+    expect(cache.size()).toBe(2);
+  });
+});
+
 describe("createBlobUrlCache", () => {
   let counter = 0;
 
