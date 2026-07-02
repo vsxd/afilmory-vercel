@@ -33,7 +33,7 @@ import {
 } from "~/lib/thumbnail-load-cache";
 import type { PhotoManifest } from "~/types/photo";
 
-import { resolveAspectRatio } from "./gallery-layout";
+import { computeMasonryItemHeight } from "./gallery-layout";
 
 export const MasonryPhotoItem = memo(
   ({
@@ -138,8 +138,9 @@ export const MasonryPhotoItem = memo(
       [handleClick],
     );
 
-    // 计算基于宽度的高度（守卫 aspectRatio 为 0/NaN/缺失的情况，避免 Infinity/NaN 高度破坏虚拟列表）
-    const calculatedHeight = width / resolveAspectRatio(data);
+    // 与虚拟布局同一个整数高度函数（守卫 aspectRatio 异常 + 整数几何，见 gallery-layout.ts），
+    // 保证格子壳与照片内容逐像素一致、无小数 y 坐标（iOS 分块光栅化 hairline 的根源）。
+    const calculatedHeight = computeMasonryItemHeight(width, data);
 
     // 格式化 EXIF 数据
     const formatExifData = () => {

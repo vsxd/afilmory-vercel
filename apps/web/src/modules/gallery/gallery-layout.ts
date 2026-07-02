@@ -26,6 +26,22 @@ export function resolveAspectRatio(photo: {
   return Number.isFinite(raw) && raw > 0 ? raw : 1;
 }
 
+/**
+ * 照片格的整数高度。布局（Masonic 的 itemHeight）与格子自身（MasonryPhotoItem 的
+ * inline height）必须走同一个函数，保证两者零漂移。
+ *
+ * 取整的原因：喂给 DOM 的几何必须全是整数 CSS px。非整数高度会让长滚动层内所有
+ * cell 的 y 坐标带小数，iOS WebKit 的分块光栅化（tiling）对此会在固定内容位置留下
+ * 1 设备像素的未上漆横缝——表现为「滚动到某处出现一条横跨整屏的细黑线」（透出深色
+ * 页面背景）。被替换的 masonic 因用 offsetHeight（整数）测量而天然无此问题。
+ */
+export function computeMasonryItemHeight(
+  columnWidth: number,
+  photo: { aspectRatio?: number; width?: number; height?: number },
+): number {
+  return Math.max(1, Math.round(columnWidth / resolveAspectRatio(photo)));
+}
+
 const COLUMN_WIDTH_CONFIG = {
   auto: {
     mobile: 150,
@@ -223,22 +239,26 @@ export function computeMasonryLayout<Item>({
   getItemHeight: (item: Item, index: number) => number;
 }): MasonryGridLayout {
   const safeColumnCount = Math.max(1, columnCount);
+  // 几何全整数（见 computeMasonryItemHeight 注释）：列宽/高度/坐标一律取整，
+  // 消除长滚动层里的小数 y 坐标（iOS WebKit 分块光栅化的 hairline 缝根源）。
+  const cellWidth = Math.max(1, Math.round(columnWidth));
   const columnHeights = Array.from({ length: safeColumnCount }, () => 0);
   const cells: MasonryCellLayout[] = items.map((item, index) => {
     const rawHeight = getItemHeight(item, index);
-    const height = Number.isFinite(rawHeight) && rawHeight > 0 ? rawHeight : 1;
+    const height =
+      Number.isFinite(rawHeight) && rawHeight > 0 ? Math.round(rawHeight) : 1;
     const column = getShortestColumnIndex(columnHeights);
-    const left = column * (columnWidth + columnGutter);
+    const left = Math.round(column * (columnWidth + columnGutter));
     const top = columnHeights[column] ?? 0;
     columnHeights[column] = top + height + rowGutter;
-    return { index, column, left, top, width: columnWidth, height };
+    return { index, column, left, top, width: cellWidth, height };
   });
   const maxColumnHeight = columnHeights.reduce(
     (max, height) => Math.max(max, height),
     0,
   );
   // 末尾多加了一个 rowGutter，减回去得到真实内容高度。
-  const totalHeight = Math.max(0, maxColumnHeight - rowGutter);
+  const totalHeight = Math.max(0, Math.ceil(maxColumnHeight - rowGutter));
   return { cells, totalHeight, columnCount: safeColumnCount };
 }
 
@@ -307,10 +327,10 @@ export function estimatePhotoVirtualRect({
       return null;
     }
 
-    const aspectRatio = resolveAspectRatio(photo);
-    const height = columnWidth / aspectRatio;
+    // 与 computeMasonryLayout 同一套整数几何，估算矩形才能与真实布局逐像素一致。
+    const height = computeMasonryItemHeight(columnWidth, photo);
     const column = getShortestColumnIndex(columnHeights);
-    const left = column * (columnWidth + columnGutter);
+    const left = Math.round(column * (columnWidth + columnGutter));
     const top = columnHeights[column] ?? 0;
 
     if (index === photoIndex) {

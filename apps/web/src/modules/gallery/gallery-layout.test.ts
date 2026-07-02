@@ -4,6 +4,7 @@ import type { PhotoManifest } from "~/types/photo";
 
 import {
   calculateGalleryColumnWidth,
+  computeMasonryItemHeight,
   computeMasonryLayout,
   createMasonryItems,
   estimatePhotoVirtualRect,
@@ -205,6 +206,44 @@ describe("computeMasonryLayout", () => {
       getItemHeight: (item) => item.h,
     });
     expect(cells[0]!.height).toBeGreaterThan(0);
+  });
+
+  it("quantizes fractional widths/heights/positions to integer pixels", () => {
+    // 分数列宽（如 393pt 手机上的 190.5）与分数高度必须整数化：非整数几何会让
+    // iOS WebKit 分块光栅化在固定内容位置留下 1 设备像素的横向 hairline。
+    const { cells, totalHeight } = computeMasonryLayout({
+      items: [{ h: 283.5 }, { h: 126.4 }, { h: 141.75 }],
+      columnCount: 2,
+      columnWidth: 190.5,
+      columnGutter: 4,
+      rowGutter: 4,
+      getItemHeight: (item) => item.h,
+    });
+    for (const cell of cells) {
+      expect(Number.isInteger(cell.left)).toBe(true);
+      expect(Number.isInteger(cell.top)).toBe(true);
+      expect(Number.isInteger(cell.width)).toBe(true);
+      expect(Number.isInteger(cell.height)).toBe(true);
+    }
+    expect(Number.isInteger(totalHeight)).toBe(true);
+  });
+});
+
+describe("computeMasonryItemHeight", () => {
+  it("returns the rounded height shared by layout and item rendering", () => {
+    expect(computeMasonryItemHeight(189, { aspectRatio: 1.5 })).toBe(126);
+    expect(computeMasonryItemHeight(190.5, { aspectRatio: 1.5 })).toBe(127);
+    expect(
+      Number.isInteger(computeMasonryItemHeight(190.5, { aspectRatio: 1.337 })),
+    ).toBe(true);
+  });
+
+  it("guards invalid aspect ratios like resolveAspectRatio does", () => {
+    expect(computeMasonryItemHeight(200, { aspectRatio: Number.NaN })).toBe(
+      200,
+    );
+    expect(computeMasonryItemHeight(200, {})).toBe(200);
+    expect(computeMasonryItemHeight(0.4, { aspectRatio: 1 })).toBe(1); // 最小 1px
   });
 });
 

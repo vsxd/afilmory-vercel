@@ -147,17 +147,21 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
     columnGutter,
     fallbackColumnWidth: columnWidth,
   });
+  // 喂给 itemHeight / metrics 的列宽取整，与 computeMasonryLayout 内部的 cell 宽
+  // 取整保持同源 —— 否则 render 拿到的 width 与算高度用的 width 差出小数，壳与
+  // 内容可能相差 1px（整数几何的意义见 gallery-layout.ts computeMasonryItemHeight）。
+  const renderColumnWidth = Math.max(1, Math.round(effectiveColumnWidth));
 
   const getHeight = React.useCallback(
     (item: Item, index: number): number => {
       const measured = measuredHeights.get(index);
       if (measured && measured > 0) return measured;
-      const computed = itemHeight?.(item, effectiveColumnWidth, index);
+      const computed = itemHeight?.(item, renderColumnWidth, index);
       if (computed && Number.isFinite(computed) && computed > 0)
         return computed;
       return itemHeightEstimate;
     },
-    [effectiveColumnWidth, itemHeight, itemHeightEstimate, measuredHeights],
+    [renderColumnWidth, itemHeight, itemHeightEstimate, measuredHeights],
   );
 
   const layout = React.useMemo(
@@ -196,15 +200,27 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
     onRender?.(startIndex, stopIndex, items);
   }, [onRender, startIndex, stopIndex, items]);
 
+  // 稳定的 measure 回调：身份跨滚动帧不变，MasonryCell 的 effect 才不会在每次
+  // setScrollTop 重渲染时重挂 ResizeObserver + 重读 offsetHeight（强制重排——
+  // 正是本组件为消除 masonic 强制重排而存在，热路径上不能再引入）。
+  const handleMeasure = React.useCallback((index: number, height: number) => {
+    setMeasuredHeights((prev) => {
+      if (prev.get(index) === height) return prev;
+      const next = new Map(prev);
+      next.set(index, height);
+      return next;
+    });
+  }, []);
+
   // 哪些 index 的高度未知、需要 measure（itemHeight 返回非正值）。
   const measureIndices = React.useMemo(() => {
     const set = new Set<number>();
     items.forEach((item, index) => {
-      const height = itemHeight?.(item, effectiveColumnWidth, index);
+      const height = itemHeight?.(item, renderColumnWidth, index);
       if (!height || !Number.isFinite(height) || height <= 0) set.add(index);
     });
     return set;
-  }, [items, itemHeight, effectiveColumnWidth]);
+  }, [items, itemHeight, renderColumnWidth]);
 
   React.useImperativeHandle(
     ref,
@@ -215,7 +231,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
         return {
           columnCount: layout.columnCount,
           columnGutter,
-          columnWidth: effectiveColumnWidth,
+          columnWidth: renderColumnWidth,
           containerRect: container.getBoundingClientRect(),
           rowGutter,
         };
@@ -237,7 +253,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
         setMeasuredHeights((prev) => new Map(prev));
       },
     }),
-    [columnGutter, effectiveColumnWidth, layout, rowGutter],
+    [columnGutter, renderColumnWidth, layout, rowGutter],
   );
 
   return (
@@ -263,14 +279,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
             key={key}
             cell={cell}
             needsMeasure={needsMeasure}
-            onMeasure={(height) =>
-              setMeasuredHeights((prev) => {
-                if (prev.get(cell.index) === height) return prev;
-                const next = new Map(prev);
-                next.set(cell.index, height);
-                return next;
-              })
-            }
+            onMeasure={handleMeasure}
           >
             {render({ index: cell.index, data, width: cell.width })}
           </MasonryCell>
@@ -283,7 +292,7 @@ export const Masonry = <Item,>(props: MasonryProps<Item>) => {
 interface MasonryCellProps {
   cell: MasonryCellLayout;
   needsMeasure: boolean;
-  onMeasure: (height: number) => void;
+  onMeasure: (index: number, height: number) => void;
   children: React.ReactNode;
 }
 
@@ -294,17 +303,18 @@ const MasonryCell = ({
   children,
 }: MasonryCellProps) => {
   const ref = React.useRef<HTMLDivElement>(null);
+  const { index } = cell;
 
   React.useEffect(() => {
     if (!needsMeasure || typeof ResizeObserver === "undefined") return;
     const element = ref.current;
     if (!element) return;
-    const measure = () => onMeasure(element.offsetHeight);
+    const measure = () => onMeasure(index, element.offsetHeight);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [needsMeasure, onMeasure]);
+  }, [needsMeasure, onMeasure, index]);
 
   return (
     <div
@@ -314,6 +324,10 @@ const MasonryCell = ({
         top: 0,
         left: 0,
         width: cell.width,
+        // 显式高度让 contain:paint 的绘制边界与布局值精确一致（内容驱动的高度在
+        // 光栅化时可能与布局值有亚像素出入 → hairline 缝）。待测量的 cell（header）
+        // 高度未知，保持内容驱动。
+        height: needsMeasure ? undefined : cell.height,
         transform: `translate(${cell.left}px, ${cell.top}px)`,
         // 限制布局/重绘的影响范围到单个 cell，进一步减少滚动时的样式重算成本。
         contain: "layout paint",

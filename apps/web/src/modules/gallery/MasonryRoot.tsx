@@ -14,13 +14,13 @@ import { ActionGroup } from "./ActionGroup";
 import type { MasonryItemType } from "./gallery-layout";
 import {
   calculateGalleryColumnWidth,
+  computeMasonryItemHeight,
   createMasonryItems,
   estimatePhotoVirtualRect,
   getMasonryAnimationDelay,
   getMasonryItemKey,
   getPhotoSetKey,
   MasonryHeaderItem,
-  resolveAspectRatio,
   shouldAnimateMasonryItem,
 } from "./gallery-layout";
 import type { MasonryRef } from "./Masonic";
@@ -181,7 +181,7 @@ export const MasonryRoot = () => {
             (data: MasonryItemType, colWidth: number) =>
               data instanceof MasonryHeaderItem
                 ? 0 // header 高度未知，交给虚拟列表 measure
-                : colWidth / resolveAspectRatio(data),
+                : computeMasonryItemHeight(colWidth, data),
             [],
           )}
           itemKey={useCallback(
