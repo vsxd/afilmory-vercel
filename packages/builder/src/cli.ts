@@ -10,6 +10,11 @@ import type { BuildProgressListener } from "./builder/builder.js";
 import { AfilmoryBuilder } from "./builder/index.js";
 import { loadBuilderConfig } from "./config/index.js";
 import { ExifService } from "./image/exif.js";
+import {
+  isThumbnailEncodingStale,
+  THUMBNAIL_ENCODING_SIGNATURE,
+  writeThumbnailEncodingMarker,
+} from "./image/thumbnail.js";
 import { logger, setLogListener } from "./logger/index.js";
 import { runAsWorker } from "./runAsWorker.js";
 
@@ -41,7 +46,7 @@ async function main() {
   const args = new Set(process.argv.slice(2));
   const isForceMode = args.has("--force");
   const isForceManifest = args.has("--force-manifest");
-  const isForceThumbnails = args.has("--force-thumbnails");
+  let isForceThumbnails = args.has("--force-thumbnails");
   const disableUi = args.has("--no-ui");
 
   // 显示帮助信息
@@ -124,6 +129,21 @@ async function main() {
     return;
   }
 
+  // 缩略图编码参数签名校验：磁盘标记（.encoding）与当前参数不一致或缺失时，
+  // 等价于 --force-thumbnails。否则部署构建从 artifact-cache 恢复旧缩略图后，
+  // 增量模式判定 0 张需处理，质量/尺寸参数的代码变更永远不会生效。
+  const { thumbnailsDir } = cliBuilder.getConfig().output;
+  if (
+    !isForceMode &&
+    !isForceThumbnails &&
+    (await isThumbnailEncodingStale(thumbnailsDir))
+  ) {
+    isForceThumbnails = true;
+    logger.main.info(
+      `🧾 缩略图编码参数标记不匹配（当前：${THUMBNAIL_ENCODING_SIGNATURE}），本次强制重新生成全部缩略图`,
+    );
+  }
+
   // 确定运行模式
   let runMode = "增量更新";
   if (isForceMode) {
@@ -188,6 +208,9 @@ async function main() {
     });
 
     buildResult = result;
+    // 构建成功即落盘签名标记（会随 artifact-cache 同步）；中途异常不写，
+    // 下次构建仍会强制重生成，保证磁盘上不会残留旧参数的缩略图却带新标记。
+    await writeThumbnailEncodingMarker(thumbnailsDir);
     tui?.markSuccess(result);
   } catch (error) {
     tui?.markError(error);
