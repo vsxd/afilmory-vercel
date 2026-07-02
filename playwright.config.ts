@@ -33,5 +33,13 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      // 触摸 + 移动布局（viewport <1024 → useMobile() 为真）。用于下滑关闭的触摸路径，
+      // 触摸拖拽经 CDP Input.dispatchTouchEvent 派发（见 e2e/dismiss-gesture.spec.ts）。
+      // 仅跑手势 spec；runtime-state 等桌面 spec 只在 chromium 上跑。
+      name: "mobile",
+      use: { ...devices["Pixel 5"] },
+      testMatch: /dismiss-gesture\.spec\.ts/,
+    },
   ],
 });
