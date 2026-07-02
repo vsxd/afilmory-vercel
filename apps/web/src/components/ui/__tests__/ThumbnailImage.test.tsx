@@ -48,9 +48,11 @@ describe("ThumbnailImage", () => {
     // thumbhash 常驻垫底（桥接重挂载后 img 取缓存 + 解码的空窗，避免露灰底），
     // 首帧 img 即 opacity-100，解码完成后覆盖占位。
     expect(screen.queryByTestId("thumbhash")).not.toBeNull();
-    expect(screen.getByAltText("Cached thumbnail").className).toContain(
-      "opacity-100",
-    );
+    const img = screen.getByAltText("Cached thumbnail");
+    expect(img.className).toContain("opacity-100");
+    // img 必须是定位元素：absolute 的占位按 CSS 绘制顺序画在非定位元素之上，
+    // 少了 relative 整张图会被常驻占位盖住（回归：生产曾全站照片被糊层覆盖）。
+    expect(img.className).toContain("relative");
   });
 
   it("marks a thumbnail as loaded after the image load event", () => {

@@ -178,7 +178,10 @@ export const ThumbnailImage = ({
           decoding={decoding}
           draggable={draggable}
           className={clsx(
-            "h-full w-full object-cover transition-opacity duration-300",
+            // relative 必不可少：thumbhash 占位是 absolute 定位且常驻，CSS 绘制顺序里
+            // 定位元素画在非定位的普通流元素之上——img 若不定位会被占位永久盖住
+            // （hover 的 scale transform 恰好创建 stacking context，表现为“悬停才清晰”）。
+            "relative h-full w-full object-cover transition-opacity duration-300",
             isLoaded ? "opacity-100" : "opacity-0",
             imageClassName,
           )}
