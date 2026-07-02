@@ -1,7 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { WebGLInputControllerHost } from "./input-controller";
+import { WebGLInputController } from "./input-controller";
 import type { WebGLImageViewerProps } from "./interface";
 import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
+
+function firePointer(
+  target: EventTarget,
+  type: string,
+  clientX: number,
+  clientY: number,
+  pointerId = 1,
+) {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY,
+      pointerId,
+      pointerType: "mouse",
+      isPrimary: true,
+      button: 0,
+      buttons: type === "pointerup" || type === "pointercancel" ? 0 : 1,
+    }),
+  );
+}
+
+// 双击由两次快速 tap 合成（第 2 次 pointerup 触发），取代原生 dblclick。
+function doubleTap(target: EventTarget, clientX: number, clientY: number) {
+  firePointer(target, "pointerdown", clientX, clientY);
+  firePointer(target, "pointerup", clientX, clientY);
+  firePointer(target, "pointerdown", clientX, clientY);
+  firePointer(target, "pointerup", clientX, clientY);
+}
 
 class ResizeObserverMock {
   observe = vi.fn();
@@ -269,27 +301,13 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     void engine.loadImage("blob:photo", 1000, 1000);
     expect(engine.getScale()).toBeCloseTo(0.1);
 
-    canvas.dispatchEvent(
-      new MouseEvent("dblclick", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 50,
-        clientY: 50,
-      }),
-    );
+    doubleTap(canvas, 50, 50);
 
     runPendingFrame(200);
     expect(engine.getScale()).toBeCloseTo(0.2);
 
     currentDateNow = 1400;
-    canvas.dispatchEvent(
-      new MouseEvent("dblclick", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 50,
-        clientY: 50,
-      }),
-    );
+    doubleTap(canvas, 50, 50);
 
     runPendingFrame(400);
     expect(engine.getScale()).toBeCloseTo(0.1);
@@ -339,14 +357,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     void engine.loadImage("blob:photo", 1000, 1000);
     expect(engine.getScale()).toBeCloseTo(0.8);
 
-    canvas.dispatchEvent(
-      new MouseEvent("dblclick", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 400,
-        clientY: 400,
-      }),
-    );
+    doubleTap(canvas, 400, 400);
 
     runPendingFrame(200);
     expect(engine.getScale()).toBeCloseTo(1);
@@ -378,5 +389,62 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     });
 
     engine.destroy();
+  });
+});
+
+describe("WebGLInputController pointer arbitration", () => {
+  function createHost(): WebGLInputControllerHost {
+    return {
+      isAnimating: vi.fn(() => false),
+      stopAnimation: vi.fn(),
+      panBy: vi.fn(),
+      zoomAt: vi.fn(),
+      performDoubleClickAction: vi.fn(),
+    };
+  }
+
+  function createController(host: WebGLInputControllerHost) {
+    const canvas = document.createElement("canvas");
+    const config = {
+      pinch: { step: 5 },
+      panning: {},
+      doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
+      wheel: { step: 0.2 },
+    } as Partial<
+      Required<WebGLImageViewerProps>
+    > as Required<WebGLImageViewerProps>;
+    const controller = new WebGLInputController(canvas, config, host);
+    controller.connect();
+    return { canvas, controller };
+  }
+
+  it("pans on a single-pointer drag", () => {
+    const host = createHost();
+    const { canvas } = createController(host);
+    firePointer(canvas, "pointerdown", 100, 100);
+    firePointer(canvas, "pointermove", 130, 150);
+    expect(host.panBy).toHaveBeenCalledWith(30, 50);
+  });
+
+  it("stops panning after lostpointercapture (dismiss steals the pointer)", () => {
+    const host = createHost();
+    const { canvas } = createController(host);
+    firePointer(canvas, "pointerdown", 100, 100);
+    firePointer(canvas, "pointermove", 120, 120);
+    expect(host.panBy).toHaveBeenCalledTimes(1);
+    // 祖先手势夺走捕获 → 控制器遗忘该指针，后续 move 不再平移
+    firePointer(canvas, "lostpointercapture", 120, 120);
+    firePointer(canvas, "pointermove", 200, 200);
+    expect(host.panBy).toHaveBeenCalledTimes(1);
+  });
+
+  it("zooms on a two-pointer pinch instead of panning", () => {
+    const host = createHost();
+    const { canvas } = createController(host);
+    firePointer(canvas, "pointerdown", 100, 100, 1);
+    firePointer(canvas, "pointerdown", 200, 100, 2); // 第二指 → pinch 基线 = 100
+    firePointer(canvas, "pointermove", 260, 100, 2); // 距离 100 → 160
+    expect(host.zoomAt).toHaveBeenCalled();
+    expect(host.panBy).not.toHaveBeenCalled();
   });
 });

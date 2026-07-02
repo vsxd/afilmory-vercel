@@ -103,6 +103,8 @@ export function useDismissGesture({
 
     type Status = "idle" | "detecting" | "dragging" | "ignored";
     let status: Status = "idle";
+    // 当前正在追踪的指针 id（null=空闲）。第二个 pointerdown 到来即让位 pinch。
+    let activePointerId: number | null = null;
     let originX = 0;
     let originY = 0;
     let lastY = 0;
@@ -178,12 +180,7 @@ export function useDismissGesture({
       status = "detecting";
     };
 
-    const move = (
-      e: TouchEvent | MouseEvent,
-      x: number,
-      y: number,
-      t: number,
-    ) => {
+    const move = (e: PointerEvent, x: number, y: number, t: number) => {
       if (status === "idle" || status === "ignored") return;
       const dx = x - originX;
       const dy = y - originY;
@@ -203,6 +200,9 @@ export function useDismissGesture({
           baseX = seed ? seed.x : contentX.get();
           baseY = seed ? seed.y : contentY.get();
           baseScale = seed ? seed.scale : contentScale.get();
+          // 认领那一刻夺取指针捕获：转移后画布收到 lostpointercapture 会清理其在途平移；
+          // 且即便指针移出窗口，pointerup 也保证投递到 el（off-window 收尾，无需 buttons 兜底）。
+          if (activePointerId !== null) el.setPointerCapture?.(activePointerId);
         } else {
           status = "ignored"; // 横向/上滑/斜向 → 交回 swiper
           return;
@@ -223,8 +223,10 @@ export function useDismissGesture({
       }
     };
 
-    const onTouchStart = (e: TouchEvent) => {
-      if (!latestRef.current.enabled || e.touches.length !== 1) {
+    // —— 统一 Pointer 路径（鼠标 / 触摸 / 触控笔一套）——
+    const onPointerDown = (e: PointerEvent) => {
+      // 已在追踪某指针时又来一个 → 视为 pinch，让位给 WebGL 缩放（拖拽中则弹回、交回 swiper）
+      if (activePointerId !== null) {
         if (status === "dragging") {
           snapBack();
           restoreSwiper();
@@ -232,22 +234,17 @@ export function useDismissGesture({
         status = "ignored";
         return;
       }
-      const t = e.touches[0];
-      begin(t.clientX, t.clientY, e.timeStamp);
+      if (!latestRef.current.enabled) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return; // 仅鼠标主键
+      activePointerId = e.pointerId;
+      begin(e.clientX, e.clientY, e.timeStamp);
+      // 此处不 setPointerCapture、不 stopPropagation：画布仍需收到本次 down，
+      // 以便「不认领时的双指 pinch」正常工作（认领那一刻才夺取捕获，见 move）。
     };
 
-    const onTouchMove = (e: TouchEvent) => {
-      // 多指（pinch）出现则中止本次下滑，交回 WebGL 缩放
-      if (e.touches.length !== 1) {
-        if (status === "dragging") {
-          snapBack();
-          restoreSwiper();
-        }
-        status = "ignored";
-        return;
-      }
-      const t = e.touches[0];
-      move(e, t.clientX, t.clientY, e.timeStamp);
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerId !== activePointerId) return; // 忽略 hover / 第二指
+      move(e, e.clientX, e.clientY, e.timeStamp);
     };
 
     const end = () => {
@@ -280,52 +277,41 @@ export function useDismissGesture({
       status = "idle";
     };
 
-    // —— 鼠标（桌面）：mousedown 认领后在 window 以 capture 跟踪，先于 WebGL 的
-    //    window mousemove 触发，stopPropagation 拦其平移；allowTouchMove 关掉拦 Swiper ——
-    const onWindowMouseUp = () => {
+    const onPointerEnd = (e: PointerEvent) => {
+      // pointerup / pointercancel 共用。指针捕获保证即便在窗口外松手也会投递到 el
+      // （取代旧的 window mouseup + buttons===0 兜底）。
+      if (e.pointerId !== activePointerId) return;
       end();
-      window.removeEventListener("mousemove", onWindowMouseMove, true);
-      window.removeEventListener("mouseup", onWindowMouseUp, true);
-    };
-    const onWindowMouseMove = (e: MouseEvent) => {
-      // 若已无按键按下（在窗口外松开鼠标 → mouseup 未派发到本页），按松手收尾。
-      // 否则残留监听会在鼠标重新进入时继续拖拽、并让之后任意一次 mouseup 误触发关闭。
-      if (e.buttons === 0) {
-        onWindowMouseUp();
-        return;
-      }
-      move(e, e.clientX, e.clientY, e.timeStamp);
-    };
-    const onMouseDown = (e: MouseEvent) => {
-      if (!latestRef.current.enabled || e.button !== 0) return;
-      begin(e.clientX, e.clientY, e.timeStamp);
-      window.addEventListener("mousemove", onWindowMouseMove, {
-        capture: true,
-      });
-      window.addEventListener("mouseup", onWindowMouseUp, { capture: true });
+      activePointerId = null;
     };
 
-    el.addEventListener("touchstart", onTouchStart, {
+    // lostpointercapture 单独处理：只有 el 自身丢失捕获才收尾。认领时我们 setPointerCapture
+    // 会从后代（Swiper / WebGL 画布）夺走捕获，令其触发 lostpointercapture 并冒泡至此——
+    // 若不加 target 守卫，会把这次“夺取”误判为拖拽结束，导致移动端一认领即被弹回。
+    const onLostCapture = (e: PointerEvent) => {
+      if (e.target !== el) return;
+      onPointerEnd(e);
+    };
+
+    el.addEventListener("pointerdown", onPointerDown, {
       passive: false,
       capture: true,
     });
-    el.addEventListener("touchmove", onTouchMove, {
+    el.addEventListener("pointermove", onPointerMove, {
       passive: false,
       capture: true,
     });
-    el.addEventListener("touchend", end, { capture: true });
-    el.addEventListener("touchcancel", end, { capture: true });
-    el.addEventListener("mousedown", onMouseDown, { capture: true });
+    el.addEventListener("pointerup", onPointerEnd, { capture: true });
+    el.addEventListener("pointercancel", onPointerEnd, { capture: true });
+    el.addEventListener("lostpointercapture", onLostCapture, { capture: true });
 
     return () => {
       stopSnap();
-      window.removeEventListener("mousemove", onWindowMouseMove, true);
-      window.removeEventListener("mouseup", onWindowMouseUp, true);
-      el.removeEventListener("touchstart", onTouchStart, true);
-      el.removeEventListener("touchmove", onTouchMove, true);
-      el.removeEventListener("touchend", end, true);
-      el.removeEventListener("touchcancel", end, true);
-      el.removeEventListener("mousedown", onMouseDown, true);
+      el.removeEventListener("pointerdown", onPointerDown, true);
+      el.removeEventListener("pointermove", onPointerMove, true);
+      el.removeEventListener("pointerup", onPointerEnd, true);
+      el.removeEventListener("pointercancel", onPointerEnd, true);
+      el.removeEventListener("lostpointercapture", onLostCapture, true);
     };
   }, [
     targetRef,

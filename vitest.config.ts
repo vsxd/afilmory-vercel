@@ -2,6 +2,12 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
+// jsdom lacks Element.prototype.setPointerCapture — shim it for the two projects
+// whose components drive Pointer Events (WebGL input controller + dismiss gesture).
+const pointerCaptureShim = fileURLToPath(
+  new URL("test/setup/pointer-capture-shim.ts", import.meta.url),
+);
+
 export default defineConfig({
   esbuild: {
     jsx: "automatic",
@@ -57,6 +63,7 @@ export default defineConfig({
           root: "./packages/webgl-viewer",
           include: ["src/**/*.test.{ts,tsx}"],
           environment: "jsdom",
+          setupFiles: [pointerCaptureShim],
         },
       },
       {
@@ -105,6 +112,7 @@ export default defineConfig({
           root: "./apps/web",
           include: ["src/**/*.test.{ts,tsx}"],
           environment: "jsdom",
+          setupFiles: [pointerCaptureShim],
         },
       },
     ],
