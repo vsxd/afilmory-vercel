@@ -18,6 +18,8 @@ export interface StorageObject {
 
 export interface StorageUploadOptions {
   contentType?: string;
+  /** 上传对象的 Cache-Control 元数据（S3 在响应中原样返回，决定浏览器/CDN 缓存行为） */
+  cacheControl?: string;
 }
 
 // 存储提供商的通用接口

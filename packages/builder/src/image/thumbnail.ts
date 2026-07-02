@@ -10,7 +10,10 @@ import { generateBlurhash } from "./blurhash.js";
 import { SOURCE_SHARP_OPTIONS } from "./sharp-options.js";
 
 // 常量定义
-const THUMBNAIL_QUALITY = 90;
+// q80 + mozjpeg：600px 网格缩略图 q90 时普遍 200-450KB，移动端解码慢、浏览器内存
+// 图像缓存留不住（虚拟列表滚回时重解码 → 闪烁）；q80+mozjpeg 视觉几乎无差，
+// 体积约减半。改动后需以 force 模式重跑 builder 才会重生成已有缩略图。
+const THUMBNAIL_QUALITY = 80;
 const THUMBNAIL_WIDTH = 600;
 
 // 获取缩略图路径信息
@@ -107,7 +110,7 @@ async function generateNewThumbnail(
       .resize(THUMBNAIL_WIDTH, null, {
         withoutEnlargement: true,
       })
-      .jpeg({ quality: THUMBNAIL_QUALITY })
+      .jpeg({ quality: THUMBNAIL_QUALITY, mozjpeg: true })
       .toBuffer();
 
     // 保存到文件

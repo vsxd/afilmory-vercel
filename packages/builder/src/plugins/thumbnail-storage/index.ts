@@ -146,6 +146,8 @@ export default function thumbnailStoragePlugin(
           try {
             await storageManager.uploadFile(remoteKey, data.buffer, {
               contentType: resolved.contentType,
+              // 与 vercel.json 的 /thumbnails/ 规则一致：长缓存 + 不可变
+              cacheControl: "public, max-age=31536000, immutable",
             });
             state.uploaded.add(remoteKey);
           } catch (error) {

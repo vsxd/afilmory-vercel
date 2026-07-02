@@ -429,6 +429,7 @@ export class S3StorageProvider implements StorageProvider {
       Key: key,
       Body: data,
       ContentType: options?.contentType,
+      CacheControl: options?.cacheControl,
     });
 
     const response = await this.s3Client.send(command);
