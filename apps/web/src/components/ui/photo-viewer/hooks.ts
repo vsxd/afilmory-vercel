@@ -24,7 +24,12 @@ function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
-export const useProgressiveImageState = (): [
+export const useProgressiveImageState = (
+  // 缩略图若曾加载过（跨挂载的模块级缓存），初始即视为已加载：Swiper 虚拟滑动只保活
+  // ±1 张，翻远再翻回是全新挂载——若初始 false、靠挂载后 effect 纠正，首帧已按
+  // opacity-0 提交，300ms 淡入会在每次重挂载时重放（观感即「低清图又在加载」）。
+  initialThumbnailLoaded = false,
+): [
   ProgressiveImageState,
   {
     setBlobSrc: (src: string | null) => void;
@@ -45,7 +50,9 @@ export const useProgressiveImageState = (): [
   const [isHighResImageRendered, setIsHighResImageRendered] = useState(false);
   const [currentScale, setCurrentScale] = useState(1);
   const [showScaleIndicator, setShowScaleIndicator] = useState(false);
-  const [isThumbnailLoaded, setIsThumbnailLoaded] = useState(false);
+  const [isThumbnailLoaded, setIsThumbnailLoaded] = useState(
+    initialThumbnailLoaded,
+  );
   const [isLivePhotoPlaying, setIsLivePhotoPlaying] = useState(false);
 
   const setters = useMemo(

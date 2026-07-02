@@ -158,7 +158,10 @@ export const ThumbnailImage = ({
       className={clsx("relative overflow-hidden", containerClassName)}
       style={style}
     >
-      {thumbHash && !isLoaded && !hasError && (
+      {/* thumbhash 常驻在 img 下层：虚拟列表重挂载时（isLoaded 已为 true）新 img
+          仍需异步取缓存 + 解码，若此刻无占位会露出灰底闪一下；让占位一直垫底，
+          img 解码完成即以不透明像素覆盖它，空窗期展示的是模糊缩略而非灰块。 */}
+      {thumbHash && !hasError && (
         <Thumbhash
           thumbHash={thumbHash}
           className={clsx("absolute inset-0", placeholderClassName)}

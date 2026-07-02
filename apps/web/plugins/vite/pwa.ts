@@ -82,28 +82,38 @@ export function createAfilmoryPwaPlugin(siteConfig: SiteConfig) {
             },
           },
         },
+        // 缩略图：构建期产物、Vercel 侧已是 immutable —— 用 CacheFirst 而非
+        // StaleWhileRevalidate（SWR 会在每次展示时都发一次后台革新请求，且旧上限
+        // 150 < 照片总数，整个画廊滚一遍就互相挤占、后续变成真回源——正是
+        // 「缓存好了还在加载」的主因）。上限取照片数的数倍余量。
         {
-          urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif)$/,
-          handler: "StaleWhileRevalidate",
+          urlPattern: /\/thumbnails\/[^/?]+\.(?:png|jpg|jpeg|webp|avif)$/,
+          handler: "CacheFirst",
           options: {
             cacheName: AFILMORY_RUNTIME_CACHE_NAMES[2],
             expiration: {
-              maxEntries: 150,
-              maxAgeSeconds: 60 * 60 * 24 * 30,
+              maxEntries: 600,
+              maxAgeSeconds: 60 * 60 * 24 * 365,
+              purgeOnQuotaError: true,
             },
             cacheableResponse: {
               statuses: [0, 200],
             },
           },
         },
+        // 其余图片 = 主要是 CDN 原图（几 MB/张，经查看器 XHR 或 <img> 加载）。
+        // 旧规则按主机名匹配 s3|amazonaws|cloudfront|cdn，自定义域（如 img.*）
+        // 永远不命中，且被前面的通配图片规则遮蔽 → 等于没有原图缓存。改为
+        // 兜底 CacheFirst：条目按体积保守设上限，配额吃紧时整体清退。
         {
-          urlPattern: /^https?:\/\/.*\.(s3|amazonaws|cloudfront|cdn)\..*/i,
+          urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif|gif)$/,
           handler: "CacheFirst",
           options: {
             cacheName: AFILMORY_RUNTIME_CACHE_NAMES[3],
             expiration: {
-              maxEntries: 200,
+              maxEntries: 40,
               maxAgeSeconds: 60 * 60 * 24 * 90,
+              purgeOnQuotaError: true,
             },
             cacheableResponse: {
               statuses: [0, 200],

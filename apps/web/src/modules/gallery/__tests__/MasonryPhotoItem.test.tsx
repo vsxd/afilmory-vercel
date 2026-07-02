@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { gallerySettingAtom } from "~/atoms/app";
 import { navigateAtom, routeAtom } from "~/atoms/route";
+import {
+  getThumbnailLoadCacheKey,
+  markThumbnailLoaded,
+  resetThumbnailLoadCache,
+} from "~/lib/thumbnail-load-cache";
 import type { PhotoManifest } from "~/types/photo";
 
 import { MasonryPhotoItem } from "../MasonryPhotoItem";
@@ -120,6 +125,7 @@ describe("MasonryPhotoItem", () => {
 
   afterEach(() => {
     cleanup();
+    resetThumbnailLoadCache();
   });
 
   beforeEach(() => {
@@ -194,6 +200,18 @@ describe("MasonryPhotoItem", () => {
     const img = getByAltText("A7C01202");
     expect(img.getAttribute("fetchpriority")).toBe("low");
     expect(img.getAttribute("loading")).toBe("lazy");
+  });
+
+  it("reloads previously cached thumbnails eagerly on remount (skip lazy re-decision)", () => {
+    // 虚拟列表滚回时格子重挂载：图已在缓存里，eager 跳过浏览器 lazy 观察延迟，
+    // 缩短重挂载的空窗（fetchPriority 仍保持 low，不与首屏抢带宽）。
+    markThumbnailLoaded(getThumbnailLoadCacheKey(photo.id, photo.thumbnailUrl));
+
+    const { getByAltText } = renderItem({ data: photo, width: 300, index: 8 });
+
+    const img = getByAltText("A7C01202");
+    expect(img.getAttribute("loading")).toBe("eager");
+    expect(img.getAttribute("fetchpriority")).toBe("low");
   });
 
   it("waits for async route navigation before opening the viewer", async () => {

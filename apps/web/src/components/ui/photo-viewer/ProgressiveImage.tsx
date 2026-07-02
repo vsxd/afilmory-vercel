@@ -64,8 +64,15 @@ export const ProgressiveImage = ({
 }: ProgressiveImageProps) => {
   const { t } = useTranslation();
 
-  // State management
-  const [state, setState] = useProgressiveImageState();
+  const thumbnailCacheKey =
+    photoId && thumbnailSrc
+      ? getThumbnailLoadCacheKey(photoId, thumbnailSrc)
+      : null;
+
+  // State management（缩略图加载态以跨挂载缓存为初值，虚拟滑动重挂载不再重放淡入）
+  const [state, setState] = useProgressiveImageState(
+    Boolean(thumbnailCacheKey && hasLoadedThumbnail(thumbnailCacheKey)),
+  );
   const [useDomFallback, setUseDomFallback] = useState(false);
   const {
     blobSrc,
@@ -99,10 +106,6 @@ export const ProgressiveImage = ({
   const fallbackSourceRef = useRef(src);
   const useDomFallbackRef = useRef(useDomFallback);
   useDomFallbackRef.current = useDomFallback;
-  const thumbnailCacheKey =
-    photoId && thumbnailSrc
-      ? getThumbnailLoadCacheKey(photoId, thumbnailSrc)
-      : null;
 
   // Hooks
   const imageLoaderManagerRef = useImageLoader(

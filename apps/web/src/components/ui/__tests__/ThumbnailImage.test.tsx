@@ -45,7 +45,9 @@ describe("ThumbnailImage", () => {
       />,
     );
 
-    expect(screen.queryByTestId("thumbhash")).toBeNull();
+    // thumbhash 常驻垫底（桥接重挂载后 img 取缓存 + 解码的空窗，避免露灰底），
+    // 首帧 img 即 opacity-100，解码完成后覆盖占位。
+    expect(screen.queryByTestId("thumbhash")).not.toBeNull();
     expect(screen.getByAltText("Cached thumbnail").className).toContain(
       "opacity-100",
     );

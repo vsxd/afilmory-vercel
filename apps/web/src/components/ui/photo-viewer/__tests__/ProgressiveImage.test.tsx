@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getThumbnailLoadCacheKey,
   hasLoadedThumbnail,
+  markThumbnailLoaded,
   resetThumbnailLoadCache,
 } from "~/lib/thumbnail-load-cache";
 
@@ -167,6 +168,29 @@ describe("ProgressiveImage", () => {
     await waitFor(() => {
       expect(thumbnail.className).toContain("opacity-100");
     });
+  });
+
+  it("seeds cached thumbnails as loaded on the first frame (virtual-slide remount)", () => {
+    // Swiper virtual 只保活 ±1 张，翻远再翻回是全新挂载：曾加载过的低清图必须
+    // 首帧即 opacity-100（同步断言、不 waitFor），否则 300ms 淡入每次重放。
+    const thumbnailSrc = "https://example.com/photo-thumb.jpg";
+    markThumbnailLoaded(getThumbnailLoadCacheKey("photo-1", thumbnailSrc));
+
+    render(
+      <ProgressiveImage
+        photoId="photo-1"
+        src="https://example.com/photo.jpg"
+        thumbnailSrc={thumbnailSrc}
+        alt="Remounted thumbnail"
+        isCurrentImage={false}
+        shouldRenderHighRes={false}
+        loadingIndicatorRef={{ current: null }}
+      />,
+    );
+
+    expect(screen.getByAltText("Remounted thumbnail").className).toContain(
+      "opacity-100",
+    );
   });
 
   it("keeps a thumbhash placeholder visible while the detail thumbnail is still loading", () => {

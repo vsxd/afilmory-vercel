@@ -172,7 +172,10 @@ export const GalleryThumbnail: FC<{
               type="button"
               key={photo.id}
               className={clsxm(
-                "contain-intrinsic-size focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2",
+                // 不用 content-visibility:auto：条目已按 currentIndex 窗口化渲染，
+                // 该属性只会让离屏缩略图被丢弃渲染、横向滚回时重新解码重绘（观感即
+                // 「缓存的小图又在加载」）。
+                "focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2",
                 index === currentIndex
                   ? "border-accent opacity-100 shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] ring-2 ring-accent/40"
                   : "grayscale-50 border-white/15 opacity-75 hover:border-accent/70 hover:opacity-100 hover:grayscale-0",

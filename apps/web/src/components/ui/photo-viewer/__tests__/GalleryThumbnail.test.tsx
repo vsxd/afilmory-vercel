@@ -103,7 +103,8 @@ describe("GalleryThumbnail", () => {
       />,
     );
 
-    expect(screen.queryByTestId("thumbhash")).toBeNull();
+    // thumbhash 常驻垫底（见 ThumbnailImage），已缓存图首帧即 opacity-100 不重淡入。
+    expect(screen.queryByTestId("thumbhash")).not.toBeNull();
     expect(screen.getByAltText("Cached photo").className).toContain(
       "opacity-100",
     );

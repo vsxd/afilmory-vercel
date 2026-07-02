@@ -1,8 +1,3 @@
-.contain-intrinsic-size {
-  contain-intrinsic-size: 64px;
-  content-visibility: auto;
-}
-
 /* PhotoViewer custom styles */
 
 /* Hide default Swiper navigation buttons since we use custom ones */

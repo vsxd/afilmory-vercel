@@ -190,6 +190,9 @@ export const MasonryPhotoItem = memo(
     // 首屏首几张缩略图是 LCP 候选：立即加载并提高优先级，消除 LCP 的发现/加载延迟；
     // 其余照片懒加载、低优先级，避免与首屏关键资源争抢带宽。
     const isPriorityThumbnail = index < 4;
+    // 曾加载过的图重挂载（虚拟列表滚回）必然命中缓存：eager 跳过浏览器的
+    // lazy-load 观察/延迟决策，让缓存图尽快上屏，缩短重挂载的空窗。
+    const shouldLoadEagerly = isPriorityThumbnail || hasLoadedThumbnailBefore;
 
     return (
       <m.div
@@ -215,7 +218,7 @@ export const MasonryPhotoItem = memo(
             src={data.thumbnailUrl}
             alt={data.title}
             thumbHash={data.thumbHash}
-            loading={isPriorityThumbnail ? "eager" : "lazy"}
+            loading={shouldLoadEagerly ? "eager" : "lazy"}
             fetchPriority={isPriorityThumbnail ? "high" : "low"}
             containerClassName="absolute inset-0"
             imageClassName={clsx(
