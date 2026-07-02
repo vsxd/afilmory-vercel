@@ -65,7 +65,8 @@ async function openGallery(page: Page) {
   await expect(
     page.getByRole("button", { name: "Search & Filter" }),
   ).toBeVisible();
-  await expect(page.getByRole("gridcell").first()).toBeVisible();
+  // 纯计算 masonry（无 gridcell 角色）：用照片格的 data-photo-id 稳定定位。
+  await expect(page.locator("[data-photo-id]").first()).toBeVisible();
 }
 
 async function openCommandPalette(page: Page) {
