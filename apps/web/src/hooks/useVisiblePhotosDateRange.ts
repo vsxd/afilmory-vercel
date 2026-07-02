@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getPhotoDate } from "~/lib/photo-date";
@@ -10,9 +10,11 @@ interface DateRange {
   formattedRange: string;
 }
 
-interface VisibleRange {
+interface ComputedRangeKey {
   start: number;
   end: number;
+  items: unknown;
+  lang: string;
 }
 
 /**
@@ -26,9 +28,31 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
     formattedRange: "",
   });
 
-  const currentRange = useRef<VisibleRange>({ start: 0, end: 0 });
+  // 上一次已计算的输入签名：快速滚动时 onRender 每帧触发，可视 index 区间未变时
+  // 直接早退，避免每帧 O(n) 的 slice/sort 与 setState。
+  const lastComputedRef = useRef<ComputedRangeKey | null>(null);
+  const currentRange = useRef<{ start: number; end: number }>({
+    start: 0,
+    end: 0,
+  });
 
   const { i18n } = useTranslation();
+
+  // Intl.DateTimeFormat 构造不便宜，按 locale 缓存两个变体（是否含天）。
+  const formatters = useMemo(
+    () => ({
+      monthOnly: new Intl.DateTimeFormat(i18n.language, {
+        year: "numeric",
+        month: "long",
+      }),
+      withDay: new Intl.DateTimeFormat(i18n.language, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    }),
+    [i18n.language],
+  );
 
   const formatDateRange = useCallback(
     (startDate: Date, endDate: Date): string => {
@@ -38,11 +62,8 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
         startDate.getMonth() === endDate.getMonth();
 
       // 全部走 Intl，按 locale 输出（包含天级精度仅在同月时显示），不再硬编码中文。
-      const formatter = new Intl.DateTimeFormat(i18n.language, {
-        year: "numeric",
-        month: "long",
-        ...(sameDay || sameMonth ? { day: "numeric" } : {}),
-      });
+      const formatter =
+        sameDay || sameMonth ? formatters.withDay : formatters.monthOnly;
 
       if (sameDay) {
         return formatter.format(startDate);
@@ -54,7 +75,7 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
       }
       return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
     },
-    [i18n.language],
+    [formatters],
   );
 
   // 计算当前可视范围内照片的日期范围
@@ -64,6 +85,24 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
       endIndex: number,
       items: (PhotoManifest | { id?: never })[],
     ) => {
+      // 输入（区间 + items 引用 + 语言）与上次一致 → 结果必然一致，直接早退。
+      const last = lastComputedRef.current;
+      if (
+        last &&
+        last.start === startIndex &&
+        last.end === endIndex &&
+        last.items === items &&
+        last.lang === i18n.language
+      ) {
+        return;
+      }
+      lastComputedRef.current = {
+        start: startIndex,
+        end: endIndex,
+        items,
+        lang: i18n.language,
+      };
+
       if (!items || items.length === 0) {
         setDateRange({
           startDate: null,
@@ -109,16 +148,19 @@ export const useVisiblePhotosDateRange = (_photos: PhotoManifest[]) => {
 
       const formattedRange = formatDateRange(startDate, endDate);
 
-      setDateRange({
-        startDate,
-        endDate,
-        formattedRange,
-      });
+      // 值未变则保留旧对象，避免 DateRangeIndicator 无意义重渲染。
+      setDateRange((prev) =>
+        prev.formattedRange === formattedRange &&
+        prev.startDate?.getTime() === startDate.getTime() &&
+        prev.endDate?.getTime() === endDate.getTime()
+          ? prev
+          : { startDate, endDate, formattedRange },
+      );
 
       // 更新当前范围
       currentRange.current = { start: startIndex, end: endIndex };
     },
-    [formatDateRange],
+    [formatDateRange, i18n.language],
   );
 
   // 用于传递给 masonry 的 onRender 回调
