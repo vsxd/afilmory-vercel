@@ -2,6 +2,7 @@ import path from "node:path";
 
 import * as bmp from "@vingle/bmp-js";
 import heicConvert from "heic-convert";
+import type { Sharp } from "sharp";
 import sharp from "sharp";
 
 import { HEIC_FORMATS } from "../constants/index.js";
@@ -16,7 +17,7 @@ export interface ImageMetadata {
 
 // 获取图片元数据（复用 Sharp 实例）
 export async function getImageMetadataWithSharp(
-  sharpInstance: sharp.Sharp,
+  sharpInstance: Sharp,
 ): Promise<ImageMetadata | null> {
   const log = getPhotoProcessingLoggers().image;
 
@@ -121,7 +122,7 @@ export function isBitmap(buf: Buffer): boolean {
  */
 export async function convertBmpToJpegSharpInstance(
   bmpBuffer: Buffer,
-): Promise<sharp.Sharp> {
+): Promise<Sharp> {
   const log = getPhotoProcessingLoggers().image;
 
   try {

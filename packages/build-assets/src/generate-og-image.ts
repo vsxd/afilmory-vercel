@@ -11,6 +11,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { PhotoManifestItem } from "@afilmory/schema";
+import type { OverlayOptions, Sharp } from "sharp";
 import sharp from "sharp";
 
 import { buildTimePhotoLoader } from "./photo-loader.ts";
@@ -385,7 +386,7 @@ export async function generateOGImage(options: OGImageOptions) {
   } = options;
 
   try {
-    let finalImage: sharp.Sharp;
+    let finalImage: Sharp;
 
     if (includePhotos) {
       const publicAssetDirectory = resolvePublicAssetDirectory();
@@ -470,7 +471,7 @@ export async function generateOGImage(options: OGImageOptions) {
       const textBuffer = await sharp(Buffer.from(textSvg)).png().toBuffer();
 
       // 准备合成图层
-      const composite: sharp.OverlayOptions[] = [
+      const composite: OverlayOptions[] = [
         { input: gradientBuffer, top: 0, left: 0 },
         { input: textBuffer, top: 0, left: 0 },
       ];

@@ -27,7 +27,7 @@
     "es-toolkit": "1.41.0",
     "exiftool-vendored": "catalog:",
     "heic-convert": "2.1.0",
-    "sharp": "0.34.4",
+    "sharp": "0.35.3",
     "thumbhash": "0.1.1"
   },
   "devDependencies": {

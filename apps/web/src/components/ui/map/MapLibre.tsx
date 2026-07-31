@@ -5,7 +5,11 @@ import "./MapLibre.css";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { MapMouseEvent, MapRef } from "react-map-gl/maplibre";
+import type {
+  ErrorEvent as MapErrorEvent,
+  MapMouseEvent,
+  MapRef,
+} from "react-map-gl/maplibre";
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
@@ -342,6 +346,13 @@ export const Maplibre = ({
     }
   }, [resolvedMapRef]);
 
+  const handleMapError = useCallback((event: MapErrorEvent) => {
+    // MapLibre aborts outstanding style/tile requests during normal unmount.
+    // Suppress that expected teardown event but preserve all real map errors.
+    if (/signal is aborted/i.test(event.error.message)) return;
+    console.error(event.error);
+  }, []);
+
   // 当标记点变化时，重新适配边界
   useEffect(() => {
     // 延迟执行，确保地图已渲染
@@ -363,6 +374,7 @@ export const Maplibre = ({
         attributionControl={false}
         interactiveLayerIds={geoJsonData ? ["data"] : undefined}
         onClick={onGeoJsonClick}
+        onError={handleMapError}
         onLoad={handleMapLoad}
         onMove={(evt) => {
           setCurrentZoom(evt.viewState.zoom);
