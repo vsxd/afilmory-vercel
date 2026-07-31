@@ -55,7 +55,7 @@
     "consola": "3.4.2",
     "dotenv": "catalog:",
     "dotenv-expand": "catalog:",
-    "es-toolkit": "1.41.0",
+    "es-toolkit": "1.50.0",
     "eslint": "9.39.4",
     "eslint-config-hyoban": "4.0.10",
     "fast-glob": "^3.3.2",
