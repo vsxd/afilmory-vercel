@@ -12,11 +12,10 @@
  * made-up countries with ISO user-assigned `X*` country codes) while keeping
  * the data shape authentic:
  *
- * - thumbHash values are REAL — each photo gets deterministic RGBA gradient
- *   pixels, pushed through thumbhash 的 rgbaToThumbHash，再用
- *   @afilmory/media 的 uint8ArrayToHex 压成十六进制字符串。这里刻意不从
- *   sharp 生成的 JPEG 反解像素，避免 libvips/SIMD 在不同平台上的舍入差异
- *   让已提交 fixture 漂移；manifest 格式仍与 builder 完全一致。
+ * - thumbHash values are REAL canonical vectors generated from the same
+ *   deterministic gradients. They are committed here because thumbhash's
+ *   floating-point DCT can round one coefficient differently across CPU
+ *   architectures; manifest 格式仍与 builder 完全一致。
  * - the same rendered gradients are written out as fixture thumbnails so the
  *   prod-smoke build can serve them from dist/ without any route stubbing.
  * - coverage includes varied aspect ratios, a dateTaken spread, tags, HDR,
@@ -28,32 +27,14 @@
  *   route stub、prod-smoke 直接从 dist/ 伺服，都不产生 console error（.webm
  *   后缀同时绕开只认 .mov 的 MOV→MP4 转换路径）。
  *
- * thumbhash / @afilmory/media are not root dependencies — they are resolved
- * through @afilmory/builder's module graph (createRequire) so this script uses
- * the very same library instances as the production builder.
- *
  * Usage: pnpm fixture:e2e
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import type { PhotoManifestItem } from "@afilmory/schema";
 import { assertManifest } from "@afilmory/schema";
 import sharp from "sharp";
-
-const builderRequire = createRequire(
-  new URL("../packages/builder/package.json", import.meta.url),
-);
-const { rgbaToThumbHash } = (await import(
-  pathToFileURL(builderRequire.resolve("thumbhash")).href
-)) as {
-  rgbaToThumbHash: (w: number, h: number, rgba: Uint8Array) => Uint8Array;
-};
-const { uint8ArrayToHex } = (await import(
-  pathToFileURL(builderRequire.resolve("@afilmory/media")).href
-)) as { uint8ArrayToHex: (bytes: Uint8Array) => string };
 
 // ── synthetic entities ────────────────────────────────────────────────────────
 
@@ -61,7 +42,31 @@ const CDN = "https://photos.fixture.test";
 const PREFIX = "fixtures/";
 const PHOTO_COUNT = 18;
 const THUMB_MAX = 256;
-const THUMB_HASH_MAX = 100;
+
+// Real ThumbHash reference vectors generated from the synthetic gradients.
+// thumbhash's floating-point DCT can round one coefficient differently across
+// CPU architectures, so fixture regeneration uses these committed canonical
+// values instead of recomputing them during CI.
+const THUMB_HASHES = [
+  "605a0a159080878777888887878887878078f78878",
+  "e0560535087878807888887888877788888f780878",
+  "60b70224828087877377787888778073083887",
+  "629a01270e80878788878888788888788878f888877f7808",
+  "a3d5050d908787888088878787787888787f870888",
+  "a399061d8680878782878878877887878082f7d878",
+  "2238093c828087878878888788887f88f87787",
+  "e0750a2e0c787808888878888887888878888780880778",
+  "600a06058a80878772887788787777788f7df7d778",
+  "2076012a8c808787778888887f87087888",
+  "23c8023d828787887078878777778878888077f888",
+  "a379011d0672778078887877777778887d7fd7f878",
+  "6325060d9080878777888878878887777087088788",
+  "626a0a250e7878808888887878877878788088f888",
+  "a04705258480878772888777787777887f7d082788",
+  "e0a606358670878788888888888887887078088877",
+  "a0ba0115908787888087878788787887878f88f788",
+  "a3a5010c0a7307777787877878878c8f380888",
+] as const;
 
 const CAMERAS = [
   { make: "Lumina", model: "LX-7" },
@@ -154,6 +159,12 @@ const PHOTO_SPECS: PhotoSpec[] = [
   { width: 6000, height: 4000, camera: 1, lens: 1 },
   { width: 2160, height: 3840, camera: 1, lens: 1 },
 ];
+
+if (PHOTO_SPECS.length !== PHOTO_COUNT || THUMB_HASHES.length !== PHOTO_COUNT) {
+  throw new Error(
+    `Expected ${PHOTO_COUNT} photo specs and ThumbHash vectors, received ${PHOTO_SPECS.length} and ${THUMB_HASHES.length}`,
+  );
+}
 
 // 4 帧 64×64 的 VP8/WebM 微型视频（Playwright 自带 ffmpeg 生成，1877 字节），
 // 作为 Live Photo 的可播放视频写进 fixtures/thumbnails/。
@@ -248,31 +259,6 @@ function renderGradientRgb(
   return data;
 }
 
-/**
- * 用纯 JS 生成确定性 RGBA 输入。JPEG 编解码仍用于实际缩略图资产，但不参与
- * fixture hash，以免相同 libvips 版本在不同 CPU/平台产生 1 bit 舍入差异。
- */
-function generateThumbHashHex(
-  width: number,
-  height: number,
-  index: number,
-): string {
-  const scale = Math.min(1, THUMB_HASH_MAX / Math.max(width, height));
-  const hashWidth = Math.max(1, Math.round(width * scale));
-  const hashHeight = Math.max(1, Math.round(height * scale));
-  const rgb = renderGradientRgb(hashWidth, hashHeight, index);
-  const rgba = new Uint8Array(hashWidth * hashHeight * 4);
-
-  for (let source = 0, target = 0; source < rgb.length; source += 3) {
-    rgba[target++] = rgb[source];
-    rgba[target++] = rgb[source + 1];
-    rgba[target++] = rgb[source + 2];
-    rgba[target++] = 255;
-  }
-
-  return uint8ArrayToHex(rgbaToThumbHash(hashWidth, hashHeight, rgba));
-}
-
 // ── build the manifest ────────────────────────────────────────────────────────
 
 const outDir = path.resolve(process.cwd(), "apps/web/e2e/fixtures");
@@ -296,7 +282,7 @@ for (const [index, spec] of PHOTO_SPECS.entries()) {
     .jpeg({ quality: 82 })
     .toBuffer();
   writeFileSync(path.join(thumbnailsDir, `${id}.jpg`), thumbnailBuffer);
-  const thumbHash = generateThumbHashHex(thumbWidth, thumbHeight, index);
+  const thumbHash = THUMB_HASHES[index];
 
   const dateTaken = isoDate(DATE_TAKEN_BASE, index, DATE_TAKEN_STEP);
   const countrySpec =

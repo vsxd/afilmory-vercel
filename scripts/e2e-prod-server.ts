@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import {
   createE2EWebEnvironment,
   resolveViteBin,
+  VITE_CONFIG_LOADER_ARGS,
 } from "./e2e-web-environment.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,11 +41,15 @@ const buildEnvironment = createE2EWebEnvironment({ embedManifest: false });
 
 // 2. Real production build (minified bundle, manual chunks, PWA SW,
 //    hashed external-manifest asset, inline fetch script in dist/index.html).
-const build = spawnSync(process.execPath, [viteBin, "build"], {
-  cwd: webDir,
-  env: buildEnvironment,
-  stdio: "inherit",
-});
+const build = spawnSync(
+  process.execPath,
+  [viteBin, "build", ...VITE_CONFIG_LOADER_ARGS],
+  {
+    cwd: webDir,
+    env: buildEnvironment,
+    stdio: "inherit",
+  },
+);
 if (build.status !== 0) {
   // 顶层 throw：非零退出且不再往下执行（拷贝缩略图 / 启动 preview）。
   throw new Error(`vite build failed with exit code ${build.status ?? "null"}`);
@@ -62,6 +67,7 @@ const preview = spawn(
   [
     viteBin,
     "preview",
+    ...VITE_CONFIG_LOADER_ARGS,
     "--host",
     PREVIEW_HOST,
     "--port",

@@ -2,9 +2,16 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createE2EWebEnvironment } from "./e2e-web-environment.ts";
+import {
+  createE2EWebEnvironment,
+  VITE_CONFIG_LOADER_ARGS,
+} from "./e2e-web-environment.ts";
 
 describe("createE2EWebEnvironment", () => {
+  it("keeps direct Vite entrypoints on the TypeScript-aware runner loader", () => {
+    expect(VITE_CONFIG_LOADER_ARGS).toEqual(["--configLoader", "runner"]);
+  });
+
   it("keeps only platform and connectivity variables from the parent", () => {
     const environment = createE2EWebEnvironment({
       embedManifest: true,

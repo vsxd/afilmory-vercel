@@ -5,6 +5,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixturesDir = path.join(root, "apps/web/e2e/fixtures");
 
+/** Keep direct Vite-bin entrypoints aligned with apps/web package scripts. */
+export const VITE_CONFIG_LOADER_ARGS = ["--configLoader", "runner"] as const;
+
 /**
  * Vite's bin as resolved from apps/web, so entrypoints can run it via node
  * directly instead of relying on pnpm being resolvable on PATH (webServer

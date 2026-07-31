@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   createE2EWebEnvironment,
   resolveViteBin,
+  VITE_CONFIG_LOADER_ARGS,
 } from "./e2e-web-environment.js";
 
 const rootDir = path.resolve(
@@ -35,7 +36,17 @@ if (isMainModule) {
   console.info(`Starting the synthetic demo at http://${host}:${port}`);
   const server = spawn(
     process.execPath,
-    [viteBin, "--mode", "e2e", "--host", host, "--port", port, "--strictPort"],
+    [
+      viteBin,
+      ...VITE_CONFIG_LOADER_ARGS,
+      "--mode",
+      "e2e",
+      "--host",
+      host,
+      "--port",
+      port,
+      "--strictPort",
+    ],
     {
       cwd: webDir,
       env: createDemoEnvironment(),

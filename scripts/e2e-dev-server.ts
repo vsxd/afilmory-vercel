@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   createE2EWebEnvironment,
   resolveViteBin,
+  VITE_CONFIG_LOADER_ARGS,
 } from "./e2e-web-environment.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,7 +18,17 @@ const viteBin = resolveViteBin();
 
 const server = spawn(
   process.execPath,
-  [viteBin, "--mode", "e2e", "--host", host, "--port", port, "--strictPort"],
+  [
+    viteBin,
+    ...VITE_CONFIG_LOADER_ARGS,
+    "--mode",
+    "e2e",
+    "--host",
+    host,
+    "--port",
+    port,
+    "--strictPort",
+  ],
   {
     cwd: webDir,
     env: createE2EWebEnvironment({ embedManifest: true }),

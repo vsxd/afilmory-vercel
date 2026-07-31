@@ -63,6 +63,15 @@ function silenceUnavailableNodeLocalStorageWarning() {
   });
 }
 
+async function loadCodeInspectorPlugin() {
+  silenceUnavailableNodeLocalStorageWarning();
+  return (await import("code-inspector-plugin")).codeInspectorPlugin;
+}
+
+// The runner config loader closes after evaluating this module, so dev-only
+// dependencies also need to resolve before Vite invokes the config hook.
+const codeInspectorPlugin = await loadCodeInspectorPlugin();
+
 const staticWebBuildPlugins: PluginOption[] = [
   dataInjectPlugin(),
   photosStaticPlugin({
@@ -110,8 +119,6 @@ export default defineConfig(async ({ command }) => {
   const devOnlyPlugins: PluginOption[] = [];
 
   if (command === "serve") {
-    silenceUnavailableNodeLocalStorageWarning();
-    const { codeInspectorPlugin } = await import("code-inspector-plugin");
     devOnlyPlugins.push(
       codeInspectorPlugin({
         bundler: "vite",
