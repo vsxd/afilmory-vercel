@@ -24,6 +24,7 @@ let capturedOnMove:
       viewState: { longitude: number; latitude: number; zoom: number };
     }) => void)
   | undefined;
+let capturedOnError: ((event: { error: Error }) => void) | undefined;
 
 vi.mock("motion/react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("motion/react")>();
@@ -42,6 +43,7 @@ vi.mock("react-map-gl/maplibre", async () => {
     latitude,
     zoom,
     onLoad,
+    onError,
     onMove,
     children,
   }: React.ComponentProps<"div"> & {
@@ -49,6 +51,7 @@ vi.mock("react-map-gl/maplibre", async () => {
     latitude: number;
     zoom: number;
     onLoad?: () => void;
+    onError?: (event: { error: Error }) => void;
     onMove?: (evt: {
       viewState: { longitude: number; latitude: number; zoom: number };
     }) => void;
@@ -64,6 +67,7 @@ vi.mock("react-map-gl/maplibre", async () => {
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     capturedOnMove = onMove;
+    capturedOnError = onError;
 
     React.useEffect(() => {
       if (ref && typeof ref === "object") {
@@ -210,6 +214,7 @@ describe("Maplibre", () => {
     createRegionClusterIndexMock = vi.fn(() => null);
     getClusterPointsMock = vi.fn(() => []);
     capturedOnMove = undefined;
+    capturedOnError = undefined;
   });
 
   afterEach(() => {
@@ -274,6 +279,37 @@ describe("Maplibre", () => {
     expect(
       screen.getByTestId("map").querySelector(".maplibregl-ctrl-attrib"),
     ).toBeNull();
+  });
+
+  it("suppresses expected request aborts during map teardown", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    render(<Maplibre autoFitBounds={false} markers={[]} />);
+
+    act(() => {
+      capturedOnError?.({
+        error: new Error("signal is aborted without reason"),
+      });
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("reports unexpected map errors", () => {
+    const error = new Error("style failed");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    render(<Maplibre autoFitBounds={false} markers={[]} />);
+
+    act(() => {
+      capturedOnError?.({ error });
+    });
+
+    expect(consoleError).toHaveBeenCalledWith(error);
+    consoleError.mockRestore();
   });
 
   it("can preserve the current view state when initialViewState changes after selection is cleared", () => {

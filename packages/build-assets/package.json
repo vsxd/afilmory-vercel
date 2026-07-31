@@ -14,7 +14,7 @@
   "dependencies": {
     "@afilmory/schema": "workspace:*",
     "opentype.js": "1.3.4",
-    "sharp": "0.34.4"
+    "sharp": "0.35.3"
   },
   "devDependencies": {
     "typescript": "catalog:"

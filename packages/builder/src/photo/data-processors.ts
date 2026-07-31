@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { hexToUint8Array } from "@afilmory/media";
-import type sharp from "sharp";
+import type { Sharp } from "sharp";
 
 import { HEIC_FORMATS } from "../constants/index.js";
 import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
@@ -145,7 +145,7 @@ export async function processExifData(
  * 优先复用现有数据，如果不存在或需要强制更新则重新计算
  */
 export async function processToneAnalysis(
-  sharpInstance: sharp.Sharp,
+  sharpInstance: Sharp,
   photoKey: string,
   existingItem: PhotoManifestItem | undefined,
   options: PhotoProcessorOptions,

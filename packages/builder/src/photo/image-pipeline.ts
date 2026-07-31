@@ -1,4 +1,5 @@
 import { uint8ArrayToHex } from "@afilmory/media";
+import type { Sharp } from "sharp";
 import sharp from "sharp";
 
 import type { PhotoProcessingContext } from "../core/contracts/photo-processing.js";
@@ -41,7 +42,7 @@ import {
 import { shouldProcessPhoto } from "./work-decision.js";
 
 export interface ProcessedImageData {
-  sharpInstance: sharp.Sharp;
+  sharpInstance: Sharp;
   imageBuffer: Buffer;
   metadata: { width: number; height: number };
 }

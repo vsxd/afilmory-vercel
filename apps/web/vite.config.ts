@@ -129,6 +129,11 @@ export default defineConfig(async ({ command }) => {
 
   return {
     base: "/",
+    // Swiper exposes optional React bindings without declaring React as a peer.
+    // Resolve them from the app root and keep one React instance in the bundle.
+    resolve: {
+      dedupe: ["react", "react-dom"],
+    },
     plugins: [
       ...devOnlyPlugins,
       react({
