@@ -12,11 +12,11 @@
  * made-up countries with ISO user-assigned `X*` country codes) while keeping
  * the data shape authentic:
  *
- * - thumbHash values are REAL — each photo gets a small deterministic gradient
- *   rendered with sharp, pushed through the exact builder pipeline
- *   (resize 100×100 inside → raw → ensureAlpha → thumbhash 的 rgbaToThumbHash，
- *   再用 @afilmory/media 的 uint8ArrayToHex 压成十六进制字符串，与
- *   packages/builder/src/photo/image-pipeline.ts 写 manifest 的格式一致)。
+ * - thumbHash values are REAL — each photo gets deterministic RGBA gradient
+ *   pixels, pushed through thumbhash 的 rgbaToThumbHash，再用
+ *   @afilmory/media 的 uint8ArrayToHex 压成十六进制字符串。这里刻意不从
+ *   sharp 生成的 JPEG 反解像素，避免 libvips/SIMD 在不同平台上的舍入差异
+ *   让已提交 fixture 漂移；manifest 格式仍与 builder 完全一致。
  * - the same rendered gradients are written out as fixture thumbnails so the
  *   prod-smoke build can serve them from dist/ without any route stubbing.
  * - coverage includes varied aspect ratios, a dateTaken spread, tags, HDR,
@@ -61,6 +61,7 @@ const CDN = "https://photos.fixture.test";
 const PREFIX = "fixtures/";
 const PHOTO_COUNT = 18;
 const THUMB_MAX = 256;
+const THUMB_HASH_MAX = 100;
 
 const CAMERAS = [
   { make: "Lumina", model: "LX-7" },
@@ -247,14 +248,29 @@ function renderGradientRgb(
   return data;
 }
 
-/** 与 packages/builder/src/image/thumbhash.ts 完全一致的 thumbhash 生成管线。 */
-async function generateThumbHashHex(thumbnailBuffer: Buffer): Promise<string> {
-  const { data, info } = await sharp(thumbnailBuffer)
-    .resize(100, 100, { fit: "inside" })
-    .raw()
-    .ensureAlpha()
-    .toBuffer({ resolveWithObject: true });
-  return uint8ArrayToHex(rgbaToThumbHash(info.width, info.height, data));
+/**
+ * 用纯 JS 生成确定性 RGBA 输入。JPEG 编解码仍用于实际缩略图资产，但不参与
+ * fixture hash，以免相同 libvips 版本在不同 CPU/平台产生 1 bit 舍入差异。
+ */
+function generateThumbHashHex(
+  width: number,
+  height: number,
+  index: number,
+): string {
+  const scale = Math.min(1, THUMB_HASH_MAX / Math.max(width, height));
+  const hashWidth = Math.max(1, Math.round(width * scale));
+  const hashHeight = Math.max(1, Math.round(height * scale));
+  const rgb = renderGradientRgb(hashWidth, hashHeight, index);
+  const rgba = new Uint8Array(hashWidth * hashHeight * 4);
+
+  for (let source = 0, target = 0; source < rgb.length; source += 3) {
+    rgba[target++] = rgb[source];
+    rgba[target++] = rgb[source + 1];
+    rgba[target++] = rgb[source + 2];
+    rgba[target++] = 255;
+  }
+
+  return uint8ArrayToHex(rgbaToThumbHash(hashWidth, hashHeight, rgba));
 }
 
 // ── build the manifest ────────────────────────────────────────────────────────
@@ -280,7 +296,7 @@ for (const [index, spec] of PHOTO_SPECS.entries()) {
     .jpeg({ quality: 82 })
     .toBuffer();
   writeFileSync(path.join(thumbnailsDir, `${id}.jpg`), thumbnailBuffer);
-  const thumbHash = await generateThumbHashHex(thumbnailBuffer);
+  const thumbHash = generateThumbHashHex(thumbWidth, thumbHeight, index);
 
   const dateTaken = isoDate(DATE_TAKEN_BASE, index, DATE_TAKEN_STEP);
   const countrySpec =

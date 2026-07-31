@@ -9,16 +9,16 @@
     "url": "https://github.com/vsxd/afilmory-vercel"
   },
   "scripts": {
-    "analyze": "analyzer=1 vite build",
-    "build": "vite build",
+    "analyze": "analyzer=1 vite build --configLoader runner",
+    "build": "vite build --configLoader runner",
     "dev": "tsx scripts/dev.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
     "lint": "eslint . --cache --cache-location ../../node_modules/.cache/eslint/apps-web",
     "lint:fix": "eslint . --fix",
-    "serve": "vite preview",
+    "serve": "vite preview --configLoader runner",
     "test": "pnpm --dir ../.. exec vitest run --project web",
     "type-check": "tsc --noEmit",
-    "web": "vite"
+    "web": "vite --configLoader runner"
   },
   "dependencies": {
     "@afilmory/media": "workspace:*",

@@ -13,7 +13,10 @@ async function main() {
   // Get command line arguments excluding node and script name
   const args = process.argv.slice(2);
   try {
-    await $({ cwd: workdir, stdio: "inherit" })`vite --host ${args}`;
+    await $({
+      cwd: workdir,
+      stdio: "inherit",
+    })`vite --configLoader runner --host ${args}`;
   } catch (error: any) {
     // 130 is SIGINT (Ctrl+C), which is a normal exit for dev server
     if (error.exitCode === 130) {

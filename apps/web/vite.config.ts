@@ -22,6 +22,24 @@ import { virtualRoutesPlugin } from "./plugins/vite/routes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// process.noDeprecation is a real Node API that @types/node 24 doesn't declare.
+const proc = process as NodeJS.Process & { noDeprecation?: boolean };
+
+async function loadTailwindcssPlugin() {
+  // Tailwind 4.1.x calls the deprecated module.register() during import on Node 26.
+  const previousNoDeprecation = proc.noDeprecation;
+  proc.noDeprecation = true;
+  try {
+    return (await import("@tailwindcss/vite")).default;
+  } finally {
+    proc.noDeprecation = previousNoDeprecation;
+  }
+}
+
+// The runner config loader closes after evaluating this module, so config-time
+// dependencies must be resolved before Vite invokes the exported config hook.
+const tailwindcss = await loadTailwindcssPlugin();
+
 const ReactCompilerConfig = {
   /* ... */
 };
@@ -90,7 +108,6 @@ const staticWebBuildPlugins: PluginOption[] = [
 // https://vitejs.dev/config/
 export default defineConfig(async ({ command }) => {
   const devOnlyPlugins: PluginOption[] = [];
-  const tailwindcss = await loadTailwindcssPlugin();
 
   if (command === "serve") {
     silenceUnavailableNodeLocalStorageWarning();
@@ -145,17 +162,3 @@ export default defineConfig(async ({ command }) => {
     },
   };
 });
-
-// process.noDeprecation is a real Node API that @types/node 24 doesn't declare.
-const proc = process as NodeJS.Process & { noDeprecation?: boolean };
-
-async function loadTailwindcssPlugin() {
-  // Tailwind 4.1.x calls the deprecated module.register() during import on Node 26.
-  const previousNoDeprecation = proc.noDeprecation;
-  proc.noDeprecation = true;
-  try {
-    return (await import("@tailwindcss/vite")).default;
-  } finally {
-    proc.noDeprecation = previousNoDeprecation;
-  }
-}
