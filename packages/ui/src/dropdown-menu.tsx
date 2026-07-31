@@ -91,8 +91,7 @@ const DropdownMenuItem = ({
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean;
   icon?:
-    | React.ReactNode
-    | ((props?: { isActive?: boolean }) => React.ReactNode);
+    React.ReactNode | ((props?: { isActive?: boolean }) => React.ReactNode);
   active?: boolean;
   highlightColor?: "accent" | "gray";
   shortcut?: string;

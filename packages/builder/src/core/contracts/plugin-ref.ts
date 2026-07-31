@@ -32,13 +32,10 @@ export type BuilderPluginESMImporter = () => Promise<{
 }>;
 
 export type BuilderPluginReference =
-  | string
-  | BuiltinBuilderPluginDescriptor
-  | BuilderPluginESMImporter;
+  string | BuiltinBuilderPluginDescriptor | BuilderPluginESMImporter;
 
 export type BuilderPluginConfigEntry =
-  | BuilderPluginReference
-  | MinimalBuilderPlugin;
+  BuilderPluginReference | MinimalBuilderPlugin;
 
 export function isPluginESMImporter(
   value: BuilderPluginConfigEntry,

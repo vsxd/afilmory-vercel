@@ -26,9 +26,7 @@ export const DEFAULT_MAX_DOWNLOAD_BYTES = 1024 * 1024 * 1024;
 export const DEFAULT_DOWNLOAD_MEMORY_BUDGET_BYTES = 2 * 1024 * 1024 * 1024;
 
 export type StorageListingIncompleteCode =
-  | "max-file-limit"
-  | "pagination-anomaly"
-  | "provider-error";
+  "max-file-limit" | "pagination-anomaly" | "provider-error";
 
 /**
  * A storage listing is a snapshot only when `complete` is true.  Callers that

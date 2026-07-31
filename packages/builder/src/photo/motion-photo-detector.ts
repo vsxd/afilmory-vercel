@@ -76,8 +76,7 @@ export const detectMotionPhoto = ({
 
     // Try standard format (Motion Photo 1.0 with ContainerDirectory)
     const containerDirectory = exifData?.ContainerDirectory as
-      | ContainerDirectoryItem[]
-      | undefined;
+      ContainerDirectoryItem[] | undefined;
     if (containerDirectory && Array.isArray(containerDirectory)) {
       logger?.info(
         "[motion-photo] Found ContainerDirectory, using standard format",

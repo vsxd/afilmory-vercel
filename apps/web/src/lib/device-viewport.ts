@@ -37,8 +37,6 @@ export const isMobileDevice = (() => {
   // `ontouchstart` alone misclassifies hybrid Windows laptops as mobile.
   return Boolean(
     userAgentDataMobile ??
-      (isKnownMobileUserAgent ||
-        isDesktopModeIPad ||
-        isCoarseTouchPrimaryInput),
+    (isKnownMobileUserAgent || isDesktopModeIPad || isCoarseTouchPrimaryInput),
   );
 })();

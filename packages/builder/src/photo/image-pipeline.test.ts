@@ -104,8 +104,7 @@ function createHarness() {
       result: { type: string };
     };
     const data = context.pluginData[THUMBNAIL_PLUGIN_DATA_KEY] as
-      | ThumbnailPluginData
-      | undefined;
+      ThumbnailPluginData | undefined;
     snapshots.push({
       resultType: result.type,
       hasThumbnailEntry: data !== undefined,

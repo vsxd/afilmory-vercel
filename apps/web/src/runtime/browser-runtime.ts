@@ -59,8 +59,7 @@ type AfilmoryGlobal = typeof globalThis & {
 };
 
 export function getExistingBrowserRuntime():
-  | AfilmoryBrowserRuntime
-  | undefined {
+  AfilmoryBrowserRuntime | undefined {
   return (globalThis as AfilmoryGlobal).__AFILMORY__;
 }
 

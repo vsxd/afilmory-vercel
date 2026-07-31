@@ -52,8 +52,7 @@ export interface WebDeliveryShardReference {
   photoIds: string[];
 }
 
-export interface WebDeliveryRuntimeShardReference
-  extends WebDeliveryShardReference {
+export interface WebDeliveryRuntimeShardReference extends WebDeliveryShardReference {
   /** Raw manifest photos discarded by lenient parsing but still present in this asset. */
   ignoredPhotoIds?: string[];
 }

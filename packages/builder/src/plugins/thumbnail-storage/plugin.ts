@@ -147,8 +147,7 @@ export default function thumbnailStoragePlugin(
         }
 
         const data = payload.context.pluginData[THUMBNAIL_PLUGIN_DATA_KEY] as
-          | ThumbnailPluginData
-          | undefined;
+          ThumbnailPluginData | undefined;
 
         if (!data || !data.buffer || !payload.result.item) {
           return;

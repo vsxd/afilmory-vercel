@@ -75,9 +75,8 @@ describe("apps/web media capability SSR safety", () => {
   it("reports HEIC support as unavailable without navigator", async () => {
     removeGlobal("navigator");
 
-    const { isBrowserSupportHeic } = await import(
-      "../lib/image-convert/strategies/heic"
-    );
+    const { isBrowserSupportHeic } =
+      await import("../lib/image-convert/strategies/heic");
 
     expect(isBrowserSupportHeic()).toBe(false);
   });

@@ -492,8 +492,7 @@ export async function processPhotoWithPipeline(
   // IPC v8 序列化。就地置 null（而非换新对象），持有旧条目引用的一方也随之释放；
   // 两种模式对 beforeAddManifestItem 呈现同样的无 buffer 载荷。
   const thumbnailData = context.pluginData[THUMBNAIL_PLUGIN_DATA_KEY] as
-    | ThumbnailPluginData
-    | undefined;
+    ThumbnailPluginData | undefined;
   if (thumbnailData) {
     thumbnailData.buffer = null;
   }

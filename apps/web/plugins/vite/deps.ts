@@ -276,8 +276,7 @@ export function createDependencyChunksPlugin(
       const criticalCss = new Set<string>();
       for (const fileName of preRenderFiles) {
         const metadata = chunksByFileName.get(fileName)?.viteMetadata as
-          | { importedCss?: Set<string> }
-          | undefined;
+          { importedCss?: Set<string> } | undefined;
         for (const cssFile of metadata?.importedCss ?? []) {
           criticalCss.add(cssFile);
         }

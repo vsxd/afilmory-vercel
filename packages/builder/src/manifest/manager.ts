@@ -177,8 +177,8 @@ export async function saveManifest(
   );
   const contentUnchanged = Boolean(
     options.previousManifest &&
-      JSON.stringify(comparisonCandidate) ===
-        JSON.stringify(options.previousManifest),
+    JSON.stringify(comparisonCandidate) ===
+      JSON.stringify(options.previousManifest),
   );
   const destinationExists = await fs
     .access(manifestPath)
@@ -305,8 +305,8 @@ export async function handleDeletedPhotos(
     // deleting the currently published thumbnail.
     const hasAmbiguousPublishedUrl = Boolean(
       photoId &&
-        manifestIdSet.has(photoId) &&
-        !manifestIdsWithExpectedFile.has(photoId),
+      manifestIdSet.has(photoId) &&
+      !manifestIdsWithExpectedFile.has(photoId),
     );
     if (!isExpected && !isFailedButStillStored && !hasAmbiguousPublishedUrl) {
       await fs.unlink(path.join(thumbnailsDir, thumbnail));

@@ -40,9 +40,7 @@ async function loadTailwindcssPlugin() {
 // dependencies must be resolved before Vite invokes the exported config hook.
 const tailwindcss = await loadTailwindcssPlugin();
 
-const ReactCompilerConfig = {
-  /* ... */
-};
+const ReactCompilerConfig = {/* ... */};
 
 function silenceUnavailableNodeLocalStorageWarning() {
   const descriptor = Object.getOwnPropertyDescriptor(

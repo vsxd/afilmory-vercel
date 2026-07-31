@@ -41,4 +41,7 @@ overrides:
   "@babel/core": 7.29.6
   defu: 6.1.7
   eslint-config-hyoban>eslint-plugin-react-hooks: 7.1.1
+  # filelist's minimatch 5 range resolves to a brace-expansion release affected
+  # by GHSA-mh99-v99m-4gvg. Minimatch 10 uses the patched brace-expansion API.
+  filelist>minimatch: 10.2.6
   workbox-build>source-map: 0.7.6

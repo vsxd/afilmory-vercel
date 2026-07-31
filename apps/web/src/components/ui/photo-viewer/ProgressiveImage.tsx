@@ -91,9 +91,9 @@ export const ProgressiveImage = ({
   const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE);
   const shouldShowLowResPlaceholder = Boolean(
     (thumbnailSrc || thumbHash) &&
-      !isThumbnailLoaded &&
-      !isHighResImageRendered &&
-      !error,
+    !isThumbnailLoaded &&
+    !isHighResImageRendered &&
+    !error,
   );
 
   // 判断是否有视频内容（Live Photo 或 Motion Photo）

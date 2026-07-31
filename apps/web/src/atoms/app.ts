@@ -62,8 +62,7 @@ export const galleryMobileColumnsAtom = atomWithStorage<GalleryColumns>(
 );
 
 type GalleryColumnsUpdate =
-  | GalleryColumns
-  | ((previous: GalleryColumns) => GalleryColumns);
+  GalleryColumns | ((previous: GalleryColumns) => GalleryColumns);
 
 /** Reads and writes the preference for the currently active responsive mode. */
 export const responsiveGalleryColumnsAtom = atom(

@@ -22,10 +22,7 @@ type ErrorListener = (error: Error) => void;
 type ExitListener = (code: number | null, signal: string | null) => void;
 type WorkerEvent = "online" | "message" | "error" | "exit";
 type WorkerEventListener =
-  | ErrorListener
-  | ExitListener
-  | MessageListener
-  | OnlineListener;
+  ErrorListener | ExitListener | MessageListener | OnlineListener;
 
 const clusterMocks = vi.hoisted(() => {
   class FakeClusterWorker {

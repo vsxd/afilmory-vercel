@@ -16,8 +16,7 @@ export const detectGainMap = ({
 }: GainMapDetectParams): boolean => {
   try {
     const containerDirectory = exifData?.ContainerDirectory as
-      | ContainerDirectoryItem[]
-      | undefined;
+      ContainerDirectoryItem[] | undefined;
     if (!containerDirectory || !Array.isArray(containerDirectory)) {
       return false;
     }
