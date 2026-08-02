@@ -47,7 +47,7 @@
     "@afilmory/builder": "workspace:*",
     "@afilmory/schema": "workspace:*",
     "@afilmory/ui": "workspace:*",
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@t3-oss/env-core": "catalog:",
     "@testing-library/react": "^16.3.2",
     "@types/node": "24.9.2",
