@@ -74,7 +74,7 @@
     "@types/supercluster": "7.1.3",
     "@vitejs/plugin-react": "^5.1.0",
     "babel-plugin-react-compiler": "19.1.0-rc.3",
-    "code-inspector-plugin": "1.2.10",
+    "code-inspector-plugin": "2.0.6",
     "consola": "3.4.2",
     "daisyui": "5.7.4",
     "dotenv": "catalog:",
