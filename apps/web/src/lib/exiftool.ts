@@ -30,7 +30,7 @@ class ExifToolManagerStatic {
       new File([buffer], `/afilmory/${filename}`),
     );
 
-    if (metadata.error) {
+    if (!metadata.success) {
       throw new Error(metadata.error);
     }
 

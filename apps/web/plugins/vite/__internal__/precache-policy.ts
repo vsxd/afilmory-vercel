@@ -28,7 +28,9 @@ const isRequiredShellAsset = (url: string): boolean =>
 
 export function filterCriticalPrecacheManifest(
   entries: PrecacheManifestEntry[],
-  rawByteBudget = 1_500 * 1024,
+  // Keep a small amount of headroom for the static shell as production
+  // dependencies evolve without allowing an unbounded precache graph.
+  rawByteBudget = 1_600 * 1024,
 ): { manifest: PrecacheManifestEntry[]; warnings: string[] } {
   if (criticalBuildFiles.size === 0) {
     throw new Error(
