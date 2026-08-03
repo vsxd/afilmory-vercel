@@ -48,14 +48,6 @@ test("production bundle serves gallery, viewer route, and service worker", async
   const photoItems = page.locator("[data-photo-id]");
   await expect(photoItems.first()).toBeVisible();
   expect(await photoItems.count()).toBeGreaterThan(0);
-  await expect(
-    page.getByText("Powered by Afilmory", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Source \(/ })).toHaveAttribute(
-    "href",
-    /github\.com\/vsxd\/afilmory-vercel(?:\/tree\/[^/]+)?$/,
-  );
-
   // 生产专属：manifest 以外部 hashed 资产 + 内联 fetch 脚本交付（dev server
   // 走 /__afilmory/ 中间件、内嵌模式则完全无请求）。不能断言
   // window.__AFILMORY__.manifest.mode === 'external'：manifest 加载完成后

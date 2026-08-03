@@ -9,7 +9,7 @@ import { siteConfig } from "~/config";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
 import { getPhotoGeoData } from "~/lib/geo-regions";
-import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
+import { usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
@@ -48,7 +48,6 @@ export const MasonryHeaderMasonryItem = ({
   const gallerySetting = useAtomValue(gallerySettingAtom);
   const visiblePhotos = useContextPhotos();
   const photoRepository = usePhotoRepository();
-  const { build } = useAfilmoryRuntime().browser;
   const photos = photoRepository.getPhotos();
   const visiblePhotoCount = visiblePhotos.length;
   const githubUrl = getGitHubUrl(siteConfig.social?.github);
@@ -405,41 +404,6 @@ export const MasonryHeaderMasonryItem = ({
           </div>
         )}
       </div>
-      <footer className="border-fill-secondary text-text-tertiary border-t px-4 py-2 text-center text-[10px] leading-relaxed">
-        <span>{`Powered by ${build?.appName || "Afilmory"}`}</span>
-        {build?.sourceUrl && (
-          <span>
-            <span aria-hidden="true"> · </span>
-            <a
-              href={build.sourceUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="hover:text-text underline-offset-2 hover:underline"
-            >
-              <span>
-                {build.sourceDirty
-                  ? build.sourceExact
-                    ? `Source (v${build.version || "0.0.0"}/modified)`
-                    : `Source (v${build.version || "0.0.0"}/uncommitted; repository only)`
-                  : `Source (v${build.version || "0.0.0"}/${build.gitCommitHash?.slice(0, 8) || "source"})`}
-              </span>
-            </a>
-          </span>
-        )}
-        {build?.licenseUrl && (
-          <span>
-            <span aria-hidden="true"> · </span>
-            <a
-              href={build.licenseUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="hover:text-text underline-offset-2 hover:underline"
-            >
-              <span>License: AGPL-3.0-or-later</span>
-            </a>
-          </span>
-        )}
-      </footer>
     </div>
   );
 };
