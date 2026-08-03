@@ -3,25 +3,25 @@ packages:
   - packages/*
 
 catalog:
-  "@egoist/tailwindcss-icons": 1.9.0
-  "@iconify-json/mingcute": 1.2.5
-  "@t3-oss/env-core": 0.13.8
-  "@tailwindcss/postcss": 4.1.16
-  "@tailwindcss/typography": 0.5.19
+  "@egoist/tailwindcss-icons": 1.9.2
+  "@iconify-json/mingcute": 1.2.7
+  "@t3-oss/env-core": 0.13.11
+  "@tailwindcss/postcss": 4.3.3
+  "@tailwindcss/typography": 0.5.20
   clsx: 2.1.1
-  dotenv: 17.2.3
+  dotenv: 17.4.2
   dotenv-expand: 12.0.3
   exiftool-vendored: 35.20.0
-  motion: 12.23.24
-  tailwind-merge: 3.3.1
+  motion: 12.43.0
+  tailwind-merge: 3.6.0
   tailwind-scrollbar: 4.0.2
-  tailwind-variants: 3.1.1
-  tailwindcss: 4.1.16
+  tailwind-variants: 3.3.0
+  tailwindcss: 4.3.3
   tailwindcss-animate: 1.0.7
-  tailwindcss-safe-area: 1.1.0
+  tailwindcss-safe-area: 1.3.0
   tailwindcss-uikit-colors: 1.0.0
   typescript: 5.9.3
-  zod: 4.1.12
+  zod: 4.4.3
 
 onlyBuiltDependencies:
   # Vite/tsx toolchain binary.
