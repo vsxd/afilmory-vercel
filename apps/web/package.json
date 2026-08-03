@@ -92,7 +92,7 @@
     "tailwindcss-animate": "catalog:",
     "tailwindcss-safe-area": "catalog:",
     "tailwindcss-uikit-colors": "catalog:",
-    "vite": "7.1.12",
+    "vite": "8.2.0",
     "vite-bundle-analyzer": "1.3.9",
     "vite-plugin-html": "3.2.2",
     "vite-plugin-pwa": "1.3.0",
