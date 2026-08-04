@@ -138,7 +138,7 @@ export const GalleryThumbnail: FC<{
       />
       <div
         ref={scrollContainerRef}
-        className="scrollbar-none relative z-10 flex overflow-x-auto"
+        className="relative z-10 flex scrollbar-none overflow-x-auto"
         style={{
           gap: isMobile ? thumbnailGapSize.mobile : thumbnailGapSize.desktop,
           padding: isMobile
