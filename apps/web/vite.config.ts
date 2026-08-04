@@ -8,7 +8,6 @@ import { defineConfig } from "vite";
 import { analyzer } from "vite-bundle-analyzer";
 import { checker } from "vite-plugin-checker";
 import { createHtmlPlugin } from "vite-plugin-html";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 import { env } from "../../env";
 import { siteConfig } from "../../site.config.build";
@@ -40,8 +39,6 @@ async function loadTailwindcssPlugin() {
 // The runner config loader closes after evaluating this module, so config-time
 // dependencies must be resolved before Vite invokes the exported config hook.
 const tailwindcss = await loadTailwindcssPlugin();
-
-const ReactCompilerConfig = {/* ... */};
 
 function silenceUnavailableNodeLocalStorageWarning() {
   const descriptor = Object.getOwnPropertyDescriptor(
@@ -132,15 +129,15 @@ export default defineConfig(async ({ command }) => {
     // Resolve them from the app root and keep one React instance in the bundle.
     resolve: {
       dedupe: ["react", "react-dom"],
+      tsconfigPaths: true,
     },
     plugins: [
       ...devOnlyPlugins,
       react(),
       babel({
-        presets: [reactCompilerPreset(ReactCompilerConfig)],
+        presets: [reactCompilerPreset()],
       }),
 
-      tsconfigPaths(),
       virtualRoutesPlugin(),
       checker({
         typescript: true,
