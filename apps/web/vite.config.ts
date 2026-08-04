@@ -1,7 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import type { PluginOption } from "vite";
 import { defineConfig } from "vite";
 import { analyzer } from "vite-bundle-analyzer";
@@ -134,10 +135,9 @@ export default defineConfig(async ({ command }) => {
     },
     plugins: [
       ...devOnlyPlugins,
-      react({
-        babel: {
-          plugins: [["babel-plugin-react-compiler", ReactCompilerConfig]],
-        },
+      react(),
+      babel({
+        presets: [reactCompilerPreset(ReactCompilerConfig)],
       }),
 
       tsconfigPaths(),
