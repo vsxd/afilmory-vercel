@@ -28,9 +28,10 @@ const isRequiredShellAsset = (url: string): boolean =>
 
 export function filterCriticalPrecacheManifest(
   entries: PrecacheManifestEntry[],
-  // Keep a small amount of headroom for the static shell as production
-  // dependencies evolve without allowing an unbounded precache graph.
-  rawByteBudget = 1_600 * 1024,
+  // Vite 8's Rolldown output is slightly larger before transfer compression.
+  // Keep a small amount of headroom for the static shell without weakening the
+  // separate gzip budgets enforced by the dependency-chunks plugin.
+  rawByteBudget = 1_800 * 1024,
 ): { manifest: PrecacheManifestEntry[]; warnings: string[] } {
   if (criticalBuildFiles.size === 0) {
     throw new Error(

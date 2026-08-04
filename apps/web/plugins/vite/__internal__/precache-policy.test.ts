@@ -50,4 +50,19 @@ describe("critical PWA precache policy", () => {
       ),
     ).toThrow("PWA critical precache");
   });
+
+  it("allows the Rolldown app shell within the default raw byte budget", () => {
+    setCriticalPrecacheFiles(["assets/index.js"]);
+
+    expect(
+      filterCriticalPrecacheManifest([
+        { url: "assets/index.js", revision: null, size: 1_750 * 1024 },
+      ]).manifest,
+    ).toHaveLength(1);
+    expect(() =>
+      filterCriticalPrecacheManifest([
+        { url: "assets/index.js", revision: null, size: 1_801 * 1024 },
+      ]),
+    ).toThrow("PWA critical precache");
+  });
 });

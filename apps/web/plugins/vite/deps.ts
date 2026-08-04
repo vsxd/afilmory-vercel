@@ -129,11 +129,11 @@ export function createDependencyChunksPlugin(
       config.build = config.build || {};
       // The HEIC codec bundle is intentionally loaded on demand and remains large.
       config.build.chunkSizeWarningLimit = 3000;
-      config.build.rollupOptions = config.build.rollupOptions || {};
-      config.build.rollupOptions.output =
-        config.build.rollupOptions.output || {};
+      config.build.rolldownOptions = config.build.rolldownOptions || {};
+      config.build.rolldownOptions.output =
+        config.build.rolldownOptions.output || {};
 
-      const { output } = config.build.rollupOptions;
+      const { output } = config.build.rolldownOptions;
       const outputConfig = Array.isArray(output) ? output[0] : output;
       // 产物命名模板集中在这里单一来源；vite.config.ts 里的同名字段会被本钩子覆盖。
       outputConfig.entryFileNames = "assets/[name].[hash].js";
@@ -147,7 +147,7 @@ export function createDependencyChunksPlugin(
           : "assets/[name]-[hash].js";
       };
 
-      outputConfig.manualChunks = (id: string) => {
+      const getDependencyChunkName = (id: string): string | null => {
         // Vite's preload helper and Rollup's CommonJS helpers are shared by both
         // eager and lazy chunks. If Rollup happens to place either helper inside
         // a large lazy-only vendor chunk (MapLibre was the observed case), the
@@ -177,6 +177,20 @@ export function createDependencyChunksPlugin(
           ),
         );
         return matchedGroup ? `vendor/${matchedGroup.name}` : null;
+      };
+
+      // Rolldown captures a manual group's dependencies recursively by default.
+      // That makes a lazy-only group such as MapLibre absorb React internals and
+      // turns the resulting map chunk into a static dependency of the entry.
+      // Keep package groups exact and let automatic chunking place their shared
+      // dependencies according to the real entry graph.
+      outputConfig.codeSplitting = {
+        groups: [
+          {
+            includeDependenciesRecursively: false,
+            name: getDependencyChunkName,
+          },
+        ],
       };
     },
     generateBundle(_outputOptions, bundle) {
