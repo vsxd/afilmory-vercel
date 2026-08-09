@@ -17,8 +17,8 @@
   "dependencies": {
     "@afilmory/media": "workspace:*",
     "@afilmory/schema": "workspace:*",
-    "@aws-sdk/client-s3": "3.1100.0",
-    "@aws-sdk/s3-request-presigner": "3.1100.0",
+    "@aws-sdk/client-s3": "3.1105.0",
+    "@aws-sdk/s3-request-presigner": "3.1105.0",
     "@smithy/node-http-handler": "4.9.13",
     "@vingle/bmp-js": "^0.2.5",
     "c12": "^3.3.1",
