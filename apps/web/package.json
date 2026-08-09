@@ -42,7 +42,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-error-boundary": "6.1.2",
-    "react-i18next": "16.2.3",
+    "react-i18next": "17.0.11",
     "react-intersection-observer": "10.0.0",
     "react-map-gl": "^8.1.0",
     "react-remove-scroll": "2.7.2",
