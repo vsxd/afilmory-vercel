@@ -26,9 +26,9 @@
     "@radix-ui/react-slot": "1.3.3",
     "@radix-ui/react-tooltip": "1.2.16",
     "clsx": "catalog:",
-    "es-toolkit": "1.50.0",
+    "es-toolkit": "1.51.0",
     "motion": "catalog:",
-    "sonner": "2.0.7",
+    "sonner": "2.0.8",
     "tailwind-merge": "catalog:",
     "tailwind-variants": "catalog:",
     "thumbhash": "0.1.1"
