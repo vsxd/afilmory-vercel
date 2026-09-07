@@ -23,19 +23,7 @@ export interface GallerySetting {
   selectedGeoDistricts: string[];
 }
 
-export const gallerySettingAtom = atom<GallerySetting>({
-  sortOrder: "desc",
-  selectedTags: [],
-  selectedCameras: [],
-  selectedLenses: [],
-  selectedGeoCountries: [],
-  selectedGeoRegions: [],
-  selectedGeoCities: [],
-  selectedGeoDistricts: [],
-});
-
-// 纯视图偏好，独立于 gallerySettingAtom：filterAndSortPhotos 按后者的
-// 对象标识做 WeakMap 备忘，列数混进去会让每次调列数都击穿过滤缓存。
+// Device view preferences are independent of URL-owned gallery filters.
 const createGalleryColumnsStorage = (max: number) =>
   unstable_withStorageValidator<GalleryColumns>(
     (value): value is GalleryColumns =>

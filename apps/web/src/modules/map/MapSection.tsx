@@ -14,6 +14,7 @@ import {
   getInitialViewStateForMarkers,
 } from "~/lib/map-utils";
 import { MapProvider } from "~/modules/map/MapProvider";
+import { useAppNavigation } from "~/navigation/hooks";
 import {
   usePhotoRepository,
   usePhotoRepositoryVersion,
@@ -37,7 +38,18 @@ export const MapSection = () => {
 };
 
 const MapSectionContent = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigation = useAppNavigation();
+  const [restored] = useState(() => ({
+    search: searchParams.toString(),
+    view: navigation.getMapView(),
+  }));
+  const restoredView =
+    restored.search === searchParams.toString() ? restored.view : undefined;
+  const setSearchParams = useCallback(
+    (params: URLSearchParams) => navigation.updateMapSearch(params.toString()),
+    [navigation],
+  );
   const photoRepository = usePhotoRepository();
   usePhotoRepositoryVersion();
   const repositoryPhotos = photoRepository.getPhotos();
@@ -82,7 +94,7 @@ const MapSectionContent = () => {
       newSearchParams.set("mode", "photos");
       newSearchParams.delete("regionId");
       newSearchParams.delete("locationId");
-      setSearchParams(newSearchParams, { replace: true });
+      setSearchParams(newSearchParams);
 
       // Mark that this is no longer the initial load
       setIsInitialLoad(false);
@@ -108,7 +120,7 @@ const MapSectionContent = () => {
       newSearchParams.delete("photoId");
       newSearchParams.delete("mode");
       newSearchParams.delete("locationId");
-      setSearchParams(newSearchParams, { replace: true });
+      setSearchParams(newSearchParams);
       setIsInitialLoad(false);
     },
     [searchParams, setSearchParams],
@@ -126,7 +138,7 @@ const MapSectionContent = () => {
         newSearchParams.delete("mode");
       }
 
-      setSearchParams(newSearchParams, { replace: true });
+      setSearchParams(newSearchParams);
       setIsInitialLoad(false);
     },
     [searchParams, setSearchParams],
@@ -172,7 +184,7 @@ const MapSectionContent = () => {
     if (newSearchParams.get("mode") === "locations") {
       newSearchParams.delete("mode");
     }
-    setSearchParams(newSearchParams, { replace: true });
+    setSearchParams(newSearchParams);
   }, [searchParams, setSearchParams]);
 
   // Parse URL parameters and map photo selections into the active display mode.
@@ -251,6 +263,7 @@ const MapSectionContent = () => {
 
   // Initial view state calculation - handle URL parameters
   const initialViewState = useMemo(() => {
+    if (restoredView) return restoredView;
     if (latitude !== null && longitude !== null) {
       // Use URL parameters if provided
       return {
@@ -264,7 +277,7 @@ const MapSectionContent = () => {
     return getInitialViewStateForMarkers(
       activeMarkers.length > 0 ? activeMarkers : markers,
     );
-  }, [activeMarkers, latitude, longitude, markers, zoom]);
+  }, [activeMarkers, latitude, longitude, markers, zoom, restoredView]);
 
   return (
     <div className="absolute h-full w-full">
@@ -296,7 +309,10 @@ const MapSectionContent = () => {
           displayMode={effectiveMapMode}
           initialViewState={initialViewState}
           autoFitBounds={
-            isInitialLoad && latitude === null && longitude === null
+            !restoredView &&
+            isInitialLoad &&
+            latitude === null &&
+            longitude === null
           }
           syncViewStateOnInitialViewStateChange={Boolean(
             selectedPhotoId || selectedRegionId,
@@ -310,6 +326,7 @@ const MapSectionContent = () => {
           onMarkerClick={handleMarkerClick}
           onRegionClick={handleRegionClick}
           onZoomChange={handleZoomChange}
+          onViewStateChange={navigation.rememberMapView}
           className="h-full w-full"
         />
       </m.div>

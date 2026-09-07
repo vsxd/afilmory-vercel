@@ -3,10 +3,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Map from "react-map-gl/maplibre";
-import { Link } from "react-router";
 
 import { getMapStyle } from "~/lib/map/style";
 import { isValidGPSCoordinates } from "~/lib/map-utils";
+import { useAppNavigation } from "~/navigation/hooks";
+import { isPlainLinkClick } from "~/navigation/link-click";
 
 interface MiniMapProps {
   latitude: number;
@@ -15,6 +16,7 @@ interface MiniMapProps {
 }
 
 export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
+  const navigation = useAppNavigation();
   const [isLoaded, setIsLoaded] = useState(false);
   const { t } = useTranslation();
   const exploreHref = `/explore?${new URLSearchParams({ photoId }).toString()}`;
@@ -61,8 +63,14 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
       )}
 
       {/* 点击跳转到explore页面的遮罩 */}
-      <Link
-        to={exploreHref}
+      <a
+        href={exploreHref}
+        onClick={(event) => {
+          if (isPlainLinkClick(event)) {
+            event.preventDefault();
+            navigation.showMap(photoId);
+          }
+        }}
         className="absolute inset-0 cursor-pointer transition-opacity duration-200 hover:bg-black/10"
         aria-label={t("minimap.view.in.map")}
       />

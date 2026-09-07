@@ -6,17 +6,15 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { GallerySetting } from "~/atoms/app";
-import { gallerySettingAtom } from "~/atoms/app";
 import {
   filterAndSortPhotos,
   getFilteredPhotos,
   getViewerPhotos,
-  getViewerSourceMode,
-  useOpenPhotoViewer,
   usePhotoViewer,
   usePhotoViewerBodyScrollLock,
-  useViewerPhotos,
 } from "~/hooks/usePhotoViewer";
+import { createTestNavigation } from "~/navigation/__tests__/test-router";
+import { useAppNavigation } from "~/navigation/hooks";
 import type { AppRuntime } from "~/runtime/app-runtime";
 import { createAppRuntime } from "~/runtime/app-runtime";
 import { AfilmoryRuntimeProvider } from "~/runtime/app-runtime-provider";
@@ -96,13 +94,7 @@ describe("viewer photo resolution", () => {
 
   beforeEach(() => {
     runtime = createAppRuntime({ manifest });
-    runtime.store.set(gallerySettingAtom, defaultGallerySetting);
-
-    const { result, unmount } = renderHook(() => usePhotoViewer(), { wrapper });
-    act(() => {
-      result.current.closeViewer();
-    });
-    unmount();
+    runtime.navigation = createTestNavigation().navigation;
   });
 
   it("memoizes filterAndSortPhotos on (photos, setting) reference identity", () => {
@@ -167,7 +159,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("returns referentially equal results across getFilteredPhotos calls with stable runtime state", () => {
-    runtime.store.set(gallerySettingAtom, {
+    runtime.navigation.updateGallerySettings({
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -176,7 +168,7 @@ describe("viewer photo resolution", () => {
     // 两次内部的 getFilteredPhotos 应命中备忘、返回同一数组
     expect(getFilteredPhotos(runtime)).toBe(getFilteredPhotos(runtime));
 
-    runtime.store.set(gallerySettingAtom, { ...defaultGallerySetting });
+    runtime.navigation.updateGallerySettings({ ...defaultGallerySetting });
     const afterSettingChange = getFilteredPhotos(runtime);
     expect(afterSettingChange.map((photo) => photo.id)).toEqual([
       "visible-photo",
@@ -185,7 +177,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("keeps the filtered viewer set when the requested photo is still visible", () => {
-    runtime.store.set(gallerySettingAtom, {
+    runtime.navigation.updateGallerySettings({
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -226,7 +218,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("falls back to the full photo set when the requested photo is excluded by filters", () => {
-    runtime.store.set(gallerySettingAtom, {
+    runtime.navigation.updateGallerySettings({
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
@@ -245,7 +237,7 @@ describe("viewer photo resolution", () => {
   });
 
   it("preserves the active sort order when falling back to the full photo set", () => {
-    runtime.store.set(gallerySettingAtom, {
+    runtime.navigation.updateGallerySettings({
       ...defaultGallerySetting,
       sortOrder: "asc",
       selectedTags: ["keep"],
@@ -262,212 +254,68 @@ describe("viewer photo resolution", () => {
     );
   });
 
-  it("keeps goToIndex bounded by the active viewer photo count", () => {
-    const { result } = renderHook(() => usePhotoViewer(1), { wrapper });
-
-    act(() => {
-      result.current.openViewer(0, { sourceMode: "filtered" });
-      result.current.goToIndex(1);
+  it("bounds stepping by the source sequence", () => {
+    runtime.navigation.openPhoto("visible-photo", {
+      photoIds: ["visible-photo"],
     });
-
-    expect(result.current.currentIndex).toBe(0);
-  });
-
-  it("keeps an all-photos viewer session stable after navigating to a visible filtered photo", async () => {
-    runtime.store.set(gallerySettingAtom, {
-      ...defaultGallerySetting,
-      selectedTags: ["keep"],
-    });
-
-    const { result, rerender } = renderHook(
-      ({ photoId }) => {
-        const photos = useViewerPhotos(photoId);
-        const viewer = usePhotoViewer(photos.length);
-        return { photos, viewer };
-      },
-      { initialProps: { photoId: "hidden-photo" as string | null }, wrapper },
-    );
-
-    act(() => {
-      result.current.viewer.openViewer(1, {
-        sourceMode: getViewerSourceMode(runtime, "hidden-photo"),
-      });
-    });
-
-    rerender({ photoId: "visible-photo" });
-    expect(result.current.photos.map((photo) => photo.id)).toEqual([
-      "visible-photo",
-      "hidden-photo",
-    ]);
-    expect(result.current.viewer.viewerSourceMode).toBe("all");
-
-    act(() => {
-      result.current.viewer.closeViewer();
-    });
-
-    rerender({ photoId: "visible-photo" });
-    await waitFor(() => {
-      expect(result.current.photos.map((photo) => photo.id)).toEqual([
-        "visible-photo",
-      ]);
-      expect(result.current.viewer.viewerSourceMode).toBeNull();
-    });
-  });
-
-  it("falls back to all photos when a filtered viewer session loses the active photo", () => {
-    const { result: viewerResult } = renderHook(() => usePhotoViewer(), {
-      wrapper,
-    });
-    const { result, rerender } = renderHook(
-      ({ photoId }) => useViewerPhotos(photoId),
-      {
-        initialProps: { photoId: "hidden-photo" as string | null },
-        wrapper,
-      },
-    );
-
-    act(() => {
-      viewerResult.current.openViewer(1, { sourceMode: "filtered" });
-    });
-
-    runtime.store.set(gallerySettingAtom, {
-      ...defaultGallerySetting,
-      selectedTags: ["keep"],
-    });
-
-    rerender({ photoId: "hidden-photo" });
-    expect(result.current.map((photo) => photo.id)).toEqual([
-      "visible-photo",
-      "hidden-photo",
-    ]);
-  });
-
-  it("keeps goToIndex bounded by the filtered viewer count when no explicit photoCount is provided", () => {
-    runtime.store.set(gallerySettingAtom, {
-      ...defaultGallerySetting,
-      selectedTags: ["keep"],
-    });
-
     const { result } = renderHook(() => usePhotoViewer(), { wrapper });
-
-    act(() => {
-      result.current.openViewer(0, { sourceMode: "filtered" });
-      result.current.goToIndex(1);
-    });
-
+    act(() => result.current.goToIndex(1));
     expect(result.current.currentIndex).toBe(0);
+    expect(runtime.navigation.getPhotoId()).toBe("visible-photo");
   });
 
-  it("keeps a filtered viewer session on its opened photo ids even if filters momentarily clear", () => {
-    runtime.store.set(gallerySettingAtom, {
+  it("retains an all-photo sequence when stepping to a photo included in filters", () => {
+    runtime.navigation.updateGallerySettings({
       ...defaultGallerySetting,
       selectedTags: ["keep"],
     });
-
-    const { result, rerender } = renderHook(
-      ({ photoId }) => useViewerPhotos(photoId),
-      {
-        initialProps: { photoId: "visible-photo" as string | null },
-        wrapper,
-      },
-    );
-    const { result: viewerResult } = renderHook(() => usePhotoViewer(), {
-      wrapper,
+    runtime.navigation.openPhoto("hidden-photo", {
+      photoIds: ["visible-photo", "hidden-photo"],
     });
-
-    act(() => {
-      viewerResult.current.openViewer(0, {
-        sourceMode: "filtered",
-        sourcePhotoIds: ["visible-photo"],
-      });
-    });
-
-    runtime.store.set(gallerySettingAtom, defaultGallerySetting);
-    rerender({ photoId: "visible-photo" });
-
-    expect(result.current.map((photo) => photo.id)).toEqual(["visible-photo"]);
+    const { result } = renderHook(() => usePhotoViewer(), { wrapper });
+    act(() => result.current.goToIndex(0));
+    expect(runtime.navigation.getPhotoId()).toBe("visible-photo");
+    expect(
+      getViewerPhotos(runtime, "visible-photo").map((photo) => photo.id),
+    ).toEqual(["visible-photo", "hidden-photo"]);
+    act(() => runtime.navigation.closePhoto());
+    expect(
+      getViewerPhotos(runtime, "visible-photo").map((photo) => photo.id),
+    ).toEqual(["visible-photo"]);
   });
 
-  it("restores the previous body overflow when the viewer closes or unmounts", async () => {
+  it("falls back to all photos when the requested ID is outside the stored sequence", () => {
+    runtime.navigation.updateGallerySettings({
+      ...defaultGallerySetting,
+      selectedTags: ["keep"],
+    });
+    runtime.navigation.openPhoto("visible-photo", {
+      photoIds: ["visible-photo"],
+    });
+    expect(
+      getViewerPhotos(runtime, "hidden-photo").map((photo) => photo.id),
+    ).toEqual(["visible-photo", "hidden-photo"]);
+  });
+
+  it("restores body overflow on close and unmount", async () => {
     document.body.style.overflow = "clip";
-
-    const { result, unmount } = renderHook(
-      () => {
-        usePhotoViewerBodyScrollLock();
-        return usePhotoViewer();
-      },
-      { wrapper },
-    );
-
-    act(() => {
-      result.current.openViewer(0);
+    const { unmount } = renderHook(() => usePhotoViewerBodyScrollLock(), {
+      wrapper,
     });
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("hidden");
-    });
-
-    act(() => {
-      result.current.closeViewer();
-    });
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("clip");
-    });
-
-    act(() => {
-      result.current.openViewer(0);
-    });
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("hidden");
-    });
-
+    act(() => runtime.navigation.openPhoto("visible-photo"));
+    await waitFor(() => expect(document.body.style.overflow).toBe("hidden"));
+    act(() => runtime.navigation.requestPhotoClose());
+    await waitFor(() => expect(document.body.style.overflow).toBe("clip"));
+    act(() => runtime.navigation.openPhoto("hidden-photo"));
+    await waitFor(() => expect(document.body.style.overflow).toBe("hidden"));
     unmount();
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("clip");
-    });
-    document.body.style.overflow = "";
+    expect(document.body.style.overflow).toBe("clip");
   });
 
-  it("keeps body scroll locking outside action-only viewer consumers", async () => {
+  it("keeps body locking outside action-only consumers", () => {
     document.body.style.overflow = "clip";
-
-    const { result: openViewerResult } = renderHook(
-      () => useOpenPhotoViewer(),
-      {
-        wrapper,
-      },
-    );
-
-    act(() => {
-      openViewerResult.current(0);
-    });
-
+    const { result } = renderHook(() => useAppNavigation(), { wrapper });
+    act(() => result.current.openPhoto("visible-photo"));
     expect(document.body.style.overflow).toBe("clip");
-
-    const { unmount: unmountScrollLock } = renderHook(
-      () => usePhotoViewerBodyScrollLock(),
-      { wrapper },
-    );
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("hidden");
-    });
-
-    unmountScrollLock();
-
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe("clip");
-    });
-
-    const { result: viewerResult } = renderHook(() => usePhotoViewer(), {
-      wrapper,
-    });
-    act(() => {
-      viewerResult.current.closeViewer();
-    });
-    document.body.style.overflow = "";
   });
 });

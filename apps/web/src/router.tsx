@@ -9,8 +9,8 @@ import type { AppRuntime } from "./runtime/app-runtime";
 
 const tree = buildGlobRoutes(globTree);
 
-export const createAppRouter = (runtime: AppRuntime) =>
-  createBrowserRouter([
+export const createAppRouter = (runtime: AppRuntime) => {
+  const router = createBrowserRouter([
     {
       path: "/",
       element: <App runtime={runtime} />,
@@ -23,3 +23,7 @@ export const createAppRouter = (runtime: AppRuntime) =>
       element: <NotFound />,
     },
   ]);
+
+  runtime.navigation.bind(router);
+  return router;
+};

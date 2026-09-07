@@ -8,15 +8,14 @@ import { useMobile } from "~/hooks/useMobile";
 import { useIsPhotoViewerOpen, usePhotos } from "~/hooks/usePhotoViewer";
 import { getReadableTextColor } from "~/lib/color-contrast";
 import { MasonryRoot } from "~/modules/gallery/MasonryRoot";
-import { GalleryStateSync } from "~/providers/gallery-state-sync";
+import { GalleryModalIsolation } from "~/providers/gallery-modal-isolation";
 import { PhotoRouteAvailabilityProvider } from "~/providers/photo-route-availability";
 import { PhotosProvider } from "~/providers/photos-provider";
 
 export const Component = () => {
   const { t } = useTranslation();
   const isMobile = useMobile();
-  // 只订阅开/关：滑动换图与 URL 同步都收敛在 GalleryStateSync（null 子组件）里，
-  // 这里不再消费 router hooks / usePhotoViewer 的其余原子，避免整树重渲染。
+  // Subscribe only to visibility; replacing the photo URL does not rerender the gallery.
   const isPhotoViewerOpen = useIsPhotoViewerOpen();
   const [isPhotoRouteUnavailable, setPhotoRouteUnavailable] = useState(false);
   const galleryHiddenClassName = isPhotoRouteUnavailable
@@ -42,7 +41,7 @@ export const Component = () => {
           {t("common.skip-to-gallery")}
         </a>
       )}
-      <GalleryStateSync />
+      <GalleryModalIsolation />
       <PhotosProvider photos={photos}>
         {siteConfig.accentColor && (
           <style>{`

@@ -4,10 +4,16 @@ import { createStore } from "jotai/vanilla";
 import type { ComponentPropsWithoutRef, PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { gallerySettingAtom, isCommandPaletteOpenAtom } from "~/atoms/app";
+import { isCommandPaletteOpenAtom } from "~/atoms/app";
+import { createTestNavigation } from "~/navigation/__tests__/test-router";
+import type { NavigationController } from "~/navigation/controller";
 
 import { ActionGroup } from "../ActionGroup";
 
+let navigation: NavigationController;
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => ({ navigation }),
+}));
 vi.mock("@afilmory/ui", () => ({
   Button: ({
     children,
@@ -39,10 +45,6 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("react-router", () => ({
-  useNavigate: () => vi.fn(),
-}));
-
 vi.mock("~/hooks/useMobile", () => ({
   useMobile: () => false,
 }));
@@ -63,6 +65,7 @@ describe("ActionGroup", () => {
 
   it("opens the unified search and filter command palette from the header button", () => {
     const store = createStore();
+    navigation = createTestNavigation().navigation;
 
     render(
       <Provider store={store}>
@@ -78,7 +81,8 @@ describe("ActionGroup", () => {
 
   it("counts hidden region and district filters in the search badge", () => {
     const store = createStore();
-    store.set(gallerySettingAtom, (prev) => ({
+    navigation = createTestNavigation().navigation;
+    navigation.updateGallerySettings((prev) => ({
       ...prev,
       selectedGeoRegions: ["region:country=cn|region=anhui"],
       selectedGeoDistricts: ["district:country=cn|city=hangzhou|district=xihu"],

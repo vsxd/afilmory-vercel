@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import type { PhotoManifest } from "~/types/photo";
 
 import { copyTextToClipboard } from "./clipboard-text";
@@ -91,7 +92,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
   ];
 
   const handleNativeShare = useCallback(async () => {
-    const shareUrl = window.location.href;
+    const shareUrl = `${window.location.origin}${buildPhotoDetailPathname(photo.id)}`;
     const shareTitle = photo.title || t("photo.share.default.title");
     const shareText = t("photo.share.text", { title: shareTitle });
     const sharePayload = {
@@ -138,21 +139,27 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
 
       toast.error(t("photo.share.copy.failed"));
     }
-  }, [photo.title, blobSrc, photo.originalUrl, t]);
+  }, [photo.id, photo.title, blobSrc, photo.originalUrl, t]);
 
   const handleCopyLink = useCallback(async () => {
-    if (await copyTextToClipboard(window.location.href)) {
+    if (
+      await copyTextToClipboard(
+        `${window.location.origin}${buildPhotoDetailPathname(photo.id)}`,
+      )
+    ) {
       toast.success(t("photo.share.link.copied"));
       setIsOpen(false);
       return;
     }
 
     toast.error(t("photo.share.copy.failed"));
-  }, [t]);
+  }, [photo.id, t]);
 
   const handleSocialShare = useCallback(
     (url: string) => {
-      const shareUrl = encodeURIComponent(window.location.href);
+      const shareUrl = encodeURIComponent(
+        `${window.location.origin}${buildPhotoDetailPathname(photo.id)}`,
+      );
       const defaultTitle = t("photo.share.default.title");
       const shareTitle = encodeURIComponent(photo.title || defaultTitle);
       const shareText = encodeURIComponent(
@@ -174,7 +181,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
       }
       setIsOpen(false);
     },
-    [photo.title, t],
+    [photo.id, photo.title, t],
   );
 
   // 功能选项

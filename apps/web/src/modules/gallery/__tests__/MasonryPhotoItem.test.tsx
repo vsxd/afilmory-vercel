@@ -1,10 +1,8 @@
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { gallerySettingAtom } from "~/atoms/app";
-import { navigateAtom, routeAtom } from "~/atoms/route";
 import {
   getThumbnailLoadCacheKey,
   markThumbnailLoaded,
@@ -14,18 +12,15 @@ import type { PhotoManifest } from "~/types/photo";
 
 import { MasonryPhotoItem } from "../MasonryPhotoItem";
 
-const openViewer = vi.fn();
 const navigate = vi.fn();
 let contextPhotos: PhotoManifest[] = [];
-let gallerySetting = {
-  selectedTags: [],
-  selectedCameras: ["SONY ILCE-7C"],
-  selectedLenses: [],
-  selectedGeoCountries: [],
-  selectedGeoRegions: [],
-  selectedGeoCities: [],
-  selectedGeoDistricts: [],
-};
+vi.mock("~/navigation/hooks", () => ({
+  useAppNavigation: () => ({
+    openPhoto: navigate,
+    photoHref: (id: string) =>
+      `/photos/${encodeURIComponent(id)}?cameras=SONY+ILCE-7C`,
+  }),
+}));
 
 const photo = {
   aspectRatio: 1.5,
@@ -78,10 +73,6 @@ vi.mock("~/hooks/useLivePhotoHandler", () => ({
 
 vi.mock("~/hooks/usePhotoViewer", () => ({
   useContextPhotos: () => contextPhotos,
-  useOpenPhotoViewer: () => openViewer,
-  usePhotoViewer: () => ({
-    openViewer,
-  }),
 }));
 
 vi.mock("~/lib/gallery-thumbnail-cache", () => ({
@@ -124,29 +115,7 @@ describe("MasonryPhotoItem", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     contextPhotos = [photo];
-    gallerySetting = {
-      selectedTags: [],
-      selectedCameras: ["SONY ILCE-7C"],
-      selectedLenses: [],
-      selectedGeoCountries: [],
-      selectedGeoRegions: [],
-      selectedGeoCities: [],
-      selectedGeoDistricts: [],
-    };
-
     store = createStore();
-    store.set(gallerySettingAtom, {
-      ...store.get(gallerySettingAtom),
-      ...gallerySetting,
-    });
-    store.set(routeAtom, {
-      ...store.get(routeAtom),
-      location: {
-        ...store.get(routeAtom).location,
-        search: "?cameras=SONY%20ILCE-7C",
-      },
-    });
-    store.set(navigateAtom, { fn: navigate });
   });
 
   it("opens a filtered viewer session and navigates to the photo detail route with filters intact", () => {
@@ -154,15 +123,7 @@ describe("MasonryPhotoItem", () => {
 
     fireEvent.click(getByRole("link", { name: "A7C01202" }));
 
-    expect(openViewer).toHaveBeenCalledWith(0, {
-      element: expect.any(HTMLElement),
-      sourceMode: "filtered",
-      sourcePhotoIds: ["photo-1"],
-    });
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/photos/photo-1",
-      search: "?cameras=SONY+ILCE-7C",
-    });
+    expect(navigate).toHaveBeenCalledWith("photo-1", { photoIds: ["photo-1"] });
   });
 
   it("activates on Space like the former role=button (native anchors are Enter-only)", () => {
@@ -175,15 +136,7 @@ describe("MasonryPhotoItem", () => {
 
     fireEvent.keyDown(link, { key: " " });
 
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/photos/photo-1",
-      search: "?cameras=SONY+ILCE-7C",
-    });
-    expect(openViewer).toHaveBeenCalledWith(0, {
-      element: expect.any(HTMLElement),
-      sourceMode: "filtered",
-      sourcePhotoIds: ["photo-1"],
-    });
+    expect(navigate).toHaveBeenCalledWith("photo-1", { photoIds: ["photo-1"] });
   });
 
   it("reports focus with its own index so the parent handler can stay identity-stable", () => {
@@ -207,11 +160,7 @@ describe("MasonryPhotoItem", () => {
 
     fireEvent.click(getByRole("link", { name: "A7C01202" }));
 
-    expect(openViewer).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/photos/photo-1",
-      search: "?cameras=SONY+ILCE-7C",
-    });
+    expect(navigate).toHaveBeenCalledWith("photo-1", { photoIds: [] });
   });
 
   it("eagerly loads the first few thumbnails as LCP candidates with high priority", () => {
@@ -286,32 +235,11 @@ describe("MasonryPhotoItem", () => {
     expect(getByRole("link", { name: "photo.untitled.fallback" })).toBeTruthy();
   });
 
-  it("waits for async route navigation before opening the viewer", async () => {
-    let resolveNavigation!: () => void;
-    navigate.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        resolveNavigation = resolve;
-      }),
-    );
-
+  it("preserves modified click semantics without dispatching navigation", () => {
     const { getByRole } = renderItem({ data: photo, width: 300, index: 0 });
-
-    fireEvent.click(getByRole("link", { name: "A7C01202" }));
-
-    expect(navigate).toHaveBeenCalledWith({
-      pathname: "/photos/photo-1",
-      search: "?cameras=SONY+ILCE-7C",
-    });
-    expect(openViewer).not.toHaveBeenCalled();
-
-    resolveNavigation();
-
-    await waitFor(() => {
-      expect(openViewer).toHaveBeenCalledWith(0, {
-        element: expect.any(HTMLElement),
-        sourceMode: "filtered",
-        sourcePhotoIds: ["photo-1"],
-      });
-    });
+    const link = getByRole("link");
+    link.setAttribute("href", "#photo"); // Avoid jsdom attempting document navigation.
+    fireEvent.click(link, { ctrlKey: true });
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

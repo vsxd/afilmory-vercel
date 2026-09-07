@@ -1,14 +1,13 @@
 import { clsxm } from "@afilmory/ui";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
-import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { gallerySettingAtom } from "~/atoms/app";
 import { siteConfig } from "~/config";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
 import { getPhotoGeoData } from "~/lib/geo-regions";
+import { useGallerySettings } from "~/navigation/hooks";
 import { usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -45,7 +44,7 @@ export const MasonryHeaderMasonryItem = ({
   className?: string;
 }) => {
   const { t, i18n } = useTranslation();
-  const gallerySetting = useAtomValue(gallerySettingAtom);
+  const [gallerySetting] = useGallerySettings();
   const visiblePhotos = useContextPhotos();
   const photoRepository = usePhotoRepository();
   const photos = photoRepository.getPhotos();

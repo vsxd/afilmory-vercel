@@ -1,5 +1,5 @@
 import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentPropsWithoutRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,6 +12,11 @@ vi.mock("@afilmory/ui", () => ({
     children,
     ...props
   }: ComponentPropsWithoutRef<"span">) => <span {...props}>{children}</span>,
+}));
+
+const showGallery = vi.fn();
+vi.mock("~/navigation/hooks", () => ({
+  useAppNavigation: () => ({ showGallery }),
 }));
 
 const testTranslator: ExifTranslationAdapter = {
@@ -87,5 +92,9 @@ describe("ExifPanel sections", () => {
     expect(
       screen.getByRole("link", { name: "street" }).getAttribute("href"),
     ).toBe("/?tags=street");
+    fireEvent.click(screen.getByRole("link", { name: "street" }));
+    expect(showGallery).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedTags: ["street"] }),
+    );
   });
 });

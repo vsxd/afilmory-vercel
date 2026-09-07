@@ -54,6 +54,7 @@ interface PhotoViewerProps {
   currentIndex: number;
   isOpen: boolean;
   onClose: () => void;
+  onExitComplete?: () => void;
   onIndexChange: (index: number) => void;
   triggerElement: HTMLElement | null;
 }
@@ -63,6 +64,7 @@ export const PhotoViewer = ({
   currentIndex,
   isOpen,
   onClose,
+  onExitComplete,
   onIndexChange,
   triggerElement,
 }: PhotoViewerProps) => {
@@ -99,6 +101,7 @@ export const PhotoViewer = ({
     currentBlobSrc,
     isMobile,
     dismissTransformRef,
+    onExitComplete,
   });
 
   const handleDismiss = useCallback(

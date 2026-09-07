@@ -34,6 +34,7 @@ interface UsePhotoViewerTransitionsParams {
    * 让照片从被拖到的位置无缝飞回原格子（否则从居中帧起飞会跳变）。
    */
   dismissTransformRef?: RefObject<DismissTransform | null>;
+  onExitComplete?: () => void;
 }
 
 interface UsePhotoViewerTransitionsResult {
@@ -56,11 +57,17 @@ export const usePhotoViewerTransitions = ({
   currentBlobSrc,
   isMobile,
   dismissTransformRef,
+  onExitComplete,
 }: UsePhotoViewerTransitionsParams): UsePhotoViewerTransitionsResult => {
+  const exitCallbackRef = useRef(onExitComplete);
+  useEffect(() => {
+    exitCallbackRef.current = onExitComplete;
+  }, [onExitComplete]);
   const shouldReduceMotion = useReducedMotion() === true;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cachedTriggerRef = useRef<HTMLElement | null>(triggerElement);
   const wasOpenRef = useRef(isOpen);
+  const activeExitRef = useRef<PhotoViewerTransition | null>(null);
   const viewerBoundsRef = useRef<DOMRect | null>(null);
   const hiddenTriggerRef = useRef<HTMLElement | null>(null);
   const hiddenTriggerPrevVisibilityRef = useRef<string | null>(null);
@@ -272,6 +279,7 @@ export const usePhotoViewerTransitions = ({
   useEffect(() => {
     if (isOpen) {
       wasOpenRef.current = true;
+      activeExitRef.current = null;
       setExitTransition(null);
       return;
     }
@@ -284,8 +292,10 @@ export const usePhotoViewerTransitions = ({
 
     if (shouldReduceMotion) {
       wasOpenRef.current = false;
+      activeExitRef.current = null;
       setExitTransition(null);
       restoreTriggerElementVisibility();
+      exitCallbackRef.current?.();
       return;
     }
 
@@ -298,6 +308,7 @@ export const usePhotoViewerTransitions = ({
     if (typeof window === "undefined") {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
+      exitCallbackRef.current?.();
       return;
     }
 
@@ -309,7 +320,9 @@ export const usePhotoViewerTransitions = ({
     if (!targetRect || !targetRect.width || !targetRect.height) {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
+      activeExitRef.current = null;
       setExitTransition(null);
+      exitCallbackRef.current?.();
       return;
     }
 
@@ -333,7 +346,9 @@ export const usePhotoViewerTransitions = ({
     if (!viewerFrame.width || !viewerFrame.height) {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
+      activeExitRef.current = null;
       setExitTransition(null);
+      exitCallbackRef.current?.();
       return;
     }
 
@@ -356,7 +371,9 @@ export const usePhotoViewerTransitions = ({
     if (!imageSrc) {
       wasOpenRef.current = false;
       restoreTriggerElementVisibility();
+      activeExitRef.current = null;
       setExitTransition(null);
+      exitCallbackRef.current?.();
       return;
     }
 
@@ -403,7 +420,9 @@ export const usePhotoViewerTransitions = ({
       velocityY: dismiss ? dismiss.velocity : undefined,
     };
 
-    setExitTransition({ ...transitionState, variant: "exit" });
+    const exit: PhotoViewerTransition = { ...transitionState, variant: "exit" };
+    activeExitRef.current = exit;
+    setExitTransition(exit);
 
     wasOpenRef.current = false;
   }, [
@@ -441,9 +460,12 @@ export const usePhotoViewerTransitions = ({
   }, []);
 
   const handleExitAnimationComplete = useCallback(() => {
+    if (!exitTransition || activeExitRef.current !== exitTransition) return;
+    activeExitRef.current = null;
     restoreTriggerElementVisibility();
     setExitTransition(null);
-  }, [restoreTriggerElementVisibility]);
+    onExitComplete?.();
+  }, [exitTransition, onExitComplete, restoreTriggerElementVisibility]);
 
   const isEntryAnimating = Boolean(entryTransition);
   const shouldRenderBackdrop =

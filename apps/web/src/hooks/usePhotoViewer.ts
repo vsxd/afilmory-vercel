@@ -1,27 +1,22 @@
 import type { PhotoManifestItem } from "@afilmory/schema";
 import { photoMatchesGeoFilters } from "@afilmory/schema/geo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { use, useCallback, useMemo } from "react";
 
 import type { GallerySetting } from "~/atoms/app";
-import { gallerySettingAtom } from "~/atoms/app";
 import { useModalIsolation } from "~/hooks/useModalIsolation";
 import { getPhotoSortTime } from "~/lib/photo-date";
+import {
+  useAppNavigation,
+  useGallerySettings,
+  useIsPhotoPresented,
+  useNavigationLocation,
+} from "~/navigation/hooks";
 import { PhotosContext } from "~/providers/photos-provider";
 import type { AppRuntime } from "~/runtime/app-runtime";
 import {
-  useAfilmoryRuntime,
   usePhotoRepository,
   usePhotoRepositoryVersion,
 } from "~/runtime/app-runtime";
-
-const openAtom = atom(false);
-const currentIndexAtom = atom(0);
-const triggerElementAtom = atom<HTMLElement | null>(null);
-const viewerSourceModeAtom = atom<ViewerSourceMode | null>(null);
-const viewerSourcePhotoIdsAtom = atom<string[] | null>(null);
-
-type ViewerSourceMode = "filtered" | "all";
 
 const sortPhotos = (photos: PhotoManifestItem[], sortOrder: "asc" | "desc") => {
   return photos.toSorted((a, b) => {
@@ -95,11 +90,7 @@ const filterAndSortPhotosImpl = (
   return sortedPhotos;
 };
 
-// 全量过滤 + 排序对大照片库并不便宜，而调用方（layout.tsx 的 effect 里
-// getViewerPhotos / getViewerSourceMode 连续调用、usePhotos 等）会用同一对
-// 稳定引用（photos 来自 PhotoRepository，gallerySetting 来自 atom）反复调用。
-// 用 WeakMap 按两个入参的对象标识做备忘：同引用重复调用直接复用结果（且返回
-// 引用相等，利于下游 memo），任一引用变化即重算；WeakMap 不阻止旧对象被 GC。
+// Repository and URL filter snapshots have stable identities; reuse derived lists.
 const filterResultCache = new WeakMap<
   PhotoManifestItem[],
   WeakMap<GallerySetting, { version: number; photos: PhotoManifestItem[] }>
@@ -167,25 +158,11 @@ const getPhotosByIds = (photos: PhotoManifestItem[], photoIds: string[]) => {
   return resolved;
 };
 
-const resolveViewerSourceMode = (
-  photoId: string | null | undefined,
-  filteredPhotos: ReturnType<typeof getFilteredPhotos>,
-): ViewerSourceMode => {
-  if (!photoId) {
-    return "filtered";
-  }
-
-  return filteredPhotos.some((photo) => photo.id === photoId)
-    ? "filtered"
-    : "all";
-};
-
 const resolveViewerPhotos = (
   photoId: string | null | undefined,
   allPhotos: PhotoManifestItem[],
   filteredPhotos: PhotoManifestItem[],
   sortOrder: "asc" | "desc",
-  viewerSourceMode?: ViewerSourceMode | null,
   viewerSourcePhotoIds?: string[] | null,
 ) => {
   if (viewerSourcePhotoIds?.length) {
@@ -195,20 +172,13 @@ const resolveViewerPhotos = (
     }
   }
 
-  const sourceMode =
-    viewerSourceMode === "filtered" &&
-    photoId &&
-    !filteredPhotos.some((photo) => photo.id === photoId)
-      ? "all"
-      : (viewerSourceMode ?? resolveViewerSourceMode(photoId, filteredPhotos));
-
-  return sourceMode === "all"
+  return photoId && !filteredPhotos.some((photo) => photo.id === photoId)
     ? getAllPhotosForViewer(allPhotos, sortOrder)
     : filteredPhotos;
 };
 
 export const getFilteredPhotos = (runtime: AppRuntime) => {
-  const currentGallerySetting = runtime.store.get(gallerySettingAtom);
+  const currentGallerySetting = runtime.navigation.getGallerySettings();
   return filterAndSortPhotos(
     runtime.photoRepository.getPhotos(),
     currentGallerySetting,
@@ -220,35 +190,22 @@ export const getViewerPhotos = (
   runtime: AppRuntime,
   photoId?: string | null,
 ) => {
-  const { sortOrder } = runtime.store.get(gallerySettingAtom);
+  const { sortOrder } = runtime.navigation.getGallerySettings();
   const allPhotos = runtime.photoRepository.getPhotos();
   const filteredPhotos = getFilteredPhotos(runtime);
-  const viewerSourceMode = runtime.store.get(openAtom)
-    ? runtime.store.get(viewerSourceModeAtom)
-    : null;
-  const viewerSourcePhotoIds = runtime.store.get(openAtom)
-    ? runtime.store.get(viewerSourcePhotoIdsAtom)
-    : null;
+  const viewerSourcePhotoIds = runtime.navigation.getPhotoIds();
 
   return resolveViewerPhotos(
     photoId,
     allPhotos,
     filteredPhotos,
     sortOrder,
-    viewerSourceMode,
     viewerSourcePhotoIds,
   );
 };
 
-export const getViewerSourceMode = (
-  runtime: AppRuntime,
-  photoId?: string | null,
-) => {
-  return resolveViewerSourceMode(photoId, getFilteredPhotos(runtime));
-};
-
 export const usePhotos = () => {
-  const gallerySetting = useAtomValue(gallerySettingAtom);
+  const [gallerySetting] = useGallerySettings();
   const photoRepository = usePhotoRepository();
   const repositoryVersion = usePhotoRepositoryVersion();
   const allPhotos = photoRepository.getPhotos();
@@ -261,10 +218,11 @@ export const usePhotos = () => {
 };
 
 export const useViewerPhotos = (photoId?: string | null) => {
-  const { sortOrder } = useAtomValue(gallerySettingAtom);
-  const isOpen = useAtomValue(openAtom);
-  const viewerSourceMode = useAtomValue(viewerSourceModeAtom);
-  const viewerSourcePhotoIds = useAtomValue(viewerSourcePhotoIdsAtom);
+  const [{ sortOrder }] = useGallerySettings();
+  const navigation = useAppNavigation();
+  useNavigationLocation();
+  const isOpen = navigation.isPhotoOpen();
+  const viewerSourcePhotoIds = navigation.getPhotoIds();
   const filteredPhotos = usePhotos();
   const photoRepository = usePhotoRepository();
   const allPhotos = photoRepository.getPhotos();
@@ -276,7 +234,6 @@ export const useViewerPhotos = (photoId?: string | null) => {
         allPhotos,
         filteredPhotos,
         sortOrder,
-        isOpen ? viewerSourceMode : null,
         isOpen ? viewerSourcePhotoIds : null,
       ),
     [
@@ -285,7 +242,6 @@ export const useViewerPhotos = (photoId?: string | null) => {
       isOpen,
       photoId,
       sortOrder,
-      viewerSourceMode,
       viewerSourcePhotoIds,
     ],
   );
@@ -299,99 +255,53 @@ export const useContextPhotos = () => {
   return photos;
 };
 
-// 窄订阅：只关心开/关的组件（如 (main)/layout 的隐藏图库逻辑）用这个，
-// 避免经由 usePhotoViewer 订阅 currentIndex 等每次滑动都变化的原子。
-export const useIsPhotoViewerOpen = () => useAtomValue(openAtom);
+// Presentation visibility is a narrow snapshot; changing the photo does not notify the gallery.
 
 export const usePhotoViewerBodyScrollLock = () => {
-  const isOpen = useAtomValue(openAtom);
-  useModalIsolation(isOpen);
+  useModalIsolation(useIsPhotoPresented());
 };
 
-export const useOpenPhotoViewer = () => {
-  const setIsOpen = useSetAtom(openAtom);
-  const setCurrentIndex = useSetAtom(currentIndexAtom);
-  const setTriggerElement = useSetAtom(triggerElementAtom);
-  const setViewerSourceMode = useSetAtom(viewerSourceModeAtom);
-  const setViewerSourcePhotoIds = useSetAtom(viewerSourcePhotoIdsAtom);
-
-  return useCallback(
-    (
-      index: number,
-      options?: {
-        element?: HTMLElement | null;
-        sourceMode?: ViewerSourceMode;
-        sourcePhotoIds?: string[] | null;
-      },
-    ) => {
-      setCurrentIndex(index);
-      setTriggerElement(options?.element || null);
-      setViewerSourceMode(options?.sourceMode ?? null);
-      setViewerSourcePhotoIds(options?.sourcePhotoIds ?? null);
-      setIsOpen(true);
-    },
-    [
-      setCurrentIndex,
-      setIsOpen,
-      setTriggerElement,
-      setViewerSourceMode,
-      setViewerSourcePhotoIds,
-    ],
+export const usePhotoViewer = () => {
+  const navigation = useAppNavigation();
+  const location = useNavigationLocation();
+  const photos = useViewerPhotos(navigation.getPhotoId());
+  const isOpen = useIsPhotoPresented();
+  const currentIndex = photos.findIndex(
+    (photo) => photo.id === navigation.getPhotoId(),
   );
-};
-
-export const usePhotoViewer = (photoCount?: number) => {
-  const [isOpen, setIsOpen] = useAtom(openAtom);
-  const [currentIndex, setCurrentIndex] = useAtom(currentIndexAtom);
-  const [triggerElement, setTriggerElement] = useAtom(triggerElementAtom);
-  const [viewerSourceMode, setViewerSourceMode] = useAtom(viewerSourceModeAtom);
-  const [viewerSourcePhotoIds, setViewerSourcePhotoIds] = useAtom(
-    viewerSourcePhotoIdsAtom,
+  const triggerElement =
+    typeof document === "undefined"
+      ? null
+      : document.querySelector<HTMLElement>(
+          `[data-gallery-photo-link][data-photo-id="${CSS.escape(navigation.getPhotoId() ?? "")}"]`,
+        );
+  const closeViewer = useCallback(
+    () => navigation.requestPhotoClose(),
+    [navigation],
   );
-  const openViewer = useOpenPhotoViewer();
-  const runtime = useAfilmoryRuntime();
-
-  const closeViewer = useCallback(() => {
-    setIsOpen(false);
-    setTriggerElement(null);
-    setViewerSourceMode(null);
-    setViewerSourcePhotoIds(null);
-  }, [
-    setIsOpen,
-    setTriggerElement,
-    setViewerSourceMode,
-    setViewerSourcePhotoIds,
-  ]);
-
+  const completeClose = useCallback(
+    () => navigation.completePhotoClose(location.key),
+    [navigation, location.key],
+  );
   const goToIndex = useCallback(
     (index: number) => {
-      const maxPhotoCount =
-        (photoCount ?? viewerSourcePhotoIds?.length) ||
-        (viewerSourceMode === "all"
-          ? runtime.photoRepository.getPhotos().length
-          : getFilteredPhotos(runtime).length);
-      if (index >= 0 && index < maxPhotoCount) {
-        setCurrentIndex(index);
-      }
+      const photo = photos[index];
+      if (photo)
+        navigation.stepPhoto(
+          photo.id,
+          navigation.getPhotoIds() ?? photos.map((item) => item.id),
+        );
     },
-    [
-      photoCount,
-      runtime,
-      setCurrentIndex,
-      viewerSourceMode,
-      viewerSourcePhotoIds,
-    ],
+    [navigation, photos],
   );
-
   return {
     isOpen,
     currentIndex,
     triggerElement,
-    viewerSourceMode,
-    viewerSourcePhotoIds,
-    openViewer,
     closeViewer,
-
+    completeClose,
     goToIndex,
   };
 };
+
+export { useIsPhotoPresented as useIsPhotoViewerOpen } from "~/navigation/hooks";

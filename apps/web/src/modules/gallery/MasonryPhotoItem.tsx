@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { useStore } from "jotai";
 import {
   Fragment,
   memo,
@@ -10,11 +9,9 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { gallerySettingAtom } from "~/atoms/app";
-import { navigateAtom, routeAtom } from "~/atoms/route";
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { useLivePhotoHandler } from "~/hooks/useLivePhotoHandler";
-import { useContextPhotos, useOpenPhotoViewer } from "~/hooks/usePhotoViewer";
+import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import {
   CarbonIsoOutline,
   MaterialSymbolsShutterSpeed,
@@ -23,15 +20,14 @@ import {
 } from "~/icons";
 import { isMobileDevice } from "~/lib/device-viewport";
 import { getEssentialExif } from "~/lib/essential-exif";
-import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
 import { getImageFormat } from "~/lib/image-utils";
 import { getPhotoAccessibleLabel } from "~/lib/photo-accessibility";
-import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { flushStartupMetrics, markStartupOnce } from "~/lib/startup-metrics";
 import {
   getThumbnailLoadCacheKey,
   hasLoadedThumbnail,
 } from "~/lib/thumbnail-load-cache";
+import { useAppNavigation } from "~/navigation/hooks";
 import type { PhotoManifest } from "~/types/photo";
 
 import { computeMasonryItemHeight } from "./gallery-layout";
@@ -51,13 +47,8 @@ export const MasonryPhotoItem = memo(
     onFocus?: (index: number) => void;
   }) => {
     const photos = useContextPhotos();
-    const openViewer = useOpenPhotoViewer();
+    const navigation = useAppNavigation();
     const { t, i18n } = useTranslation();
-    // 通过 jotai store 在点击时按需读取路由 / 导航 / 画廊设置，避免订阅
-    // useLocation()/useNavigate()/gallerySettingAtom —— 否则打开查看器(URL 变化)
-    // 或调整任一筛选都会让全部可见的虚拟单元重渲染。沿用 StableRouterProvider 的
-    // 设计意图：路由状态存在 atom 里，读取时不触发组件重渲染。
-    const store = useStore();
     const [imageError, setImageError] = useState(false);
 
     const imageRef = useRef<HTMLImageElement>(null);
@@ -95,48 +86,12 @@ export const MasonryPhotoItem = memo(
     };
 
     const handleClick = useCallback(() => {
-      const photoIndex =
-        photos[index]?.id === data.id
-          ? index
-          : photos.findIndex((photo) => photo.id === data.id);
-      const openPhotoViewer = () => {
-        if (photoIndex === -1) {
-          return;
-        }
+      navigation.openPhoto(data.id, {
+        photoIds: photos.map((photo) => photo.id),
+      });
+    }, [data.id, navigation, photos]);
 
-        const triggerEl =
-          imageRef.current?.parentElement instanceof HTMLElement
-            ? imageRef.current.parentElement
-            : imageRef.current;
-
-        openViewer(photoIndex, {
-          element: triggerEl ?? undefined,
-          sourceMode: "filtered",
-          sourcePhotoIds: photos.map((photo) => photo.id),
-        });
-      };
-
-      const navigate = store.get(navigateAtom).fn;
-      const navigationResult = navigate?.({
-        pathname: buildPhotoDetailPathname(data.id),
-        search: buildGalleryFilterSearch(
-          store.get(routeAtom).location.search,
-          store.get(gallerySettingAtom),
-        ),
-      }) as void | PromiseLike<void> | undefined;
-
-      if (navigationResult && typeof navigationResult.then === "function") {
-        void navigationResult.then(openPhotoViewer, openPhotoViewer);
-        return;
-      }
-
-      openPhotoViewer();
-    }, [data.id, index, openViewer, photos, store]);
-
-    const photoHref = `${buildPhotoDetailPathname(data.id)}${buildGalleryFilterSearch(
-      store.get(routeAtom).location.search,
-      store.get(gallerySettingAtom),
-    )}`;
+    const photoHref = navigation.photoHref(data.id);
     const handleLinkClick = useCallback(
       (event: React.MouseEvent<HTMLAnchorElement>) => {
         if (

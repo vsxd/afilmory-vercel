@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { GalleryVirtualPhotoTargetRect } from "~/lib/gallery-virtual-target";
 import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-target";
@@ -22,6 +22,90 @@ describe("usePhotoViewerTransitions", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     setGalleryVirtualPhotoTargetResolver(null);
+  });
+
+  it("completes close immediately when no FLIP target is available", () => {
+    const onExitComplete = vi.fn();
+    const photo = createPhoto("no-target");
+    const { rerender } = renderHook(
+      ({ isOpen }) =>
+        usePhotoViewerTransitions({
+          isOpen,
+          triggerElement: null,
+          currentPhoto: photo,
+          currentBlobSrc: null,
+          isMobile: false,
+          onExitComplete,
+        }),
+      { initialProps: { isOpen: true } },
+    );
+    expect(onExitComplete).not.toHaveBeenCalled();
+    rerender({ isOpen: false });
+    expect(onExitComplete).toHaveBeenCalledTimes(1);
+    rerender({ isOpen: false });
+    expect(onExitComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for the FLIP completion event before completing close", () => {
+    const onExitComplete = vi.fn();
+    const photo = createPhoto("virtual");
+    setGalleryVirtualPhotoTargetResolver(() => ({
+      left: 10,
+      top: 10,
+      width: 100,
+      height: 80,
+      borderRadius: 0,
+    }));
+    const { result, rerender } = renderHook(
+      ({ isOpen }) =>
+        usePhotoViewerTransitions({
+          isOpen,
+          triggerElement: null,
+          currentPhoto: photo,
+          currentBlobSrc: null,
+          isMobile: false,
+          onExitComplete,
+        }),
+      { initialProps: { isOpen: true } },
+    );
+    rerender({ isOpen: false });
+    expect(result.current.exitTransition).not.toBeNull();
+    expect(onExitComplete).not.toHaveBeenCalled();
+    act(() => result.current.handleExitAnimationComplete());
+    expect(onExitComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores an old animation completion after another close starts", () => {
+    const onExitComplete = vi.fn();
+    const photo = createPhoto("virtual");
+    setGalleryVirtualPhotoTargetResolver(() => ({
+      left: 10,
+      top: 10,
+      width: 100,
+      height: 80,
+      borderRadius: 0,
+    }));
+    const { result, rerender } = renderHook(
+      ({ isOpen }) =>
+        usePhotoViewerTransitions({
+          isOpen,
+          triggerElement: null,
+          currentPhoto: photo,
+          currentBlobSrc: null,
+          isMobile: false,
+          onExitComplete,
+        }),
+      { initialProps: { isOpen: true } },
+    );
+    rerender({ isOpen: false });
+    const obsolete = result.current.handleExitAnimationComplete;
+    rerender({ isOpen: true });
+    rerender({ isOpen: false });
+    act(() => obsolete());
+    expect(onExitComplete).not.toHaveBeenCalled();
+    expect(result.current.exitTransition).not.toBeNull();
+    act(() => result.current.handleExitAnimationComplete());
+    expect(onExitComplete).toHaveBeenCalledTimes(1);
   });
 
   it("uses a virtual masonry rect instead of a stale opening trigger when closing far from the original photo", async () => {

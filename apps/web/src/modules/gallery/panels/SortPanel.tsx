@@ -1,12 +1,11 @@
 import { clsxm } from "@afilmory/ui";
-import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 
-import { gallerySettingAtom } from "~/atoms/app";
+import { useGallerySettings } from "~/navigation/hooks";
 
 export const SortPanel = () => {
   const { t } = useTranslation();
-  const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
+  const [gallerySetting, setGallerySetting] = useGallerySettings();
 
   const setSortOrder = (order: "asc" | "desc") => {
     setGallerySetting({

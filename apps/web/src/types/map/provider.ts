@@ -31,6 +31,7 @@ export interface MapHandlers {
   onGeoJsonClick?: (feature: GeoJSON.Feature) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
   onZoomChange?: (zoom: number) => void;
+  onViewStateChange?: (view: import("~/types/map/core").MapViewState) => void;
   onPopupClose?: () => void;
 }
 
@@ -52,6 +53,7 @@ export interface BaseMapProps {
   showGeocoder?: boolean;
   handlers?: MapHandlers;
   onZoomChange?: (zoom: number) => void;
+  onViewStateChange?: (view: import("~/types/map/core").MapViewState) => void;
   autoFitBounds?: boolean;
   syncViewStateOnInitialViewStateChange?: boolean;
 }

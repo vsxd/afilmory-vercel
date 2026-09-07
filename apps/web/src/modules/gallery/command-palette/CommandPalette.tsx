@@ -1,5 +1,4 @@
 import { clsxm } from "@afilmory/ui";
-import { useAtom } from "jotai";
 import * as React from "react";
 import {
   useCallback,
@@ -10,23 +9,16 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 
-import { gallerySettingAtom } from "~/atoms/app";
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { useDialogFocusManagement } from "~/hooks/useDialogFocusManagement";
 import { useMobile } from "~/hooks/useMobile";
 import { useModalIsolation } from "~/hooks/useModalIsolation";
 import { usePanelDragDismiss } from "~/hooks/usePanelDragDismiss";
-import {
-  getViewerPhotos,
-  getViewerSourceMode,
-  useOpenPhotoViewer,
-} from "~/hooks/usePhotoViewer";
-import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
+import { getViewerPhotos } from "~/hooks/usePhotoViewer";
 import { translateDynamicKey } from "~/lib/i18n-dynamic";
-import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 import { FilterPanel } from "~/modules/gallery/panels/FilterPanel";
+import { useAppNavigation, useGallerySettings } from "~/navigation/hooks";
 import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
@@ -61,9 +53,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
       translateDynamicKey(i18n, key, options),
     [i18n],
   );
-  const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
-  const navigate = useNavigate();
-  const openViewer = useOpenPhotoViewer();
+  const [gallerySetting, setGallerySetting] = useGallerySettings();
+  const navigation = useAppNavigation();
   const runtime = useAfilmoryRuntime();
   const photoRepository = usePhotoRepository();
   const allTags = useMemo(
@@ -183,17 +174,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         return;
       }
 
-      openViewer(photoIndex, {
-        sourceMode: getViewerSourceMode(runtime, photo.id),
-        sourcePhotoIds: viewerPhotos.map((viewerPhoto) => viewerPhoto.id),
-      });
-      navigate({
-        pathname: buildPhotoDetailPathname(photo.id),
-        search: buildGalleryFilterSearch("", gallerySetting),
+      navigation.openPhoto(photo.id, {
+        photoIds: viewerPhotos.map((photo) => photo.id),
       });
       onClose();
     },
-    [gallerySetting, navigate, onClose, openViewer, runtime],
+    [navigation, onClose, runtime],
   );
 
   const executeCommandAction = useCallback(

@@ -1,24 +1,23 @@
 import { Button } from "@afilmory/ui";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 
 import {
-  gallerySettingAtom,
   isCommandPaletteOpenAtom,
   responsiveGalleryColumnsAtom,
 } from "~/atoms/app";
 import { siteConfig } from "~/config";
+import { useAppNavigation, useGallerySettings } from "~/navigation/hooks";
 
 import { ResponsiveActionButton } from "./components/ActionButton";
 import { ViewPanel } from "./panels/ViewPanel";
 
 export const ActionGroup = () => {
   const { t } = useTranslation();
-  const [gallerySetting] = useAtom(gallerySettingAtom);
+  const [gallerySetting] = useGallerySettings();
   const columns = useAtomValue(responsiveGalleryColumnsAtom);
   const setCommandPaletteOpen = useSetAtom(isCommandPaletteOpenAtom);
-  const navigate = useNavigate();
+  const navigation = useAppNavigation();
 
   // 计算视图设置是否有自定义配置
   const hasViewCustomization =
@@ -62,7 +61,7 @@ export const ActionGroup = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/explore")}
+          onClick={() => navigation.showMap()}
           className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background h-11 w-11 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
           aria-label={t("action.map.explore")}
           title={t("action.map.explore")}

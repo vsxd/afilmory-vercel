@@ -82,11 +82,11 @@ export async function copyTextToClipboard(
   options: CopyTextToClipboardOptions = {},
 ): Promise<boolean> {
   const targetNavigator = options.navigator ?? getBrowserNavigator();
-  const writeText = targetNavigator?.clipboard?.writeText;
+  const clipboard = targetNavigator?.clipboard;
 
-  if (writeText) {
+  if (clipboard?.writeText) {
     try {
-      await writeText(text);
+      await clipboard.writeText(text);
       return true;
     } catch {
       // Fall through to the selection-based copy path for constrained browsers.

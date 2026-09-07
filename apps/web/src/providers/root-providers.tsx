@@ -10,7 +10,6 @@ import { AfilmoryRuntimeProvider } from "~/runtime/app-runtime-provider";
 import { ContextMenuProvider } from "./context-menu-provider";
 import { EventProvider } from "./event-provider";
 import { I18nProvider } from "./i18n-provider";
-import { StableRouterProvider } from "./stable-router-provider";
 
 const speedInsightsEnabled =
   import.meta.env.PROD && import.meta.env.VITE_ENABLE_SPEED_INSIGHTS === "true";
@@ -33,7 +32,6 @@ export const RootProviders: FC<PropsWithChildren<{ runtime: AppRuntime }>> = ({
       <AfilmoryRuntimeProvider runtime={runtime}>
         <Provider store={runtime.store}>
           <EventProvider />
-          <StableRouterProvider />
 
           <ContextMenuProvider />
           <I18nProvider>{children}</I18nProvider>

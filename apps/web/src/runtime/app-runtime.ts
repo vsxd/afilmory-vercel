@@ -8,6 +8,7 @@ import { createRegularImageCache } from "~/lib/image-cache-service";
 import { ImageConversionService } from "~/lib/image-conversion-service";
 import { ImageConverterManager } from "~/lib/image-convert";
 import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import { NavigationController } from "~/navigation/controller";
 
 import type { AfilmoryBrowserRuntime } from "./browser-runtime";
 import { ensureBrowserRuntime } from "./browser-runtime";
@@ -93,6 +94,7 @@ class RuntimeImageLoadingService implements ImageLoadingService {
 }
 
 export type AppRuntime = {
+  navigation: NavigationController;
   bodyScrollLock: BodyScrollLockManager;
   browser: AfilmoryBrowserRuntime;
   imageCache: RegularImageCache;
@@ -110,6 +112,7 @@ export function createAppRuntime({
   browserRuntime?: AfilmoryBrowserRuntime;
   manifest: AfilmoryManifest;
 }): AppRuntime {
+  const navigation = new NavigationController();
   const bodyScrollLock = new BodyScrollLockManager();
   const imageCache = createRegularImageCache();
   const imageConverter = new ImageConverterManager();
@@ -122,6 +125,7 @@ export function createAppRuntime({
   });
 
   return {
+    navigation,
     bodyScrollLock,
     browser: browserRuntime,
     imageCache,
@@ -130,6 +134,7 @@ export function createAppRuntime({
     photoRepository,
     store: createStore(),
     dispose() {
+      navigation.dispose();
       imageLoading.cleanupAll();
       this.imageCache.clear();
       photoRepository.dispose();

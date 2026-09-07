@@ -1,14 +1,11 @@
 import { buildGeoRegionId } from "@afilmory/schema/geo";
 import { GlassButton } from "@afilmory/ui";
-import { useAtomValue } from "jotai";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
-import { useNavigate } from "react-router";
 
-import { gallerySettingAtom } from "~/atoms/app";
-import { buildGalleryFilterSearch } from "~/lib/gallery-filter-url";
 import { getRegionDisplayName } from "~/lib/geo-regions";
+import { useAppNavigation, useGallerySettings } from "~/navigation/hooks";
 import type { GeographicRegion } from "~/types/map";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
@@ -56,8 +53,8 @@ export const RegionMarkerPin = ({
   onClose,
 }: RegionMarkerPinProps) => {
   const { t, i18n } = useTranslation();
-  const gallerySetting = useAtomValue(gallerySettingAtom);
-  const navigate = useNavigate();
+  const [gallerySetting] = useGallerySettings();
+  const navigation = useAppNavigation();
   const displayName = getRegionDisplayName(region, i18n.language);
   const filterTarget = getGalleryFilterTarget(region);
 
@@ -84,10 +81,7 @@ export const RegionMarkerPin = ({
         new Set([...gallerySetting[filterTarget.key], filterTarget.id]),
       ),
     };
-    navigate({
-      pathname: "/",
-      search: buildGalleryFilterSearch("", nextGallerySetting),
-    });
+    navigation.showGallery(nextGallerySetting);
   };
 
   return (

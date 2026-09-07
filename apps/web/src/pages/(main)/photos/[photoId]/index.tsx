@@ -20,7 +20,7 @@ export const Component = () => {
   const { photoId } = useParams();
   const photoRepository = usePhotoRepository();
   const photos = useViewerPhotos(photoId);
-  const photoViewer = usePhotoViewer(photos.length);
+  const photoViewer = usePhotoViewer();
 
   // 直接根据 photoId 从 Context 的照片列表中查找照片和索引
   const photoIndex = useMemo(() => {
@@ -88,11 +88,10 @@ export const Component = () => {
   const isPhotoRouteUnavailable = !currentPhoto || photoIndex === -1;
   usePhotoRouteUnavailable(isPhotoRouteUnavailable);
 
-  // 处理照片索引变化：更新 photoViewer 的 currentIndex，URL 由 layout.tsx 的 useSyncStateToUrl 自动同步
+  // Photo stepping replaces the current URL while retaining its origin.
   const handleIndexChange = useCallback(
     (newIndex: number) => {
       if (newIndex >= 0 && newIndex < photos.length) {
-        // 更新 photoViewer 的 currentIndex，layout.tsx 的 useSyncStateToUrl 会自动同步 URL
         photoViewer.goToIndex(newIndex);
       }
     },
@@ -169,6 +168,7 @@ export const Component = () => {
             isOpen={photoViewer.isOpen}
             triggerElement={photoViewer.triggerElement}
             onClose={photoViewer.closeViewer}
+            onExitComplete={photoViewer.completeClose}
             onIndexChange={handleIndexChange}
           />
         </RemoveScroll>

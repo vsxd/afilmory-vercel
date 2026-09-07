@@ -2,13 +2,11 @@ import { GlassButton } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
-import { Link, useLocation } from "react-router";
 
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { getPhotoAccessibleLabel } from "~/lib/photo-accessibility";
 import { getPhotoDate } from "~/lib/photo-date";
-import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
-import { buildPhotoDetailSearch } from "~/lib/return-to";
+import { PhotoLink } from "~/navigation/links";
 
 import { MapPopover, MapPopoverContent, MapPopoverTrigger } from "./MapPopover";
 import type { PhotoMarkerPinProps } from "./types";
@@ -20,8 +18,6 @@ export const PhotoMarkerPin = ({
   onClose,
 }: PhotoMarkerPinProps) => {
   const { t, i18n } = useTranslation();
-  const location = useLocation();
-  const returnTo = `${location.pathname}${location.search}`;
   const photoLabel = getPhotoAccessibleLabel(marker.photo, t, i18n.language);
   const latitudeDirection =
     marker.latitudeRef === "S"
@@ -164,11 +160,8 @@ export const PhotoMarkerPin = ({
             {/* Content */}
             <div className="space-y-3 p-4">
               {/* Title with link */}
-              <Link
-                to={{
-                  pathname: buildPhotoDetailPathname(marker.photo.id),
-                  search: buildPhotoDetailSearch(returnTo),
-                }}
+              <PhotoLink
+                photoId={marker.photo.id}
                 className="group/link hover:text-blue flex items-center gap-2 transition-colors"
               >
                 <h3
@@ -181,7 +174,7 @@ export const PhotoMarkerPin = ({
                   className="i-mingcute-arrow-right-line text-text-secondary transition-transform group-hover/link:translate-x-0.5"
                   aria-hidden="true"
                 />
-              </Link>
+              </PhotoLink>
 
               {/* Metadata */}
               <div className="space-y-2">

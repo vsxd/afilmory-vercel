@@ -3,6 +3,8 @@ import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { NavigationController } from "~/navigation/controller";
+
 import { CommandPalette } from "./CommandPalette";
 
 // jsdom 没有 scrollIntoView（选中项滚动效果会触发）
@@ -11,6 +13,7 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
   value: vi.fn(),
 });
 
+const navigation = new NavigationController();
 let isMobile = false;
 let allTags: string[] = [];
 
@@ -54,7 +57,7 @@ vi.mock("~/hooks/usePhotoViewer", () => ({
 }));
 
 vi.mock("~/runtime/app-runtime", () => ({
-  useAfilmoryRuntime: () => ({}),
+  useAfilmoryRuntime: () => ({ navigation }),
   usePhotoRepository: () => ({
     getAllTags: () => allTags,
     getAllCameras: () => [],

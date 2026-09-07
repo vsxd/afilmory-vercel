@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MiniMap } from "../MiniMap";
 
+vi.mock("~/navigation/hooks", () => ({
+  useAppNavigation: () => ({ showMap: vi.fn() }),
+}));
+
 vi.mock("maplibre-gl", () => ({}));
 
 vi.mock("react-map-gl/maplibre", async () => {

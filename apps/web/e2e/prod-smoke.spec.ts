@@ -138,3 +138,173 @@ test("production bundle serves gallery, viewer route, and service worker", async
   await expect(page).toHaveURL(/\/photos\/[^/?]+/);
   await expect.poll(() => detailRequests.length).toBeGreaterThan(0);
 });
+
+test.describe("production navigation journeys", () => {
+  test.use({ serviceWorkers: "block" });
+  test.beforeEach(async ({ page }) => {
+    const { stubCartoBasemap, VIEWER_FIXTURE_IMAGE_PATH } =
+      await import("./helpers");
+    await stubCartoBasemap(page);
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        path: VIEWER_FIXTURE_IMAGE_PATH,
+      }),
+    );
+  });
+
+  test("trailing-slash detail opens and standalone close returns to filtered gallery", async ({
+    page,
+  }) => {
+    await page.goto("/photos/SYNTH0001/?sort=asc");
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(viewer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/\?sort=asc$/);
+    await expect(viewer).toHaveCount(0);
+  });
+
+  test("gallery → map → gallery preserves sort; standalone map parameters stay on map", async ({
+    page,
+  }) => {
+    await page.goto("/?sort=asc");
+    await page
+      .getByRole("button", { name: "Map Explore", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/explore$/);
+    await page
+      .getByRole("button", { name: "Back to Gallery", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/\?sort=asc$/);
+    await page.goto("/explore?mode=photos");
+    await page
+      .getByRole("button", { name: "Back to Gallery", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("detail → map → gallery does not reopen the viewer", async ({
+    page,
+  }) => {
+    await page.goto("/photos/SYNTH0001?sort=asc");
+    await page
+      .getByRole("link", { name: "View location in map", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/explore\?photoId=SYNTH0001$/);
+    await page
+      .getByRole("button", { name: "Back to Gallery", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/\?sort=asc$/);
+    await expect(
+      page.getByRole("dialog", { name: "Photo viewer" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Map Explore", exact: true }),
+    ).toBeVisible();
+  });
+
+  test("stepping replaces detail history and forward reopens a closed viewer", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page
+      .locator('[data-gallery-photo-link][data-photo-id="SYNTH0001"]')
+      .click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(viewer).toBeVisible();
+    await page.keyboard.press("ArrowLeft");
+    await expect(page).toHaveURL(/\/photos\/SYNTH0002$/);
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/$/);
+    await page.goForward();
+    await expect(page).toHaveURL(/\/photos\/SYNTH0002$/);
+    await expect(viewer).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(viewer).toHaveCount(0);
+  });
+});
+
+test.describe("production gallery view restoration", () => {
+  test.use({ serviceWorkers: "block" });
+  test("restores scroll position after visiting map", async ({ page }) => {
+    const { stubCartoBasemap } = await import("./helpers");
+    await stubCartoBasemap(page);
+    await page.goto("/?sort=asc");
+    const viewport = page.locator(
+      "#main-content [data-radix-scroll-area-viewport]",
+    );
+    await expect(
+      page.locator("[data-gallery-photo-link]").first(),
+    ).toBeVisible();
+    await viewport.evaluate((element) => {
+      element.scrollTop = 400;
+    });
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(400);
+    // Activate the actual map button without Playwright scrolling its header into view.
+    await page
+      .getByRole("button", { name: "Map Explore", exact: true })
+      .first()
+      .evaluate((element: HTMLButtonElement) => element.click());
+    await expect(page).toHaveURL(/\/explore$/);
+    await page
+      .getByRole("button", { name: "Back to Gallery", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/\?sort=asc$/);
+    await expect
+      .poll(() => viewport.evaluate((element) => element.scrollTop))
+      .toBe(400);
+  });
+});
+
+test.describe("production detail actions", () => {
+  test.use({ serviceWorkers: "block" });
+  test.beforeEach(async ({ page }) => {
+    const { VIEWER_FIXTURE_IMAGE_PATH, stubCartoBasemap } =
+      await import("./helpers");
+    await stubCartoBasemap(page);
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({
+        contentType: "image/png",
+        path: VIEWER_FIXTURE_IMAGE_PATH,
+      }),
+    );
+  });
+
+  test("reduced motion close completes without waiting for an animation", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    await page
+      .locator('[data-gallery-photo-link][data-photo-id="SYNTH0001"]')
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "Photo viewer" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("dialog", { name: "Photo viewer" }),
+    ).toHaveCount(0);
+  });
+
+  test("copy link shares the canonical photo URL without browsing context", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto(
+      "/photos/SYNTH0001?sort=asc&returnTo=%2Fexplore%3Fmode%3Dphotos",
+    );
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(viewer).toBeVisible();
+    await viewer.getByRole("button", { name: "Share Photo" }).click();
+    await page.getByRole("button", { name: "Copy Link" }).click();
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(`${new URL(page.url()).origin}/photos/SYNTH0001`);
+  });
+});

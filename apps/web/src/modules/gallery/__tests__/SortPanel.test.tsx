@@ -3,10 +3,15 @@ import { Provider } from "jotai";
 import { createStore } from "jotai/vanilla";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { gallerySettingAtom } from "~/atoms/app";
+import { createTestNavigation } from "~/navigation/__tests__/test-router";
+import type { NavigationController } from "~/navigation/controller";
 
 import { SortPanel } from "../panels/SortPanel";
 
+let navigation: NavigationController;
+vi.mock("~/runtime/app-runtime", () => ({
+  useAfilmoryRuntime: () => ({ navigation }),
+}));
 vi.mock("@afilmory/ui", () => ({
   clsxm: (...values: unknown[]) => values.filter(Boolean).join(" "),
 }));
@@ -37,6 +42,7 @@ describe("SortPanel", () => {
 
   it("exposes the active sort order via aria-pressed (parity with FilterPanel chips)", () => {
     const store = createStore();
+    navigation = createTestNavigation().navigation;
     renderPanel(store);
 
     expect(
@@ -53,11 +59,12 @@ describe("SortPanel", () => {
 
   it("switches the sort order and flips aria-pressed on click", () => {
     const store = createStore();
+    navigation = createTestNavigation().navigation;
     renderPanel(store);
 
     fireEvent.click(screen.getByRole("button", { name: "Oldest first" }));
 
-    expect(store.get(gallerySettingAtom).sortOrder).toBe("asc");
+    expect(navigation.getGallerySettings().sortOrder).toBe("asc");
     expect(
       screen
         .getByRole("button", { name: "Oldest first" })
@@ -67,6 +74,7 @@ describe("SortPanel", () => {
 
   it("renders a visible keyboard focus ring on each option (global CSS strips outlines)", () => {
     const store = createStore();
+    navigation = createTestNavigation().navigation;
     renderPanel(store);
 
     for (const name of ["Newest first", "Oldest first"]) {

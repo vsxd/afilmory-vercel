@@ -113,10 +113,8 @@ describe("apps/web SSR safety", () => {
     vi.restoreAllMocks();
   });
 
-  it("imports StableRouterProvider without touching window at module evaluation time", async () => {
-    await expect(
-      import("../providers/stable-router-provider"),
-    ).resolves.toBeDefined();
+  it("imports NavigationController without touching window at module evaluation time", async () => {
+    await expect(import("../navigation/controller")).resolves.toBeDefined();
   });
 
   it("renders the main layout without document access during render", async () => {

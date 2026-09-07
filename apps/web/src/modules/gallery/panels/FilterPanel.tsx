@@ -1,9 +1,8 @@
 import { clsxm } from "@afilmory/ui";
-import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { gallerySettingAtom } from "~/atoms/app";
+import { useGallerySettings } from "~/navigation/hooks";
 import { usePhotoRepository } from "~/runtime/app-runtime";
 
 import {
@@ -81,7 +80,7 @@ export const FilterPanel = ({
   className?: string;
 }) => {
   const { t, i18n } = useTranslation();
-  const [gallerySetting, setGallerySetting] = useAtom(gallerySettingAtom);
+  const [gallerySetting, setGallerySetting] = useGallerySettings();
   const photoRepository = usePhotoRepository();
   const allTags = useMemo(
     () => photoRepository.getAllTags(),

@@ -6,15 +6,14 @@ import {
   DropdownMenuTrigger,
 } from "@afilmory/ui";
 import type { SetStateAction } from "jotai";
-import { useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { Drawer } from "vaul";
 
 import type { GallerySetting } from "~/atoms/app";
-import { gallerySettingAtom } from "~/atoms/app";
 import { useDialogFocusManagement } from "~/hooks/useDialogFocusManagement";
 import { useMobile } from "~/hooks/useMobile";
 import { useModalIsolation } from "~/hooks/useModalIsolation";
+import { useGallerySettings } from "~/navigation/hooks";
 
 // 通用的操作按钮组件
 export const ActionButton = ({
@@ -76,7 +75,7 @@ export const DesktopActionButton = ({
     setGallerySetting: (setting: SetStateAction<GallerySetting>) => void,
   ) => void;
 }) => {
-  const setGallerySetting = useSetAtom(gallerySettingAtom);
+  const [, setGallerySetting] = useGallerySettings();
   return (
     <DropdownMenu
       open={open}

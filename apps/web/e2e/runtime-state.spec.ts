@@ -276,3 +276,49 @@ test("opens the map route and renders MapLibre data from runtime services", asyn
   await expect.poll(() => page.locator("canvas").count()).toBeGreaterThan(0);
   expect(diagnostics).toEqual([]);
 });
+
+test("map photo roundtrip restores the selected marker and panned camera", async ({
+  page,
+}) => {
+  await stubOriginalImages(page);
+  await page.goto("/explore?mode=photos&photoId=SYNTH0001");
+  const photoLink = page.locator('a[href^="/photos/SYNTH0001"]').first();
+  await expect(photoLink).toBeVisible();
+  const canvas = page.locator("canvas.maplibregl-canvas");
+  const markerPosition = () =>
+    photoLink.evaluate((element) => {
+      const rect = element
+        .closest(".maplibregl-marker")!
+        .getBoundingClientRect();
+      return { x: rect.x, y: rect.y };
+    });
+  const initial = await markerPosition();
+  await canvas.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(async () => Math.abs((await markerPosition()).x - initial.x))
+    .toBeGreaterThan(50);
+  // Wait for the real map's pan inertia to settle before capturing its position.
+  let last = await markerPosition();
+  await expect
+    .poll(async () => {
+      const next = await markerPosition();
+      const difference = Math.abs(next.x - last.x) + Math.abs(next.y - last.y);
+      last = next;
+      return difference;
+    })
+    .toBeLessThan(1);
+  const before = await markerPosition();
+  await photoLink.click();
+  const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+  await expect(viewer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/explore\?mode=photos&photoId=SYNTH0001$/);
+  await expect(photoLink).toBeVisible();
+  await expect
+    .poll(async () => {
+      const after = await markerPosition();
+      return Math.abs(after.x - before.x) + Math.abs(after.y - before.y);
+    })
+    .toBeLessThan(3);
+});

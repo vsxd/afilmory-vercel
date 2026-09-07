@@ -10,6 +10,7 @@ import { useMobile } from "~/hooks/useMobile";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { useVisiblePhotosDateRange } from "~/hooks/useVisiblePhotosDateRange";
 import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-target";
+import { useGalleryViewport } from "~/navigation/useGalleryViewport";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
@@ -57,6 +58,7 @@ export const MasonryRoot = () => {
 
   const { dateRange, handleRender } = useVisiblePhotosDateRange();
   const scrollElement = useScrollViewElement();
+  useGalleryViewport(scrollElement);
 
   const handleAnimationComplete = useCallback(() => {
     hasAnimatedRef.current = true;

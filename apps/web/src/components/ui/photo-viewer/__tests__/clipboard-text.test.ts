@@ -34,6 +34,19 @@ describe("copyTextToClipboard", () => {
     expect(execCommand).not.toHaveBeenCalled();
   });
 
+  it("preserves the native Clipboard receiver", async () => {
+    const execCommand = installExecCommandMock(false);
+    const clipboard = {
+      async writeText(this: unknown, _text: string) {
+        if (this !== clipboard) throw new TypeError("Illegal invocation");
+      },
+    };
+    await expect(
+      copyTextToClipboard("photo URL", { document, navigator: { clipboard } }),
+    ).resolves.toBe(true);
+    expect(execCommand).not.toHaveBeenCalled();
+  });
+
   it("falls back to selection copy when Clipboard API fails", async () => {
     const writeText = vi.fn(async () => {
       throw new Error("clipboard denied");

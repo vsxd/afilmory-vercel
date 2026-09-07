@@ -1,12 +1,10 @@
 import { Spring } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router";
 
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 import { getPhotoAccessibleLabel } from "~/lib/photo-accessibility";
-import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
-import { buildPhotoDetailSearch } from "~/lib/return-to";
+import { PhotoLink } from "~/navigation/links";
 import type { PhotoMarker } from "~/types/map";
 
 interface ClusterPhotoGridProps {
@@ -23,8 +21,6 @@ export const ClusterPhotoGrid = ({
   const remainingCount = Math.max(0, photos.length - 6);
   const primaryPhoto = photos[0];
   const { t, i18n } = useTranslation();
-  const location = useLocation();
-  const returnTo = `${location.pathname}${location.search}`;
   const latitudeDirection =
     primaryPhoto?.latitudeRef === "S"
       ? t("explore.coordinates.south")
@@ -93,11 +89,9 @@ export const ClusterPhotoGrid = ({
             }}
             className="group relative aspect-square overflow-hidden rounded-lg"
           >
-            <Link
-              to={{
-                pathname: buildPhotoDetailPathname(photoMarker.photo.id),
-                search: buildPhotoDetailSearch(returnTo),
-              }}
+            <PhotoLink
+              photoId={photoMarker.photo.id}
+              photoIds={photos.map((marker) => marker.photo.id)}
               onClick={(e) => {
                 e.stopPropagation();
                 onPhotoClick?.(photoMarker);
@@ -147,7 +141,7 @@ export const ClusterPhotoGrid = ({
                   </svg>
                 </div>
               </div>
-            </Link>
+            </PhotoLink>
           </m.div>
         ))}
 

@@ -4,7 +4,8 @@ import { Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { usePhotoViewer } from "../hooks/usePhotoViewer";
+import { createTestNavigation } from "~/navigation/__tests__/test-router";
+
 import { Component } from "../pages/(main)/layout";
 import type { AppRuntime } from "../runtime/app-runtime";
 import { createAppRuntime } from "../runtime/app-runtime";
@@ -19,19 +20,9 @@ vi.mock("@afilmory/ui", () => ({
   }: PropsWithChildren<{ value: HTMLElement | null }>) => <>{children}</>,
 }));
 
-vi.mock("react-router", () => ({
+vi.mock("react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router")>()),
   Outlet: () => null,
-  useLocation: () => ({
-    pathname: "/",
-    search: "",
-    hash: "",
-    state: null,
-    key: "root",
-  }),
-  useNavigate: () => vi.fn(),
-  useNavigationType: () => "PUSH",
-  useParams: () => ({}),
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
 
 vi.mock("~/config", () => ({
@@ -51,19 +42,13 @@ vi.mock("~/providers/photos-provider", () => ({
   PhotosProvider: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
-// 探针与布局同挂在一个 Provider 下，用真实原子驱动查看器状态。
-let viewer: ReturnType<typeof usePhotoViewer>;
-const ViewerProbe = () => {
-  viewer = usePhotoViewer();
-  return null;
-};
-
 describe("main layout render isolation", () => {
   let runtime: AppRuntime;
 
   beforeEach(() => {
     vi.clearAllMocks();
     runtime = createAppRuntime({ manifest: createManifest({ photos: [] }) });
+    runtime.navigation = createTestNavigation().navigation;
   });
 
   const renderLayout = () =>
@@ -71,7 +56,6 @@ describe("main layout render isolation", () => {
       <AfilmoryRuntimeProvider runtime={runtime}>
         <Provider store={runtime.store}>
           <Component />
-          <ViewerProbe />
         </Provider>
       </AfilmoryRuntimeProvider>,
     );
@@ -81,25 +65,25 @@ describe("main layout render isolation", () => {
     const rendersAfterMount = masonryRenders.mock.calls.length;
     expect(rendersAfterMount).toBeGreaterThan(0);
 
-    // 打开查看器改变 openAtom：布局要重渲染以隐藏图库
+    // 打开查看器改变 路由是否为详情：布局要重渲染以隐藏图库
     act(() => {
-      viewer.openViewer(0, { sourcePhotoIds: ["a", "b", "c"] });
+      runtime.navigation.openPhoto("a", { photoIds: ["a", "b", "c"] });
     });
     const rendersAfterOpen = masonryRenders.mock.calls.length;
     expect(rendersAfterOpen).toBeGreaterThan(rendersAfterMount);
 
-    // 滑动换图只改 currentIndexAtom：布局（及整棵 masonry 树）不得重渲染
+    // 滑动换图只改 照片路由：布局（及整棵 masonry 树）不得重渲染
     act(() => {
-      viewer.goToIndex(1);
+      runtime.navigation.stepPhoto("b");
     });
     act(() => {
-      viewer.goToIndex(2);
+      runtime.navigation.stepPhoto("c");
     });
     expect(masonryRenders.mock.calls.length).toBe(rendersAfterOpen);
 
     // 关闭查看器要恢复图库：布局重新渲染
     act(() => {
-      viewer.closeViewer();
+      runtime.navigation.requestPhotoClose();
     });
     expect(masonryRenders.mock.calls.length).toBeGreaterThan(rendersAfterOpen);
   });

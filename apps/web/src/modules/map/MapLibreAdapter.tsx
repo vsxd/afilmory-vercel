@@ -48,6 +48,7 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
   style,
   handlers,
   autoFitBounds,
+  onViewStateChange,
   syncViewStateOnInitialViewStateChange,
 }) => {
   const mapRef = React.useRef<MapRef>(null);
@@ -114,6 +115,7 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
       onGeoJsonClick={handleGeoJsonClick}
       onGeolocate={handleGeolocate}
       onZoomChange={handleZoomChange}
+      onViewStateChange={onViewStateChange}
       className={className}
       style={style}
       mapRef={mapRef}

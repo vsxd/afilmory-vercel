@@ -106,6 +106,7 @@ export interface PureMaplibreProps {
   onGeoJsonClick?: (event: MapMouseEvent) => void;
   onGeolocate?: (longitude: number, latitude: number) => void;
   onZoomChange?: (zoom: number) => void;
+  onViewStateChange?: (view: import("~/types/map/core").MapViewState) => void;
   onClusterClick?: (longitude: number, latitude: number) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -128,6 +129,7 @@ export const Maplibre = ({
   onGeoJsonClick,
   onGeolocate,
   onZoomChange,
+  onViewStateChange,
   onClusterClick,
   className = "w-full h-full",
   style = DEFAULT_STYLE,
@@ -379,6 +381,7 @@ export const Maplibre = ({
         onMove={(evt) => {
           setCurrentZoom(evt.viewState.zoom);
           setViewState(evt.viewState);
+          onViewStateChange?.(evt.viewState);
           onZoomChange?.(evt.viewState.zoom);
         }}
       >

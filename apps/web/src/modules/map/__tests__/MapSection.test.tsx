@@ -6,6 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MapSection } from "../MapSection";
 
+vi.mock("~/navigation/hooks", () => ({
+  useAppNavigation: () => ({
+    getMapView: () => {},
+    rememberMapView: vi.fn(),
+    updateMapSearch: vi.fn(),
+  }),
+}));
+
 const genericMapRenders: Array<Record<string, unknown>> = [];
 let mapLoadingStateMock: ReturnType<typeof vi.fn>;
 

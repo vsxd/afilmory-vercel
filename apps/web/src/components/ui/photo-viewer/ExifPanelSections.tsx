@@ -10,7 +10,12 @@ import {
   StreamlineImageAccessoriesLensesPhotosCameraShutterPicturePhotographyPicturesPhotoLens as LensIcon,
   TablerAperture,
 } from "~/icons";
-import { buildSingleTagFilterSearch } from "~/lib/gallery-filter-url";
+import {
+  buildSingleTagFilterSearch,
+  getGalleryFiltersFromSearch,
+} from "~/lib/gallery-filter-url";
+import { useAppNavigation } from "~/navigation/hooks";
+import { isPlainLinkClick } from "~/navigation/link-click";
 
 import type { ExifPanelViewModel } from "./exif-panel-view-model";
 import { ExifRow as Row } from "./ExifRow";
@@ -175,6 +180,7 @@ function TagSection({
   currentPhoto: PhotoManifestItem;
   t: ExifPanelTranslation;
 }) {
+  const navigation = useAppNavigation();
   if (!currentPhoto.tags || currentPhoto.tags.length === 0) {
     return null;
   }
@@ -188,8 +194,13 @@ function TagSection({
         {currentPhoto.tags.map((tag) => (
           <a
             href={`/${buildSingleTagFilterSearch(tag)}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={(event) => {
+              if (!isPlainLinkClick(event)) return;
+              event.preventDefault();
+              navigation.showGallery(
+                getGalleryFiltersFromSearch(buildSingleTagFilterSearch(tag)),
+              );
+            }}
             key={tag}
             className="glassmorphic-btn border-accent/20 bg-accent/10 focus-visible:ring-accent/45 inline-flex min-h-11 cursor-pointer items-center rounded-full border px-3 py-1 text-xs text-white/90 backdrop-blur-sm focus-visible:ring-2"
           >
