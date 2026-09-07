@@ -33,7 +33,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   };
 
   // 监听缩放变化
-  const onTransformed = useCallback(
+  const onTransform = useCallback(
     (
       transformRef: ReactZoomPanPinchRef,
       state: Omit<ReactZoomPanPinchState, "previousScale">,
@@ -87,9 +87,9 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
           containerWidth / img.naturalWidth,
           containerHeight / img.naturalHeight,
         ) * safeFitScale;
-      const scale0 = instance.transformState.scale;
-      const x0 = instance.transformState.positionX;
-      const y0 = instance.transformState.positionY;
+      const scale0 = instance.state.scale;
+      const x0 = instance.state.positionX;
+      const y0 = instance.state.positionY;
       // 判断当前是否为 fitToScreen 或 1x
       const isAtFit = Math.abs(scale0 - 1) < 0.01;
       const isAt1x = Math.abs(scale0 * fit - 1) < 0.01;
@@ -141,7 +141,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         limitToBounds={true}
         centerOnInit={true}
         smooth={!shouldReduceMotion}
-        alignmentAnimation={{
+        autoAlignment={{
           disabled: shouldReduceMotion,
           sizeX: 0,
           sizeY: 0,
@@ -149,11 +149,12 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         }}
         velocityAnimation={{
           disabled: shouldReduceMotion,
-          sensitivity: 1,
+          sensitivityTouch: 1,
+          sensitivityMouse: 1,
           animationTime: 0.2,
         }}
         centerZoomedOut={true}
-        onTransformed={onTransformed}
+        onTransform={onTransform}
       >
         <TransformComponent
           wrapperClass="!w-full !h-full !absolute !inset-0"
