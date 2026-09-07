@@ -40,7 +40,14 @@ export function findStaticVendorChunkCycle(
         const vendorChunks = new Set(
           cycle.filter((item) => item.startsWith("vendor/")),
         );
-        if (vendorChunks.size >= 2) return cycle;
+        // file-type eagerly patches ZipHandler.prototype. Even a cycle through
+        // a single automatic shared chunk can leave that class uninitialized.
+        // Other single-vendor cycles may only reference bindings at call time.
+        if (
+          vendorChunks.size >= 2 ||
+          cycle.some((item) => item.startsWith("vendor/file-type-"))
+        )
+          return cycle;
       }
     }
 

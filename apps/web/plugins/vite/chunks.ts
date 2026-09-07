@@ -49,6 +49,13 @@ export const dependencyChunkGroups: DependencyChunkGroup[] = [
     name: "file-type",
     patterns: [
       "file-type",
+      // file-type patches ZipHandler.prototype during module evaluation. Keep
+      // the handler with its token readers so automatic chunking cannot create
+      // a vendor -> shared -> vendor cycle with an uninitialized ZipHandler.
+      "@tokenizer/inflate",
+      "@borewit/text-codec",
+      "debug",
+      "ms",
       "strtok3",
       "token-types",
       "iobuffer",

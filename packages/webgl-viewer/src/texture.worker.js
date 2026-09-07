@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-// TILE_SIZE, SIMPLE_LOD_LEVELS, RGBA_BYTES_PER_PIXEL and
+// TILE_SIZE, SIMPLE_LOD_LEVELS and
 // clampDimensionsToFit are injected by
 // worker-bridge.ts as a generated prelude (single source of truth:
 // tile-cache.ts / worker-bridge.ts). Do not declare them here.

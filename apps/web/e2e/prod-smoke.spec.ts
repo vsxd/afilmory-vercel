@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { expect, test } from "@playwright/test";
 
 // 生产构建冒烟（webServer 见 scripts/e2e-prod-server.ts，经
@@ -16,6 +18,43 @@ import { expect, test } from "@playwright/test";
 const EXTERNAL_MANIFEST_ASSET = /\/assets\/gallery-index\.[0-9a-f]{10}\.json/;
 const PHOTO_DETAIL_ASSET =
   /\/assets\/photo-details\.(?:root|[01]+(?:-\d+)?)\.[0-9a-f]{10}\.json/;
+
+test.describe("production original image loading", () => {
+  // Keep the CDN fixture interceptable; the separate smoke test below covers SW.
+  test.use({ serviceWorkers: "block" });
+
+  test("downloads, detects, and paints an original image without errors", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({
+        contentType: "image/jpeg",
+        path: fileURLToPath(
+          new URL("fixtures/thumbnails/SYNTH0001.jpg", import.meta.url),
+        ),
+      }),
+    );
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    const photo = viewer.getByRole("group", { name: "SYNTH0001", exact: true });
+    // The WebGL wrapper becomes accessible only after onImagePainted. Require
+    // its canvas so a thumbnail or silent DOM fallback cannot pass this test.
+    await expect(
+      photo
+        .getByRole("img", { name: "SYNTH0001", exact: true })
+        .locator("canvas"),
+    ).toBeVisible();
+    await expect(photo.locator('img[src*="/thumbnails/"]')).toHaveCount(0);
+    await expect(viewer.getByRole("alert")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+});
 
 test("production bundle serves gallery, viewer route, and service worker", async ({
   page,

@@ -3,13 +3,12 @@ import { SIMPLE_LOD_LEVELS, TILE_SIZE } from "./tile-cache";
 
 /** Keep one fallback texture below 64 MiB even on 8K-capable GPUs. */
 export const BASE_TEXTURE_BYTE_BUDGET = 64 * 1024 * 1024;
-const RGBA_BYTES_PER_PIXEL = 4;
 
 /**
  * 等比缩小到边长与 RGBA8 字节预算内的最大尺寸；非正上限表示不应用该上限。
  *
- * 注意：函数体会通过 `toString()` 注入 worker；除了参数/Math，只能引用同样
- * 注入预置代码的 RGBA_BYTES_PER_PIXEL。
+ * The function is serialized into a worker with toString(). Keep it closed
+ * over no module bindings: minification renames those outside the raw worker.
  */
 export function clampDimensionsToFit(
   width: number,
@@ -26,7 +25,7 @@ export function clampDimensionsToFit(
     maxBytes > 0
       ? Math.min(
           1,
-          Math.sqrt(maxBytes / (width * height * RGBA_BYTES_PER_PIXEL)),
+          Math.sqrt(maxBytes / (width * height * 4)), // RGBA8 bytes per pixel
         )
       : 1;
   const ratio = Math.min(sizeRatio, byteRatio);
@@ -48,7 +47,6 @@ export function buildTextureWorkerSource(): string {
   const prelude =
     `const TILE_SIZE = ${TILE_SIZE};\n` +
     `const SIMPLE_LOD_LEVELS = ${JSON.stringify(SIMPLE_LOD_LEVELS)};\n` +
-    `const RGBA_BYTES_PER_PIXEL = ${RGBA_BYTES_PER_PIXEL};\n` +
     `const clampDimensionsToFit = ${clampDimensionsToFit.toString()};\n`;
   return prelude + TextureWorkerRaw;
 }

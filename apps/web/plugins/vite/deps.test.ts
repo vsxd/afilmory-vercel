@@ -19,17 +19,23 @@ describe("findStaticVendorChunkCycle", () => {
     ]);
   });
 
-  it("allows acyclic graphs and cycles contained in one vendor chunk", () => {
+  it("reports a file-type cycle through an automatically generated shared chunk", () => {
     expect(
       findStaticVendorChunkCycle(
         new Map([
-          ["assets/entry.js", ["vendor/ui.js"]],
-          ["vendor/ui.js", ["assets/shared.js"]],
-          ["assets/shared.js", ["vendor/ui.js"]],
+          ["assets/entry.js", ["vendor/file-type-a.js"]],
+          ["vendor/file-type-a.js", ["assets/shared.js"]],
+          ["assets/shared.js", ["vendor/file-type-a.js"]],
         ]),
       ),
-    ).toBeNull();
+    ).toEqual([
+      "vendor/file-type-a.js",
+      "assets/shared.js",
+      "vendor/file-type-a.js",
+    ]);
+  });
 
+  it("allows acyclic graphs", () => {
     expect(
       findStaticVendorChunkCycle(
         new Map([
