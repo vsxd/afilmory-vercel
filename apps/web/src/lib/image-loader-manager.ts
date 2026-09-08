@@ -10,7 +10,15 @@ import type {
 } from "~/lib/image-loading-types";
 import { VideoLoadService } from "~/lib/video-load-service";
 
+import {
+  abortable,
+  MediaResourceScope,
+  throwIfAborted,
+} from "./media-resource";
+
 export class ImageLoaderManager {
+  private imageTask: AbortController | null = null;
+  private readonly resources: MediaResourceScope;
   private readonly imageFetchService: ImageFetchService;
   private readonly imageConversionService: ImageConversionService;
   private readonly videoLoadService: VideoLoadService;
@@ -18,11 +26,13 @@ export class ImageLoaderManager {
   constructor(
     regularImageCache: RegularImageCache = createRegularImageCache(),
     services: {
+      resources?: MediaResourceScope;
       imageFetchService?: ImageFetchService;
       imageConversionService?: ImageConversionService;
       videoLoadService?: VideoLoadService;
     } = {},
   ) {
+    this.resources = services.resources ?? new MediaResourceScope();
     this.imageFetchService =
       services.imageFetchService ?? new ImageFetchService();
     this.imageConversionService =
@@ -35,29 +45,51 @@ export class ImageLoaderManager {
     src: string,
     callbacks: LoadingCallbacks = {},
   ): Promise<ImageLoadResult> {
-    const cachedRegularImage =
-      this.imageConversionService.getCachedRegularImage(src, callbacks);
-
-    if (cachedRegularImage) {
-      return cachedRegularImage;
-    }
-
-    callbacks.onLoadingStateUpdate?.({
-      isVisible: true,
-    });
-
+    this.imageTask?.abort();
+    this.imageFetchService.cleanup();
+    const task = new AbortController();
+    this.imageTask = task;
+    const { signal } = task;
+    const guarded: LoadingCallbacks = {
+      priority: callbacks.priority,
+      onProgress: (value) => {
+        if (!signal.aborted) callbacks.onProgress?.(value);
+      },
+      onError: () => {
+        if (!signal.aborted) callbacks.onError?.();
+      },
+      onLoadingStateUpdate: (state) => {
+        if (!signal.aborted) callbacks.onLoadingStateUpdate?.(state);
+      },
+    };
     try {
-      const blob = await this.imageFetchService.fetchBlob(src, callbacks);
-      return await this.imageConversionService.processImageBlob(
-        blob,
-        src,
-        callbacks,
-      );
+      let blob = this.imageConversionService.getCachedRegularImage(src);
+      if (!blob) {
+        guarded.onLoadingStateUpdate?.({ isVisible: true });
+        const original = await abortable(
+          this.imageFetchService.fetchBlob(src, guarded),
+          signal,
+        );
+        throwIfAborted(signal);
+        blob = await abortable(
+          this.imageConversionService.processImageBlob(
+            original,
+            src,
+            guarded,
+            signal,
+          ),
+          signal,
+        );
+      }
+      throwIfAborted(signal);
+      guarded.onLoadingStateUpdate?.({ isVisible: false });
+      throwIfAborted(signal);
+      return this.resources.acquire(blob);
     } catch (error) {
-      callbacks.onLoadingStateUpdate?.({
-        isVisible: false,
-      });
-      callbacks.onError?.();
+      if (!signal.aborted) {
+        guarded.onLoadingStateUpdate?.({ isVisible: false });
+        guarded.onError?.();
+      }
       throw error;
     }
   }
@@ -75,6 +107,8 @@ export class ImageLoaderManager {
   }
 
   cleanup(): void {
+    this.imageTask?.abort();
+    this.imageTask = null;
     this.imageFetchService.cleanup();
     this.videoLoadService.cleanup();
   }

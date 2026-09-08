@@ -9,8 +9,8 @@ import {
 } from "react";
 
 import { useStableVideoSource } from "~/hooks/useStableVideoSource";
-import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 import type { VideoSource } from "~/lib/image-loading-types";
+import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
 import type { LivePhotoVideoHandle } from "./types";
@@ -34,8 +34,6 @@ function resetVideoElement(videoElement: HTMLVideoElement | null): void {
 interface LivePhotoVideoProps {
   /** Video source (Live Photo or Motion Photo) */
   videoSource: VideoSource;
-  /** 图片加载管理器实例 */
-  imageLoaderManager: ImageLoaderManager;
   /** 加载指示器引用 */
   loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null>;
   /** 是否是当前图片 */
@@ -50,7 +48,6 @@ interface LivePhotoVideoProps {
 export const LivePhotoVideo = ({
   ref,
   videoSource,
-  imageLoaderManager,
   loadingIndicatorRef,
   isCurrentImage,
   className,
@@ -59,6 +56,7 @@ export const LivePhotoVideo = ({
 }: LivePhotoVideoProps & {
   ref?: React.RefObject<LivePhotoVideoHandle | null>;
 }) => {
+  const runtime = useAfilmoryRuntime();
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false);
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false);
   const [isConvertingVideo, setIsConvertingVideo] = useState(false);
@@ -101,6 +99,7 @@ export const LivePhotoVideo = ({
       return;
     }
 
+    const imageLoaderManager = runtime.imageLoading.createLoader();
     let cancelled = false;
     const currentVideoElement = videoRef.current;
     loadedVideoSourceKeyRef.current = null;
@@ -116,7 +115,8 @@ export const LivePhotoVideo = ({
           currentVideoElement,
           {
             onLoadingStateUpdate: (state) => {
-              loadingIndicatorRef.current?.updateLoadingState(state);
+              if (!cancelled)
+                loadingIndicatorRef.current?.updateLoadingState(state);
             },
           },
         );
@@ -142,13 +142,13 @@ export const LivePhotoVideo = ({
     return () => {
       cancelled = true;
       isConvertingVideoRef.current = false;
-      imageLoaderManager.cleanup();
+      runtime.imageLoading.cleanupLoader(imageLoaderManager);
     };
   }, [
     isCurrentImage,
     videoSourceKey,
     stableVideoSource,
-    imageLoaderManager,
+    runtime.imageLoading,
     loadingIndicatorRef,
   ]);
 

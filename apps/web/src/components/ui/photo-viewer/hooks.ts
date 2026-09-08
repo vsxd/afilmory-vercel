@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 import { MenuItemSeparator, MenuItemText } from "~/atoms/context-menu";
 import { isMobileDevice } from "~/lib/device-viewport";
-import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+import type { MediaLease } from "~/lib/media-resource";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
@@ -105,13 +105,33 @@ export const useImageLoader = (
 ) => {
   const { t } = useTranslation();
   const runtime = useAfilmoryRuntime();
-  const imageLoaderManagerRef = useRef<ImageLoaderManager | null>(null);
+  const imageLeaseRef = useRef<MediaLease | null>(null);
+
+  // The URL follows the rendered photo, not a fetch effect or cache entry.
+  useEffect(() => {
+    setHighResLoaded?.(false);
+    setBlobSrc?.(null);
+    setImageBlob?.(null);
+    setError?.(false);
+    setIsHighResImageRendered?.(false);
+    return () => {
+      imageLeaseRef.current?.release();
+      imageLeaseRef.current = null;
+    };
+  }, [
+    src,
+    runtime,
+    setHighResLoaded,
+    setBlobSrc,
+    setImageBlob,
+    setError,
+    setIsHighResImageRendered,
+  ]);
 
   useEffect(() => {
     if (highResLoaded || error || !isCurrentImage) return;
 
     const imageLoaderManager = runtime.imageLoading.createLoader();
-    imageLoaderManagerRef.current = imageLoaderManager;
 
     function cleanup() {
       setHighResLoaded?.(false);
@@ -131,17 +151,25 @@ export const useImageLoader = (
       try {
         const result = await imageLoaderManager.loadImage(src, {
           priority: "high",
-          onProgress,
-          onError,
+          onProgress: (progress) => {
+            if (!cancelled) onProgress?.(progress);
+          },
+          onError: () => {
+            if (!cancelled) onError?.();
+          },
           onLoadingStateUpdate: (state) => {
-            loadingIndicatorRef?.current?.updateLoadingState(state);
+            if (!cancelled)
+              loadingIndicatorRef?.current?.updateLoadingState(state);
           },
         });
 
         if (cancelled) {
+          result.release();
           return;
         }
 
+        imageLeaseRef.current?.release();
+        imageLeaseRef.current = result;
         setBlobSrc?.(result.blobSrc);
         setImageBlob?.(result.blob);
         onBlobSrcChange?.(result.blobSrc);
@@ -187,8 +215,6 @@ export const useImageLoader = (
     setError,
     setIsHighResImageRendered,
   ]);
-
-  return imageLoaderManagerRef;
 };
 
 export const useScaleIndicator = (

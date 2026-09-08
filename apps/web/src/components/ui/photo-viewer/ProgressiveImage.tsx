@@ -109,7 +109,7 @@ export const ProgressiveImage = ({
   useDomFallbackRef.current = useDomFallback;
 
   // Hooks
-  const imageLoaderManagerRef = useImageLoader(
+  useImageLoader(
     src,
     isCurrentImage,
     highResLoaded,
@@ -347,11 +347,10 @@ export const ProgressiveImage = ({
               onLoad={handleHighResRendered}
             >
               {/* LivePhoto/Motion Photo 视频组件作为 children，跟随图片的变换 */}
-              {hasVideo && videoSource && imageLoaderManagerRef.current && (
+              {hasVideo && videoSource && (
                 <LivePhotoVideo
                   ref={livePhotoRef}
                   videoSource={videoSource}
-                  imageLoaderManager={imageLoaderManagerRef.current}
                   loadingIndicatorRef={loadingIndicatorRef}
                   isCurrentImage={isCurrentImage}
                   onPlayingChange={setState.setIsLivePhotoPlaying}
@@ -390,7 +389,6 @@ export const ProgressiveImage = ({
         <LivePhotoBadge
           livePhotoRef={livePhotoRef}
           isLivePhotoPlaying={isLivePhotoPlaying}
-          imageLoaderManagerRef={imageLoaderManagerRef}
         />
       )}
 

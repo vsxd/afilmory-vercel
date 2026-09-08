@@ -30,6 +30,7 @@ const hoisted = vi.hoisted(() => ({
         loadImage: () =>
           Promise.resolve({
             blobSrc: "blob:mock-image",
+            release: vi.fn(),
             blob: new Blob(["photo"], { type: "image/jpeg" }),
           }),
         cleanup: vi.fn(),
@@ -97,6 +98,7 @@ vi.mock("~/lib/image-loader-manager", () => {
     loadImage() {
       return Promise.resolve({
         blobSrc: "blob:mock-image",
+        release: vi.fn(),
         blob: new Blob(["photo"], { type: "image/jpeg" }),
       });
     }

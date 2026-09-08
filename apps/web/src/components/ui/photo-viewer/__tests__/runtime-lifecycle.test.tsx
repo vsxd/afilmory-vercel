@@ -87,7 +87,13 @@ vi.mock("motion/react", async () => {
   };
 });
 
-function ImageLoaderHarness({ tick }: { tick: number }) {
+function ImageLoaderHarness({
+  tick,
+  src = "https://example.com/photo.jpg",
+}: {
+  tick: number;
+  src?: string;
+}) {
   const [blobSrc, setBlobSrc] = useState<string | null>(null);
   const [, setImageBlob] = useState<Blob | null>(null);
   const [highResLoaded, setHighResLoaded] = useState(false);
@@ -98,8 +104,8 @@ function ImageLoaderHarness({ tick }: { tick: number }) {
     resetLoadingState: vi.fn(),
   });
 
-  const imageLoaderManagerRef = useImageLoader(
-    "https://example.com/photo.jpg",
+  useImageLoader(
+    src,
     true,
     highResLoaded,
     error,
@@ -119,7 +125,6 @@ function ImageLoaderHarness({ tick }: { tick: number }) {
       data-testid="image-loader-state"
       data-blob-src={blobSrc ?? ""}
       data-loaded={highResLoaded ? "true" : "false"}
-      data-manager={imageLoaderManagerRef.current ? "present" : "missing"}
       data-tick={String(tick)}
     />
   );
@@ -164,6 +169,7 @@ describe("photo viewer runtime lifecycle", () => {
 
     loadImageMock.mockResolvedValue({
       blobSrc: "blob:loaded-image",
+      release: vi.fn(),
       blob: new Blob(["photo"], { type: "image/jpeg" }),
     });
 
@@ -180,11 +186,40 @@ describe("photo viewer runtime lifecycle", () => {
     cleanup();
   });
 
+  it("releases the old lease and loads a changed image source in the same component", async () => {
+    const first = {
+      blobSrc: "blob:first",
+      blob: new Blob(["a"]),
+      release: vi.fn(),
+    };
+    const second = {
+      blobSrc: "blob:second",
+      blob: new Blob(["b"]),
+      release: vi.fn(),
+    };
+    loadImageMock.mockResolvedValueOnce(first).mockResolvedValue(second);
+    const { rerender, unmount } = render(
+      <ImageLoaderHarness tick={0} src="first" />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("image-loader-state").dataset.blobSrc).toBe(
+        first.blobSrc,
+      ),
+    );
+    rerender(<ImageLoaderHarness tick={1} src="second" />);
+    await waitFor(() =>
+      expect(screen.getByTestId("image-loader-state").dataset.blobSrc).toBe(
+        second.blobSrc,
+      ),
+    );
+    expect(first.release).toHaveBeenCalledTimes(1);
+    expect(second.release).not.toHaveBeenCalled();
+    expect(loadImageMock).toHaveBeenCalledTimes(2);
+    unmount();
+    expect(second.release).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the live photo video source after the initial load settles", async () => {
-    const imageLoaderManager = {
-      processVideo: processVideoMock,
-      cleanup: cleanupMock,
-    } as never;
     const loadingIndicatorRef = {
       current: {
         updateLoadingState: vi.fn(),
@@ -197,7 +232,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={true}
       />,
@@ -220,7 +254,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={true}
       />,
@@ -240,10 +273,6 @@ describe("photo viewer runtime lifecycle", () => {
         }),
     );
 
-    const imageLoaderManager = {
-      processVideo: processVideoMock,
-      cleanup: cleanupMock,
-    } as never;
     const loadingIndicatorRef = {
       current: {
         updateLoadingState: vi.fn(),
@@ -256,7 +285,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={true}
       />,
@@ -272,7 +300,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={false}
       />,
@@ -284,10 +311,6 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cleans up the live photo manager on unmount", async () => {
-    const imageLoaderManager = {
-      processVideo: processVideoMock,
-      cleanup: cleanupMock,
-    } as never;
     const loadingIndicatorRef = {
       current: {
         updateLoadingState: vi.fn(),
@@ -300,7 +323,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={true}
       />,
@@ -316,10 +338,6 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cancels a scheduled live photo play when the component unmounts before the timer fires", async () => {
-    const imageLoaderManager = {
-      processVideo: processVideoMock,
-      cleanup: cleanupMock,
-    } as never;
     const loadingIndicatorRef = {
       current: {
         updateLoadingState: vi.fn(),
@@ -336,7 +354,6 @@ describe("photo viewer runtime lifecycle", () => {
           type: "live-photo",
           videoUrl: "https://example.com/live.mov",
         }}
-        imageLoaderManager={imageLoaderManager}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage={true}
       />,
@@ -403,8 +420,8 @@ describe("photo viewer runtime lifecycle", () => {
     }
   });
 
-  it("keeps the image loader manager ref available after the high-res image loads", async () => {
-    const { rerender } = render(<ImageLoaderHarness tick={0} />);
+  it("keeps the image lease after loading and releases it only on unmount", async () => {
+    const { rerender, unmount } = render(<ImageLoaderHarness tick={0} />);
 
     await waitFor(() => {
       expect(screen.getByTestId("image-loader-state").dataset.loaded).toBe(
@@ -414,8 +431,9 @@ describe("photo viewer runtime lifecycle", () => {
 
     rerender(<ImageLoaderHarness tick={1} />);
 
-    expect(screen.getByTestId("image-loader-state").dataset.manager).toBe(
-      "present",
-    );
+    const result = await loadImageMock.mock.results[0].value;
+    expect(result.release).not.toHaveBeenCalled();
+    unmount();
+    expect(result.release).toHaveBeenCalledTimes(1);
   });
 });

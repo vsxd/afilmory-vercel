@@ -13,13 +13,13 @@ interface MotionPhotoMetadata {
  * 从图片 URL 中提取嵌入的 MP4 视频
  * @param imageUrl 原图片 URL
  * @param metadata Motion Photo 元数据（包含 offset 和可选的 size）
- * @returns 视频的 Blob URL，可直接用于 video 元素
+ * @returns 视频 Blob，由消费者负责创建和释放播放 URL
  */
 export async function extractMotionPhotoVideo(
   imageUrl: string,
   metadata: MotionPhotoMetadata,
   signal?: AbortSignal,
-): Promise<string | null> {
+): Promise<Blob | null> {
   try {
     const { motionPhotoOffset, motionPhotoVideoSize } = metadata;
 
@@ -33,7 +33,7 @@ export async function extractMotionPhotoVideo(
           signal,
         );
         if (videoBlob) {
-          return URL.createObjectURL(videoBlob);
+          return videoBlob;
         }
       } catch (rangeError) {
         if (rangeError instanceof Error && rangeError.name === "AbortError") {
@@ -54,7 +54,7 @@ export async function extractMotionPhotoVideo(
       signal,
     );
     if (videoBlob) {
-      return URL.createObjectURL(videoBlob);
+      return videoBlob;
     }
 
     return null;

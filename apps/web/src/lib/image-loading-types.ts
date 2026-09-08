@@ -19,6 +19,7 @@ export interface LoadingCallbacks {
 export interface ImageLoadResult {
   blobSrc: string;
   blob: Blob;
+  release: () => void;
 }
 
 export interface VideoProcessResult {

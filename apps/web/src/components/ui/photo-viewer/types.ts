@@ -1,4 +1,3 @@
-import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 import type { VideoSource } from "~/lib/image-loading-types";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
@@ -69,7 +68,6 @@ export interface DOMImageViewerProps {
 export interface LivePhotoBadgeProps {
   livePhotoRef: React.RefObject<LivePhotoVideoHandle | null>;
   isLivePhotoPlaying: boolean;
-  imageLoaderManagerRef: React.RefObject<ImageLoaderManager | null>;
 }
 
 export interface ProgressiveImageState {

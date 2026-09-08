@@ -1,21 +1,5 @@
 import { debugLog } from "./debug-log";
 import { isSafari } from "./device-viewport";
-import { LRUCache } from "./lru-cache";
-
-// 以原始 URL 为键缓存重贴标签后的 blob URL：逐出时 revoke，
-// 避免同一段 Live Photo 视频被反复下载、多个 blob URL 长期钉住内存。
-const relabeledUrlCache: LRUCache<string, string> = new LRUCache<
-  string,
-  string
->(10, (blobUrl, _key, reason) => {
-  try {
-    URL.revokeObjectURL(blobUrl);
-    debugLog(`Video cache: Revoked blob URL - ${reason}`);
-  } catch (error) {
-    console.warn(`Failed to revoke video blob URL (${reason}):`, error);
-  }
-});
-
 // 检测浏览器是否原生支持 MOV 格式
 function isBrowserSupportMov(): boolean {
   if (typeof document === "undefined") {
@@ -71,13 +55,7 @@ export function needsVideoConversion(url: string): boolean {
 export async function relabelMovAsMp4(
   videoUrl: string,
   options: { signal?: AbortSignal } = {},
-): Promise<string> {
-  const cached = relabeledUrlCache.get(videoUrl);
-  if (cached) {
-    debugLog("Using cached MOV relabel result");
-    return cached;
-  }
-
+): Promise<Blob> {
   const response = await fetch(videoUrl, { signal: options.signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch video: ${response.statusText}`);
@@ -85,9 +63,7 @@ export async function relabelMovAsMp4(
 
   const buffer = await response.arrayBuffer();
   const blob = new Blob([buffer], { type: "video/mp4" });
-  const blobUrl = URL.createObjectURL(blob);
-  relabeledUrlCache.set(videoUrl, blobUrl);
   debugLog(`MOV relabeled as MP4: ${Math.round(blob.size / 1024)}KB`);
 
-  return blobUrl;
+  return blob;
 }

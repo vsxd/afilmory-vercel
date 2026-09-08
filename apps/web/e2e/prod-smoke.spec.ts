@@ -23,6 +23,88 @@ test.describe("production original image loading", () => {
   // Keep the CDN fixture interceptable; the separate smoke test below covers SW.
   test.use({ serviceWorkers: "block" });
 
+  test("retains a DOM image URL across eviction and releases it when the viewer closes", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const { getContext } = HTMLCanvasElement.prototype;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        ...args
+      ) {
+        if (String(args[0]).includes("webgl")) return null;
+        return Reflect.apply(getContext, this, args);
+      } as typeof getContext;
+      // Exercise the real byte-budget eviction using small image fixtures.
+      const size = Object.getOwnPropertyDescriptor(
+        Blob.prototype,
+        "size",
+      )!.get!;
+      Object.defineProperty(Blob.prototype, "size", {
+        configurable: true,
+        get() {
+          return this.type === "image/jpeg"
+            ? 140 * 1024 * 1024
+            : size.call(this);
+        },
+      });
+    });
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({
+        contentType: "image/jpeg",
+        path: fileURLToPath(
+          new URL("fixtures/thumbnails/SYNTH0001.jpg", import.meta.url),
+        ),
+      }),
+    );
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    const first = viewer.getByRole("group", { name: "SYNTH0001", exact: true });
+    const original = first.locator('img[src^="blob:"]');
+    await expect(original).toBeVisible();
+    const firstUrl = (await original.getAttribute("src"))!;
+    await expect
+      .poll(() =>
+        original.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    await page.keyboard.press("ArrowLeft");
+    await expect(page).not.toHaveURL(/\/photos\/SYNTH0001(?:\?|$)/);
+    const second = viewer
+      .getByRole("group", { name: "SYNTH0002", exact: true })
+      .locator('img[src^="blob:"]');
+    await expect(second).toBeVisible();
+    await expect
+      .poll(() =>
+        second.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    await page.keyboard.press("ArrowRight");
+    await expect(page).toHaveURL(/\/photos\/SYNTH0001(?:\?|$)/);
+    await expect(original).toHaveAttribute("src", firstUrl);
+    await expect
+      .poll(() =>
+        original.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    expect(
+      await page.evaluate(async (url) => (await fetch(url)).ok, firstUrl),
+    ).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(viewer).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        async (url) =>
+          fetch(url).then(
+            () => true,
+            () => false,
+          ),
+        firstUrl,
+      ),
+    ).toBe(false);
+  });
+
   test("downloads, detects, and paints an original image without errors", async ({
     page,
   }) => {

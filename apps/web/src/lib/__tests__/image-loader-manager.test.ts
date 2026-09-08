@@ -96,6 +96,7 @@ describe("ImageLoaderManager", () => {
 
     await expect(resultPromise).resolves.toEqual({
       blobSrc: "blob:mock-image",
+      release: expect.any(Function),
       blob: xhr.response,
     });
   });
@@ -116,6 +117,7 @@ describe("ImageLoaderManager", () => {
 
     await expect(resultPromise).resolves.toEqual({
       blobSrc: "blob:mock-image",
+      release: expect.any(Function),
       blob: xhr.response,
     });
   });
@@ -131,6 +133,7 @@ describe("ImageLoaderManager", () => {
     MockXMLHttpRequest.instances[0]?.onload?.();
     await expect(firstResultPromise).resolves.toEqual({
       blobSrc: "blob:mock-image",
+      release: expect.any(Function),
       blob: MockXMLHttpRequest.instances[0].response,
     });
 
@@ -141,6 +144,7 @@ describe("ImageLoaderManager", () => {
 
     expect(secondResult).toEqual({
       blobSrc: "blob:mock-image",
+      release: expect.any(Function),
       blob: MockXMLHttpRequest.instances[0].response,
     });
     expect(MockXMLHttpRequest.instances).toHaveLength(1);

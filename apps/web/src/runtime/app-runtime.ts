@@ -8,6 +8,9 @@ import { createRegularImageCache } from "~/lib/image-cache-service";
 import { ImageConversionService } from "~/lib/image-conversion-service";
 import { ImageConverterManager } from "~/lib/image-convert";
 import { ImageLoaderManager } from "~/lib/image-loader-manager";
+import { MediaResourceScope } from "~/lib/media-resource";
+import { VideoBlobCache } from "~/lib/video-blob-cache";
+import { VideoLoadService } from "~/lib/video-load-service";
 import { NavigationController } from "~/navigation/controller";
 
 import type { AfilmoryBrowserRuntime } from "./browser-runtime";
@@ -55,11 +58,14 @@ class BodyScrollLockManager {
 export interface ImageLoadingService {
   createLoader: () => ImageLoaderManager;
   cleanupLoader: (loader: ImageLoaderManager) => void;
-  cleanupAll: () => void;
+  dispose: () => void;
 }
 
 class RuntimeImageLoadingService implements ImageLoadingService {
   private readonly loaders = new Set<ImageLoaderManager>();
+  private readonly videoCache = new VideoBlobCache();
+  private readonly resources = new MediaResourceScope();
+  private disposed = false;
 
   constructor(
     private readonly imageCache: RegularImageCache,
@@ -67,10 +73,17 @@ class RuntimeImageLoadingService implements ImageLoadingService {
   ) {}
 
   createLoader(): ImageLoaderManager {
+    if (this.disposed) throw new Error("Media runtime disposed");
     // 所有 loader 共享同一个 runtime 级转换管理器：
     // 并发管道与 pending 任务去重在 runtime 内共享（与旧的全局单例行为一致），
     // 但不同 runtime 之间相互隔离，dispose 后随 runtime 一起被回收。
     const loader = new ImageLoaderManager(this.imageCache, {
+      resources: this.resources,
+      videoLoadService: new VideoLoadService(
+        15_000,
+        this.videoCache,
+        this.resources,
+      ),
       imageConversionService: new ImageConversionService(
         this.imageCache,
         this.imageConverter,
@@ -85,11 +98,14 @@ class RuntimeImageLoadingService implements ImageLoadingService {
     this.loaders.delete(loader);
   }
 
-  cleanupAll(): void {
+  dispose(): void {
+    this.disposed = true;
     for (const loader of this.loaders) {
       loader.cleanup();
     }
     this.loaders.clear();
+    this.videoCache.dispose();
+    this.resources.dispose();
   }
 }
 
@@ -135,7 +151,7 @@ export function createAppRuntime({
     store: createStore(),
     dispose() {
       navigation.dispose();
-      imageLoading.cleanupAll();
+      imageLoading.dispose();
       this.imageCache.clear();
       photoRepository.dispose();
       bodyScrollLock.reset();

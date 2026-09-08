@@ -1,223 +1,160 @@
 import { getI18n } from "~/i18n";
-import { debugLog } from "~/lib/debug-log";
+
 import type {
   LoadingCallbacks,
   VideoProcessResult,
   VideoSource,
-} from "~/lib/image-loading-types";
-import { createAbortError } from "~/lib/image-loading-types";
-import { extractMotionPhotoVideo } from "~/lib/motion-photo-extractor";
-import { needsVideoConversion, relabelMovAsMp4 } from "~/lib/video-converter";
+} from "./image-loading-types";
+import { createAbortError } from "./image-loading-types";
+import type { MediaLease } from "./media-resource";
+import {
+  abortable,
+  MediaResourceScope,
+  throwIfAborted,
+} from "./media-resource";
+import { extractMotionPhotoVideo } from "./motion-photo-extractor";
+import { VideoBlobCache } from "./video-blob-cache";
+import { needsVideoConversion } from "./video-converter";
+
+interface VideoTask {
+  controller: AbortController;
+  element: HTMLVideoElement;
+  lease?: MediaLease;
+  attached: boolean;
+}
 
 export class VideoLoadService {
-  private static readonly DEFAULT_READY_TIMEOUT_MS = 15_000;
-
-  private pendingReject: ((reason?: unknown) => void) | null = null;
-  private pendingCleanup: (() => void) | null = null;
-  private currentAbortController: AbortController | null = null;
-  private activeVideoElement: HTMLVideoElement | null = null;
-  private ownedVideoUrl: string | null = null;
+  private current: VideoTask | null = null;
 
   constructor(
-    private readonly readyTimeoutMs = VideoLoadService.DEFAULT_READY_TIMEOUT_MS,
+    private readonly readyTimeoutMs = 15_000,
+    private readonly cache = new VideoBlobCache(),
+    private readonly resources = new MediaResourceScope(),
   ) {}
 
   async processVideo(
-    videoSource: VideoSource,
-    videoElement: HTMLVideoElement,
+    source: VideoSource,
+    element: HTMLVideoElement,
     callbacks: LoadingCallbacks = {},
   ): Promise<VideoProcessResult> {
-    const { onLoadingStateUpdate } = callbacks;
-    const i18n = getI18n();
-
-    this.currentAbortController?.abort();
-    this.currentAbortController = new AbortController();
-
+    this.cleanup();
+    const task: VideoTask = {
+      controller: new AbortController(),
+      element,
+      attached: false,
+    };
+    this.current = task;
+    const { signal } = task.controller;
+    const update: NonNullable<LoadingCallbacks["onLoadingStateUpdate"]> = (
+      state,
+    ) => {
+      if (!signal.aborted && this.current === task)
+        callbacks.onLoadingStateUpdate?.(state);
+    };
     try {
-      if (videoSource.type === "motion-photo") {
-        debugLog("Processing Motion Photo embedded video...");
-        onLoadingStateUpdate?.({
+      let src: string;
+      let result: VideoProcessResult;
+      if (source.type === "motion-photo") {
+        update({
           isVisible: true,
-          conversionMessage: i18n.t("video.motion-photo.extracting"),
+          conversionMessage: getI18n().t("video.motion-photo.extracting"),
         });
-
-        const extractedVideoUrl = await extractMotionPhotoVideo(
-          videoSource.imageUrl,
-          {
-            motionPhotoOffset: videoSource.offset,
-            motionPhotoVideoSize: videoSource.size,
-            presentationTimestampUs: videoSource.presentationTimestamp,
-          },
-          this.currentAbortController.signal,
+        const blob = await abortable(
+          extractMotionPhotoVideo(
+            source.imageUrl,
+            {
+              motionPhotoOffset: source.offset,
+              motionPhotoVideoSize: source.size,
+              presentationTimestampUs: source.presentationTimestamp,
+            },
+            signal,
+          ),
+          signal,
         );
-
-        if (!extractedVideoUrl) {
-          throw new Error("Failed to extract Motion Photo video");
-        }
-
-        debugLog("Motion Photo video extracted successfully");
-        onLoadingStateUpdate?.({
-          isVisible: false,
-        });
-
-        return await this.loadVideoSource(
-          videoElement,
-          extractedVideoUrl,
-          {
-            convertedVideoUrl: extractedVideoUrl,
-            conversionMethod: "motion-photo-extraction",
-          },
-          { ownedBlobUrl: true },
-        );
-      }
-
-      if (videoSource.type === "live-photo") {
-        if (needsVideoConversion(videoSource.videoUrl)) {
-          return await this.convertVideo(
-            videoSource.videoUrl,
-            videoElement,
-            callbacks,
+        throwIfAborted(signal);
+        if (!blob) throw new Error("Failed to extract Motion Photo video");
+        task.lease = this.resources.acquire(blob);
+        src = task.lease.blobSrc;
+        result = {
+          convertedVideoUrl: src,
+          conversionMethod: "motion-photo-extraction",
+        };
+      } else if (source.type === "live-photo") {
+        if (needsVideoConversion(source.videoUrl)) {
+          update({ isVisible: true, isConverting: true, loadingProgress: 0 });
+          const blob = await abortable(
+            this.cache.get(source.videoUrl, signal),
+            signal,
           );
+          throwIfAborted(signal);
+          task.lease = this.resources.acquire(blob);
+          src = task.lease.blobSrc;
+          result = { convertedVideoUrl: src };
+        } else {
+          src = source.videoUrl;
+          result = { conversionMethod: "" };
         }
-
-        return await this.loadDirectVideo(videoSource.videoUrl, videoElement);
+      } else {
+        throw new Error("No video source provided");
       }
-
-      throw new Error("No video source provided");
+      throwIfAborted(signal);
+      update({ isVisible: false, isConverting: false });
+      await this.waitUntilReady(task, src);
+      throwIfAborted(signal);
+      return result;
     } catch (error) {
-      console.error("Failed to process video:", error);
-      onLoadingStateUpdate?.({
-        isVisible: false,
-      });
+      if (!signal.aborted && this.current === task) {
+        console.error("Failed to process video:", error);
+        update({ isVisible: false, isConverting: false });
+        this.cleanup();
+      }
       throw error;
     }
   }
 
   cleanup(): void {
-    if (this.currentAbortController) {
-      this.currentAbortController.abort();
-      this.currentAbortController = null;
+    const task = this.current;
+    if (!task) return;
+    this.current = null;
+    task.controller.abort();
+    if (task.attached) {
+      task.element.pause();
+      task.element.removeAttribute("src");
+      task.element.load();
     }
-
-    if (this.pendingReject) {
-      this.rejectPending(createAbortError("Video load cancelled"));
-    }
-
-    this.clearVideoElement();
+    task.lease?.release();
   }
 
-  private rejectPending(error: Error): void {
-    if (!this.pendingReject) {
-      return;
-    }
-
-    const reject = this.pendingReject;
-    this.pendingReject = null;
-    reject(error);
-  }
-
-  private clearVideoElement(): void {
-    this.rejectPending(createAbortError("Video load cancelled"));
-
-    if (this.pendingCleanup) {
-      this.pendingCleanup();
-      this.pendingCleanup = null;
-    }
-
-    const videoElement = this.activeVideoElement;
-    if (videoElement) {
-      try {
-        videoElement.pause();
-      } catch (error) {
-        console.warn("Failed to pause video during cleanup:", error);
-      }
-
-      videoElement.removeAttribute("src");
-      videoElement.load();
-    }
-
-    if (this.ownedVideoUrl) {
-      try {
-        URL.revokeObjectURL(this.ownedVideoUrl);
-        debugLog("Revoked owned video blob URL during cleanup");
-      } catch (error) {
-        console.warn("Failed to revoke owned video blob URL:", error);
-      }
-    }
-
-    this.activeVideoElement = null;
-    this.ownedVideoUrl = null;
-  }
-
-  private loadVideoSource(
-    videoElement: HTMLVideoElement,
-    src: string,
-    result: VideoProcessResult,
-    options: { ownedBlobUrl?: boolean } = {},
-  ): Promise<VideoProcessResult> {
-    this.clearVideoElement();
-    this.activeVideoElement = videoElement;
-    this.ownedVideoUrl = options.ownedBlobUrl ? src : null;
-
+  private waitUntilReady(task: VideoTask, src: string): Promise<void> {
+    const {
+      element,
+      controller: { signal },
+    } = task;
     return new Promise((resolve, reject) => {
-      const signal = this.currentAbortController?.signal;
-      let settled = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      this.pendingReject = reject;
-
       const cleanup = () => {
-        videoElement.removeEventListener("loadeddata", handleVideoCanPlay);
-        videoElement.removeEventListener("canplay", handleVideoCanPlay);
-        videoElement.removeEventListener("canplaythrough", handleVideoCanPlay);
-        videoElement.removeEventListener("error", handleVideoError);
-        signal?.removeEventListener("abort", handleAbort);
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        if (this.pendingCleanup === cleanup) {
-          this.pendingCleanup = null;
-        }
-        if (this.pendingReject === reject) {
-          this.pendingReject = null;
-        }
+        for (const event of ["loadeddata", "canplay", "canplaythrough"])
+          element.removeEventListener(event, ready);
+        element.removeEventListener("error", failed);
+        signal.removeEventListener("abort", aborted);
+        clearTimeout(timeout);
       };
-
-      const handleVideoCanPlay = () => {
-        if (settled) return;
-        settled = true;
+      const ready = () => {
         cleanup();
-        resolve(result);
+        resolve();
       };
-
-      const handleVideoError = () => {
-        if (settled) return;
-        settled = true;
+      const failed = () => {
         cleanup();
         reject(new Error("Video failed to load"));
       };
-
-      const handleAbort = () => {
-        if (settled) return;
-        settled = true;
+      const aborted = () => {
         cleanup();
         reject(createAbortError("Video load cancelled"));
       };
-
-      this.pendingCleanup = cleanup;
-
-      // Listeners must be installed before assigning src/load(). Cached media
-      // and test doubles are allowed to fire their readiness event
-      // synchronously from load().
-      videoElement.addEventListener("loadeddata", handleVideoCanPlay);
-      videoElement.addEventListener("canplay", handleVideoCanPlay);
-      videoElement.addEventListener("canplaythrough", handleVideoCanPlay);
-      videoElement.addEventListener("error", handleVideoError);
-      signal?.addEventListener("abort", handleAbort, { once: true });
-
-      timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
+      for (const event of ["loadeddata", "canplay", "canplaythrough"])
+        element.addEventListener(event, ready);
+      element.addEventListener("error", failed);
+      signal.addEventListener("abort", aborted, { once: true });
+      const timeout = setTimeout(() => {
         cleanup();
         reject(
           new Error(
@@ -225,58 +162,19 @@ export class VideoLoadService {
           ),
         );
       }, this.readyTimeoutMs);
-
-      if (signal?.aborted) {
-        handleAbort();
+      if (signal.aborted) {
+        aborted();
         return;
       }
-
-      videoElement.src = src;
-      videoElement.load();
-
-      // Browsers do not have to dispatch another event when media is already
-      // ready (for example after a memory-cache hit).
-      if (videoElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        handleVideoCanPlay();
+      task.attached = true;
+      try {
+        element.src = src;
+        element.load();
+        if (element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) ready();
+      } catch (error) {
+        cleanup();
+        reject(error);
       }
-    });
-  }
-
-  private async convertVideo(
-    livePhotoVideoUrl: string,
-    videoElement: HTMLVideoElement,
-    callbacks: LoadingCallbacks,
-  ): Promise<VideoProcessResult> {
-    const { onLoadingStateUpdate } = callbacks;
-
-    onLoadingStateUpdate?.({
-      isVisible: true,
-      isConverting: true,
-      loadingProgress: 0,
-    });
-
-    debugLog("Relabeling MOV video as MP4...");
-
-    // 失败时直接向上抛：processVideo 的 catch 统一负责隐藏加载指示器
-    const convertedVideoUrl = await relabelMovAsMp4(livePhotoVideoUrl, {
-      signal: this.currentAbortController?.signal,
-    });
-
-    onLoadingStateUpdate?.({
-      isVisible: false,
-    });
-
-    return await this.loadVideoSource(videoElement, convertedVideoUrl, {
-      convertedVideoUrl,
-    });
-  }
-
-  private async loadDirectVideo(
-    livePhotoVideoUrl: string,
-    videoElement: HTMLVideoElement,
-  ): Promise<VideoProcessResult> {
-    return await this.loadVideoSource(videoElement, livePhotoVideoUrl, {
-      conversionMethod: "",
     });
   }
 }

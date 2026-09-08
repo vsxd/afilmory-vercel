@@ -13,6 +13,14 @@ import type { VideoSource } from "~/lib/image-loading-types";
 
 import { LivePhotoVideo } from "../LivePhotoVideo";
 
+const runtime = vi.hoisted(() => ({
+  imageLoading: {
+    createLoader: vi.fn(),
+    cleanupLoader: (loader: { cleanup: () => void }) => loader.cleanup(),
+  },
+}));
+vi.mock("~/runtime/app-runtime", () => ({ useAfilmoryRuntime: () => runtime }));
+
 // 避免加载 @afilmory/ui 整个 barrel；组件只用到 clsxm。
 vi.mock("@afilmory/ui", () => ({
   clsxm: (...classes: Array<string | false | null | undefined>) =>
@@ -65,12 +73,12 @@ describe("LivePhotoVideo", () => {
 
   it("does not reload when re-rendered with a structurally equal video source", async () => {
     const manager = createImageLoaderManager();
+    runtime.imageLoading.createLoader.mockReturnValue(manager);
     const loadingIndicatorRef = { current: null };
 
     const { rerender } = render(
       <LivePhotoVideo
         videoSource={motionPhotoSource}
-        imageLoaderManager={manager as never}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage
       />,
@@ -83,7 +91,6 @@ describe("LivePhotoVideo", () => {
     rerender(
       <LivePhotoVideo
         videoSource={{ ...motionPhotoSource }}
-        imageLoaderManager={manager as never}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage
       />,
@@ -95,12 +102,12 @@ describe("LivePhotoVideo", () => {
 
   it("reloads when the video source key changes", async () => {
     const manager = createImageLoaderManager();
+    runtime.imageLoading.createLoader.mockReturnValue(manager);
     const loadingIndicatorRef = { current: null };
 
     const { rerender } = render(
       <LivePhotoVideo
         videoSource={motionPhotoSource}
-        imageLoaderManager={manager as never}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage
       />,
@@ -113,7 +120,6 @@ describe("LivePhotoVideo", () => {
     rerender(
       <LivePhotoVideo
         videoSource={{ ...motionPhotoSource, offset: 4096 }}
-        imageLoaderManager={manager as never}
         loadingIndicatorRef={loadingIndicatorRef}
         isCurrentImage
       />,

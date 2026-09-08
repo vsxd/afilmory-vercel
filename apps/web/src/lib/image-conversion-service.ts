@@ -1,155 +1,44 @@
-import { debugLog } from "~/lib/debug-log";
-import type {
-  ImageCacheResult,
-  RegularImageCache,
-} from "~/lib/image-cache-service";
-import { ImageConverterManager } from "~/lib/image-convert";
-import type {
-  ImageLoadResult,
-  LoadingCallbacks,
-} from "~/lib/image-loading-types";
+import type { RegularImageCache } from "./image-cache-service";
+import { ImageConverterManager } from "./image-convert";
+import type { LoadingCallbacks } from "./image-loading-types";
+import { throwIfAborted } from "./media-resource";
 
-function createRegularImageCacheKey(url: string): string {
-  return url;
-}
-
+/** Converts/caches bytes only; URL ownership belongs to the consumer. */
 export class ImageConversionService {
-  private readonly imageConverterManager: ImageConverterManager;
-
   constructor(
-    private readonly regularImageCache: RegularImageCache,
-    imageConverterManager?: ImageConverterManager,
-  ) {
-    // 转换管理器不再是模块级单例：生产路径由 createAppRuntime 注入 runtime 级实例
-    // （并发管道、pending 任务去重随 runtime 隔离）；未注入时按实例新建，方便测试隔离。
-    this.imageConverterManager =
-      imageConverterManager ?? new ImageConverterManager();
-  }
+    private readonly cache: RegularImageCache,
+    private readonly converter = new ImageConverterManager(),
+  ) {}
 
-  getCachedRegularImage(
-    originalUrl: string,
-    callbacks: LoadingCallbacks,
-  ): ImageLoadResult | null {
-    const cacheKey = createRegularImageCacheKey(originalUrl);
-    const cachedResult = this.regularImageCache.get(cacheKey);
-
-    if (!cachedResult) {
-      return null;
-    }
-
-    debugLog("Using cached regular image result", cachedResult);
-    callbacks.onLoadingStateUpdate?.({
-      isVisible: false,
-    });
-
-    return {
-      blobSrc: cachedResult.blobSrc,
-      blob: cachedResult.blob,
-    };
+  getCachedRegularImage(url: string): Blob | null {
+    return this.cache.get(url)?.blob ?? null;
   }
 
   async processImageBlob(
     blob: Blob,
-    originalUrl: string,
+    url: string,
     callbacks: LoadingCallbacks,
-  ): Promise<ImageLoadResult> {
+    signal: AbortSignal,
+  ): Promise<Blob> {
+    throwIfAborted(signal);
+    let result = blob;
     try {
-      const conversionResult = await this.imageConverterManager.convertImage(
-        blob,
-        originalUrl,
-        callbacks,
-      );
-
-      if (conversionResult) {
-        debugLog(
-          `Image converted: ${(blob.size / 1024).toFixed(1)}KB -> ${(conversionResult.convertedSize / 1024).toFixed(1)}KB`,
-        );
-
-        // 转换产物的 object URL 只有一个所有者：regularImageCache（逐出时 revoke）。
-        // get-or-set 后返回同一条缓存条目，重开同一张 HEIC/TIFF 时
-        // loadImage 的 getCachedRegularImage 会命中，跳过原图的重新下载与重新转换。
-        const cacheKey = createRegularImageCacheKey(originalUrl);
-        let cachedEntry = this.regularImageCache.get(cacheKey);
-        if (!cachedEntry) {
-          cachedEntry = {
-            blobSrc: URL.createObjectURL(conversionResult.blob),
-            blob: conversionResult.blob,
-            originalSize: conversionResult.blob.size,
-            format: conversionResult.blob.type,
-          };
-          this.regularImageCache.set(cacheKey, cachedEntry);
-        }
-
-        callbacks.onLoadingStateUpdate?.({
-          isVisible: false,
-        });
-
-        return {
-          blobSrc: cachedEntry.blobSrc,
-          blob: cachedEntry.blob,
-        };
-      }
-
-      return this.processRegularImage(blob, originalUrl, callbacks);
-    } catch (conversionError) {
-      console.error("Image conversion failed:", conversionError);
-
-      try {
-        debugLog("Falling back to regular image processing");
-        return this.processRegularImage(blob, originalUrl, callbacks);
-      } catch (fallbackError) {
-        console.error(
-          "Fallback to regular image processing also failed:",
-          fallbackError,
-        );
-        callbacks.onLoadingStateUpdate?.({
-          isVisible: false,
-        });
-        callbacks.onError?.();
-        // 同时保留转换错误和回退错误，避免丢掉真正导致失败的 fallbackError。
-        throw new AggregateError(
-          [conversionError, fallbackError],
-          "Image conversion failed and regular-image fallback also failed",
-        );
-      }
+      const converted = await this.converter.convertImage(blob, url, callbacks);
+      throwIfAborted(signal);
+      result = converted?.blob ?? blob;
+    } catch (error) {
+      throwIfAborted(signal);
+      console.error("Image conversion failed:", error);
+      // Preserve the existing native-decoder fallback for conversion failures.
     }
-  }
-
-  private processRegularImage(
-    blob: Blob,
-    originalUrl: string,
-    callbacks: LoadingCallbacks,
-  ): ImageLoadResult {
-    const cachedRegularImage = this.getCachedRegularImage(
-      originalUrl,
-      callbacks,
-    );
-
-    if (cachedRegularImage) {
-      return cachedRegularImage;
-    }
-
-    const cacheKey = createRegularImageCacheKey(originalUrl);
-    const url = URL.createObjectURL(blob);
-    const result: ImageCacheResult = {
-      blobSrc: url,
-      blob,
+    throwIfAborted(signal);
+    const cached = this.cache.get(url);
+    if (cached) return cached.blob;
+    this.cache.set(url, {
+      blob: result,
       originalSize: blob.size,
-      format: blob.type,
-    };
-
-    this.regularImageCache.set(cacheKey, result);
-    debugLog(
-      `Regular image processed and cached: ${(blob.size / 1024).toFixed(1)}KB, URL: ${originalUrl}`,
-    );
-
-    callbacks.onLoadingStateUpdate?.({
-      isVisible: false,
+      format: result.type,
     });
-
-    return {
-      blobSrc: url,
-      blob,
-    };
+    return result;
   }
 }
