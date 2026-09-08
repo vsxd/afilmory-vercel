@@ -7,7 +7,7 @@ import type { PluginRunState } from "../core/contracts/plugin-ref.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import { logger } from "../logger/index.js";
 import type { StorageObject } from "../storage/interfaces.js";
-import type { BuilderOptions } from "../types/options.js";
+import type { BuilderPluginOptions } from "../types/options.js";
 import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
 import {
   createPhotoExecutionContext,
@@ -39,38 +39,11 @@ export interface PhotoTaskRuntime {
   services: BuilderServices;
   emitPluginEvent: EmitPluginEventFn;
   runState: PluginRunState;
-  builderOptions: BuilderOptions;
+  builderOptions: BuilderPluginOptions;
   processorOptions: PhotoProcessorOptions;
 }
 
-// PhotoProcessorOptions 是 BuilderOptions 的投影；推导只发生在这一处，
-// 调用方不再各自手抄三个字段。
-export function toProcessorOptions(
-  builderOptions: BuilderOptions,
-): PhotoProcessorOptions {
-  return {
-    isForceMode: builderOptions.isForceMode,
-    isForceManifest: builderOptions.isForceManifest,
-    isForceThumbnails: builderOptions.isForceThumbnails,
-    ...(builderOptions.locationMode
-      ? { locationMode: builderOptions.locationMode }
-      : {}),
-    ...(builderOptions.reprocessKeys
-      ? {
-          reprocessKeys: builderOptions.reprocessKeys,
-          reprocessKeySet: new Set(builderOptions.reprocessKeys),
-        }
-      : {}),
-    ...(builderOptions.plannedKeys
-      ? { plannedKeys: builderOptions.plannedKeys }
-      : {}),
-    ...(builderOptions.derivedReprocessKeys
-      ? {
-          derivedReprocessKeySet: new Set(builderOptions.derivedReprocessKeys),
-        }
-      : {}),
-  };
-}
+export { toProcessorOptions } from "./processing-options.js";
 
 // 处理单张照片
 export async function processPhoto(

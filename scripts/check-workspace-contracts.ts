@@ -6,6 +6,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import fg from "fast-glob";
 import ts from "typescript";
 
+import { validateSourceArchitecture } from "./check-source-architecture.js";
+
 interface PackageManifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -235,6 +237,7 @@ export const validateWorkspaceContracts = async (
     }
   }
 
+  issues.push(...(await validateSourceArchitecture(rootDir)));
   return [...new Set(issues)].sort();
 };
 

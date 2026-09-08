@@ -15,7 +15,7 @@ import { getThumbnailFileNameFromUrl } from "../image/thumbnail.js";
 import { needsUpdate } from "../manifest/manager.js";
 import type { ThumbnailPluginData } from "../plugins/thumbnail-storage/shared.js";
 import { THUMBNAIL_PLUGIN_DATA_KEY } from "../plugins/thumbnail-storage/shared.js";
-import type { BuilderOptions } from "../types/options.js";
+import type { BuilderPluginOptions } from "../types/options.js";
 import type {
   PhotoManifestItem,
   PhotoProcessingFailure,
@@ -391,7 +391,7 @@ async function executePhotoProcessingPipeline(
  */
 export async function processPhotoWithPipeline(
   context: PhotoProcessingContext,
-  runtime: { runState: PluginRunState; builderOptions: BuilderOptions },
+  runtime: { runState: PluginRunState; builderOptions: BuilderPluginOptions },
 ): Promise<{
   item: PhotoManifestItem | null;
   type: "new" | "processed" | "skipped" | "failed";

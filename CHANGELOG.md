@@ -8,6 +8,9 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Added
 
+- Source architecture guards, Web test type-checking, and a separately checked
+  TypeScript module Worker with a shared bidirectional protocol.
+
 - Workspace, environment-template, fixture-drift, partition-coverage, secret,
   deployment-smoke, and SBOM contracts.
 - WebKit/iPhone smoke coverage and zero-credential synthetic demo mode.
@@ -22,6 +25,11 @@ All notable Project Code changes are recorded here. The format follows
   fork-aware source/license metadata, and exact-source publication checks.
 
 ### Changed
+
+- Separate Builder requests, captured build plans and plugin execution inputs.
+- Publish immutable photo snapshots through React external-store subscriptions.
+- Model media conversion outcomes, progress events, cancellation and runtime
+  disposal explicitly, with presentation-layer translation.
 
 - Remote artifact caching defaults to a dedicated branch and non-destructive
   commits; optional history compaction now requires explicit consent and uses a
@@ -40,6 +48,11 @@ All notable Project Code changes are recorded here. The format follows
   GHSA-4x5r-pxfx-6jf8.
 
 ### Fixed
+
+- Preserve TIFF grayscale and transparent alpha channels, report DOM image
+  decode failures, time out stalled downloads, and cancel queued conversions.
+- Keep hydrated photo details visible under React Compiler memoization and
+  pre-optimize lazy map dependencies to avoid first-navigation dev reloads.
 
 - Preserve hash-prefixed accent colors when `.env.template` is parsed by dotenv.
 - Prevent Radix primitives split across manual chunks from failing during

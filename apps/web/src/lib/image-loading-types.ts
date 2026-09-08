@@ -1,3 +1,5 @@
+import type { MediaTaskEvent } from "./media-task";
+
 export interface LoadingState {
   isVisible: boolean;
   isHeicFormat?: boolean;
@@ -12,7 +14,9 @@ export interface LoadingState {
 export interface LoadingCallbacks {
   priority?: "high" | "auto";
   onProgress?: (progress: number) => void;
-  onError?: () => void;
+  onError?: (error: Error) => void;
+  onEvent?: (event: MediaTaskEvent) => void;
+  /** Video loading adapter. Image tasks publish typed events through onEvent. */
   onLoadingStateUpdate?: (state: Partial<LoadingState>) => void;
 }
 
@@ -58,8 +62,4 @@ export function getVideoSourceKey(videoSource: VideoSource): string {
   }
 }
 
-export function createAbortError(message: string): Error {
-  const error = new Error(message);
-  error.name = "AbortError";
-  return error;
-}
+export { createAbortError } from "./abortable";

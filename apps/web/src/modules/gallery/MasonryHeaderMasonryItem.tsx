@@ -8,7 +8,7 @@ import { useContextPhotos } from "~/hooks/usePhotoViewer";
 import { MageLens, TablerAperture } from "~/icons";
 import { getPhotoGeoData } from "~/lib/geo-regions";
 import { useGallerySettings } from "~/navigation/hooks";
-import { usePhotoRepository } from "~/runtime/app-runtime";
+import { usePhotoRepositorySnapshot } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
@@ -46,8 +46,7 @@ export const MasonryHeaderMasonryItem = ({
   const { t, i18n } = useTranslation();
   const [gallerySetting] = useGallerySettings();
   const visiblePhotos = useContextPhotos();
-  const photoRepository = usePhotoRepository();
-  const photos = photoRepository.getPhotos();
+  const photos = usePhotoRepositorySnapshot();
   const visiblePhotoCount = visiblePhotos.length;
   const githubUrl = getGitHubUrl(siteConfig.social?.github);
   const statsGridRef = useRef<HTMLDivElement>(null);

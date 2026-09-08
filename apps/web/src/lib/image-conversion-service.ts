@@ -21,16 +21,14 @@ export class ImageConversionService {
     signal: AbortSignal,
   ): Promise<Blob> {
     throwIfAborted(signal);
-    let result = blob;
-    try {
-      const converted = await this.converter.convertImage(blob, url, callbacks);
-      throwIfAborted(signal);
-      result = converted?.blob ?? blob;
-    } catch (error) {
-      throwIfAborted(signal);
-      console.error("Image conversion failed:", error);
-      // Preserve the existing native-decoder fallback for conversion failures.
-    }
+    const converted = await this.converter.convertImage(
+      blob,
+      url,
+      callbacks,
+      signal,
+    );
+    throwIfAborted(signal);
+    const result = converted.blob;
     throwIfAborted(signal);
     const cached = this.cache.get(url);
     if (cached) return cached.blob;

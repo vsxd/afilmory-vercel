@@ -1,5 +1,4 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MasonryRef } from "./VirtualMasonry";
@@ -30,11 +29,10 @@ afterEach(() => {
 
 describe("Masonry (pure-computed virtual masonry)", () => {
   it("renders visible cells and exposes layout metrics + item rects", () => {
-    let capturedRef: { current: MasonryRef | null } | null = null;
+    const capturedRef: { current: MasonryRef | null } = { current: null };
 
     const Probe = () => {
-      const ref = useRef<MasonryRef>(null);
-      capturedRef = ref;
+      const ref = capturedRef;
       return (
         <Masonry
           ref={ref}
@@ -73,10 +71,9 @@ describe("Masonry (pure-computed virtual masonry)", () => {
   });
 
   it("returns null item rect for an out-of-range index", () => {
-    let capturedRef: { current: MasonryRef | null } | null = null;
+    const capturedRef: { current: MasonryRef | null } = { current: null };
     const Probe = () => {
-      const ref = useRef<MasonryRef>(null);
-      capturedRef = ref;
+      const ref = capturedRef;
       return (
         <Masonry
           ref={ref}
@@ -149,11 +146,10 @@ describe("Masonry (pure-computed virtual masonry)", () => {
     const items = Array.from({ length: 120 }, (_, index) => ({
       id: `photo-${index}`,
     }));
-    let capturedRef: { current: MasonryRef | null } | null = null;
+    const capturedRef: { current: MasonryRef | null } = { current: null };
 
     const Probe = () => {
-      const ref = useRef<MasonryRef>(null);
-      capturedRef = ref;
+      const ref = capturedRef;
       return (
         <Masonry
           ref={ref}
@@ -208,11 +204,10 @@ describe("Masonry (pure-computed virtual masonry)", () => {
     const items = Array.from({ length: 120 }, (_, index) => ({
       id: `photo-${index}`,
     }));
-    let capturedRef: { current: MasonryRef | null } | null = null;
+    const capturedRef: { current: MasonryRef | null } = { current: null };
 
     const Probe = () => {
-      const ref = useRef<MasonryRef>(null);
-      capturedRef = ref;
+      const ref = capturedRef;
       return (
         <Masonry
           ref={ref}
@@ -251,11 +246,10 @@ describe("Masonry (pure-computed virtual masonry)", () => {
     Object.defineProperty(scroller, "clientHeight", { value: 100 });
     scroller.scrollTo = vi.fn();
     scrollEl = scroller;
-    let capturedRef: { current: MasonryRef | null } | null = null;
+    const capturedRef: { current: MasonryRef | null } = { current: null };
 
     const Probe = () => {
-      const ref = useRef<MasonryRef>(null);
-      capturedRef = ref;
+      const ref = capturedRef;
       return (
         <Masonry
           ref={ref}

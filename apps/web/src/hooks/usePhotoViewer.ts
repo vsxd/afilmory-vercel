@@ -1,4 +1,3 @@
-import type { PhotoManifestItem } from "@afilmory/schema";
 import { photoMatchesGeoFilters } from "@afilmory/schema/geo";
 import { use, useCallback, useMemo } from "react";
 
@@ -13,12 +12,13 @@ import {
 } from "~/navigation/hooks";
 import { PhotosContext } from "~/providers/photos-provider";
 import type { AppRuntime } from "~/runtime/app-runtime";
-import {
-  usePhotoRepository,
-  usePhotoRepositoryVersion,
-} from "~/runtime/app-runtime";
+import { usePhotoRepositorySnapshot } from "~/runtime/app-runtime";
+import type { PhotoManifest } from "~/types/photo";
 
-const sortPhotos = (photos: PhotoManifestItem[], sortOrder: "asc" | "desc") => {
+const sortPhotos = (
+  photos: readonly PhotoManifest[],
+  sortOrder: "asc" | "desc",
+) => {
   return photos.toSorted((a, b) => {
     const aTime = getPhotoSortTime(a);
     const bTime = getPhotoSortTime(b);
@@ -28,7 +28,7 @@ const sortPhotos = (photos: PhotoManifestItem[], sortOrder: "asc" | "desc") => {
 };
 
 const filterAndSortPhotosImpl = (
-  photos: PhotoManifestItem[],
+  photos: readonly PhotoManifest[],
   gallerySetting: GallerySetting,
 ) => {
   let filteredPhotos = photos;
@@ -92,14 +92,13 @@ const filterAndSortPhotosImpl = (
 
 // Repository and URL filter snapshots have stable identities; reuse derived lists.
 const filterResultCache = new WeakMap<
-  PhotoManifestItem[],
-  WeakMap<GallerySetting, { version: number; photos: PhotoManifestItem[] }>
+  readonly PhotoManifest[],
+  WeakMap<GallerySetting, readonly PhotoManifest[]>
 >();
 
 export const filterAndSortPhotos = (
-  photos: PhotoManifestItem[],
+  photos: readonly PhotoManifest[],
   gallerySetting: GallerySetting,
-  repositoryVersion = 0,
 ) => {
   let settingCache = filterResultCache.get(photos);
   if (!settingCache) {
@@ -108,35 +107,33 @@ export const filterAndSortPhotos = (
   }
 
   const cached = settingCache.get(gallerySetting);
-  if (cached?.version === repositoryVersion) {
-    return cached.photos;
-  }
+  if (cached) return cached;
 
   const result = filterAndSortPhotosImpl(photos, gallerySetting);
-  settingCache.set(gallerySetting, {
-    version: repositoryVersion,
-    photos: result,
-  });
+  settingCache.set(gallerySetting, result);
   return result;
 };
 
 const getAllPhotosForViewer = (
-  photos: PhotoManifestItem[],
+  photos: readonly PhotoManifest[],
   sortOrder: "asc" | "desc",
 ) => {
   return sortPhotos(photos, sortOrder);
 };
 
 const photoMapsByArray = new WeakMap<
-  PhotoManifestItem[],
-  Map<string, PhotoManifestItem>
+  readonly PhotoManifest[],
+  Map<string, PhotoManifest>
 >();
 const photosBySourceIds = new WeakMap<
-  PhotoManifestItem[],
-  WeakMap<string[], PhotoManifestItem[]>
+  readonly PhotoManifest[],
+  WeakMap<string[], readonly PhotoManifest[]>
 >();
 
-const getPhotosByIds = (photos: PhotoManifestItem[], photoIds: string[]) => {
+const getPhotosByIds = (
+  photos: readonly PhotoManifest[],
+  photoIds: string[],
+) => {
   let byIds = photosBySourceIds.get(photos);
   if (!byIds) {
     byIds = new WeakMap();
@@ -160,8 +157,8 @@ const getPhotosByIds = (photos: PhotoManifestItem[], photoIds: string[]) => {
 
 const resolveViewerPhotos = (
   photoId: string | null | undefined,
-  allPhotos: PhotoManifestItem[],
-  filteredPhotos: PhotoManifestItem[],
+  allPhotos: readonly PhotoManifest[],
+  filteredPhotos: readonly PhotoManifest[],
   sortOrder: "asc" | "desc",
   viewerSourcePhotoIds?: string[] | null,
 ) => {
@@ -182,7 +179,6 @@ export const getFilteredPhotos = (runtime: AppRuntime) => {
   return filterAndSortPhotos(
     runtime.photoRepository.getPhotos(),
     currentGallerySetting,
-    runtime.photoRepository.getVersion(),
   );
 };
 
@@ -206,13 +202,11 @@ export const getViewerPhotos = (
 
 export const usePhotos = () => {
   const [gallerySetting] = useGallerySettings();
-  const photoRepository = usePhotoRepository();
-  const repositoryVersion = usePhotoRepositoryVersion();
-  const allPhotos = photoRepository.getPhotos();
+  const allPhotos = usePhotoRepositorySnapshot();
 
   const masonryItems = useMemo(() => {
-    return filterAndSortPhotos(allPhotos, gallerySetting, repositoryVersion);
-  }, [allPhotos, gallerySetting, repositoryVersion]);
+    return filterAndSortPhotos(allPhotos, gallerySetting);
+  }, [allPhotos, gallerySetting]);
 
   return masonryItems;
 };
@@ -224,8 +218,7 @@ export const useViewerPhotos = (photoId?: string | null) => {
   const isOpen = navigation.isPhotoOpen();
   const viewerSourcePhotoIds = navigation.getPhotoIds();
   const filteredPhotos = usePhotos();
-  const photoRepository = usePhotoRepository();
-  const allPhotos = photoRepository.getPhotos();
+  const allPhotos = usePhotoRepositorySnapshot();
 
   return useMemo(
     () =>

@@ -52,7 +52,7 @@ describe("getTileGridSize", () => {
 describe("getTilePixelSize", () => {
   it("slices the image uniformly, so tiles are smaller than TILE_SIZE unless it divides evenly", () => {
     // 1300×700 at LOD 2 (scale 1): grid 3×2 → 每片 434×350，而不是 512×512
-    // （与 texture.worker.js 的均匀切片一致；老的 4MiB/片 估算完全失真）
+    // （与 texture-worker-runtime.ts 的均匀切片一致；老的 4MiB/片 估算完全失真）
     const base = { imageWidth: 1300, imageHeight: 700, lodLevel: 2 };
 
     expect(getTilePixelSize({ ...base, x: 0, y: 0 })).toEqual({

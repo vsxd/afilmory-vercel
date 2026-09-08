@@ -4,14 +4,14 @@ import { createContext } from "react";
 
 import type { PhotoManifest } from "~/types/photo";
 
-export const PhotosContext = createContext<PhotoManifest[]>(null!);
+export const PhotosContext = createContext<readonly PhotoManifest[]>(null!);
 
 export const PhotosProvider = ({
   children,
   photos,
 }: {
   children: React.ReactNode;
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
 }) => {
   return <PhotosContext value={photos}>{children}</PhotosContext>;
 };

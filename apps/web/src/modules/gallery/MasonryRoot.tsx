@@ -152,7 +152,7 @@ export const MasonryRoot = () => {
     (
       startIndex: number,
       stopIndex: number,
-      items: MasonryItemType[],
+      items: readonly MasonryItemType[],
       visibleIndices: number[],
     ) => {
       handleRender(startIndex, stopIndex, items, visibleIndices);

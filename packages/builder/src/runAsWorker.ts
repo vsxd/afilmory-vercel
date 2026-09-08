@@ -3,7 +3,6 @@ import process from "node:process";
 import { AfilmoryBuilder } from "./builder/builder.js";
 import { ExifService } from "./image/exif.js";
 import { configureLoggerObservability } from "./logger/index.js";
-import { toProcessorOptions } from "./photo/processor.js";
 import type {
   BatchTaskMessage,
   BatchTaskResult,
@@ -61,7 +60,7 @@ export async function runAsWorker() {
       existingManifestMap: sharedData.existingManifestMap,
       livePhotoMap: sharedData.livePhotoMap,
       builderOptions: sharedData.builderOptions,
-      processorOptions: toProcessorOptions(sharedData.builderOptions),
+      processorOptions: sharedData.processorOptions,
       services: builder.services,
       runState: builder.createPluginRunState(),
       emitPluginEvent: (runState, event, payload) =>

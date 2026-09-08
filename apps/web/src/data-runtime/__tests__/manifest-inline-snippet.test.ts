@@ -2,6 +2,7 @@
 // esbuild 的启动自检（TextEncoder→Uint8Array instanceof）在 jsdom realm 下会
 // 误报，所以打包器相关的测试必须跑在 node 环境；执行内联片段时用
 // window = globalThis 的最小 shim 模拟经典内联 <script> 的全局作用域。
+import type { PhotoManifestItem as PhotoManifest } from "@afilmory/schema";
 import { createManifest } from "@afilmory/schema";
 import {
   afterAll,
@@ -14,7 +15,6 @@ import {
 } from "vitest";
 
 import type { AfilmoryBrowserRuntime } from "~/runtime/browser-runtime";
-import type { PhotoManifest } from "~/types/photo";
 
 import { buildExternalManifestScriptContent } from "../../../plugins/vite/__internal__/manifest-inline-snippet";
 import {
@@ -27,7 +27,6 @@ const originalFetch = globalThis.fetch;
 
 type GlobalWithRuntime = typeof globalThis & {
   __AFILMORY__?: AfilmoryBrowserRuntime;
-  window?: typeof globalThis;
 };
 
 const MANIFEST_URL = "/assets/photos-manifest.deadbeef42.json";
@@ -59,11 +58,11 @@ function stripSignal(init: RequestInit | undefined): Record<string, unknown> {
 }
 
 beforeAll(() => {
-  (globalThis as GlobalWithRuntime).window = globalThis;
+  vi.stubGlobal("window", globalThis);
 });
 
 afterAll(() => {
-  delete (globalThis as GlobalWithRuntime).window;
+  vi.unstubAllGlobals();
 });
 
 beforeEach(() => {

@@ -1,6 +1,7 @@
-import type { FujiRecipe, PickedExif } from "@afilmory/schema";
+import type { FujiRecipe } from "@afilmory/schema";
 
 import { getEssentialExif } from "~/lib/essential-exif";
+import type { PhotoExif } from "~/types/photo";
 
 export type ExifTranslationAdapter = {
   language: string;
@@ -285,13 +286,13 @@ const formatGpsCoordinate = (
 };
 
 const isGpsAltitudeBelowSeaLevel = (
-  ref: PickedExif["GPSAltitudeRef"] | string | null | undefined,
+  ref: PhotoExif["GPSAltitudeRef"] | string | null | undefined,
 ): boolean => {
   return ref === 1 || ref === "Below Sea Level";
 };
 
 export const formatExifData = (
-  exif: PickedExif | null,
+  exif: PhotoExif | null,
   translator: ExifTranslationAdapter,
 ) => {
   if (!exif) return null;

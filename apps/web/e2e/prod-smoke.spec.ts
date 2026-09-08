@@ -109,6 +109,8 @@ test.describe("production original image loading", () => {
     page,
   }) => {
     const errors: string[] = [];
+    const textureWorkers: string[] = [];
+    page.on("worker", (worker) => textureWorkers.push(worker.url()));
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
     });
@@ -134,6 +136,11 @@ test.describe("production original image loading", () => {
     ).toBeVisible();
     await expect(photo.locator('img[src*="/thumbnails/"]')).toHaveCount(0);
     await expect(viewer.getByRole("alert")).toHaveCount(0);
+    expect(
+      textureWorkers.some((url) =>
+        /\/assets\/texture\.worker-[\w-]+\.js$/.test(url),
+      ),
+    ).toBe(true);
     expect(errors).toEqual([]);
   });
 });
@@ -268,7 +275,21 @@ test.describe("production navigation journeys", () => {
   test("detail → map → gallery does not reopen the viewer", async ({
     page,
   }) => {
+    // Keep the summary visible first. This catches compiler-cached repository
+    // reads that fail to observe a later immutable detail snapshot.
+    const hydration = Promise.withResolvers<void>();
+    await page.route(PHOTO_DETAIL_ASSET, async (route) => {
+      await hydration.promise;
+      await route.continue();
+    });
     await page.goto("/photos/SYNTH0001?sort=asc");
+    await expect(
+      page.getByRole("dialog", { name: "Photo viewer" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "View location in map", exact: true }),
+    ).toHaveCount(0);
+    hydration.resolve();
     await page
       .getByRole("link", { name: "View location in map", exact: true })
       .click();

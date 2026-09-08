@@ -15,11 +15,15 @@ import {
   MediaResourceScope,
   throwIfAborted,
 } from "./media-resource";
+import { MediaTaskError } from "./media-task";
 
 export class ImageLoaderManager {
   private imageTask: AbortController | null = null;
   private readonly resources: MediaResourceScope;
-  private readonly imageFetchService: ImageFetchService;
+  private readonly imageFetchService: Pick<
+    ImageFetchService,
+    "fetchBlob" | "cleanup"
+  >;
   private readonly imageConversionService: ImageConversionService;
   private readonly videoLoadService: VideoLoadService;
 
@@ -27,7 +31,7 @@ export class ImageLoaderManager {
     regularImageCache: RegularImageCache = createRegularImageCache(),
     services: {
       resources?: MediaResourceScope;
-      imageFetchService?: ImageFetchService;
+      imageFetchService?: Pick<ImageFetchService, "fetchBlob" | "cleanup">;
       imageConversionService?: ImageConversionService;
       videoLoadService?: VideoLoadService;
     } = {},
@@ -55,8 +59,11 @@ export class ImageLoaderManager {
       onProgress: (value) => {
         if (!signal.aborted) callbacks.onProgress?.(value);
       },
-      onError: () => {
-        if (!signal.aborted) callbacks.onError?.();
+      onError: (error) => {
+        if (!signal.aborted) callbacks.onError?.(error);
+      },
+      onEvent: (event) => {
+        if (!signal.aborted) callbacks.onEvent?.(event);
       },
       onLoadingStateUpdate: (state) => {
         if (!signal.aborted) callbacks.onLoadingStateUpdate?.(state);
@@ -65,30 +72,51 @@ export class ImageLoaderManager {
     try {
       let blob = this.imageConversionService.getCachedRegularImage(src);
       if (!blob) {
-        guarded.onLoadingStateUpdate?.({ isVisible: true });
+        guarded.onEvent?.({ type: "fetching" });
         const original = await abortable(
           this.imageFetchService.fetchBlob(src, guarded),
           signal,
         );
         throwIfAborted(signal);
-        blob = await abortable(
-          this.imageConversionService.processImageBlob(
-            original,
-            src,
-            guarded,
+        try {
+          blob = await abortable(
+            this.imageConversionService.processImageBlob(
+              original,
+              src,
+              guarded,
+              signal,
+            ),
             signal,
-          ),
-          signal,
-        );
+          );
+        } catch (error) {
+          throwIfAborted(signal);
+          if (
+            !(error instanceof MediaTaskError) ||
+            error.code !== "conversion-failed"
+          )
+            throw error;
+          // A native decoder may still handle this format. Do not cache the
+          // failed conversion as a success: later requests may retry conversion.
+          guarded.onEvent?.({ type: "native-fallback", error });
+          console.warn(
+            "Image conversion failed; trying the native decoder:",
+            error,
+          );
+          blob = original;
+        }
       }
       throwIfAborted(signal);
-      guarded.onLoadingStateUpdate?.({ isVisible: false });
+      guarded.onEvent?.({ type: "loaded" });
       throwIfAborted(signal);
       return this.resources.acquire(blob);
     } catch (error) {
       if (!signal.aborted) {
         guarded.onLoadingStateUpdate?.({ isVisible: false });
-        guarded.onError?.();
+        guarded.onError?.(
+          error instanceof Error
+            ? error
+            : new Error("Image load failed", { cause: error }),
+        );
       }
       throw error;
     }

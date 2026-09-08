@@ -1,6 +1,7 @@
+import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
 import type { StorageObject } from "../storage/interfaces.js";
 import type { BuilderConfig } from "../types/config.js";
-import type { BuilderOptions } from "../types/options.js";
+import type { BuilderPluginOptions } from "../types/options.js";
 import type { PhotoManifestItem } from "../types/photo.js";
 
 export interface ClusterWorkerSharedData {
@@ -9,7 +10,8 @@ export interface ClusterWorkerSharedData {
   imageObjects: StorageObject[];
   builderConfig: BuilderConfig;
   // 进度回调是函数，无法通过 IPC 结构化克隆；进度只在主进程经 onTaskCompleted 汇聚。
-  builderOptions: Omit<BuilderOptions, "progressListener">;
+  builderOptions: Omit<BuilderPluginOptions, "progressListener">;
+  processorOptions: PhotoProcessorOptions;
   photoIdCollisionKeys?: string[];
 }
 

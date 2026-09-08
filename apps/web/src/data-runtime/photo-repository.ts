@@ -1,16 +1,14 @@
-import type {
-  AfilmoryManifest,
-  CameraInfo,
-  LensInfo,
-  PhotoManifestItem,
-} from "@afilmory/schema";
+import type { AfilmoryManifest, CameraInfo, LensInfo } from "@afilmory/schema";
 import { createEmptyManifest } from "@afilmory/schema";
 
+import { abortable, throwIfAborted } from "~/lib/abortable";
 import { debugLog } from "~/lib/debug-log";
 import {
   appendMediaVersion,
   getVersionedOriginalUrl,
 } from "~/lib/media-version-url";
+import type { PhotoManifest } from "~/types/photo";
+import type { DeepReadonly } from "~/types/readonly";
 
 import type { WebDeliveryRuntimeDescriptor } from "./delivery-manifest";
 import {
@@ -18,6 +16,7 @@ import {
   parseWebMapDetailShard,
   parseWebPhotoDetailShard,
 } from "./delivery-manifest";
+import { freezeSnapshot, ownSnapshot } from "./immutable-snapshot";
 import {
   buildManifestRequestInit,
   MANIFEST_REQUEST_TIMEOUT_MS,
@@ -29,10 +28,10 @@ export interface PhotoRepositoryOptions {
 }
 
 export class PhotoRepository {
-  private photos: PhotoManifestItem[];
-  private readonly photoMap: Map<string, PhotoManifestItem>;
-  private readonly cameras: CameraInfo[];
-  private readonly lenses: LensInfo[];
+  private photos: readonly PhotoManifest[];
+  private readonly photoMap: Map<string, PhotoManifest>;
+  private readonly cameras: readonly DeepReadonly<CameraInfo>[];
+  private readonly lenses: readonly DeepReadonly<LensInfo>[];
   private readonly detailShardByPhotoId = new Map<string, string>();
   private readonly photoIdsByDetailShard = new Map<string, Set<string>>();
   private readonly loadedDetailPhotoIds = new Set<string>();
@@ -68,27 +67,30 @@ export class PhotoRepository {
         this.detailShardByPhotoId.set(photoId, shard.url);
       }
     }
-    this.photos = manifest.photos.map((photo) => {
-      const originalUrl = getVersionedOriginalUrl(photo);
-      return {
-        ...photo,
-        originalUrl,
-        ...(photo.video?.type === "live-photo"
-          ? {
-              video: {
-                ...photo.video,
-                videoUrl: appendMediaVersion(
-                  photo.video.videoUrl,
-                  photo.video.version ||
-                    `${manifest.generatedAt}:${photo.video.s3Key}:video`,
-                ),
-              },
-            }
-          : {}),
-      };
-    });
-    this.cameras = manifest.indexes.cameras;
-    this.lenses = manifest.indexes.lenses;
+    this.photos = freezeSnapshot(
+      manifest.photos.map((input) => {
+        const photo = ownSnapshot(input);
+        const originalUrl = getVersionedOriginalUrl(photo);
+        return {
+          ...photo,
+          originalUrl,
+          ...(photo.video?.type === "live-photo"
+            ? {
+                video: {
+                  ...photo.video,
+                  videoUrl: appendMediaVersion(
+                    photo.video.videoUrl,
+                    photo.video.version ||
+                      `${manifest.generatedAt}:${photo.video.s3Key}:video`,
+                  ),
+                },
+              }
+            : {}),
+        };
+      }),
+    );
+    this.cameras = ownSnapshot(manifest.indexes.cameras);
+    this.lenses = ownSnapshot(manifest.indexes.lenses);
     this.photoMap = new Map(
       this.photos.flatMap((photo) => (photo?.id ? [[photo.id, photo]] : [])),
     );
@@ -98,11 +100,9 @@ export class PhotoRepository {
     );
   }
 
-  getPhotos(): PhotoManifestItem[] {
-    return this.photos;
-  }
+  readonly getPhotos = (): readonly PhotoManifest[] => this.photos;
 
-  getPhoto(id: string): PhotoManifestItem | undefined {
+  getPhoto(id: string): PhotoManifest | undefined {
     return this.photoMap.get(id);
   }
 
@@ -116,11 +116,11 @@ export class PhotoRepository {
     return Array.from(tagSet).sort();
   }
 
-  getAllCameras(): CameraInfo[] {
+  getAllCameras(): readonly DeepReadonly<CameraInfo>[] {
     return this.cameras;
   }
 
-  getAllLenses(): LensInfo[] {
+  getAllLenses(): readonly DeepReadonly<LensInfo>[] {
     return this.lenses;
   }
 
@@ -171,22 +171,31 @@ export class PhotoRepository {
           `Photo detail shard ${shardUrl} contains unexpected ${extraPhotoId}.`,
         );
       }
-      let changed = false;
+      const updates = new Map<string, PhotoManifest>();
       for (const [detailPhotoId, detail] of Object.entries(details)) {
         const photo = this.photoMap.get(detailPhotoId);
         if (!photo) continue;
-        mergePhotoDetail(photo, detail);
-        if (photo.video?.type === "live-photo") {
-          photo.video.videoUrl = appendMediaVersion(
-            photo.video.videoUrl,
-            photo.video.version ||
-              `${this.generatedAt}:${photo.video.s3Key}:video`,
-          );
-        }
-        this.loadedDetailPhotoIds.add(detailPhotoId);
-        changed = true;
+        const merged = mergePhotoDetail(photo, ownSnapshot(detail));
+        const candidate = {
+          ...merged,
+          ...(merged.video?.type === "live-photo"
+            ? {
+                video: {
+                  ...merged.video,
+                  videoUrl: appendMediaVersion(
+                    merged.video.videoUrl,
+                    merged.video.version ||
+                      `${this.generatedAt}:${merged.video.s3Key}:video`,
+                  ),
+                },
+              }
+            : {}),
+        };
+        updates.set(detailPhotoId, freezeSnapshot(candidate));
       }
-      if (changed) this.notify();
+      if (this.disposed) return;
+      for (const id of updates.keys()) this.loadedDetailPhotoIds.add(id);
+      this.publish(updates);
     });
   }
 
@@ -216,18 +225,24 @@ export class PhotoRepository {
           `Map detail shard ${this.mapUrl} references unknown photo ${unknownPhotoId}.`,
         );
       }
-      let changed = false;
+      const updates = new Map<string, PhotoManifest>();
       for (const [photoId, detail] of Object.entries(details)) {
         const photo = this.photoMap.get(photoId);
         if (!photo) continue;
-        photo.location = detail.location;
-        if (detail.exif) {
-          photo.exif = { ...photo.exif, ...detail.exif };
-        }
-        changed = true;
+        updates.set(
+          photoId,
+          freezeSnapshot({
+            ...photo,
+            location: ownSnapshot(detail.location),
+            exif: detail.exif
+              ? freezeSnapshot({ ...photo.exif, ...ownSnapshot(detail.exif) })
+              : photo.exif,
+          }),
+        );
       }
+      if (this.disposed) return;
       this.mapLoaded = true;
-      if (changed) this.notify();
+      this.publish(updates);
     });
   }
 
@@ -239,12 +254,14 @@ export class PhotoRepository {
     this.listeners.clear();
   }
 
-  private notify(): void {
-    // Publish a fresh collection identity after in-place detail hydration so
-    // memoized gallery/map selectors cannot retain results derived from the
-    // lightweight startup records.
-    this.photos = [...this.photos];
-    this.version += 1;
+  private publish(updates: ReadonlyMap<string, PhotoManifest>): void {
+    if (updates.size === 0) return;
+    const next = Object.freeze(
+      this.photos.map((photo) => updates.get(photo.id) ?? photo),
+    );
+    for (const [id, photo] of updates) this.photoMap.set(id, photo);
+    this.photos = next;
+    this.version++;
     for (const listener of this.listeners) listener();
   }
 
@@ -277,16 +294,22 @@ export class PhotoRepository {
       MANIFEST_REQUEST_TIMEOUT_MS,
     );
     try {
-      const response = await this.fetcher(
-        url,
-        buildManifestRequestInit(controller.signal),
+      const response = await abortable(
+        this.fetcher(url, buildManifestRequestInit(controller.signal)),
+        controller.signal,
       );
+      throwIfAborted(controller.signal);
       if (!response.ok) {
         throw new Error(
           `Manifest shard request failed: ${response.status} ${response.statusText}`.trim(),
         );
       }
-      return await response.json();
+      const value: unknown = await abortable(
+        response.json(),
+        controller.signal,
+      );
+      throwIfAborted(controller.signal);
+      return value;
     } finally {
       globalThis.clearTimeout(timeoutId);
       this.activeControllers.delete(controller);

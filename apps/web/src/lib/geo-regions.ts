@@ -98,9 +98,11 @@ export type PhotoGeoData = {
 // from the same stable PhotoRepository array. Memoize by array identity — same
 // pattern as filterAndSortPhotos' WeakMap memo — so remounts are cache hits and
 // the WeakMap never keeps a stale manifest alive.
-const photoGeoDataCache = new WeakMap<PhotoManifest[], PhotoGeoData>();
+const photoGeoDataCache = new WeakMap<readonly PhotoManifest[], PhotoGeoData>();
 
-export function getPhotoGeoData(photos: PhotoManifest[]): PhotoGeoData {
+export function getPhotoGeoData(
+  photos: readonly PhotoManifest[],
+): PhotoGeoData {
   const cached = photoGeoDataCache.get(photos);
   if (cached) return cached;
 

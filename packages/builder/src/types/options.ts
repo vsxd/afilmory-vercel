@@ -4,11 +4,21 @@ export interface BuilderOptions {
   isForceThumbnails: boolean;
   concurrencyLimit?: number;
   progressListener?: BuildProgressListener;
+}
+
+/** Normalized user intent. Processing stages cannot write back into this request. */
+export type BuildRequest = Readonly<BuilderOptions>;
+
+/**
+ * Compatibility payload for lifecycle hooks. Legacy invalidation hints remain
+ * accepted here and are captured when planning; they are not user build options.
+ */
+export interface BuilderPluginOptions extends BuilderOptions {
   /** @internal Cached records normalized by lenient parsing must be rebuilt. */
   reprocessKeys?: readonly string[];
   /** @internal Derived-stage invalidation that does not imply source bytes changed. */
   derivedReprocessKeys?: readonly string[];
-  /** @internal Main-process decisions already made for this run. */
+  /** @deprecated Not populated by planning. Observe lifecycle tasks/processorOptions instead. */
   plannedKeys?: ReadonlySet<string>;
   /** @internal Resolved privacy policy copied from builder config. */
   locationMode?: "strip" | "coarse" | "exact";

@@ -2,7 +2,7 @@ import { Button, ScrollArea } from "@afilmory/ui";
 import { useMemo, useState } from "react";
 
 import { NotFound } from "~/components/common/NotFound";
-import { usePhotoRepository } from "~/runtime/app-runtime";
+import { usePhotoRepositorySnapshot } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 const JSON_TOKEN_REGEX =
@@ -11,7 +11,7 @@ const JSON_TOKEN_REGEX =
 interface ManifestInspectorData {
   schema: "afilmory.manifest";
   version: 2;
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
 }
 
 interface ManifestStatsSummary {
@@ -22,7 +22,7 @@ interface ManifestStatsSummary {
 }
 
 function createManifestInspectorData(
-  photos: PhotoManifest[],
+  photos: readonly PhotoManifest[],
 ): ManifestInspectorData {
   return {
     schema: "afilmory.manifest",
@@ -31,7 +31,9 @@ function createManifestInspectorData(
   };
 }
 
-function createManifestStats(photos: PhotoManifest[]): ManifestStatsSummary {
+function createManifestStats(
+  photos: readonly PhotoManifest[],
+): ManifestStatsSummary {
   const totalPhotos = photos.length;
   const totalSize = photos.reduce((sum, photo) => sum + (photo.size || 0), 0);
 
@@ -58,9 +60,9 @@ function createManifestStats(photos: PhotoManifest[]): ManifestStatsSummary {
 }
 
 function filterManifestPhotos(
-  photos: PhotoManifest[],
+  photos: readonly PhotoManifest[],
   searchTerm: string,
-): PhotoManifest[] {
+): readonly PhotoManifest[] {
   const term = searchTerm.trim().toLowerCase();
   if (!term) return photos;
 
@@ -152,7 +154,7 @@ const StatCard = ({
 );
 
 // 统计信息组件
-const ManifestStats = ({ data }: { data: PhotoManifest[] }) => {
+const ManifestStats = ({ data }: { data: readonly PhotoManifest[] }) => {
   const stats = useMemo(() => createManifestStats(data), [data]);
 
   return (
@@ -257,9 +259,8 @@ const PhotoCard = ({
 const ManifestInspectorPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"stats" | "raw">("stats");
-  const photoRepository = usePhotoRepository();
 
-  const photos = photoRepository.getPhotos();
+  const photos = usePhotoRepositorySnapshot();
   const manifestData = createManifestInspectorData(photos);
 
   // 搜索过滤

@@ -1,3 +1,4 @@
+import type { BuilderStorage } from "../core/contracts/storage.js";
 import type {
   StorageConfig,
   StorageListing,
@@ -9,7 +10,7 @@ import { normalizeStorageConfig } from "./interfaces.js";
 import { LocalFileSystemProvider } from "./providers/local-provider.js";
 import { S3StorageProvider } from "./providers/s3-provider.js";
 
-export class StorageManager {
+export class StorageManager implements BuilderStorage {
   private provider: StorageProvider;
 
   /**

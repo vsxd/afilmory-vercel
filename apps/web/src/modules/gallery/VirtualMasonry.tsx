@@ -43,7 +43,7 @@ export interface MasonryRenderProps<Item> {
 
 export interface MasonryProps<Item> {
   ref?: React.Ref<MasonryRef>;
-  items: Item[];
+  items: readonly Item[];
   /**
    * 目标列宽。函数形式接收本组件 ResizeObserver 实测的容器宽度——列宽推导与
    * 实际布局由此共享同一个宽度来源（消除 window.innerWidth 与容器实测的双源失配）。
@@ -65,7 +65,7 @@ export interface MasonryProps<Item> {
   onRender?: (
     startIndex: number,
     stopIndex: number,
-    items: Item[],
+    items: readonly Item[],
     visibleIndices: number[],
   ) => void;
   role?: string;

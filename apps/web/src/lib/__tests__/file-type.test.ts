@@ -30,7 +30,7 @@ describe("detectFileTypeFromBlob", () => {
   });
 
   it("returns undefined when the detector cannot identify the blob", async () => {
-    fileTypeFromBlob.mockResolvedValue();
+    fileTypeFromBlob.mockResolvedValue(undefined);
 
     const result = await detectFileTypeFromBlob(makeBlob());
 

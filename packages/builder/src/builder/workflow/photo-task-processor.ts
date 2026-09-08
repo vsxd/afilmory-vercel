@@ -2,7 +2,7 @@ import type {
   PhotoProcessorOptions,
   PhotoTaskRuntime,
 } from "../../photo/processor.js";
-import { processPhoto, toProcessorOptions } from "../../photo/processor.js";
+import { processPhoto } from "../../photo/processor.js";
 import { createSerializableBuilderConfigForWorker } from "../../plugins/serializable.js";
 import type { StorageObject } from "../../storage/interfaces.js";
 import type {
@@ -12,7 +12,20 @@ import type {
 import { ClusterPool } from "../../worker/cluster-pool.js";
 import type { TaskCompletedPayload } from "../../worker/pool.js";
 import { WorkerPool } from "../../worker/pool.js";
+import type { BuildPlan } from "./plan.js";
+import { copyProcessorOptions } from "./plan.js";
 import type { BuildSession } from "./session.js";
+
+type ExecutionContext = Pick<
+  BuildSession,
+  | "config"
+  | "options"
+  | "services"
+  | "emit"
+  | "emitPluginEvent"
+  | "runState"
+  | "getPhotoIdCollisionKeys"
+>;
 
 export interface ProcessingStats {
   newCount: number;
@@ -24,19 +37,27 @@ export interface ProcessingStats {
 // processorOptions/mode/concurrency 不在返回值里：它们已经通过
 // beforeProcessTasks 插件事件与 progressListener.onStart 载荷对外发布。
 export interface PhotoTaskProcessingResult {
+  /** Actual tasks after beforeProcessTasks plugin edits; used by reconciliation and events. */
+  tasks: StorageObject[];
   results: ProcessPhotoResult[];
   stats: ProcessingStats;
 }
 
 export class PhotoTaskProcessor {
   async process(
-    session: BuildSession,
-    tasksToProcess: StorageObject[],
+    session: ExecutionContext,
+    plan: BuildPlan,
     existingManifestMap: Map<string, PhotoManifestItem>,
     livePhotoMap: Map<string, StorageObject>,
   ): Promise<PhotoTaskProcessingResult> {
     const { options } = session;
-    const processorOptions: PhotoProcessorOptions = toProcessorOptions(options);
+    const tasksToProcess = plan.tasksToProcess.map((task) => ({
+      ...task,
+      ...(task.lastModified
+        ? { lastModified: new Date(task.lastModified) }
+        : {}),
+    }));
+    const processorOptions = copyProcessorOptions(plan.processorOptions);
 
     const { worker } = session.config.system.processing;
     const concurrency =
@@ -111,6 +132,7 @@ export class PhotoTaskProcessor {
     const results = shouldUseCluster
       ? await this.processWithCluster(
           session,
+          processorOptions,
           tasksToProcess,
           existingManifestMap,
           livePhotoMap,
@@ -120,6 +142,7 @@ export class PhotoTaskProcessor {
         )
       : await this.processWithWorkers(
           session,
+          processorOptions,
           tasksToProcess,
           existingManifestMap,
           livePhotoMap,
@@ -136,12 +159,13 @@ export class PhotoTaskProcessor {
     });
 
     return {
+      tasks: tasksToProcess,
       results,
       stats,
     };
   }
 
-  completeEmptyRun(session: BuildSession, stats: ProcessingStats): void {
+  completeEmptyRun(session: ExecutionContext, stats: ProcessingStats): void {
     session.options.progressListener?.onComplete?.({
       total: 0,
       completed: 0,
@@ -150,7 +174,8 @@ export class PhotoTaskProcessor {
   }
 
   private async processWithCluster(
-    session: BuildSession,
+    session: ExecutionContext,
+    processorOptions: PhotoProcessorOptions,
     tasksToProcess: StorageObject[],
     existingManifestMap: Map<string, PhotoManifestItem>,
     livePhotoMap: Map<string, StorageObject>,
@@ -182,10 +207,9 @@ export class PhotoTaskProcessor {
         existingManifestMap: workerExistingManifestMap,
         livePhotoMap: workerLivePhotoMap,
         imageObjects: tasksToProcess,
-        builderConfig: createSerializableBuilderConfigForWorker(
-          session.getConfig(),
-        ),
+        builderConfig: createSerializableBuilderConfigForWorker(session.config),
         builderOptions,
+        processorOptions,
         photoIdCollisionKeys: Array.from(session.getPhotoIdCollisionKeys()),
       },
       timeoutMs: session.config.system.processing.worker.timeout,
@@ -196,7 +220,8 @@ export class PhotoTaskProcessor {
   }
 
   private async processWithWorkers(
-    session: BuildSession,
+    session: ExecutionContext,
+    processorOptions: PhotoProcessorOptions,
     tasksToProcess: StorageObject[],
     existingManifestMap: Map<string, PhotoManifestItem>,
     livePhotoMap: Map<string, StorageObject>,
@@ -223,7 +248,7 @@ export class PhotoTaskProcessor {
         session.emitPluginEvent(runState, event, payload),
       runState: session.runState,
       builderOptions: session.options,
-      processorOptions: toProcessorOptions(session.options),
+      processorOptions,
     };
 
     return await workerPool.execute(async (taskIndex, workerId, signal) => {

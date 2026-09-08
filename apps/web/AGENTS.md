@@ -2,7 +2,7 @@
 
 ## 应用概述
 
-`apps/web` 是 Afilmory 的静态 SPA 前端，使用 React 19 + Vite 7 构建。它不在运行时访问数据库或后端；照片数据和站点配置来自构建注入的 `window.__AFILMORY__` runtime namespace。
+`apps/web` 是 Afilmory 的静态 SPA 前端，使用 React 19 + Vite 8 构建。它不在运行时访问数据库或后端；照片数据和站点配置来自构建注入的 `window.__AFILMORY__` runtime namespace。
 
 ## 技术栈
 
@@ -10,8 +10,8 @@
 
 - React 19 与 React Compiler
 - TypeScript 5.9
-- Vite 7
-- React Router 7
+- Vite 8
+- React Router 8
 
 ### UI 与交互
 
@@ -126,20 +126,23 @@ Manifest runtime：
 - 开发默认在 `window.__AFILMORY__.manifest` 内联 manifest。
 - 生产默认生成 Web Delivery Manifest v3：`assets/gallery-index.<hash>.json` 只携带首屏摘要，完整 EXIF/tone/location 按稳定 ID-hash 分片，地图数据独立分片；`window.__AFILMORY__.manifest.promise` 先 fetch index。
 - `AFILMORY_EMBED_MANIFEST=true|false` 可覆盖默认策略。
-- `PhotoRepository` 对分片做深层校验、并发去重、Abort/重试和原子合并。不要直接 fetch 或 cast 分片 JSON。
+- `PhotoRepository` 对分片做深层校验、并发去重、Abort/重试和原子快照发布；查询返回深冻结只读实体。不要直接 fetch 或 cast 分片 JSON。
 
 PhotoRepository 用法：
 
 ```ts
-import { usePhotoRepository } from "~/runtime/app-runtime";
+import {
+  usePhotoRepository,
+  usePhotoRepositorySnapshot,
+} from "~/runtime/app-runtime";
 
 const photoRepository = usePhotoRepository();
-const photos = photoRepository.getPhotos();
-const photo = photoRepository.getPhoto(photoId);
+const photos = usePhotoRepositorySnapshot();
+const photo = photos.find((item) => item.id === photoId);
 const tags = photoRepository.getAllTags();
 ```
 
-不要创建模块级照片单例；React tree 内通过 AppRuntime 获取 PhotoRepository。
+不要创建模块级照片单例；React tree 内通过 AppRuntime 获取 PhotoRepository。渲染代码通过 `usePhotoRepositorySnapshot()` 订阅真实快照，不使用“订阅版本号再调用 getPhotos”的旁路；后者可能被 React Compiler 缓存旧值。
 
 ## 构建流程
 

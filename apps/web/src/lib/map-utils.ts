@@ -1,5 +1,3 @@
-import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
-
 import type {
   GPSCoordinates,
   MapBounds,
@@ -7,11 +5,12 @@ import type {
   PhotoMarker,
 } from "~/types/map";
 import { GPSDirection } from "~/types/map";
+import type { PhotoExif, PhotoManifest } from "~/types/photo";
 
 const KM_PER_LATITUDE_DEGREE = 111.32;
 
 const isGpsAltitudeBelowSeaLevel = (
-  ref: PickedExif["GPSAltitudeRef"] | string | null | undefined,
+  ref: PhotoExif["GPSAltitudeRef"] | string | null | undefined,
 ): boolean => {
   return ref === 1 || ref === "Below Sea Level";
 };
@@ -25,7 +24,7 @@ export function normalizeLongitude(longitude: number): number {
 /**
  * Convert EXIF GPS data to decimal coordinates with proper directional handling
  */
-export function convertExifGPSToDecimal(exif: PickedExif | null): {
+export function convertExifGPSToDecimal(exif: PhotoExif | null): {
   latitude: number;
   longitude: number;
   latitudeRef: GPSDirection.North | GPSDirection.South;
@@ -141,7 +140,7 @@ export function isValidGPSCoordinates(
 
 /** Convert a photo to a marker, using publication-safe location as fallback. */
 export function convertPhotoToMarkerFromEXIF(
-  photo: PhotoManifestItem,
+  photo: PhotoManifest,
 ): PhotoMarker | null {
   const { exif } = photo;
   const gpsData = convertExifGPSToDecimal(exif);
@@ -183,7 +182,7 @@ export function convertPhotoToMarkerFromEXIF(
  * Convert photos to markers from EXIF or publication-safe locations.
  */
 export function convertPhotosToMarkersFromEXIF(
-  photos: PhotoManifestItem[],
+  photos: readonly PhotoManifest[],
 ): PhotoMarker[] {
   return photos
     .map((photo) => convertPhotoToMarkerFromEXIF(photo))

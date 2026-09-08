@@ -1,4 +1,4 @@
-import { createAbortError } from "./image-loading-types";
+import { createAbortError } from "./abortable";
 
 export interface MediaLease {
   blob: Blob;
@@ -29,32 +29,4 @@ export class MediaResourceScope {
   }
 }
 
-export function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw createAbortError("Media load cancelled");
-}
-
-/** Settle cancellation promptly even when a codec cannot interrupt its work. */
-export function abortable<T>(
-  work: Promise<T>,
-  signal: AbortSignal,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const onAbort = () => {
-      signal.removeEventListener("abort", onAbort);
-      reject(createAbortError("Media load cancelled"));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    if (signal.aborted) onAbort();
-    work.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        if (signal.aborted) onAbort();
-        else resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
-}
+export { abortable, throwIfAborted } from "./abortable";

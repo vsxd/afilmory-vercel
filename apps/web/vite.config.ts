@@ -154,6 +154,11 @@ export default defineConfig(async ({ command }) => {
     server: {
       port: 1924, // 1924 年首款 35mm 相机问世
     },
+    optimizeDeps: {
+      // Lazy map imports otherwise discover these after navigation and trigger
+      // a full-page optimizer reload, discarding the route being entered.
+      include: ["react-error-boundary", "supercluster"],
+    },
     build: {
       cssTarget: "safari16.4",
       // 启用 CSS 代码分割

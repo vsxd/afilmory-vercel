@@ -19,7 +19,7 @@ const viewerNavButtonClassName =
   "bg-material-medium absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full text-white opacity-0 shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,opacity,transform] duration-200 group-hover:opacity-100 hover:bg-black/40 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40";
 
 interface PhotoViewerMediaCarouselProps {
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
   currentPhoto: PhotoManifest;
   currentIndex: number;
   isOpen: boolean;

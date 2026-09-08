@@ -1,23 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildTextureWorkerSource } from "./worker-bridge";
+import { createTextureWorkerHandler } from "./texture-worker-runtime";
+import type { TextureWorkerRequest } from "./worker-protocol";
 
-interface WorkerScope {
-  onmessage: ((e: { data: unknown }) => Promise<void>) | null;
-  postMessage: ReturnType<typeof vi.fn>;
+function bootWorker() {
+  const postMessage = vi.fn();
+  const handleMessage = createTextureWorkerHandler(postMessage);
+  return {
+    postMessage,
+    onmessage: (event: { data: TextureWorkerRequest }) =>
+      handleMessage(event.data),
+  };
 }
 
-/**
- * Evaluate the exact source the bridge hands to `new Worker(...)`, with a
- * stubbed `self` standing in for the worker global scope.
- */
-function bootWorker(): WorkerScope {
-  const scope: WorkerScope = { onmessage: null, postMessage: vi.fn() };
-  new Function("self", buildTextureWorkerSource())(scope);
-  return scope;
-}
-
-const createTileMessage = (key: string) => ({
+const createTileMessage = (key: string): { data: TextureWorkerRequest } => ({
   data: {
     type: "create-tile",
     payload: {
@@ -25,12 +21,30 @@ const createTileMessage = (key: string) => ({
       imageHeight: 3000,
       imageWidth: 4000,
       key,
-      lodConfig: { scale: 0.5 },
       lodLevel: 2,
       x: 1,
       y: 1,
     },
   },
+});
+
+const loadMessage = (sessionId = 1): { data: TextureWorkerRequest } => ({
+  data: {
+    type: "load-image",
+    payload: {
+      sessionId,
+      blob: new Blob(["photo"]),
+      url: "/photo.jpg",
+      maxTextureSize: 4096,
+      maxTextureBytes: 64 * 1024 * 1024,
+    },
+  },
+});
+
+const bitmap = (): ImageBitmap & { close: ReturnType<typeof vi.fn> } => ({
+  width: 4000,
+  height: 3000,
+  close: vi.fn(),
 });
 
 describe("texture.worker create-tile guard", () => {
@@ -67,7 +81,7 @@ describe("texture.worker create-tile guard", () => {
     vi.stubGlobal("createImageBitmap", createImageBitmap);
 
     const worker = bootWorker();
-    const loadMessage = {
+    const loadMessage: { data: TextureWorkerRequest } = {
       data: {
         type: "load-image",
         payload: {
@@ -121,7 +135,7 @@ describe("texture.worker create-tile guard", () => {
         .mockResolvedValueOnce(currentBase),
     );
     const worker = bootWorker();
-    const load = (sessionId: number) => ({
+    const load = (sessionId: number): { data: TextureWorkerRequest } => ({
       data: {
         type: "load-image",
         payload: {
@@ -184,6 +198,114 @@ describe("texture.worker create-tile guard", () => {
     });
     expect(createImageBitmap.mock.calls[2]?.at(-1)).toMatchObject({
       premultiplyAlpha: "none",
+    });
+  });
+
+  it.each(["image-loaded", "tile-created"] as const)(
+    "closes an untransferred bitmap when posting %s fails",
+    async (type) => {
+      const original = bitmap();
+      const base = bitmap();
+      const tile = bitmap();
+      vi.stubGlobal(
+        "createImageBitmap",
+        vi
+          .fn()
+          .mockResolvedValueOnce(original)
+          .mockResolvedValueOnce(base)
+          .mockResolvedValueOnce(tile),
+      );
+      const worker = bootWorker();
+      worker.postMessage.mockImplementation((message) => {
+        if (message.type === type) throw new Error("transfer failed");
+      });
+      await worker.onmessage(loadMessage());
+      if (type === "tile-created")
+        await worker.onmessage(createTileMessage("1-1-2"));
+
+      expect(
+        type === "image-loaded" ? base.close : tile.close,
+      ).toHaveBeenCalledTimes(1);
+      expect(original.close).toHaveBeenCalledTimes(
+        type === "image-loaded" ? 1 : 0,
+      );
+      expect(worker.postMessage).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          type: type === "image-loaded" ? "load-error" : "tile-error",
+          payload: expect.objectContaining({ error: "transfer failed" }),
+        }),
+      );
+    },
+  );
+
+  it.each(["base", "tile"] as const)(
+    "closes a late %s decode after reload, even when the caller reuses a session ID",
+    async (stage) => {
+      const oldOriginal = bitmap();
+      const oldBase = bitmap();
+      const lateBitmap = bitmap();
+      const currentOriginal = bitmap();
+      const currentBase = bitmap();
+      const deferred = Promise.withResolvers<ImageBitmap>();
+      const decode = vi.fn().mockResolvedValueOnce(oldOriginal);
+      if (stage === "tile") decode.mockResolvedValueOnce(oldBase);
+      decode
+        .mockReturnValueOnce(deferred.promise)
+        .mockResolvedValueOnce(currentOriginal)
+        .mockResolvedValueOnce(currentBase);
+      vi.stubGlobal("createImageBitmap", decode);
+      const worker = bootWorker();
+      const firstLoad = worker.onmessage(loadMessage());
+      let pending: Promise<void>;
+      if (stage === "tile") {
+        await firstLoad;
+        pending = worker.onmessage(createTileMessage("1-1-2"));
+      } else {
+        await vi.waitFor(() => expect(decode).toHaveBeenCalledTimes(2));
+        pending = firstLoad;
+      }
+      worker.postMessage.mockClear();
+      await worker.onmessage(loadMessage());
+      deferred.resolve(lateBitmap);
+      await pending;
+
+      expect(oldOriginal.close).toHaveBeenCalledTimes(1);
+      expect(lateBitmap.close).toHaveBeenCalledTimes(1);
+      expect(currentOriginal.close).not.toHaveBeenCalled();
+      expect(worker.postMessage).toHaveBeenCalledTimes(2);
+      expect(worker.postMessage).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ type: "image-loaded" }),
+        [currentBase],
+      );
+    },
+  );
+
+  it("reports HTTP failure without decoding a response error page", async () => {
+    const decode = vi.fn();
+    vi.stubGlobal("createImageBitmap", decode);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("missing", { status: 404 })),
+    );
+    const worker = bootWorker();
+    await worker.onmessage({
+      data: {
+        type: "load-image",
+        payload: {
+          sessionId: 1,
+          blob: null,
+          url: "/missing.jpg",
+          maxTextureSize: 4096,
+          maxTextureBytes: 0,
+        },
+      },
+    });
+    expect(decode).not.toHaveBeenCalled();
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      type: "load-error",
+      sessionId: 1,
+      payload: { error: "Image request failed: 404" },
     });
   });
 });

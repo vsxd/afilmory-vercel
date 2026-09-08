@@ -10,7 +10,7 @@ Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构�
 - **静态优先**: 运行时数据来自 JSON manifest 和静态资源。
 - **S3 优先**: 默认使用 S3 兼容对象存储；`PHOTO_STORAGE_PROVIDER=local` 提供零凭据、自包含的本地构建模式。
 - **易于部署**: 面向 Vercel，也可部署到任意静态托管平台。
-- **现代前端**: React 19、Vite 7、Tailwind CSS 4、Radix UI、Motion。
+- **现代前端**: React 19、Vite 8、Tailwind CSS 4、Radix UI、Motion。
 
 ## Monorepo 结构
 
@@ -28,8 +28,8 @@ Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构�
 
 ## 关键依赖
 
-- **构建工具**: Vite 7、TypeScript 5.9、TSX。
-- **前端框架**: React 19、React Router 7。
+- **构建工具**: Vite 8、TypeScript 5.9、TSX。
+- **前端框架**: React 19、React Router 8。
 - **样式与 UI**: Tailwind CSS 4、Radix UI、Motion。
 - **状态管理**: Jotai。
 - **图片处理**: Sharp、heic-to、heic-convert、thumbhash。
@@ -50,7 +50,7 @@ Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构�
 
 当前默认站点配置在 `builder.config.ts` 中由 `PHOTO_STORAGE_PROVIDER` 选择 `s3`（默认）或 `local`。Builder core 内置这两个显式 typed provider；未来扩展应继续使用 typed adapter，不恢复旧 storage provider registry。
 
-Builder 主流程使用 `packages/builder/src/builder/workflow` 分层：`BuildSession` 持有显式上下文，`SourceScanner` 扫描已配置 provider，`DiffPlanner` 生成任务，`PhotoTaskProcessor` 执行 worker/cluster，`ManifestAssembler` 合并结果，`ArtifactWriter` 写 manifest/清理 artifact。`AfilmoryBuilder` 不应重新直接承担这些职责。
+Builder 主流程使用 `packages/builder/src/builder/workflow` 分层：`BuildSession` 持有显式上下文，`SourceScanner` 扫描已配置 provider，`DiffPlanner` 生成任务，`PhotoTaskProcessor` 执行 worker/cluster，`ManifestAssembler` 合并结果，`ArtifactWriter` 写 manifest/清理 artifact。`AfilmoryBuilder` 不应重新直接承担这些职责。用户 `BuildRequest`、插件兼容载荷和只读 `BuildPlan` 分离；worker/cluster 显式接收计划的 `processorOptions`。
 
 ### Schema / Media (`@afilmory/schema`, `@afilmory/media`)
 
@@ -79,6 +79,7 @@ Builder 主流程使用 `packages/builder/src/builder/workflow` 分层：`BuildS
 - 暴露 React `WebGLImageViewer` 和内部 engine。
 - Engine 负责协调视图状态、渲染、worker 消息和动画；renderer、worker bridge、input controller、tile scheduler、transform controller、debug adapter 分模块维护。
 - 变换数学、tile 选择、clipboard 等可测试逻辑应留在独立 helper/service 中；不要把已拆出的 input/renderer/worker 职责塞回 engine。
+- `texture.worker.ts` 使用标准 TypeScript 模块入口，双向消息共享 `worker-protocol.ts`，`tsconfig.worker.json` 独立检查 WebWorker 环境。
 
 ## 构建流程
 
@@ -119,7 +120,7 @@ Manifest shape 来自 `@afilmory/schema`：
 - 顶层字段：`schema`、`version`、`generatedAt`、`source`、`photos`、`indexes`。
 - 单张照片包含 `id`、`originalUrl`、`thumbnailUrl`、`thumbHash`、`s3Key`、`exif`、`toneAnalysis`、`location`、可选 `video` 和 `isHDR`。
 - `parseManifest` 只接受 manifest v2；旧 schema 不做迁移，无法解析时返回空 manifest fallback。
-- manifest v2 是 Builder 的磁盘/共享 schema；v3 仅是 Web 发布协议。`PhotoRepository` 负责按路由懒加载、去重和原子合并详情/地图分片。
+- manifest v2 是 Builder 的磁盘/共享 schema；v3 仅是 Web 发布协议。`PhotoRepository` 负责按路由懒加载、去重和原子发布详情/地图只读快照；React 通过 `usePhotoRepositorySnapshot()` 订阅。
 
 前端运行时不要直接读取构建脚本目录。使用 `apps/web/src/data-runtime/manifest-runtime.ts`；构建期读 manifest 用 `@afilmory/build-assets` 的 `buildTimePhotoLoader`。
 

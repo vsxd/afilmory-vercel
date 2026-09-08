@@ -1,4 +1,4 @@
-import type { PickedExif } from "@afilmory/schema";
+import type { PhotoExif } from "~/types/photo";
 
 /**
  * 画廊 hover 覆盖层与查看器 EXIF 面板共用的核心拍摄参数。
@@ -21,7 +21,7 @@ export interface EssentialExif {
 }
 
 export const getEssentialExif = (
-  exif: PickedExif | null | undefined,
+  exif: PhotoExif | null | undefined,
 ): EssentialExif => {
   if (!exif) {
     return {

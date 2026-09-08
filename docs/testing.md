@@ -23,6 +23,20 @@ pnpm exec vitest run --project web apps/web/src/lib/__tests__/color.test.ts
 pnpm exec vitest --project ui            # watch mode
 ```
 
+## Type and architecture gates
+
+`pnpm type-check` checks production sources, `apps/web/tsconfig.test.json`,
+the tools/E2E configuration and `packages/webgl-viewer/tsconfig.worker.json`.
+The worker uses WebWorker globals separately from the DOM compilation. Vitest
+transpilation does not substitute for type-checking test fixtures and mocks.
+
+`pnpm contracts` also checks source architecture with each workspace's
+TypeScript resolver: runtime cycles, production-to-test references, package
+exports and layer boundaries. Type-only and dynamic imports are excluded from
+static cycles but still checked for boundary violations. See
+[engineering-contracts.md](./engineering-contracts.md) for ownership and
+snapshot contracts.
+
 ## Coverage gate
 
 CI surfaces coverage in the job summary, uploads the HTML/lcov report, and
@@ -46,12 +60,12 @@ the behavior being tested, spy on that method explicitly in the test.
 
 ## Conventions
 
-Match the surrounding package — the two projects differ:
+Match the surrounding package conventions:
 
-| Project                        | Test location                             | Import style                                     | Environment |
-| ------------------------------ | ----------------------------------------- | ------------------------------------------------ | ----------- |
-| `@afilmory/builder` (NodeNext) | co-located `foo.test.ts` next to `foo.ts` | `import { x } from "./foo.js"` (`.js` extension) | node        |
-| `apps/web`, `@afilmory/ui`     | `__tests__/foo.test.ts`                   | `import { x } from "../foo"` (no extension)      | jsdom       |
+| Project                                  | Test location                             | Import style                                     | Environment |
+| ---------------------------------------- | ----------------------------------------- | ------------------------------------------------ | ----------- |
+| `@afilmory/builder` (bundler resolution) | co-located `foo.test.ts` next to `foo.ts` | `import { x } from "./foo.js"` (`.js` extension) | node        |
+| `apps/web`, `@afilmory/ui`               | `__tests__/foo.test.ts`                   | `import { x } from "../foo"` (no extension)      | jsdom       |
 
 - Use `import { describe, expect, it, vi } from "vitest"` (no globals).
 - Prefer characterization tests that pin down real, subtle behavior over trivial asserts.

@@ -6,7 +6,7 @@ import type {
 } from "../core/contracts/execution-context.js";
 import type { BuilderServices } from "../core/contracts/services.js";
 import type { StorageConfig } from "../storage/interfaces.js";
-import { createPhotoProcessingLoggers } from "./logger-adapter.js";
+import { createPhotoProcessingLoggers } from "./logger-factory.js";
 
 export type {
   EmitPluginEventFn,

@@ -159,6 +159,47 @@ vi.mock("~/lib/feature", () => ({
 }));
 
 describe("ProgressiveImage", () => {
+  it.each([false, true])(
+    "reports a native decode failure once, including after WebGL fallback (%s)",
+    async (webgl) => {
+      hoisted.canUseWebGL = webgl;
+      hoisted.failWebGL = webgl;
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      const onError = vi.fn();
+      const loadingIndicatorRef = {
+        current: { updateLoadingState: vi.fn(), resetLoadingState: vi.fn() },
+      };
+      render(
+        <ProgressiveImage
+          src="broken"
+          alt="Broken photo"
+          isCurrentImage
+          onError={onError}
+          loadingIndicatorRef={loadingIndicatorRef}
+        />,
+      );
+      const image = await screen.findByRole("img", { name: "Broken photo" });
+      fireEvent.error(image);
+      fireEvent.error(image);
+      expect(onError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          stage: "decode",
+          code: "decode-failed",
+          cause: expect.any(Event),
+        }),
+      );
+      expect(errorLog).toHaveBeenCalledOnce();
+      expect(
+        loadingIndicatorRef.current.updateLoadingState,
+      ).toHaveBeenCalledWith({
+        isVisible: true,
+        isError: true,
+        errorMessage: "photo.error.loading",
+      });
+      expect(screen.queryByRole("img", { name: "Broken photo" })).toBeNull();
+    },
+  );
+
   afterEach(() => {
     hoisted.canUseWebGL = false;
     hoisted.failWebGL = false;

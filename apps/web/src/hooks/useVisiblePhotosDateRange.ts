@@ -92,7 +92,7 @@ export const useVisiblePhotosDateRange = () => {
     (
       startIndex: number,
       endIndex: number,
-      items: (PhotoManifest | { id?: never })[],
+      items: readonly (PhotoManifest | { id?: never })[],
       visibleIndices?: number[],
     ) => {
       // 输入（区间 + items 引用 + 语言）与上次一致 → 结果必然一致，直接早退。
@@ -179,7 +179,7 @@ export const useVisiblePhotosDateRange = () => {
     (
       startIndex: number,
       stopIndex: number,
-      items: (PhotoManifest | { id?: never })[],
+      items: readonly (PhotoManifest | { id?: never })[],
       visibleIndices?: number[],
     ) => {
       calculateDateRange(startIndex, stopIndex, items, visibleIndices);

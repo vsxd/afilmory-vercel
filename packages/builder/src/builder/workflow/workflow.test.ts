@@ -162,7 +162,6 @@ function createSession(
   const services = createBuilderServicesFixture(sessionConfig);
 
   return new BuildSession({
-    config: sessionConfig,
     options: {
       isForceMode: false,
       isForceManifest: false,
@@ -177,11 +176,76 @@ function createSession(
     getPhotoIdCollisionKeys: () => new Set<string>(),
     getPhotoIdForKey: (key: string) => key.replace(/\.[^.]+$/, ""),
     setPhotoIdCollisionKeys: vi.fn(),
-    getConfig: () => sessionConfig,
   });
 }
 
 describe("builder workflow modules", () => {
+  it("plans reproducibly from frozen options and keeps all intermediate policy out of the request", async () => {
+    const session = createSession({ options: { isForceMode: true } });
+    const before = { ...session.options };
+    Object.freeze(session.options);
+    const objects = [
+      { key: "b.jpg", size: 10 },
+      { key: "a.jpg", size: 10 },
+    ];
+    const planner = new DiffPlanner();
+    const first = await planner.plan(
+      session,
+      objects,
+      new Map(),
+      new Map(),
+      new Set(["b.jpg"]),
+    );
+    const second = await planner.plan(
+      session,
+      [...objects].reverse(),
+      new Map(),
+      new Map(),
+      new Set(["b.jpg"]),
+    );
+    expect(first).toEqual(second);
+    expect(first.tasksToProcess.map((task) => task.key)).toEqual([
+      "a.jpg",
+      "b.jpg",
+    ]);
+    expect(first.processorOptions.reprocessKeySet).toEqual(new Set(["b.jpg"]));
+    expect(first.processorOptions.plannedKeys).toEqual(
+      new Set(["a.jpg", "b.jpg"]),
+    );
+    expect(session.options).toEqual(before);
+    expect(Object.isFrozen(session.request)).toBe(true);
+    expect(session.request).not.toHaveProperty("reprocessKeys");
+    expect(session.request).not.toHaveProperty("plannedKeys");
+    expect(session.config).toBe(session.services.config);
+  });
+
+  it("captures legacy plugin invalidation hints without retaining their mutable arrays", async () => {
+    const session = createSession();
+    const hints = ["photo.jpg"];
+    session.options.derivedReprocessKeys = hints;
+    const photo = createPhoto("photo", {
+      processing: { ...CURRENT_CORE_PROCESSING_FINGERPRINTS },
+    });
+    const object = {
+      key: photo.s3Key,
+      size: photo.size,
+      etag: photo.etag,
+      lastModified: new Date(photo.lastModified),
+    };
+    const result = await new DiffPlanner().plan(
+      session,
+      [object],
+      new Map([[photo.s3Key, photo]]),
+    );
+    expect(result.reasons.get(photo.s3Key)).toBe("derived processing changed");
+    hints.push("later.jpg");
+    expect(result.processorOptions.derivedReprocessKeySet).toEqual(
+      new Set(["photo.jpg"]),
+    );
+    const next = createSession();
+    expect(next.options.derivedReprocessKeys).toBeUndefined();
+  });
+
   it("scans source files, live photos, and image objects with scoped events", async () => {
     const allObjects: StorageObject[] = [
       { key: "a.jpg" },
@@ -353,7 +417,10 @@ describe("builder workflow modules", () => {
     );
 
     expect(result.tasksToProcess).toEqual([imageObject]);
-    expect(session.options.reprocessKeys).toContain(imageObject.key);
+    expect(result.processorOptions.reprocessKeySet?.has(imageObject.key)).toBe(
+      true,
+    );
+    expect(session.options.reprocessKeys).toBeUndefined();
   });
 
   it("forces worker reprocessing when a Live Photo sidecar disappears", async () => {
@@ -381,7 +448,10 @@ describe("builder workflow modules", () => {
     );
 
     expect(result.tasksToProcess).toEqual([imageObject]);
-    expect(session.options.reprocessKeys).toContain(imageObject.key);
+    expect(result.processorOptions.reprocessKeySet?.has(imageObject.key)).toBe(
+      true,
+    );
+    expect(session.options.reprocessKeys).toBeUndefined();
   });
 
   it("merges existing and processed manifest items without duplicates", async () => {

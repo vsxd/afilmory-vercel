@@ -1,154 +1,152 @@
-import { debugLog } from "~/lib/debug-log";
 import { detectFileTypeFromBlob } from "~/lib/file-type";
-import type { LoadingCallbacks } from "~/lib/image-loading-types";
-import { createAbortError } from "~/lib/image-loading-types";
 
+import type { LoadingCallbacks } from "./image-loading-types";
+import { createAbortError } from "./image-loading-types";
+import { MediaTaskError } from "./media-task";
+
+export const IMAGE_DOWNLOAD_IDLE_TIMEOUT_MS = 60_000;
+
+/** One request per loader. Progress renews the deadline so large files can keep downloading. */
 export class ImageFetchService {
-  private currentXHR: XMLHttpRequest | null = null;
-  private delayTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingReject: ((reason?: unknown) => void) | null = null;
+  private cancelCurrent: (() => void) | null = null;
 
-  async fetchBlob(
-    src: string,
-    callbacks: LoadingCallbacks = {},
-  ): Promise<Blob> {
-    const { priority, onProgress } = callbacks;
-    const startDelay = priority === "high" ? 0 : 300;
+  constructor(private readonly idleTimeoutMs = IMAGE_DOWNLOAD_IDLE_TIMEOUT_MS) {
+    if (!Number.isFinite(idleTimeoutMs) || idleTimeoutMs <= 0)
+      throw new TypeError("Image download timeout must be positive and finite");
+  }
 
-    // Single-flight: a new fetch on this instance supersedes any previous
-    // in-flight one, so the per-instance scalars (currentXHR / pendingReject /
-    // delayTimer) can't be orphaned (leaving the first request un-abortable and
-    // its promise unresolved).
+  fetchBlob(src: string, callbacks: LoadingCallbacks = {}): Promise<Blob> {
     this.cleanup();
-
     return new Promise((resolve, reject) => {
-      this.pendingReject = reject;
-
-      const rejectFetch = (error: unknown) => {
-        if (this.pendingReject === reject) {
-          this.pendingReject = null;
+      let settled = false;
+      let xhr: XMLHttpRequest | null = null;
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      let loadedBytes = 0;
+      const finish = (result: { blob: Blob } | { error: Error }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(delay);
+        clearTimeout(deadline);
+        if (this.cancelCurrent === cancel) this.cancelCurrent = null;
+        if (xhr) {
+          xhr.onload =
+            xhr.onprogress =
+            xhr.onerror =
+            xhr.onabort =
+            xhr.ontimeout =
+              null;
+          if ("error" in result) xhr.abort();
         }
-        reject(error);
+        if ("error" in result) reject(result.error);
+        else resolve(result.blob);
       };
-
-      this.delayTimer = setTimeout(() => {
-        this.delayTimer = null;
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", src);
-        xhr.responseType = "blob";
-        this.currentXHR = xhr;
-
-        xhr.onload = async () => {
-          if (this.currentXHR === xhr) {
-            this.currentXHR = null;
-          }
-
-          if (xhr.status !== 200) {
-            rejectFetch(new Error(`HTTP ${xhr.status}`));
-            return;
-          }
-
+      const cancel = () =>
+        finish({ error: createAbortError("Image load cancelled") });
+      const timeout = () =>
+        finish({
+          error: new MediaTaskError(
+            "fetch",
+            "timeout",
+            "Image download stalled",
+          ),
+        });
+      const renewDeadline = () => {
+        clearTimeout(deadline);
+        deadline = setTimeout(timeout, this.idleTimeoutMs);
+      };
+      this.cancelCurrent = cancel;
+      const delay = setTimeout(
+        () => {
           try {
-            const blob = xhr.response as Blob;
-            if (!(await this.isValidImageBlob(blob))) {
-              rejectFetch(new Error("Response is not a valid image"));
-              return;
-            }
-
-            if (this.pendingReject === reject) {
-              this.pendingReject = null;
-            }
-            resolve(blob);
-          } catch (error) {
-            rejectFetch(error);
+            const request = new XMLHttpRequest();
+            xhr = request;
+            request.open("GET", src);
+            request.responseType = "blob";
+            request.onload = async () => {
+              if (settled) return;
+              if (request.status !== 200) {
+                finish({
+                  error: new MediaTaskError(
+                    "fetch",
+                    "http",
+                    `HTTP ${request.status}`,
+                  ),
+                });
+                return;
+              }
+              try {
+                const blob: Blob = request.response;
+                if (!blob || blob.size === 0)
+                  throw new MediaTaskError(
+                    "detect",
+                    "invalid-image",
+                    "Empty image response",
+                  );
+                const type = await detectFileTypeFromBlob(blob);
+                if (!type?.mime.startsWith("image/"))
+                  throw new MediaTaskError(
+                    "detect",
+                    "invalid-image",
+                    "Response is not a valid image",
+                  );
+                finish({ blob });
+              } catch (cause) {
+                finish({
+                  error:
+                    cause instanceof MediaTaskError
+                      ? cause
+                      : new MediaTaskError(
+                          "detect",
+                          "detection-failed",
+                          "Image format detection failed",
+                          { cause },
+                        ),
+                });
+              }
+            };
+            request.onprogress = (event) => {
+              if (settled) return;
+              if (event.loaded > loadedBytes) {
+                loadedBytes = event.loaded;
+                renewDeadline();
+              }
+              if (!event.lengthComputable || event.total <= 0) return;
+              callbacks.onEvent?.({
+                type: "progress",
+                loadedBytes: event.loaded,
+                totalBytes: event.total,
+              });
+              callbacks.onProgress?.((event.loaded / event.total) * 100);
+            };
+            request.onabort = cancel;
+            request.onerror = () =>
+              finish({
+                error: new MediaTaskError(
+                  "fetch",
+                  "network",
+                  "Image network error",
+                ),
+              });
+            request.ontimeout = timeout;
+            renewDeadline();
+            request.send();
+          } catch (cause) {
+            finish({
+              error: new MediaTaskError(
+                "fetch",
+                "network",
+                "Could not start image request",
+                { cause },
+              ),
+            });
           }
-        };
-
-        xhr.onprogress = (event) => {
-          if (!event.lengthComputable) {
-            return;
-          }
-
-          const progress = (event.loaded / event.total) * 100;
-          callbacks.onLoadingStateUpdate?.({
-            loadingProgress: progress,
-            loadedBytes: event.loaded,
-            totalBytes: event.total,
-          });
-          onProgress?.(progress);
-        };
-
-        xhr.onabort = () => {
-          if (this.currentXHR === xhr) {
-            this.currentXHR = null;
-          }
-          rejectFetch(createAbortError("Image load cancelled"));
-        };
-
-        xhr.onerror = () => {
-          if (this.currentXHR === xhr) {
-            this.currentXHR = null;
-          }
-          rejectFetch(new Error("Network error"));
-        };
-
-        xhr.send();
-      }, startDelay);
+        },
+        callbacks.priority === "high" ? 0 : 300,
+      );
     });
   }
 
   cleanup(): void {
-    if (this.delayTimer) {
-      clearTimeout(this.delayTimer);
-      this.delayTimer = null;
-    }
-
-    // Aborting the XHR triggers onabort -> rejectFetch, which settles the
-    // pending promise. Null currentXHR first so onabort's identity guard is a
-    // no-op and we don't fight over the field.
-    if (this.currentXHR) {
-      const xhr = this.currentXHR;
-      this.currentXHR = null;
-      xhr.abort();
-    }
-
-    // Settle the pending reject regardless of which phase (delay vs in-flight)
-    // we were in, so a cancelled request never leaves its promise hanging.
-    if (this.pendingReject) {
-      const reject = this.pendingReject;
-      this.pendingReject = null;
-      reject(createAbortError("Image load cancelled"));
-    }
-  }
-
-  private async isValidImageBlob(blob: Blob): Promise<boolean> {
-    if (blob.size === 0) {
-      console.warn("Empty blob detected");
-      return false;
-    }
-
-    try {
-      const fileType = await detectFileTypeFromBlob(blob);
-
-      if (!fileType) {
-        console.warn("Could not detect file type from blob");
-        return false;
-      }
-
-      const isValidImage = fileType.mime.startsWith("image/");
-
-      if (!isValidImage) {
-        console.warn(
-          `Invalid file type detected: ${fileType.ext} (${fileType.mime})`,
-        );
-        return false;
-      }
-
-      debugLog(`Valid image detected: ${fileType.ext} (${fileType.mime})`);
-      return true;
-    } catch (error) {
-      console.error("Failed to detect file type:", error);
-      return false;
-    }
+    this.cancelCurrent?.();
   }
 }

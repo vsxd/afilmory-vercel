@@ -46,7 +46,7 @@ vi.mock("react-map-gl/maplibre", async () => {
     onError,
     onMove,
     children,
-  }: React.ComponentProps<"div"> & {
+  }: React.PropsWithChildren & {
     longitude: number;
     latitude: number;
     zoom: number;
@@ -62,7 +62,7 @@ vi.mock("react-map-gl/maplibre", async () => {
         fitBounds: (...args: unknown[]) => void;
       };
       getContainer: () => { offsetWidth: number; offsetHeight: number };
-    } | null | null>;
+    } | null>;
   }) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
 

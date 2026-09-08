@@ -204,6 +204,11 @@ function createTestSharedData(): ClusterWorkerSharedData {
       isForceManifest: false,
       isForceThumbnails: false,
     },
+    processorOptions: {
+      isForceMode: false,
+      isForceManifest: false,
+      isForceThumbnails: false,
+    },
     photoIdCollisionKeys: ["dup.jpg"],
   };
 }
@@ -379,6 +384,11 @@ describe("ClusterPool", () => {
         },
       } as BuilderConfig,
       builderOptions: {
+        isForceMode: false,
+        isForceManifest: false,
+        isForceThumbnails: false,
+      },
+      processorOptions: {
         isForceMode: false,
         isForceManifest: false,
         isForceThumbnails: false,

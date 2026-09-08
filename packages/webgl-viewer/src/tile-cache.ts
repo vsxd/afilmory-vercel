@@ -57,7 +57,7 @@ export function getTileGridSize(input: {
 /**
  * Actual pixel dimensions of one tile's bitmap. Interior tiles are
  * TILE_SIZE × TILE_SIZE; edge tiles are smaller. Mirrors the slicing math in
- * texture.worker.js so memory accounting matches what the worker produces.
+ * texture-worker-runtime.ts so memory accounting matches what the worker produces.
  */
 export function getTilePixelSize(input: {
   x: number;

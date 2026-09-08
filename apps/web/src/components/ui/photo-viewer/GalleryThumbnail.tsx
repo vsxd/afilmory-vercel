@@ -18,7 +18,7 @@ import {
 
 export const GalleryThumbnail: FC<{
   currentIndex: number;
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
   onIndexChange: (index: number) => void;
   visible?: boolean;
 }> = ({ currentIndex, photos, onIndexChange, visible = true }) => {

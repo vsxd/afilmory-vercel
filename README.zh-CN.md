@@ -264,7 +264,7 @@ SOCIAL_RSS=true
 
 ### 前置要求
 
-- Node.js `^20.19.0 || >=22.12.0`（Vite 7 要求）
+- Node.js `^20.19.0 || >=22.12.0`（Vite 8 要求）
 - pnpm 10.19.0
 - S3 兼容对象存储或一个本地照片目录
 
@@ -373,12 +373,12 @@ CI/Vercel 构建还会校验发布代码是否能由页脚声明的 Git revision
 
 - React 19 与 React Compiler
 - TypeScript 5.9
-- Vite 7
+- Vite 8
 - Tailwind CSS 4
 - Radix UI
 - Motion
 - Jotai
-- React Router 7
+- React Router 8
 - i18next 与 react-i18next
 - MapLibre GL 与 react-map-gl
 

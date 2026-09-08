@@ -296,7 +296,7 @@ const extractCityFromLocationName = (
 };
 
 export const getCityLevelAdmin = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
   admin: LocationAdminInfo,
   language?: string | null,
 ): LocationAdminInfo => {
@@ -316,7 +316,7 @@ export const getCityLevelAdmin = (
 };
 
 export const getPhotoAdmin = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
   language?: string | null,
 ): LocationAdminInfo | null => {
   const { location } = photo;
@@ -331,7 +331,7 @@ export const getPhotoAdmin = (
 };
 
 export const getPhotoAdminKey = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
 ): LocationAdminInfo | null => {
   const { location } = photo;
   if (!location) return null;
@@ -355,7 +355,7 @@ export const getPhotoAdminKey = (
 };
 
 export const getPhotoAdminForLevel = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
   level: GeoRegionLevel,
   language?: string | null,
 ): LocationAdminInfo | null => {
@@ -425,7 +425,7 @@ export const buildGeoRegionId = (
 };
 
 export const getPhotoRegionIds = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
 ): Partial<Record<GeoRegionLevel, string>> => {
   return GEOGRAPHIC_REGION_LEVELS.reduce<
     Partial<Record<GeoRegionLevel, string>>
@@ -439,7 +439,7 @@ export const getPhotoRegionIds = (
 };
 
 export const photoMatchesGeoFilters = (
-  photo: PhotoManifestItem,
+  photo: Pick<PhotoManifestItem, "location">,
   filters: GeoFilterState,
 ): boolean => {
   const regionIds = getPhotoRegionIds(photo);

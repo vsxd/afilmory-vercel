@@ -31,7 +31,9 @@ src/
 ├── tile-cache.ts              # tile keys, LOD constants and grid math
 ├── tile-scheduler.ts          # visible tile and request scheduling helpers
 ├── transform-controller.ts    # fit/zoom/constrain transform math
-└── texture.worker.js          # image/tile worker
+├── texture.worker.ts          # typed module Worker entry
+├── texture-worker-runtime.ts  # source/bitmap ownership and decoding
+└── texture-dimensions.ts      # shared GPU dimension/byte-budget math
 ```
 
 ## Quick Start
@@ -172,7 +174,7 @@ The debug overlay also exposes a tile outline toggle.
 - `WebGLImageViewerEngine.ts` coordinates mutable viewer state, rendering, worker messages and animation.
 - `renderer.ts` owns shader program and draw calls; `input-controller.ts` owns DOM input handling.
 - `transform-controller.ts` and `tile-scheduler.ts` keep viewport math and tile selection testable outside the engine.
-- `worker-bridge.ts` wraps worker messaging; `texture.worker.js` loads image data and creates tile bitmaps off the main thread when possible.
+- `worker-bridge.ts` creates the module Worker with a Vite-resolved URL. Both endpoints use `worker-protocol.ts`; `texture-worker-runtime.ts` loads image data and creates tile bitmaps off the main thread. `tsconfig.worker.json` checks the entry and its dependencies against WebWorker globals separately from the DOM build.
 - The component calls `onError` for initialization and image loading failures so the app can fall back gracefully.
 
 ## Development Checklist

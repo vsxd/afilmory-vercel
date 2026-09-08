@@ -2,13 +2,32 @@ import type { TileKey } from "./tile-cache";
 
 export type TextureWorkerSessionId = number;
 
-/**
- * Messages posted by texture.worker.js back to the main thread.
- *
- * texture.worker.js is plain JS, so this discriminated union is the single
- * typed description of the protocol — keep it in sync with the worker's
- * `self.postMessage` calls.
- */
+/** Both ends consume these unions; transferable ownership passes only after postMessage succeeds. */
+export type TextureWorkerRequest =
+  | {
+      type: "load-image";
+      payload: {
+        sessionId: TextureWorkerSessionId;
+        url: string;
+        blob: Blob | null;
+        /** gl.MAX_TEXTURE_SIZE of the target context; 0 means unknown. */
+        maxTextureSize: number;
+        maxTextureBytes: number;
+      };
+    }
+  | {
+      type: "create-tile";
+      payload: {
+        sessionId: TextureWorkerSessionId;
+        x: number;
+        y: number;
+        lodLevel: number;
+        imageWidth: number;
+        imageHeight: number;
+        key: TileKey;
+      };
+    };
+
 export type TextureWorkerMessage =
   | { type: "init-done"; sessionId: TextureWorkerSessionId }
   | {
@@ -24,7 +43,7 @@ export type TextureWorkerMessage =
   | {
       type: "load-error";
       sessionId: TextureWorkerSessionId;
-      payload: { error: unknown };
+      payload: { error: string };
     }
   | {
       type: "tile-created";
@@ -34,5 +53,5 @@ export type TextureWorkerMessage =
   | {
       type: "tile-error";
       sessionId: TextureWorkerSessionId;
-      payload: { key: TileKey; error: unknown };
+      payload: { key: TileKey; error: string };
     };

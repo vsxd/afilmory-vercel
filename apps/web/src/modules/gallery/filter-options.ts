@@ -18,7 +18,7 @@ export type FilterItem = {
 // Delegates to the WeakMap-memoized geo computation so virtualized remounts
 // and the other consumers (header stats, filter panel, map) share one result.
 export function createGalleryGeoRegions(
-  photos: PhotoManifest[],
+  photos: readonly PhotoManifest[],
 ): GalleryGeoRegions {
   return getPhotoGeoData(photos).regionsByLevel;
 }
@@ -37,8 +37,8 @@ export function createGeoRegionLabelMaps(
 
 export function createGalleryFilterItems(input: {
   allTags: string[];
-  allCameras: CameraInfo[];
-  allLenses: LensInfo[];
+  allCameras: readonly CameraInfo[];
+  allLenses: readonly LensInfo[];
   geoRegions: GalleryGeoRegions;
   language: string;
 }): {

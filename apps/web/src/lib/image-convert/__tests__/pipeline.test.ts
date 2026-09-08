@@ -51,6 +51,44 @@ function createGatedTaskTracker() {
 }
 
 describe("ImageConversionPipeline", () => {
+  it("removes cancelled queued work while keeping a cancelled active codec in its slot", async () => {
+    const pipeline = new ImageConversionPipeline({ maxConcurrent: 1 });
+    const gate = createDeferred<string>();
+    const activeSignal = new AbortController();
+    const queuedSignal = new AbortController();
+    const active = pipeline.enqueue(() => gate.promise, activeSignal.signal);
+    let queuedRan = false;
+    const queued = pipeline.enqueue(async () => {
+      queuedRan = true;
+      return "queued";
+    }, queuedSignal.signal);
+    const cancelledActive = expect(active).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    const cancelledQueued = expect(queued).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    activeSignal.abort();
+    queuedSignal.abort();
+    await Promise.all([cancelledActive, cancelledQueued]);
+    expect(pipeline.getActiveCount()).toBe(1);
+    expect(pipeline.getPendingCount()).toBe(0);
+    let drained = false;
+    const disposal = pipeline.dispose().then(() => {
+      drained = true;
+    });
+    await tick();
+    expect(drained).toBe(false);
+    gate.resolve("late result");
+    await disposal;
+    expect(queuedRan).toBe(false);
+    expect(pipeline.getActiveCount()).toBe(0);
+    await expect(pipeline.enqueue(async () => "closed")).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    await pipeline.dispose();
+  });
+
   it("never runs more than maxConcurrent tasks at once and admits queued tasks as slots free", async () => {
     const pipeline = new ImageConversionPipeline({ maxConcurrent: 2 });
     const tracker = createGatedTaskTracker();

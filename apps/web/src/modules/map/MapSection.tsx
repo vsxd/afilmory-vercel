@@ -17,7 +17,7 @@ import { MapProvider } from "~/modules/map/MapProvider";
 import { useAppNavigation } from "~/navigation/hooks";
 import {
   usePhotoRepository,
-  usePhotoRepositoryVersion,
+  usePhotoRepositorySnapshot,
 } from "~/runtime/app-runtime";
 import type {
   GeographicRegion,
@@ -51,8 +51,7 @@ const MapSectionContent = () => {
     [navigation],
   );
   const photoRepository = usePhotoRepository();
-  usePhotoRepositoryVersion();
-  const repositoryPhotos = photoRepository.getPhotos();
+  const repositoryPhotos = usePhotoRepositorySnapshot();
   const displayMode: MapDisplayMode =
     searchParams.get("mode") === "photos" ? "photos" : "regions";
 

@@ -1,5 +1,6 @@
-import type { PhotoManifestItem } from "@afilmory/schema";
 import type { GeoRegionLevel } from "@afilmory/schema/geo";
+
+import type { PhotoManifest } from "~/types/photo";
 
 /**
  * GPS Cardinal directions enum
@@ -35,7 +36,7 @@ export interface PhotoMarker {
   longitudeRef?: GPSDirection.East | GPSDirection.West;
   altitudeRef?: "Above Sea Level" | "Below Sea Level";
 
-  photo: PhotoManifestItem;
+  photo: PhotoManifest;
 }
 
 export type MapDisplayMode = "regions" | "photos";

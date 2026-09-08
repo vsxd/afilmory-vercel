@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   afterAll,
   afterEach,
@@ -11,7 +11,7 @@ import {
   vi,
 } from "vitest";
 
-import { useImageLoader } from "../hooks";
+import { useImageLoader, useProgressiveImageState } from "../hooks";
 import type { LivePhotoVideoHandle } from "../LivePhotoVideo";
 import { LivePhotoVideo } from "../LivePhotoVideo";
 
@@ -94,31 +94,22 @@ function ImageLoaderHarness({
   tick: number;
   src?: string;
 }) {
-  const [blobSrc, setBlobSrc] = useState<string | null>(null);
-  const [, setImageBlob] = useState<Blob | null>(null);
-  const [highResLoaded, setHighResLoaded] = useState(false);
-  const [error, setError] = useState(false);
-  const [, setIsHighResImageRendered] = useState(false);
+  const [state, actions] = useProgressiveImageState();
+  const blobSrc =
+    state.image.status === "loaded" ? state.image.lease.blobSrc : null;
+  const highResLoaded = state.image.status === "loaded";
   const loadingIndicatorRef = useRef({
     updateLoadingState: vi.fn(),
     resetLoadingState: vi.fn(),
   });
 
-  useImageLoader(
+  useImageLoader({
     src,
-    true,
-    highResLoaded,
-    error,
-    undefined,
-    undefined,
-    undefined,
-    loadingIndicatorRef as never,
-    setBlobSrc,
-    setImageBlob,
-    setHighResLoaded,
-    setError,
-    setIsHighResImageRendered,
-  );
+    isCurrentImage: true,
+    image: state.image,
+    loadingIndicatorRef,
+    actions,
+  });
 
   return (
     <div
@@ -155,7 +146,7 @@ describe("photo viewer runtime lifecycle", () => {
     loadImageMock = vi.fn();
     processVideoMock = vi.fn();
     cleanupMock = vi.fn();
-    animationStartMock = vi.fn().mockResolvedValue();
+    animationStartMock = vi.fn(async () => {});
     animationSetMock = vi.fn();
     runtimeMock.imageLoading.cleanupLoader.mockClear();
     runtimeMock.imageLoading.createLoader.mockImplementation(() => ({
@@ -265,13 +256,8 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cleans up the active live photo request when the current image changes", async () => {
-    let resolveVideoLoad: (() => void) | null = null;
-    processVideoMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveVideoLoad = resolve;
-        }),
-    );
+    const videoLoad = Promise.withResolvers<void>();
+    processVideoMock.mockReturnValue(videoLoad.promise);
 
     const loadingIndicatorRef = {
       current: {
@@ -307,7 +293,7 @@ describe("photo viewer runtime lifecycle", () => {
 
     expect(cleanupMock).toHaveBeenCalledTimes(1);
 
-    resolveVideoLoad?.();
+    videoLoad.resolve();
   });
 
   it("cleans up the live photo manager on unmount", async () => {

@@ -70,8 +70,8 @@ export function getActiveFilterCount(gallerySetting: GallerySetting): number {
 
 export function getAvailableFilterCount(input: {
   allTags: string[];
-  allCameras: CameraInfo[];
-  allLenses: LensInfo[];
+  allCameras: readonly CameraInfo[];
+  allLenses: readonly LensInfo[];
   geoRegions: CommandGeoRegions;
 }): number {
   return (
@@ -146,9 +146,9 @@ export function buildCommandIndex(input: {
   language: string;
   gallerySetting: GallerySetting;
   allTags: string[];
-  allCameras: CameraInfo[];
-  allLenses: LensInfo[];
-  allPhotos: PhotoManifest[];
+  allCameras: readonly CameraInfo[];
+  allLenses: readonly LensInfo[];
+  allPhotos: readonly PhotoManifest[];
   geoRegions: CommandGeoRegions;
   query: string;
   hasFilters: boolean;
@@ -251,7 +251,7 @@ export function buildCommandIndex(input: {
 
 export function buildPhotoCommands(input: {
   t: GalleryTranslation;
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
 }): Command[] {
   const { t, photos } = input;
   return photos.map((photo) => {

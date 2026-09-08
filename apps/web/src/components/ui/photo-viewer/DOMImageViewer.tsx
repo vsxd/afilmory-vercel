@@ -8,6 +8,8 @@ import type {
 } from "react-zoom-pan-pinch";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 
+import { MediaTaskError } from "~/lib/media-task";
+
 import type { DOMImageViewerProps } from "./types";
 
 export const DOMImageViewer: FC<DOMImageViewerProps> = ({
@@ -20,6 +22,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   alt,
   highResLoaded,
   onLoad,
+  onError,
   children,
 }) => {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
@@ -162,6 +165,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         >
           <div className="relative h-full w-full" style={fittedContentStyle}>
             <img
+              key={src}
               src={src || undefined}
               alt={alt}
               className={clsxm(
@@ -172,6 +176,16 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
               loading="eager"
               decoding="async"
               onLoad={onLoad}
+              onError={(event) =>
+                onError?.(
+                  new MediaTaskError(
+                    "decode",
+                    "decode-failed",
+                    "Native image decoder failed",
+                    { cause: event.nativeEvent },
+                  ),
+                )
+              }
             />
             {children}
           </div>

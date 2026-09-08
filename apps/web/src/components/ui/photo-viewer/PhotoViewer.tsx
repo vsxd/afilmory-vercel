@@ -50,7 +50,7 @@ const GalleryThumbnail = lazy(() =>
 );
 
 interface PhotoViewerProps {
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
   currentIndex: number;
   isOpen: boolean;
   onClose: () => void;
