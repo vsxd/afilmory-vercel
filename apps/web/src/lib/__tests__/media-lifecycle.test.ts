@@ -19,6 +19,7 @@ vi.mock("../device-viewport", () => ({
 vi.mock("../image-convert", () => ({
   ImageConverterManager: class {
     convertImage = mocks.convert;
+    dispose = async () => {};
   },
 }));
 vi.mock("../motion-photo-extractor", () => ({
@@ -58,7 +59,11 @@ beforeEach(() => {
     },
   );
   vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("");
-  mocks.convert.mockReset().mockResolvedValue(null);
+  mocks.convert.mockReset().mockImplementation(async (blob: Blob) => ({
+    kind: "original",
+    reason: "unhandled",
+    blob,
+  }));
   mocks.extract.mockReset();
 });
 afterEach(() => {

@@ -17,6 +17,7 @@ import type {
 import type { ClusterPoolOptions } from "../../worker/cluster-pool.js";
 import type { WorkerPoolOptions } from "../../worker/pool.js";
 import { PhotoTaskProcessor } from "./photo-task-processor.js";
+import type { BuildPlan } from "./plan.js";
 import type {
   BuildPluginEventEmitter,
   BuildSessionStorageManager,
@@ -196,9 +197,7 @@ function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
   const services = createBuilderServicesFixture(config);
 
   return new BuildSession({
-    config,
     emitPluginEvent: createPluginEventEmitter(),
-    getConfig: () => config,
     getPhotoIdCollisionKeys: () => new Set(["collision.jpg"]),
     getManifestSource: () => ({ provider: "s3", bucket: "photos" }),
     getPhotoIdForKey: (key) => key.replace(/\.[^.]+$/, ""),
@@ -215,7 +214,77 @@ function createSession(options: Partial<BuilderOptions> = {}): BuildSession {
   });
 }
 
+function createPlan(session: BuildSession, tasks: StorageObject[]): BuildPlan {
+  return {
+    s3ImageKeys: new Set(tasks.map((task) => task.key)),
+    tasksToProcess: tasks,
+    reasons: new Map(),
+    processorOptions: {
+      isForceMode: session.options.isForceMode,
+      isForceManifest: session.options.isForceManifest,
+      isForceThumbnails: session.options.isForceThumbnails,
+    },
+  };
+}
+
 describe("PhotoTaskProcessor", () => {
+  it("returns the effective plugin task list without mutating the captured plan", async () => {
+    const session = createSession();
+    const tasks = [
+      { key: "a.jpg", lastModified: new Date("2026-01-01") },
+      { key: "b.jpg" },
+    ];
+    const plan = createPlan(session, tasks);
+    const emit = session.emit.bind(session);
+    vi.spyOn(session, "emit").mockImplementation(async (event, payload) => {
+      if (event === "beforeProcessTasks" && "tasks" in payload) {
+        payload.tasks.pop();
+        payload.tasks[0].lastModified?.setUTCFullYear(2027);
+      }
+      await emit(event, payload);
+    });
+    processorMocks.processPhoto.mockResolvedValue(createResult("processed"));
+
+    const result = await new PhotoTaskProcessor().process(
+      session,
+      plan,
+      new Map(),
+      new Map(),
+    );
+    expect(result.tasks.map((task) => task.key)).toEqual(["a.jpg"]);
+    expect(result.tasks[0].lastModified?.getUTCFullYear()).toBe(2027);
+    expect(plan.tasksToProcess).toHaveLength(2);
+    expect(plan.tasksToProcess[0].lastModified?.getUTCFullYear()).toBe(2026);
+    expect(processorMocks.processPhoto).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])(
+    "executes the captured policy after session options change (cluster %s)",
+    async (cluster) => {
+      const session = createSession({ isForceManifest: true });
+      session.config.system.processing.worker.useClusterMode = cluster;
+      session.config.system.processing.worker.workerConcurrency = 1;
+      const tasks = [{ key: "a.jpg" }, { key: "b.jpg" }];
+      const plan = createPlan(session, tasks);
+      session.options.isForceManifest = false;
+      session.options.plannedKeys = new Set(["unrelated.jpg"]);
+      processorMocks.processPhoto.mockResolvedValue(createResult("processed"));
+      await new PhotoTaskProcessor().process(
+        session,
+        plan,
+        new Map(),
+        new Map(),
+      );
+      const options = cluster
+        ? processorMocks.clusterPoolInstances[0].options.sharedData
+            ?.processorOptions
+        : getFirstProcessPhotoCall()[1].processorOptions;
+      expect(options).toEqual(plan.processorOptions);
+      expect(options?.isForceManifest).toBe(true);
+      expect(options?.plannedKeys).toBeUndefined();
+    },
+  );
+
   beforeEach(() => {
     processorMocks.clusterPoolInstances = [];
     processorMocks.clusterResults = [];
@@ -258,12 +327,13 @@ describe("PhotoTaskProcessor", () => {
 
     const output = await new PhotoTaskProcessor().process(
       session,
-      tasks,
+      createPlan(session, tasks),
       existingManifestMap,
       livePhotoMap,
     );
 
     expect(output).toEqual({
+      tasks,
       results,
       stats: {
         failedCount: 1,
@@ -378,7 +448,7 @@ describe("PhotoTaskProcessor", () => {
 
     const output = await new PhotoTaskProcessor().process(
       session,
-      tasks,
+      createPlan(session, tasks),
       existingManifestMap,
       livePhotoMap,
     );
@@ -409,8 +479,9 @@ describe("PhotoTaskProcessor", () => {
       workerConcurrency: 1,
     });
     expect(processorMocks.clusterPoolInstances[0].options.sharedData).toEqual({
-      builderConfig: session.getConfig(),
+      builderConfig: session.config,
       builderOptions: session.options,
+      processorOptions: createPlan(session, tasks).processorOptions,
       existingManifestMap: new Map([["a.jpg", createPhoto("a")]]),
       imageObjects: tasks,
       livePhotoMap: new Map([["a.jpg", { key: "a.mov" }]]),
@@ -443,7 +514,7 @@ describe("PhotoTaskProcessor", () => {
 
     await new PhotoTaskProcessor().process(
       session,
-      tasks,
+      createPlan(session, tasks),
       new Map<string, PhotoManifestItem>(),
       new Map<string, StorageObject>(),
     );

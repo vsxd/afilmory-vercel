@@ -15,7 +15,6 @@ describe("isSupportedImageKey", () => {
     expect(isSupportedImageKey("no-extension")).toBe(false);
     expect(isSupportedImageKey("")).toBe(false);
     // S3 ListObjectsV2 的 Contents[].Key 类型上可为 undefined，谓词必须兜住
-    // eslint-disable-next-line unicorn/no-useless-undefined
     expect(isSupportedImageKey(undefined)).toBe(false);
   });
 

@@ -30,7 +30,9 @@ describe("registerProductionServiceWorker", () => {
 
   it("registers the production service worker explicitly", async () => {
     const updateServiceWorker = vi.fn(async () => {});
-    const registerSW = vi.fn(() => updateServiceWorker);
+    const registerSW = vi.fn<typeof import("virtual:pwa-register").registerSW>(
+      () => updateServiceWorker,
+    );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     vi.stubGlobal("navigator", { serviceWorker: {} });

@@ -1,4 +1,5 @@
 import type { VideoSource } from "~/lib/image-loading-types";
+import type { MediaLease } from "~/lib/media-resource";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
 
@@ -22,7 +23,7 @@ export interface ProgressiveImageProps {
   width?: number;
   height?: number;
   className?: string;
-  onError?: () => void;
+  onError?: (error: Error) => void;
   onProgress?: (progress: number) => void;
   onZoomChange?: (isZoomed: boolean) => void;
   onBlobSrcChange?: (blobSrc: string | null) => void;
@@ -62,6 +63,7 @@ export interface DOMImageViewerProps {
   alt: string;
   highResLoaded: boolean;
   onLoad?: () => void;
+  onError?: (error: Error) => void;
   children?: React.ReactNode;
 }
 
@@ -70,12 +72,13 @@ export interface LivePhotoBadgeProps {
   isLivePhotoPlaying: boolean;
 }
 
+export type ImageContentState =
+  | { status: "empty" }
+  | { status: "loaded"; lease: MediaLease; rendered: boolean }
+  | { status: "failed"; error: Error };
+
 export interface ProgressiveImageState {
-  blobSrc: string | null;
-  imageBlob: Blob | null;
-  highResLoaded: boolean;
-  error: boolean;
-  isHighResImageRendered: boolean;
+  image: ImageContentState;
   currentScale: number;
   showScaleIndicator: boolean;
   isThumbnailLoaded: boolean;

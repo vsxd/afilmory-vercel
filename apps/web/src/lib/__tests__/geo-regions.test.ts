@@ -18,6 +18,7 @@ const createPhoto = (
 ): PhotoManifestItem => ({
   id,
   title: id,
+  dateTaken: "2024-01-01T00:00:00.000Z",
   description: "",
   tags: [],
   originalUrl: `/originals/${id}.jpg`,

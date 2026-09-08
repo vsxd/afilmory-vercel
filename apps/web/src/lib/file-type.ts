@@ -2,7 +2,10 @@ let fileTypeModulePromise: Promise<typeof import("file-type")> | null = null;
 
 async function getFileTypeModule() {
   if (!fileTypeModulePromise) {
-    fileTypeModulePromise = import("file-type");
+    fileTypeModulePromise = import("file-type").catch((error) => {
+      fileTypeModulePromise = null;
+      throw error;
+    });
   }
 
   return await fileTypeModulePromise;

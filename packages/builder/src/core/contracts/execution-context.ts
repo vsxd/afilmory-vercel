@@ -1,5 +1,4 @@
 import type { PhotoProcessingLoggers } from "../../photo/logger-types.js";
-import type { StorageManager } from "../../storage/index.js";
 import type { BuilderOutputSettings } from "../../types/config.js";
 import type {
   BuilderPluginEvent,
@@ -7,6 +6,7 @@ import type {
 } from "./plugin-events.js";
 import type { PluginRunState } from "./plugin-ref.js";
 import type { BuilderServices } from "./services.js";
+import type { BuilderStorage } from "./storage.js";
 
 /**
  * Function shape for emitting plugin events from within the photo pipeline.
@@ -31,7 +31,7 @@ export type EmitPluginEventFn = <TEvent extends BuilderPluginEvent>(
 export interface PhotoExecutionContext {
   services: BuilderServices;
   emitPluginEvent: EmitPluginEventFn;
-  storageManager: StorageManager;
+  storageManager: BuilderStorage;
   normalizeStorageKey: (key: string) => string;
   /** 归一化后的输出路径（services.config.output）；照片作用域内的唯一读取入口。 */
   output: BuilderOutputSettings;

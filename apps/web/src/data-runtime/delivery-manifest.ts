@@ -2,12 +2,14 @@ import type {
   AfilmoryManifest,
   LocationAdminInfo,
   LocationInfo,
-  PhotoManifestItem,
   PickedExif,
   ToneAnalysis,
   VideoSource,
 } from "@afilmory/schema";
 import { parseManifestLenient } from "@afilmory/schema";
+
+import type { PhotoManifest } from "../types/photo";
+import type { DeepReadonly } from "../types/readonly";
 
 export const WEB_DELIVERY_MANIFEST_SCHEMA = "afilmory-web-delivery";
 export const WEB_DELIVERY_MANIFEST_VERSION = 3 as const;
@@ -567,14 +569,9 @@ export function parseWebMapDetailShard(
 }
 
 export function mergePhotoDetail(
-  target: PhotoManifestItem,
-  detail: WebPhotoDetail,
-): void {
-  target.exif = detail.exif;
-  target.toneAnalysis = detail.toneAnalysis;
-  target.location = detail.location;
-  if (detail.video) target.video = detail.video;
-  else delete target.video;
-  if (typeof detail.isHDR === "boolean") target.isHDR = detail.isHDR;
-  else delete target.isHDR;
+  target: PhotoManifest,
+  detail: DeepReadonly<WebPhotoDetail>,
+): PhotoManifest {
+  const { video, isHDR, ...summary } = target;
+  return { ...summary, ...detail };
 }

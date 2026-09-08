@@ -19,7 +19,11 @@ import { getViewerPhotos } from "~/hooks/usePhotoViewer";
 import { translateDynamicKey } from "~/lib/i18n-dynamic";
 import { FilterPanel } from "~/modules/gallery/panels/FilterPanel";
 import { useAppNavigation, useGallerySettings } from "~/navigation/hooks";
-import { useAfilmoryRuntime, usePhotoRepository } from "~/runtime/app-runtime";
+import {
+  useAfilmoryRuntime,
+  usePhotoRepository,
+  usePhotoRepositorySnapshot,
+} from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import {
@@ -69,7 +73,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
     () => photoRepository.getAllLenses(),
     [photoRepository],
   );
-  const allPhotos = photoRepository.getPhotos();
+  const allPhotos = usePhotoRepositorySnapshot();
   const photoById = useMemo(
     () => new Map(allPhotos.map((photo) => [photo.id, photo])),
     [allPhotos],

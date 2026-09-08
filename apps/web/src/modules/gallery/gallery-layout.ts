@@ -58,7 +58,7 @@ const COLUMN_WIDTH_CONFIG = {
   },
 };
 
-export function getPhotoSetKey(photos: PhotoManifest[]): string {
+export function getPhotoSetKey(photos: readonly PhotoManifest[]): string {
   let hash = 2166136261;
 
   for (const photo of photos) {
@@ -119,9 +119,9 @@ export function calculateGalleryColumnWidth({
 }
 
 export function createMasonryItems(
-  photos: PhotoManifest[],
+  photos: readonly PhotoManifest[],
   isMobile: boolean,
-): MasonryItemType[] {
+): readonly MasonryItemType[] {
   return isMobile ? photos : [MasonryHeaderItem.default, ...photos];
 }
 
@@ -240,7 +240,7 @@ export function computeMasonryLayout<Item>({
   rowGutter,
   getItemHeight,
 }: {
-  items: Item[];
+  items: readonly Item[];
   columnCount: number;
   columnWidth: number;
   columnGutter: number;
@@ -363,7 +363,7 @@ export function estimatePhotoVirtualRect({
   isMobile: boolean;
   metrics: MasonryLayoutMetrics;
   photoIndex: number;
-  photos: PhotoManifest[];
+  photos: readonly PhotoManifest[];
 }) {
   const {
     columnCount,

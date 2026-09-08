@@ -1,14 +1,16 @@
-import type { LoadingCallbacks } from "../image-loading-types";
-
 // 转换结果接口
-// 不携带 object URL：URL 的唯一所有者是 regularImageCache（逐出时 revoke），
-// 策略层只产出 blob，避免出现无人回收的第二个 URL。
+// Strategies produce bytes; a consumer's MediaLease owns the object URL.
 export interface ConversionResult {
   blob: Blob;
   convertedSize: number;
   format: string;
   originalSize: number;
 }
+
+export type OriginalImageReason = "native" | "unhandled" | "unidentified";
+export type ImageConversionOutcome =
+  | { kind: "original"; reason: OriginalImageReason; blob: Blob }
+  | ({ kind: "converted" } & ConversionResult);
 
 // 图像转换策略接口
 export interface ImageConverterStrategy {
@@ -20,11 +22,7 @@ export interface ImageConverterStrategy {
   /**
    * 执行转换
    */
-  convert: (
-    blob: Blob,
-    originalUrl: string,
-    callbacks?: LoadingCallbacks,
-  ) => Promise<ConversionResult>;
+  convert: (blob: Blob, originalUrl: string) => Promise<ConversionResult>;
 
   /**
    * 策略名称，用于日志和调试

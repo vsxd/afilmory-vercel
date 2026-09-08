@@ -1,14 +1,14 @@
 import type { ExifReaderService } from "../../image/exif.js";
 import type { Logger } from "../../logger/index.js";
-import type { StorageManager } from "../../storage/index.js";
 import type { StorageConfig } from "../../storage/interfaces.js";
 import type { BuilderConfig } from "../../types/config.js";
 import type { PhotoManifestItem } from "../../types/photo.js";
+import type { BuilderStorage } from "./storage.js";
 
 export interface StorageService {
-  createManager: (config: StorageConfig) => StorageManager;
+  createManager: (config: StorageConfig) => BuilderStorage;
   getConfig: () => StorageConfig;
-  getManager: () => StorageManager;
+  getManager: () => BuilderStorage;
 }
 
 /**

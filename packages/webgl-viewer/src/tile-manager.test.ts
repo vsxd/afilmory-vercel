@@ -304,7 +304,7 @@ describe("TileManager", () => {
 
       const handled = manager.handleWorkerMessage({
         type: "tile-error",
-        payload: { key, error: new Error("boom") },
+        payload: { key, error: "boom" },
       });
 
       expect(handled).toBe(true);
@@ -319,7 +319,7 @@ describe("TileManager", () => {
       expect(
         manager.handleWorkerMessage({
           type: "load-error",
-          payload: { error: new Error("x") },
+          payload: { error: "x" },
         }),
       ).toBe(false);
     });

@@ -34,7 +34,10 @@ export class ArtifactWriter {
   private readonly assembler = new ManifestAssembler();
 
   async write(
-    session: BuildSession,
+    session: Pick<
+      BuildSession,
+      "emit" | "options" | "config" | "getManifestSource"
+    >,
     manifest: PhotoManifestItem[],
     options?: {
       forceManifestRewrite?: boolean;

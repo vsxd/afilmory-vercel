@@ -76,7 +76,7 @@ describe("translateDynamicKey", () => {
 
   it("falls back to the key as template when the resource is not a string", () => {
     // undefined resource (missing key)
-    const missing = makeI18n();
+    const missing = makeI18n(undefined);
     expect(translateDynamicKey(asI18n(missing), "missing.key")).toBe(
       "missing.key",
     );
@@ -99,7 +99,7 @@ describe("translateDynamicKey", () => {
   });
 
   it("still interpolates tokens when falling back to the key template", () => {
-    const i18n = makeI18n();
+    const i18n = makeI18n(undefined);
 
     const result = translateDynamicKey(asI18n(i18n), "items.{{n}}", { n: 3 });
 

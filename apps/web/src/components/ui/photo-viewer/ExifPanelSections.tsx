@@ -1,4 +1,3 @@
-import type { PhotoManifestItem } from "@afilmory/schema";
 import { isNil } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import { Fragment, lazy, Suspense } from "react";
@@ -16,6 +15,7 @@ import {
 } from "~/lib/gallery-filter-url";
 import { useAppNavigation } from "~/navigation/hooks";
 import { isPlainLinkClick } from "~/navigation/link-click";
+import type { PhotoManifest } from "~/types/photo";
 
 import type { ExifPanelViewModel } from "./exif-panel-view-model";
 import { ExifRow as Row } from "./ExifRow";
@@ -32,7 +32,7 @@ export function BasicExifSection({
   t,
   viewModel,
 }: {
-  currentPhoto: PhotoManifestItem;
+  currentPhoto: PhotoManifest;
   t: ExifPanelTranslation;
   viewModel: ExifPanelViewModel;
 }) {
@@ -177,7 +177,7 @@ function TagSection({
   currentPhoto,
   t,
 }: {
-  currentPhoto: PhotoManifestItem;
+  currentPhoto: PhotoManifest;
   t: ExifPanelTranslation;
 }) {
   const navigation = useAppNavigation();
@@ -216,7 +216,7 @@ export function ToneExifSection({
   currentPhoto,
   t,
 }: {
-  currentPhoto: PhotoManifestItem;
+  currentPhoto: PhotoManifest;
   t: ExifPanelTranslation;
 }) {
   if (!currentPhoto.toneAnalysis) return null;
@@ -275,7 +275,7 @@ export function FormattedExifSections({
   t,
   viewModel,
 }: {
-  currentPhoto: PhotoManifestItem;
+  currentPhoto: PhotoManifest;
   t: ExifPanelTranslation;
   viewModel: ExifPanelViewModel;
 }) {
@@ -536,7 +536,7 @@ function LocationExifSection({
   t,
   viewModel,
 }: {
-  currentPhoto: PhotoManifestItem;
+  currentPhoto: PhotoManifest;
   t: ExifPanelTranslation;
   viewModel: ExifPanelViewModel;
 }) {

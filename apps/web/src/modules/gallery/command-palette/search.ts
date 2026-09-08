@@ -1,7 +1,9 @@
-import type { LocationAdminInfo, PhotoManifestItem } from "@afilmory/schema";
+import type { LocationAdminInfo } from "@afilmory/schema";
+
+import type { PhotoManifest } from "~/types/photo";
 
 export interface PhotoSearchEntry {
-  photo: PhotoManifestItem;
+  photo: PhotoManifest;
   searchText: string;
 }
 
@@ -78,12 +80,15 @@ export const fuzzyMatch = (text: string, query: string): boolean => {
   return queryIndex === lowerQuery.length;
 };
 
-export const searchPhotos = (photos: PhotoManifestItem[], query: string) => {
+export const searchPhotos = (
+  photos: readonly PhotoManifest[],
+  query: string,
+) => {
   return searchPhotoIndex(buildPhotoSearchIndex(photos), query);
 };
 
 export const buildPhotoSearchIndex = (
-  photos: PhotoManifestItem[],
+  photos: readonly PhotoManifest[],
 ): PhotoSearchEntry[] =>
   photos.map((photo) => ({
     photo,
@@ -105,13 +110,13 @@ export const searchPhotoIndex = (
   index: PhotoSearchEntry[],
   query: string,
   limit = Number.POSITIVE_INFINITY,
-): PhotoManifestItem[] => {
+): readonly PhotoManifest[] => {
   // Search is language-agnostic metadata matching. The host's default locale
   // must not change ASCII case folding (notably I/i on Turkish systems).
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery || limit <= 0) return [];
 
-  const matches: PhotoManifestItem[] = [];
+  const matches: PhotoManifest[] = [];
   for (const entry of index) {
     if (!entry.searchText.includes(normalizedQuery)) continue;
     matches.push(entry.photo);

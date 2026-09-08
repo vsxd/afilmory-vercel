@@ -27,6 +27,7 @@ export type {
   StorageObject,
 } from "./storage/index.js";
 export type { BuilderConfig, BuilderConfigInput } from "./types/config.js";
+export type { BuilderPluginOptions, BuildRequest } from "./types/options.js";
 export type {
   BuildProgressListener,
   BuildProgressSnapshot,

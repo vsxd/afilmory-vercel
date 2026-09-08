@@ -17,205 +17,173 @@ import type { MediaLease } from "~/lib/media-resource";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
-import type { LivePhotoVideoHandle, ProgressiveImageState } from "./types";
+import { presentMediaTaskEvent } from "./media-loading-presentation";
+import type {
+  ImageContentState,
+  LivePhotoVideoHandle,
+  ProgressiveImageState,
+} from "./types";
 import { SHOW_SCALE_INDICATOR_DURATION } from "./types";
 
 function isAbortLikeError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
-export const useProgressiveImageState = (
-  // 缩略图若曾加载过（跨挂载的模块级缓存），初始即视为已加载：Swiper 虚拟滑动只保活
-  // ±1 张，翻远再翻回是全新挂载——若初始 false、靠挂载后 effect 纠正，首帧已按
-  // opacity-0 提交，300ms 淡入会在每次重挂载时重放（观感即「低清图又在加载」）。
-  initialThumbnailLoaded = false,
-): [
-  ProgressiveImageState,
-  {
-    setBlobSrc: (src: string | null) => void;
-    setImageBlob: (blob: Blob | null) => void;
-    setHighResLoaded: (loaded: boolean) => void;
-    setError: (error: boolean) => void;
-    setIsHighResImageRendered: (rendered: boolean) => void;
-    setCurrentScale: (scale: number) => void;
-    setShowScaleIndicator: (show: boolean) => void;
-    setIsThumbnailLoaded: (loaded: boolean) => void;
-    setIsLivePhotoPlaying: (playing: boolean) => void;
-  },
-] => {
-  const [blobSrc, setBlobSrc] = useState<string | null>(null);
-  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
-  const [highResLoaded, setHighResLoaded] = useState(false);
-  const [error, setError] = useState(false);
-  const [isHighResImageRendered, setIsHighResImageRendered] = useState(false);
+export function useProgressiveImageState(initialThumbnailLoaded = false) {
+  const [image, setImage] = useState<ImageContentState>({ status: "empty" });
   const [currentScale, setCurrentScale] = useState(1);
   const [showScaleIndicator, setShowScaleIndicator] = useState(false);
   const [isThumbnailLoaded, setIsThumbnailLoaded] = useState(
     initialThumbnailLoaded,
   );
   const [isLivePhotoPlaying, setIsLivePhotoPlaying] = useState(false);
-
-  const setters = useMemo(
+  const actions = useMemo(
     () => ({
-      setBlobSrc,
-      setImageBlob,
-      setHighResLoaded,
-      setError,
-      setIsHighResImageRendered,
+      resetImage: () =>
+        setImage((previous) =>
+          previous.status === "empty" ? previous : { status: "empty" },
+        ),
+      setImageLease: (lease: MediaLease) =>
+        setImage({ status: "loaded", lease, rendered: false }),
+      setImageError: (error: Error) => setImage({ status: "failed", error }),
+      markImageRendered: () =>
+        setImage((previous) =>
+          previous.status === "loaded"
+            ? { ...previous, rendered: true }
+            : previous,
+        ),
       setCurrentScale,
       setShowScaleIndicator,
       setIsThumbnailLoaded,
       setIsLivePhotoPlaying,
     }),
-    // useState setters are stable across renders, so this memo never recomputes
-
     [],
   );
+  const state: ProgressiveImageState = {
+    image,
+    currentScale,
+    showScaleIndicator,
+    isThumbnailLoaded,
+    isLivePhotoPlaying,
+  };
+  return [state, actions] as const;
+}
 
-  return [
-    {
-      blobSrc,
-      imageBlob,
-      highResLoaded,
-      error,
-      isHighResImageRendered,
-      currentScale,
-      showScaleIndicator,
-      isThumbnailLoaded,
-      isLivePhotoPlaying,
-    },
-    setters,
-  ];
-};
+interface ImageLoaderOptions {
+  src: string;
+  isCurrentImage: boolean;
+  image: ImageContentState;
+  onProgress?: (progress: number) => void;
+  onError?: (error: Error) => void;
+  onBlobSrcChange?: (blobSrc: string | null) => void;
+  loadingIndicatorRef?: React.RefObject<LoadingIndicatorRef | null>;
+  actions: Pick<
+    ReturnType<typeof useProgressiveImageState>[1],
+    "resetImage" | "setImageLease" | "setImageError"
+  >;
+}
 
-export const useImageLoader = (
-  src: string,
-  isCurrentImage: boolean,
-  highResLoaded: boolean,
-  error: boolean,
-  onProgress?: (progress: number) => void,
-  onError?: () => void,
-  onBlobSrcChange?: (blobSrc: string | null) => void,
-  loadingIndicatorRef?: React.RefObject<LoadingIndicatorRef | null>,
-  setBlobSrc?: (src: string | null) => void,
-  setImageBlob?: (blob: Blob | null) => void,
-  setHighResLoaded?: (loaded: boolean) => void,
-  setError?: (error: boolean) => void,
-  setIsHighResImageRendered?: (rendered: boolean) => void,
-) => {
+export function useImageLoader({
+  src,
+  isCurrentImage,
+  image,
+  onProgress,
+  onError,
+  onBlobSrcChange,
+  loadingIndicatorRef,
+  actions,
+}: ImageLoaderOptions) {
   const { t } = useTranslation();
   const runtime = useAfilmoryRuntime();
   const imageLeaseRef = useRef<MediaLease | null>(null);
+  const reportedFailureRef = useRef(false);
+  const { resetImage, setImageLease, setImageError } = actions;
+  const { status } = image;
 
-  // The URL follows the rendered photo, not a fetch effect or cache entry.
   useEffect(() => {
-    setHighResLoaded?.(false);
-    setBlobSrc?.(null);
-    setImageBlob?.(null);
-    setError?.(false);
-    setIsHighResImageRendered?.(false);
+    resetImage();
+    reportedFailureRef.current = false;
     return () => {
       imageLeaseRef.current?.release();
       imageLeaseRef.current = null;
     };
-  }, [
-    src,
-    runtime,
-    setHighResLoaded,
-    setBlobSrc,
-    setImageBlob,
-    setError,
-    setIsHighResImageRendered,
-  ]);
+  }, [src, runtime, resetImage]);
+
+  const reportFailure = useCallback(
+    (failure: Error) => {
+      if (reportedFailureRef.current) return;
+      reportedFailureRef.current = true;
+      imageLeaseRef.current?.release();
+      imageLeaseRef.current = null;
+      setImageError(failure);
+      onBlobSrcChange?.(null);
+      console.error("Failed to load image:", failure);
+      loadingIndicatorRef?.current?.updateLoadingState({
+        isVisible: true,
+        isError: true,
+        errorMessage: t("photo.error.loading"),
+      });
+      onError?.(failure);
+    },
+    [setImageError, onBlobSrcChange, loadingIndicatorRef, t, onError],
+  );
 
   useEffect(() => {
-    if (highResLoaded || error || !isCurrentImage) return;
-
-    const imageLoaderManager = runtime.imageLoading.createLoader();
-
-    function cleanup() {
-      setHighResLoaded?.(false);
-      setBlobSrc?.(null);
-      setImageBlob?.(null);
-      setError?.(false);
-      onBlobSrcChange?.(null);
-      setIsHighResImageRendered?.(false);
-
-      // Reset loading indicator
-      loadingIndicatorRef?.current?.resetLoadingState();
-    }
-
+    if (status !== "empty" || !isCurrentImage) return;
+    const loader = runtime.imageLoading.createLoader();
     let cancelled = false;
-
-    const loadImage = async () => {
+    onBlobSrcChange?.(null);
+    loadingIndicatorRef?.current?.resetLoadingState();
+    const load = async () => {
       try {
-        const result = await imageLoaderManager.loadImage(src, {
+        const result = await loader.loadImage(src, {
           priority: "high",
           onProgress: (progress) => {
             if (!cancelled) onProgress?.(progress);
           },
-          onError: () => {
-            if (!cancelled) onError?.();
-          },
-          onLoadingStateUpdate: (state) => {
+          onEvent: (event) => {
             if (!cancelled)
-              loadingIndicatorRef?.current?.updateLoadingState(state);
+              loadingIndicatorRef?.current?.updateLoadingState(
+                presentMediaTaskEvent(event, t),
+              );
           },
         });
-
         if (cancelled) {
           result.release();
           return;
         }
-
         imageLeaseRef.current?.release();
         imageLeaseRef.current = result;
-        setBlobSrc?.(result.blobSrc);
-        setImageBlob?.(result.blob);
+        setImageLease(result);
         onBlobSrcChange?.(result.blobSrc);
-        setHighResLoaded?.(true);
-      } catch (loadError) {
-        if (cancelled || isAbortLikeError(loadError)) {
-          return;
-        }
-
-        console.error("Failed to load image:", loadError);
-        setError?.(true);
-
-        // 显示错误状态，而不是完全隐藏图片
-        loadingIndicatorRef?.current?.updateLoadingState({
-          isVisible: true,
-          isError: true,
-          errorMessage: t("photo.error.loading"),
-        });
+      } catch (cause) {
+        if (cancelled || isAbortLikeError(cause)) return;
+        reportFailure(
+          cause instanceof Error
+            ? cause
+            : new Error("Image load failed", { cause }),
+        );
       }
     };
-
-    cleanup();
-    loadImage();
-
+    void load();
     return () => {
       cancelled = true;
-      runtime.imageLoading.cleanupLoader(imageLoaderManager);
+      runtime.imageLoading.cleanupLoader(loader);
     };
   }, [
-    highResLoaded,
-    error,
-    onProgress,
-    src,
-    onError,
+    status,
     isCurrentImage,
     runtime.imageLoading,
+    src,
     onBlobSrcChange,
     loadingIndicatorRef,
+    onProgress,
     t,
-    setBlobSrc,
-    setImageBlob,
-    setHighResLoaded,
-    setError,
-    setIsHighResImageRendered,
+    setImageLease,
+    reportFailure,
   ]);
-};
+  return reportFailure;
+}
 
 export const useScaleIndicator = (
   onZoomChange?: (isZoomed: boolean) => void,

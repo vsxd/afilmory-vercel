@@ -1,6 +1,5 @@
 import "./PhotoViewer.css";
 
-import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
 import { ScrollArea, Spring } from "@afilmory/ui";
 import { m } from "motion/react";
 import type { FC } from "react";
@@ -9,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { useMobile } from "~/hooks/useMobile";
 import { translateDynamicKey } from "~/lib/i18n-dynamic";
+import type { PhotoExif, PhotoManifest } from "~/types/photo";
 
 import { createExifPanelViewModel } from "./exif-panel-view-model";
 import {
@@ -20,8 +20,8 @@ import type { ExifTranslationAdapter } from "./formatExifData";
 import { RawExifViewer } from "./RawExifViewer";
 
 export const ExifPanel: FC<{
-  currentPhoto: PhotoManifestItem;
-  exifData: PickedExif | null;
+  currentPhoto: PhotoManifest;
+  exifData: PhotoExif | null;
   onClose?: () => void;
   visible?: boolean;
 }> = ({ currentPhoto, exifData, onClose, visible = true }) => {

@@ -4,7 +4,10 @@ import type {
   CameraInfo,
   LensInfo,
 } from "../../types/manifest.js";
-import type { BuilderOptions, BuilderResult } from "../../types/options.js";
+import type {
+  BuilderPluginOptions,
+  BuilderResult,
+} from "../../types/options.js";
 import type {
   PhotoManifestItem,
   PhotoProcessingFailure,
@@ -17,14 +20,14 @@ import type {
 
 export interface BuilderPluginEventPayloads {
   beforeBuild: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
   };
   beforePhotoProcess: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     context: PhotoProcessingContext;
   };
   afterPhotoProcess: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     context: PhotoProcessingContext;
     result: {
       type: ProcessPhotoResult["type"];
@@ -33,42 +36,42 @@ export interface BuilderPluginEventPayloads {
     };
   };
   photoProcessError: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     context: PhotoProcessingContext;
     error: unknown;
     failure: PhotoProcessingFailure;
   };
   afterManifestLoad: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     manifest: AfilmoryManifest;
     manifestMap: Map<string, PhotoManifestItem>;
   };
   afterAllFilesListed: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     allObjects: StorageObject[];
   };
   afterLivePhotoDetection: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     livePhotoMap: Map<string, StorageObject>;
   };
   afterImagesListed: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     imageObjects: StorageObject[];
   };
   afterTasksPrepared: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     tasks: StorageObject[];
     totalImages: number;
   };
   beforeProcessTasks: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     tasks: StorageObject[];
     processorOptions: PhotoProcessorOptions;
     mode: "cluster" | "worker";
     concurrency: number;
   };
   afterProcessTasks: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     tasks: StorageObject[];
     results: ProcessPhotoResult[];
     manifest: PhotoManifestItem[];
@@ -79,35 +82,35 @@ export interface BuilderPluginEventPayloads {
     };
   };
   afterCleanup: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     manifest: PhotoManifestItem[];
     deletedCount: number;
   };
   beforeAddManifestItem: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     item: PhotoManifestItem;
     pluginData: Record<string, unknown>;
     resultType: ProcessPhotoResult["type"];
   };
   beforeSaveManifest: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     manifest: PhotoManifestItem[];
     cameras: CameraInfo[];
     lenses: LensInfo[];
   };
   afterSaveManifest: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     manifest: readonly PhotoManifestItem[];
     cameras: readonly CameraInfo[];
     lenses: readonly LensInfo[];
   };
   afterBuild: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     result: BuilderResult;
     manifest: PhotoManifestItem[];
   };
   onError: {
-    options: BuilderOptions;
+    options: BuilderPluginOptions;
     error: unknown;
   };
 }

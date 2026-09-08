@@ -1,10 +1,14 @@
 import type { BuilderServices } from "../../core/contracts/services.js";
+import type { BuilderStorage } from "../../core/contracts/storage.js";
 import type { PluginRunState } from "../../plugins/manager.js";
 import type { BuilderPluginEventPayloads } from "../../plugins/types.js";
-import type { StorageManager } from "../../storage/index.js";
 import type { BuilderConfig } from "../../types/config.js";
 import type { ManifestSource } from "../../types/manifest.js";
-import type { BuilderOptions } from "../../types/options.js";
+import type {
+  BuilderOptions,
+  BuilderPluginOptions,
+  BuildRequest,
+} from "../../types/options.js";
 import type { PhotoManifestItem } from "../../types/photo.js";
 
 export type BuildPluginEventEmitter = <
@@ -16,7 +20,7 @@ export type BuildPluginEventEmitter = <
 ) => Promise<void>;
 
 export type BuildSessionStorageManager = Pick<
-  StorageManager,
+  BuilderStorage,
   | "deleteFile"
   | "detectLivePhotos"
   | "generatePublicUrl"
@@ -28,13 +32,11 @@ export type BuildSessionStorageManager = Pick<
 >;
 
 export interface BuildSessionInput {
-  config: BuilderConfig;
   options: BuilderOptions;
   services: BuilderServices;
   runState: PluginRunState;
   storageManager: BuildSessionStorageManager;
   emitPluginEvent: BuildPluginEventEmitter;
-  getConfig: () => BuilderConfig;
   getManifestSource: () => ManifestSource;
   getPhotoIdForKey: (key: string, existingItem?: PhotoManifestItem) => string;
   setPhotoIdCollisionKeys: (keys: Iterable<string>) => void;
@@ -42,13 +44,18 @@ export interface BuildSessionInput {
 }
 
 export class BuildSession {
-  readonly config: BuilderConfig;
-  readonly options: BuilderOptions;
+  get config(): BuilderConfig {
+    return this.services.config;
+  }
+  get logger() {
+    return this.services.logger;
+  }
+  readonly request: BuildRequest;
+  readonly options: BuilderPluginOptions;
   readonly services: BuilderServices;
   readonly runState: PluginRunState;
   readonly storageManager: BuildSessionStorageManager;
   readonly emitPluginEvent: BuildPluginEventEmitter;
-  readonly getConfig: () => BuilderConfig;
   readonly getManifestSource: () => ManifestSource;
   readonly getPhotoIdForKey: (
     key: string,
@@ -58,13 +65,22 @@ export class BuildSession {
   readonly getPhotoIdCollisionKeys: () => ReadonlySet<string>;
 
   constructor(input: BuildSessionInput) {
-    this.config = input.config;
-    this.options = input.options;
+    this.request = Object.freeze({
+      isForceMode: input.options.isForceMode,
+      isForceManifest: input.options.isForceManifest,
+      isForceThumbnails: input.options.isForceThumbnails,
+      concurrencyLimit: input.options.concurrencyLimit,
+      progressListener: input.options.progressListener,
+    });
+    this.options = {
+      ...this.request,
+      locationMode:
+        input.services.config.system.processing.locationMode ?? "coarse",
+    };
     this.services = input.services;
     this.runState = input.runState;
     this.storageManager = input.storageManager;
     this.emitPluginEvent = input.emitPluginEvent;
-    this.getConfig = input.getConfig;
     this.getManifestSource = input.getManifestSource;
     this.getPhotoIdForKey = input.getPhotoIdForKey;
     this.setPhotoIdCollisionKeys = input.setPhotoIdCollisionKeys;

@@ -5,8 +5,8 @@
     // react-jsx 对 vite lib build 是 load-bearing 的：esbuild 会读 tsconfig 的
     // jsx 字段，若为 preserve 会让 JSX 原样进入产物导致构建损坏。
     "jsx": "react-jsx",
-    // ?raw 等 vite 查询导入（texture.worker）的模块声明来自 vite/client，
-    // 见 global.d.ts；同时收窄自动引入的 @types。
+    // 浏览器入口和测试只引入 Vite 客户端环境；Worker 单独检查。
     "types": ["vite/client"]
-  }
+  },
+  "exclude": ["src/texture.worker.ts"]
 }

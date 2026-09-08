@@ -1,4 +1,4 @@
-import type { StorageManager } from "../storage/index.js";
+import type { BuilderStorage } from "../core/contracts/storage.js";
 import type { StorageObject } from "../storage/interfaces.js";
 import { getPhotoProcessingLoggers } from "./logger-adapter.js";
 
@@ -21,7 +21,7 @@ export type LivePhotoResult =
 export async function processLivePhoto(
   photoKey: string,
   livePhotoMap: Map<string, StorageObject>,
-  storageManager: StorageManager,
+  storageManager: Pick<BuilderStorage, "generatePublicUrl">,
 ): Promise<LivePhotoResult> {
   const loggers = getPhotoProcessingLoggers();
   const livePhotoVideo = livePhotoMap.get(photoKey);

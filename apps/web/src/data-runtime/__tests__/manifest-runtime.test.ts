@@ -1,8 +1,8 @@
+import type { PhotoManifestItem as PhotoManifest } from "@afilmory/schema";
 import { createManifest } from "@afilmory/schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AfilmoryBrowserRuntime } from "~/runtime/browser-runtime";
-import type { PhotoManifest } from "~/types/photo";
 
 import {
   WEB_DELIVERY_MANIFEST_SCHEMA,

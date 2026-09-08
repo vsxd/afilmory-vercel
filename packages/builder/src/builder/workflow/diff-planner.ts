@@ -1,154 +1,151 @@
 import { createThumbnailInventory } from "../../image/thumbnail.js";
-import { logger } from "../../logger/index.js";
 import { findPhotoIdCollisionKeys } from "../../photo/id.js";
 import { getStorageObjectVersion } from "../../photo/live-photo-handler.js";
+import { toProcessorOptions } from "../../photo/processing-options.js";
 import { decidePhotoWork } from "../../photo/work-decision.js";
 import type { StorageObject } from "../../storage/interfaces.js";
+import type { BuilderPluginOptions } from "../../types/options.js";
 import type { PhotoManifestItem } from "../../types/photo.js";
+import type { BuildPlan } from "./plan.js";
+import { copyProcessorOptions } from "./plan.js";
 import type { BuildSession } from "./session.js";
 
-export interface DiffPlan {
-  s3ImageKeys: Set<string>;
-  tasksToProcess: StorageObject[];
-}
+type PlanningContext = Pick<
+  BuildSession,
+  | "config"
+  | "options"
+  | "emit"
+  | "logger"
+  | "getPhotoIdForKey"
+  | "setPhotoIdCollisionKeys"
+>;
 
 export class DiffPlanner {
   async plan(
-    session: BuildSession,
+    session: PlanningContext,
     imageObjects: StorageObject[],
-    existingManifestMap: Map<string, PhotoManifestItem>,
-    livePhotoMap: Map<string, StorageObject> = new Map<string, StorageObject>(),
-  ): Promise<DiffPlan> {
-    const { options } = session;
-
-    session.setPhotoIdCollisionKeys(
-      findPhotoIdCollisionKeys(imageObjects.map((obj) => obj.key)),
+    existingManifestMap: ReadonlyMap<string, PhotoManifestItem>,
+    livePhotoMap: ReadonlyMap<string, StorageObject> = new Map(),
+    repairedPhotoKeys: ReadonlySet<string> = new Set(),
+  ): Promise<BuildPlan> {
+    const { logger } = session;
+    const collisionKeys = findPhotoIdCollisionKeys(
+      imageObjects.map((object) => object.key),
     );
-
-    const collisionKeys = session.getPhotoIdCollisionKeys();
+    session.setPhotoIdCollisionKeys(collisionKeys);
     if (collisionKeys.size > 0) {
       logger.main.warn(
         `Detected ${collisionKeys.size} photos with the same name across directories; adding a path digest suffix to their IDs to avoid collisions`,
       );
     }
-
     await session.emit("afterImagesListed", {
-      options,
+      options: session.options,
       imageObjects,
     });
 
-    const s3ImageKeys = new Set(imageObjects.map((obj) => obj.key));
-    const tasksToProcess = this.sortByWorkCost(
-      await this.filterTaskImages(
-        session,
-        imageObjects,
-        existingManifestMap,
-        livePhotoMap,
-      ),
-    );
-
-    await session.emit("afterTasksPrepared", {
-      options,
-      tasks: tasksToProcess,
-      totalImages: imageObjects.length,
-    });
-
-    logger.main.info(
-      `Found ${imageObjects.length} photos in storage; ${tasksToProcess.length} need processing`,
-    );
-
-    return {
-      s3ImageKeys,
-      tasksToProcess,
+    // Hooks keep their legacy mutable payload. Planning captures its values and
+    // publishes a separate policy, never writes hidden state onto session.options.
+    const options: BuilderPluginOptions = {
+      ...session.options,
+      locationMode: session.config.system.processing.locationMode ?? "coarse",
+      reprocessKeys: [
+        ...new Set([
+          ...repairedPhotoKeys,
+          ...(session.options.reprocessKeys ?? []),
+        ]),
+      ],
     };
-  }
-
-  private async filterTaskImages(
-    session: BuildSession,
-    imageObjects: StorageObject[],
-    existingManifestMap: Map<string, PhotoManifestItem>,
-    livePhotoMap: Map<string, StorageObject>,
-  ): Promise<StorageObject[]> {
-    const { options } = session;
-
-    const tasksToProcess: StorageObject[] = [];
-    const reprocessKeys = new Set(options.reprocessKeys ?? []);
-    let thumbnailInventoryPromise: ReturnType<
-      typeof createThumbnailInventory
-    > | null = null;
-    let addedLivePhotoReprocessKey = false;
-
-    // 与 worker 侧的 shouldProcessPhoto 共享同一判定实现（decidePhotoWork），
-    // 避免两处级联漂移导致增量构建静默出错。
-    for (const obj of imageObjects) {
-      const { key } = obj;
-      const existingItem = existingManifestMap.get(key);
-
-      const { shouldProcess } = await decidePhotoWork(
+    const policy = toProcessorOptions(options);
+    const reprocessKeys = new Set(options.reprocessKeys);
+    const s3ImageKeys = new Set(imageObjects.map((object) => object.key));
+    const reasons = new Map<string, string>();
+    const tasks: StorageObject[] = [];
+    let inventoryPromise:
+      ReturnType<typeof createThumbnailInventory> | undefined;
+    for (const object of imageObjects) {
+      const existingItem = existingManifestMap.get(object.key);
+      const decision = await decidePhotoWork(
         existingItem,
-        obj,
-        options,
-        // 主进程规划阶段没有照片上下文，缩略图目录走 session 配置显式传入。
+        object,
+        policy,
         async () => {
-          thumbnailInventoryPromise ??= createThumbnailInventory(
+          inventoryPromise ??= createThumbnailInventory(
             session.config.output.thumbnailsDir,
           );
-          const inventory = await thumbnailInventoryPromise;
-          return inventory.has(
-            session.getPhotoIdForKey(key, existingItem),
+          return (await inventoryPromise).has(
+            session.getPhotoIdForKey(object.key, existingItem),
             existingItem?.thumbnailUrl,
           );
         },
       );
-
-      const currentLivePhoto = livePhotoMap.get(key);
-      const existingLivePhoto =
+      const currentVideo = livePhotoMap.get(object.key);
+      const previousVideo =
         existingItem?.video?.type === "live-photo"
           ? existingItem.video
           : undefined;
-      const livePhotoChanged = currentLivePhoto
-        ? !existingLivePhoto ||
-          existingLivePhoto.s3Key !== currentLivePhoto.key ||
-          existingLivePhoto.version !==
-            getStorageObjectVersion(currentLivePhoto)
-        : Boolean(existingLivePhoto);
-
-      // Live Photo 的视频旁路对象不参与图片本身的 needsUpdate 判定。
-      // 将对应图片显式加入 reprocessKeys，确保 worker 二次检查时不会把
-      // DiffPlanner 已经排入队列的任务再次当作“未变化”跳过。
-      if (livePhotoChanged && !reprocessKeys.has(key)) {
-        reprocessKeys.add(key);
-        addedLivePhotoReprocessKey = true;
-      }
-
-      if (shouldProcess || livePhotoChanged) {
-        tasksToProcess.push(obj);
+      const videoChanged = currentVideo
+        ? !previousVideo ||
+          previousVideo.s3Key !== currentVideo.key ||
+          previousVideo.version !== getStorageObjectVersion(currentVideo)
+        : Boolean(previousVideo);
+      if (videoChanged) reprocessKeys.add(object.key);
+      if (decision.shouldProcess || videoChanged) {
+        tasks.push(object);
+        reasons.set(
+          object.key,
+          videoChanged ? "Live Photo sidecar changed" : decision.reason,
+        );
       }
     }
-
-    if (addedLivePhotoReprocessKey) {
-      options.reprocessKeys = [...reprocessKeys];
-    }
-
-    options.plannedKeys = new Set(tasksToProcess.map((task) => task.key));
-
-    return tasksToProcess;
-  }
-
-  private sortByWorkCost(tasks: StorageObject[]): StorageObject[] {
-    if (tasks.length <= 1) {
-      return tasks;
-    }
-
-    const beforeFirst = tasks[0]?.key;
-    const sorted = [...tasks].sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
-
-    if (beforeFirst !== sorted[0]?.key) {
+    const tasksToProcess = [...tasks].sort(
+      (a, b) =>
+        (b.size ?? 0) - (a.size ?? 0) ||
+        (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
+    );
+    if (tasks[0]?.key !== tasksToProcess[0]?.key)
       logger.main.info(
         "Reordered the processing queue by file size (largest first)",
       );
-    }
-
-    return sorted;
+    await session.emit("afterTasksPrepared", {
+      options: session.options,
+      tasks: tasksToProcess,
+      totalImages: imageObjects.length,
+    });
+    // Capture explicit plugin additions/removals to the prepared task list too.
+    const processorOptions = toProcessorOptions({
+      ...session.options,
+      locationMode: options.locationMode,
+      reprocessKeys: [
+        ...new Set([
+          ...reprocessKeys,
+          ...(session.options.reprocessKeys ?? []),
+        ]),
+      ],
+    });
+    processorOptions.plannedKeys = new Set(
+      tasksToProcess.map((task) => task.key),
+    );
+    for (const task of tasksToProcess)
+      if (!reasons.has(task.key)) reasons.set(task.key, "plugin-prepared task");
+    logger.main.info(
+      `Found ${imageObjects.length} photos in storage; ${tasksToProcess.length} need processing`,
+    );
+    return Object.freeze({
+      s3ImageKeys,
+      tasksToProcess: Object.freeze(
+        tasksToProcess.map((task) =>
+          Object.freeze({
+            ...task,
+            ...(task.lastModified
+              ? { lastModified: new Date(task.lastModified) }
+              : {}),
+          }),
+        ),
+      ),
+      reasons: new Map(
+        tasksToProcess.map((task) => [task.key, reasons.get(task.key)!]),
+      ),
+      processorOptions: Object.freeze(copyProcessorOptions(processorOptions)),
+    });
   }
 }

@@ -7,7 +7,7 @@ import type { BuiltinBuilderPluginDescriptor } from "../core/contracts/plugin-re
 import type { BuilderServices } from "../core/contracts/services.js";
 import type { Logger } from "../logger/index.js";
 import type { BuilderConfig } from "../types/config.js";
-import type { BuilderOptions } from "../types/options.js";
+import type { BuilderPluginOptions } from "../types/options.js";
 
 export type {
   BuilderPluginEvent,
@@ -41,7 +41,7 @@ export interface BuilderPluginHookContext<TEvent extends BuilderPluginEvent> {
   emitPluginEvent: EmitPluginEventFn;
   config: BuilderConfig;
   logger: Logger;
-  options: BuilderOptions;
+  options: BuilderPluginOptions;
   pluginName: string;
   pluginOptions: unknown;
   /**

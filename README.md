@@ -283,7 +283,7 @@ variables shown under [Photo source selection](#photo-source-selection).
 
 ### Prerequisites
 
-- Node.js `^20.19.0 || >=22.12.0` (Vite 7 requirement)
+- Node.js `^20.19.0 || >=22.12.0` (Vite 8 requirement)
 - pnpm 10.19.0
 - Either S3-compatible object storage or a local photo directory
 
@@ -395,12 +395,12 @@ Use `pnpm build` as the build command.
 
 - React 19 with React Compiler
 - TypeScript 5.9
-- Vite 7
+- Vite 8
 - Tailwind CSS 4
 - Radix UI
 - Motion
 - Jotai
-- React Router 7
+- React Router 8
 - i18next and react-i18next
 - MapLibre GL and react-map-gl
 

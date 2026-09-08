@@ -118,7 +118,7 @@ export type AppRuntime = {
   imageLoading: ImageLoadingService;
   photoRepository: PhotoRepository;
   store: ReturnType<typeof createStore>;
-  dispose: () => void;
+  dispose: () => Promise<void>;
 };
 
 export function createAppRuntime({
@@ -155,6 +155,7 @@ export function createAppRuntime({
       this.imageCache.clear();
       photoRepository.dispose();
       bodyScrollLock.reset();
+      return imageConverter.dispose();
     },
   };
 }
@@ -173,11 +174,12 @@ export function usePhotoRepository(): PhotoRepository {
   return useAfilmoryRuntime().photoRepository;
 }
 
-export function usePhotoRepositoryVersion(): number {
+/** Subscribe to the value itself so compiler memoization observes each publication. */
+export function usePhotoRepositorySnapshot() {
   const repository = usePhotoRepository();
   return useSyncExternalStore(
     repository.subscribe,
-    repository.getVersion,
-    repository.getVersion,
+    repository.getPhotos,
+    repository.getPhotos,
   );
 }

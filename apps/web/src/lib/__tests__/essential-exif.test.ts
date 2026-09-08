@@ -13,7 +13,7 @@ describe("getEssentialExif", () => {
       aperture: null,
     };
     expect(getEssentialExif(null)).toEqual(empty);
-    expect(getEssentialExif()).toEqual(empty);
+    expect(getEssentialExif(undefined)).toEqual(empty);
   });
 
   it("pins the exact formatting for a fully populated exif", () => {

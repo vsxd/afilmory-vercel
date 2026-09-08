@@ -170,8 +170,6 @@ export class AfilmoryBuilder {
       this.ensureStorageManager();
       const effectiveOptions =
         await this.resolveThumbnailEncodingOptions(options);
-      effectiveOptions.locationMode =
-        this.config.system.processing.locationMode ?? "coarse";
       return await this.#buildManifest(effectiveOptions);
     } catch (error) {
       logger.main.error("❌ Failed to build manifest:", error);
@@ -220,18 +218,16 @@ export class AfilmoryBuilder {
    * 构建照片清单
    * @param options 构建选项
    */
-  async #buildManifest(options: BuilderOptions): Promise<BuilderResult> {
+  async #buildManifest(request: BuilderOptions): Promise<BuilderResult> {
     const startTime = Date.now();
     const runState = this.pluginManager.createRunState();
     const session = new BuildSession({
-      config: this.config,
-      options,
+      options: request,
       services: this.services,
       runState,
       storageManager: this.getStorageManager(),
       emitPluginEvent: (state, event, payload) =>
         this.emitPluginEvent(state, event, payload),
-      getConfig: () => this.getConfig(),
       getManifestSource: () => this.getManifestSource(),
       getPhotoIdForKey: (key, existingItem) =>
         this.getPhotoIdForKey(key, existingItem),
@@ -239,6 +235,7 @@ export class AfilmoryBuilder {
       getPhotoIdCollisionKeys: () => this.photoIdCollisionKeys,
     });
 
+    const { options } = session;
     const manifest: PhotoManifestItem[] = [];
     const processingResults: ProcessPhotoResult[] = [];
     const processingStats: ProcessingStats = {
@@ -267,12 +264,6 @@ export class AfilmoryBuilder {
       const existingManifestMap = new Map(
         existingManifestItems.map((item) => [item.s3Key, item]),
       );
-      if (repairedPhotoKeys.size > 0) {
-        options.reprocessKeys = [
-          ...new Set([...(options.reprocessKeys ?? []), ...repairedPhotoKeys]),
-        ];
-      }
-
       await session.emit("afterManifestLoad", {
         options,
         manifest: existingManifest,
@@ -322,8 +313,10 @@ export class AfilmoryBuilder {
         imageObjects,
         existingManifestMap,
         livePhotoMap,
+        repairedPhotoKeys,
       );
       const { s3ImageKeys, tasksToProcess } = diffPlan;
+      let executedTasks = [...tasksToProcess];
       const taskProcessor = new PhotoTaskProcessor();
       const assembler = new ManifestAssembler();
 
@@ -341,10 +334,11 @@ export class AfilmoryBuilder {
       } else {
         const taskResult = await taskProcessor.process(
           session,
-          tasksToProcess,
+          diffPlan,
           existingManifestMap,
           livePhotoMap,
         );
+        executedTasks = taskResult.tasks;
         processingResults.push(...taskResult.results);
         Object.assign(processingStats, taskResult.stats);
 
@@ -354,7 +348,7 @@ export class AfilmoryBuilder {
           taskResult.results,
         );
         const reprocessedKeys = new Set<string>();
-        for (const task of tasksToProcess) {
+        for (const task of executedTasks) {
           if (task.key) {
             reprocessedKeys.add(task.key);
           }
@@ -396,7 +390,7 @@ export class AfilmoryBuilder {
 
       await session.emit("afterProcessTasks", {
         options,
-        tasks: tasksToProcess,
+        tasks: executedTasks,
         results: processingResults,
         manifest,
         stats: {

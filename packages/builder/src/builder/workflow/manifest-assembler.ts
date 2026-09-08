@@ -1,4 +1,3 @@
-import { logger } from "../../logger/index.js";
 import type { CameraInfo, LensInfo } from "../../types/manifest.js";
 import type {
   PhotoManifestItem,
@@ -8,10 +7,10 @@ import type { BuildSession } from "./session.js";
 
 export class ManifestAssembler {
   async addExistingItems(
-    session: BuildSession,
+    session: Pick<BuildSession, "emit" | "options" | "logger">,
     manifest: PhotoManifestItem[],
     existingManifestItems: PhotoManifestItem[],
-    s3ImageKeys: Set<string>,
+    s3ImageKeys: ReadonlySet<string>,
   ): Promise<void> {
     for (const item of existingManifestItems) {
       if (!s3ImageKeys.has(item.s3Key)) continue;
@@ -28,7 +27,7 @@ export class ManifestAssembler {
   }
 
   async addProcessedResults(
-    session: BuildSession,
+    session: Pick<BuildSession, "emit" | "options" | "logger">,
     manifest: PhotoManifestItem[],
     results: ProcessPhotoResult[],
   ): Promise<void> {
@@ -47,10 +46,10 @@ export class ManifestAssembler {
   }
 
   async addUnchangedExistingItems(
-    session: BuildSession,
+    session: Pick<BuildSession, "emit" | "options" | "logger">,
     manifest: PhotoManifestItem[],
     existingManifestMap: Map<string, PhotoManifestItem>,
-    s3ImageKeys: Set<string>,
+    s3ImageKeys: ReadonlySet<string>,
     reprocessedKeys = new Set<string>(),
   ): Promise<number> {
     let skippedCount = 0;
@@ -67,7 +66,7 @@ export class ManifestAssembler {
       // 计入 failedCount，不应再当作干净的 skip 统计。
       const isFailedReprocess = reprocessedKeys.has(key);
       if (isFailedReprocess) {
-        logger.main.warn(
+        session.logger.main.warn(
           `⚠️ Reprocess failed; keeping the previous manifest entry (may be stale): ${key}`,
         );
       }

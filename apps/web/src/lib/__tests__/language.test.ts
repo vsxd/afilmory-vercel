@@ -36,7 +36,7 @@ describe("language helpers", () => {
   it("uses the configured language only as fallback", () => {
     expect(getFallbackLanguages("zh")).toEqual(["zh-CN", "en"]);
     expect(getFallbackLanguages("en-US")).toEqual(["en"]);
-    expect(getFallbackLanguages()).toEqual(["en"]);
+    expect(getFallbackLanguages(undefined)).toEqual(["en"]);
   });
 });
 
@@ -63,7 +63,7 @@ describe("detectPreferredLanguage", () => {
 
   it("falls back to en when even the configured fallback is unsupported", () => {
     expect(detectPreferredLanguage(["fr-FR"], "de")).toBe("en");
-    expect(detectPreferredLanguage([])).toBe("en");
+    expect(detectPreferredLanguage([], undefined)).toBe("en");
   });
 });
 

@@ -4,7 +4,6 @@ import {
   getTileGridSize,
   MAX_TILES_PER_FRAME,
   parseTileKey,
-  SIMPLE_LOD_LEVELS,
   TEXTURE_BYTES_PER_PIXEL,
   TILE_CACHE_BYTE_BUDGET,
   TILE_CACHE_SIZE,
@@ -16,7 +15,10 @@ import {
   cleanupTileTextures,
   disposeAllTileTextures,
 } from "./tile-texture-cleanup";
-import type { TextureWorkerMessage } from "./worker-protocol";
+import type {
+  TextureWorkerMessage,
+  TextureWorkerRequest,
+} from "./worker-protocol";
 
 type SessionlessWorkerMessage = TextureWorkerMessage extends infer Message
   ? Message extends { sessionId: number }
@@ -39,15 +41,10 @@ export interface TileViewportState {
   translateY: number;
 }
 
-export interface TileWorkerRequest {
-  x: number;
-  y: number;
-  lodLevel: number;
-  lodConfig: { scale: number };
-  imageWidth: number;
-  imageHeight: number;
-  key: TileKey;
-}
+export type TileWorkerRequest = Omit<
+  Extract<TextureWorkerRequest, { type: "create-tile" }>["payload"],
+  "sessionId"
+>;
 
 /**
  * The small surface the tile subsystem needs from the engine. Everything else
@@ -91,7 +88,7 @@ export interface TileManagerHost {
 }
 
 /**
- * 计算单个瓦片的渲染变换矩阵（纯函数，坐标推导与 texture.worker.js 的切片
+ * 计算单个瓦片的渲染变换矩阵（纯函数，坐标推导与 texture-worker-runtime.ts 的切片
  * 几何保持一致）。
  */
 export function createTileMatrix(input: {
@@ -412,14 +409,12 @@ export class TileManager {
 
       // 解析瓦片坐标
       const { x, y, lodLevel } = parseTileKey(key);
-      const lodConfig = SIMPLE_LOD_LEVELS[lodLevel];
 
       try {
         this.host.requestTileFromWorker({
           x,
           y,
           lodLevel,
-          lodConfig,
           imageWidth,
           imageHeight,
           key,

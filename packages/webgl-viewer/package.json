@@ -27,7 +27,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "test": "pnpm --dir ../.. exec vitest run --project webgl-viewer",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit && tsc -p tsconfig.worker.json --noEmit"
   },
   "peerDependencies": {
     "react": ">=19.0.0"

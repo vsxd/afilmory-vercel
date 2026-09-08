@@ -1,8 +1,8 @@
 import process from "node:process";
 
 import type { BuilderServices } from "../../core/contracts/services.js";
+import type { BuilderStorage } from "../../core/contracts/storage.js";
 import { getThumbnailFileNameFromUrl } from "../../image/thumbnail.js";
-import type { StorageManager } from "../../storage/index.js";
 import type { S3Config } from "../../storage/interfaces.js";
 import type { BuilderPlugin } from "../types.js";
 import type { ThumbnailPluginData } from "./shared.js";
@@ -78,12 +78,12 @@ export default function thumbnailStoragePlugin(
   options: ThumbnailStoragePluginOptions = {},
 ): BuilderPlugin {
   let resolved: ResolvedPluginConfig | null = null;
-  let externalStorageManager: StorageManager | null = null;
+  let externalStorageManager: BuilderStorage | null = null;
 
   const getStorageManager = (
     services: BuilderServices,
     config: ResolvedPluginConfig,
-  ): StorageManager | null => {
+  ): BuilderStorage | null => {
     if (config.useDefaultStorage) return services.storage.getManager();
     if (!externalStorageManager && config.storageConfig) {
       externalStorageManager = services.storage.createManager(

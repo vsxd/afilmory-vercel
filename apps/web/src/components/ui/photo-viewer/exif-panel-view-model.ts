@@ -1,7 +1,6 @@
-import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
-
 import { getImageFormat } from "~/lib/image-utils";
 import { convertExifGPSToDecimal } from "~/lib/map-utils";
+import type { PhotoExif, PhotoManifest } from "~/types/photo";
 
 import type { ExifTranslationAdapter } from "./formatExifData";
 import { formatExifData } from "./formatExifData";
@@ -11,8 +10,8 @@ export function createExifPanelViewModel({
   exifData,
   translator,
 }: {
-  currentPhoto: PhotoManifestItem;
-  exifData: PickedExif | null;
+  currentPhoto: PhotoManifest;
+  exifData: PhotoExif | null;
   translator: ExifTranslationAdapter;
 }) {
   const formattedExifData = formatExifData(exifData, translator);

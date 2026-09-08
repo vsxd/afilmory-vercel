@@ -5,24 +5,8 @@ import { defineConfig } from "eslint-config-hyoban";
 import checkI18nJson from "./plugins/eslint/eslint-check-i18n-json.js";
 import recursiveSort from "./plugins/eslint/eslint-recursive-sort.js";
 
-// In flat config, some large generated folders slipped through. To be extra safe,
-// put ignores in a top-level config object first, then append the rest.
-const rootIgnores = globalIgnores([
-  "apps/ssr/src/index.html.ts",
-  "apps/ssr/public/**",
-  "apps/web/public/**",
-  "packages/webgl-viewer/bump.config.js",
-  "packages/webgl-viewer/vite.config.js",
-  "packages/webgl-viewer/src/DebugInfo.js",
-  "packages/webgl-viewer/src/ImageViewerEngineBase.js",
-  "packages/webgl-viewer/src/WebGLImageViewer.js",
-  "packages/webgl-viewer/src/WebGLImageViewerEngine.js",
-  "packages/webgl-viewer/src/constants.js",
-  "packages/webgl-viewer/src/enum.js",
-  "packages/webgl-viewer/src/index.js",
-  "packages/webgl-viewer/src/interface.js",
-  "packages/webgl-viewer/src/shaders.js",
-]);
+// Public assets are generated or copied from external sources.
+const rootIgnores = globalIgnores(["apps/web/public/**"]);
 
 const restrictedImports = {
   paths: [
@@ -104,6 +88,9 @@ const hyobanConfig = await defineConfig(
           "ts-nocheck": true,
         },
       ],
+      // This syntax-only rule cannot distinguish optional arguments from required
+      // `T | undefined` parameters; removing the latter breaks TypeScript calls.
+      "unicorn/no-useless-undefined": ["error", { checkArguments: false }],
       "unicorn/prefer-math-trunc": "off",
       "unicorn/no-static-only-class": "off",
       "@eslint-react/no-clone-element": 0,
@@ -139,8 +126,7 @@ const hyobanConfig = await defineConfig(
         {
           name: "location",
           message:
-            "Since you don't use the same router instance in electron and browser, you can't use the global location to get the route info. \n\n" +
-            "You can use `useLocaltion` or `getReadonlyRoute` to get the route info.",
+            "Use React Router hooks for route reads and AppRuntime NavigationController for navigation commands.",
         },
       ],
       "no-restricted-imports": ["error", restrictedImports],
@@ -281,14 +267,6 @@ const hyobanConfig = await defineConfig(
     },
   },
 
-  // Backend framework isn't React — disable React-specific hooks rule there.
-  {
-    files: ["be/packages/framework/**/*.{ts,tsx}"],
-    rules: {
-      "react-hooks/rules-of-hooks": "off",
-    },
-  },
-
   // Test files: relax some rules for mock functions
   {
     files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
@@ -298,13 +276,6 @@ const hyobanConfig = await defineConfig(
       "@eslint-react/hooks-extra/ensure-custom-hooks-using-other-hooks": "off",
     },
   },
-
-  // Redundant but harmless: keep a local ignore in case this block is used standalone somewhere
-  globalIgnores([
-    "apps/ssr/src/index.html.ts",
-    "apps/ssr/public/**",
-    "apps/web/public/**",
-  ]),
 );
 
 export default [

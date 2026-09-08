@@ -3,7 +3,10 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useGallerySettings } from "~/navigation/hooks";
-import { usePhotoRepository } from "~/runtime/app-runtime";
+import {
+  usePhotoRepository,
+  usePhotoRepositorySnapshot,
+} from "~/runtime/app-runtime";
 
 import {
   createGalleryFilterItems,
@@ -94,7 +97,7 @@ export const FilterPanel = ({
     () => photoRepository.getAllLenses(),
     [photoRepository],
   );
-  const allPhotos = photoRepository.getPhotos();
+  const allPhotos = usePhotoRepositorySnapshot();
 
   const geoRegions = useMemo(
     () => createGalleryGeoRegions(allPhotos),

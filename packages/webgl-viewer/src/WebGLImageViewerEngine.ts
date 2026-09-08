@@ -6,6 +6,7 @@ import { LoadingState } from "./enum";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
 import { WebGLViewerRenderer } from "./renderer";
+import { BASE_TEXTURE_BYTE_BUDGET } from "./texture-dimensions";
 import { getLodQuality, TextureLodManager } from "./texture-lod-manager";
 import { SIMPLE_LOD_LEVELS } from "./tile-cache";
 import { TileManager } from "./tile-manager";
@@ -21,7 +22,7 @@ import {
   getFitToScreenScale as getFitToScreenScaleForGeometry,
   zoomAtTransform,
 } from "./transform-controller";
-import { BASE_TEXTURE_BYTE_BUDGET, TextureWorkerBridge } from "./worker-bridge";
+import { TextureWorkerBridge } from "./worker-bridge";
 import type { TextureWorkerMessage } from "./worker-protocol";
 
 interface ActiveImageLoad {
@@ -369,7 +370,7 @@ export class WebGLImageViewerEngine {
     if (this.isDestroyed) {
       // destroy() 已 terminate worker，但已入队的消息这一拍仍会送达。转移来的
       // ImageBitmap（0.5x 底图可达 ~45MB）必须立即 close，不能等 GC——与
-      // texture.worker.js 里写明的 iOS 内存纪律同一条。
+      // texture-worker-runtime.ts 里写明的 iOS 内存纪律同一条。
       if (message.type === "image-loaded" || message.type === "tile-created") {
         message.payload.imageBitmap.close();
       }

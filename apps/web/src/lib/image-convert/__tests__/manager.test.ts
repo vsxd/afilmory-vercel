@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { detectFileTypeFromBlob } from "~/lib/file-type";
 // Import through the package entry so a future move of the manager class into
 // its own module (with an index re-export) does not break these tests.
 import { ImageConverterManager } from "~/lib/image-convert";
@@ -10,12 +11,6 @@ import type {
 
 vi.mock("~/lib/debug-log", () => ({
   debugLog: vi.fn(),
-}));
-
-// The manager only needs `t` for the queue-waiting message; returning the key
-// keeps assertions locale-independent (same idiom as the react-i18next stubs).
-vi.mock("~/i18n", () => ({
-  getI18n: () => ({ t: (key: string) => key }),
 }));
 
 // Detection is driven by the blob's own MIME type so each test controls
@@ -111,6 +106,131 @@ function createStubStrategy(
 }
 
 describe("ImageConverterManager", () => {
+  it.each([0, 1])(
+    "gives shared subscribers current events and independent cancellation (subscriber %s)",
+    async (cancelIndex) => {
+      const manager = new ImageConverterManager();
+      const stub = createStubStrategy();
+      manager.registerStrategy(stub.strategy);
+      const signals = [new AbortController(), new AbortController()];
+      const events = [vi.fn(), vi.fn()];
+      const first = manager.convertImage(
+        stubBlob(),
+        "shared",
+        { onEvent: events[0] },
+        signals[0].signal,
+      );
+      await tick();
+      const second = manager.convertImage(
+        stubBlob(),
+        "shared",
+        { onEvent: events[1] },
+        signals[1].signal,
+      );
+      const requests = [first, second];
+      const cancelled = expect(requests[cancelIndex]).rejects.toMatchObject({
+        name: "AbortError",
+      });
+      signals[cancelIndex].abort();
+      await cancelled;
+      expect(stub.convertCalls).toEqual(["shared"]);
+      expect(events[0].mock.calls).toEqual(events[1].mock.calls);
+      const result = conversionResult("shared");
+      stub.gates[0].resolve(result);
+      await expect(requests[1 - cancelIndex]).resolves.toEqual({
+        kind: "converted",
+        ...result,
+      });
+      await manager.dispose();
+    },
+  );
+
+  it("removes the last cancelled queued subscription and permits immediate retry", async () => {
+    const manager = new ImageConverterManager({ maxConcurrent: 1 });
+    const stub = createStubStrategy();
+    manager.registerStrategy(stub.strategy);
+    const active = manager.convertImage(stubBlob(), "active");
+    const signal = new AbortController();
+    const queued = manager.convertImage(
+      stubBlob(),
+      "queued",
+      {},
+      signal.signal,
+    );
+    const cancelled = expect(queued).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    await tick();
+    expect(manager.getPipelineStats().pending).toBe(1);
+    signal.abort();
+    const retry = manager.convertImage(stubBlob(), "queued");
+    await cancelled;
+    await tick();
+    expect(manager.getPipelineStats().pending).toBe(1);
+    stub.gates[0].resolve(conversionResult("active"));
+    await active;
+    await tick();
+    expect(stub.convertCalls).toEqual(["active", "queued"]);
+    stub.gates[1].resolve(conversionResult("retry"));
+    await retry;
+    await manager.dispose();
+  });
+
+  it("disposal cancels subscribers immediately and waits for active decoding without starting queued work", async () => {
+    const manager = new ImageConverterManager({ maxConcurrent: 1 });
+    const stub = createStubStrategy();
+    manager.registerStrategy(stub.strategy);
+    const active = manager.convertImage(stubBlob(), "active");
+    const queued = manager.convertImage(stubBlob(), "queued");
+    const assertions = [active, queued].map((request) =>
+      expect(request).rejects.toMatchObject({ name: "AbortError" }),
+    );
+    await tick();
+    let drained = false;
+    const disposal = manager.dispose().then(() => {
+      drained = true;
+    });
+    await Promise.all(assertions);
+    expect(drained).toBe(false);
+    await expect(
+      manager.convertImage(stubBlob(), "closed"),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    stub.gates[0].resolve(conversionResult("late"));
+    await disposal;
+    expect(stub.convertCalls).toEqual(["active"]);
+    expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
+  });
+
+  it("isolates a throwing subscriber from the shared conversion", async () => {
+    const manager = new ImageConverterManager();
+    const stub = createStubStrategy();
+    manager.registerStrategy(stub.strategy);
+    const broken = manager.convertImage(stubBlob(), "shared", {
+      onEvent: () => {
+        throw new Error("observer failed");
+      },
+    });
+    const healthy = manager.convertImage(stubBlob(), "shared");
+    await expect(broken).rejects.toThrow("observer failed");
+    stub.gates[0].resolve(conversionResult("healthy"));
+    await expect(healthy).resolves.toMatchObject({ kind: "converted" });
+    await manager.dispose();
+  });
+
+  it("keeps a detection exception distinct from native support and retains the original cause", async () => {
+    const cause = new Error("detector module unavailable");
+    vi.mocked(detectFileTypeFromBlob).mockRejectedValueOnce(cause);
+    const manager = new ImageConverterManager();
+    await expect(
+      manager.convertImage(stubBlob(), "broken"),
+    ).rejects.toMatchObject({
+      stage: "detect",
+      code: "detection-failed",
+      cause,
+    });
+    expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
+  });
+
   it("shares one in-flight conversion for the same image and converts anew after it settles", async () => {
     const manager = new ImageConverterManager();
     const stub = createStubStrategy();
@@ -127,8 +247,8 @@ describe("ImageConverterManager", () => {
 
     const result = conversionResult("converted");
     stub.gates[0].resolve(result);
-    await expect(first).resolves.toBe(result);
-    await expect(second).resolves.toBe(result);
+    await expect(first).resolves.toEqual({ kind: "converted", ...result });
+    await expect(second).resolves.toEqual({ kind: "converted", ...result });
 
     // The pending entry was cleaned up on settle: a later request converts again.
     const third = manager.convertImage(stubBlob(), url);
@@ -137,7 +257,7 @@ describe("ImageConverterManager", () => {
 
     const secondPass = conversionResult("second pass");
     stub.gates[1].resolve(secondPass);
-    await expect(third).resolves.toBe(secondPass);
+    await expect(third).resolves.toEqual({ kind: "converted", ...secondPass });
   });
 
   it("drops the pending entry when a conversion rejects so a retry converts again", async () => {
@@ -147,7 +267,10 @@ describe("ImageConverterManager", () => {
     const url = "https://example.com/retry.bin";
 
     const first = manager.convertImage(stubBlob(), url);
-    const firstRejection = expect(first).rejects.toThrow("decode exploded");
+    const firstRejection = expect(first).rejects.toMatchObject({
+      code: "conversion-failed",
+      cause: new Error("decode exploded"),
+    });
     await tick();
     stub.gates[0].reject(new Error("decode exploded"));
     await firstRejection;
@@ -158,7 +281,7 @@ describe("ImageConverterManager", () => {
 
     const result = conversionResult("retry");
     stub.gates[1].resolve(result);
-    await expect(retry).resolves.toBe(result);
+    await expect(retry).resolves.toEqual({ kind: "converted", ...result });
   });
 
   it("never runs more conversions than the pipeline concurrency limit", async () => {
@@ -192,9 +315,9 @@ describe("ImageConverterManager", () => {
     stub.gates[3].resolve(conversionResult("d"));
 
     const results = await Promise.all(conversions);
-    expect(results.map((r) => r?.format)).toEqual(
-      Array.from({ length: 4 }, () => "image/jpeg"),
-    );
+    expect(
+      results.map((r) => (r.kind === "converted" ? r.format : undefined)),
+    ).toEqual(Array.from({ length: 4 }, () => "image/jpeg"));
     expect(stub.maxActiveCount()).toBe(2);
     expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
   });
@@ -207,8 +330,10 @@ describe("ImageConverterManager", () => {
     const queuedUrl = "https://example.com/queued.bin";
 
     const failing = manager.convertImage(stubBlob(), failingUrl);
-    const failingRejection =
-      expect(failing).rejects.toThrow("wasm decode failed");
+    const failingRejection = expect(failing).rejects.toMatchObject({
+      code: "conversion-failed",
+      cause: new Error("wasm decode failed"),
+    });
     await tick();
     const queued = manager.convertImage(stubBlob(), queuedUrl);
     await tick();
@@ -223,7 +348,7 @@ describe("ImageConverterManager", () => {
     expect(stub.convertCalls).toEqual([failingUrl, queuedUrl]);
     const result = conversionResult("queued");
     stub.gates[1].resolve(result);
-    await expect(queued).resolves.toBe(result);
+    await expect(queued).resolves.toEqual({ kind: "converted", ...result });
     expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
   });
 
@@ -249,7 +374,10 @@ describe("ImageConverterManager", () => {
         stubBlob("image/x-throwing"),
         "https://example.com/boom.bin",
       ),
-    ).rejects.toThrow("strategy threw before returning a promise");
+    ).rejects.toMatchObject({
+      code: "conversion-failed",
+      cause: new Error("strategy threw before returning a promise"),
+    });
 
     // The failure released its pipeline slot: the next conversion still runs.
     const after = manager.convertImage(
@@ -261,11 +389,11 @@ describe("ImageConverterManager", () => {
 
     const result = conversionResult("after");
     healthy.gates[0].resolve(result);
-    await expect(after).resolves.toBe(result);
+    await expect(after).resolves.toEqual({ kind: "converted", ...result });
     expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
   });
 
-  it("returns null without invoking any strategy for formats no converter handles", async () => {
+  it("returns an explicit original result for unhandled and unidentified formats", async () => {
     const manager = new ImageConverterManager();
     const stub = createStubStrategy();
     manager.registerStrategy(stub.strategy);
@@ -276,25 +404,25 @@ describe("ImageConverterManager", () => {
         stubBlob("image/x-unhandled"),
         "https://example.com/a.bin",
       ),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ kind: "original", reason: "unhandled" });
 
     // Undetectable blob (file-type finds nothing).
     await expect(
       manager.convertImage(new Blob(["raw"]), "https://example.com/b.bin"),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ kind: "original", reason: "unidentified" });
 
     expect(stub.convertCalls).toHaveLength(0);
     expect(manager.getPipelineStats()).toEqual({ active: 0, pending: 0 });
   });
 
-  it("returns null when the matching strategy declines the conversion", async () => {
+  it("identifies native decoder support separately from an unsupported format", async () => {
     const manager = new ImageConverterManager();
     const stub = createStubStrategy({ shouldConvert: async () => false });
     manager.registerStrategy(stub.strategy);
 
     await expect(
       manager.convertImage(stubBlob(), "https://example.com/native.bin"),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ kind: "original", reason: "native" });
     expect(stub.convertCalls).toHaveLength(0);
   });
 
@@ -309,16 +437,15 @@ describe("ImageConverterManager", () => {
     await tick();
     expect(stub.activeCount()).toBe(1);
 
-    const onLoadingStateUpdate = vi.fn();
+    const onEvent = vi.fn();
     const queued = manager.convertImage(stubBlob(), waitingUrl, {
-      onLoadingStateUpdate,
+      onEvent,
     });
     await tick();
 
-    expect(onLoadingStateUpdate).toHaveBeenCalledWith({
-      isConverting: true,
-      isQueueWaiting: true,
-      conversionMessage: "loading.queue.waiting",
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "queued",
+      format: "Stub",
     });
     expect(stub.convertCalls).toEqual([activeUrl]);
 
@@ -326,9 +453,10 @@ describe("ImageConverterManager", () => {
     await tick();
 
     // Once a slot frees, the queued task clears the waiting state and converts.
-    expect(onLoadingStateUpdate).toHaveBeenLastCalledWith({
-      isQueueWaiting: false,
-      conversionMessage: undefined,
+    expect(onEvent).toHaveBeenLastCalledWith({
+      type: "converting",
+      format: "Stub",
+      originalSize: stubBlob().size,
     });
     expect(stub.convertCalls).toEqual([activeUrl, waitingUrl]);
 

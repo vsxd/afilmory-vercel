@@ -76,17 +76,18 @@ export const ProgressiveImage = ({
   );
   const [useDomFallback, setUseDomFallback] = useState(false);
   const {
-    blobSrc,
-    imageBlob,
-    highResLoaded,
-    error,
-    isHighResImageRendered,
+    image,
     currentScale,
     showScaleIndicator,
     isThumbnailLoaded,
     isLivePhotoPlaying,
   } = state;
 
+  const highResLoaded = image.status === "loaded";
+  const blobSrc = image.status === "loaded" ? image.lease.blobSrc : null;
+  const imageBlob = image.status === "loaded" ? image.lease.blob : null;
+  const error = image.status === "failed";
+  const isHighResImageRendered = image.status === "loaded" && image.rendered;
   const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes);
   const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE);
   const shouldShowLowResPlaceholder = Boolean(
@@ -109,21 +110,16 @@ export const ProgressiveImage = ({
   useDomFallbackRef.current = useDomFallback;
 
   // Hooks
-  useImageLoader(
+  const reportImageFailure = useImageLoader({
     src,
     isCurrentImage,
-    highResLoaded,
-    error,
+    image,
     onProgress,
     onError,
     onBlobSrcChange,
     loadingIndicatorRef,
-    setState.setBlobSrc,
-    setState.setImageBlob,
-    setState.setHighResLoaded,
-    setState.setError,
-    setState.setIsHighResImageRendered,
-  );
+    actions: setState,
+  });
 
   const { onTransformed, onDOMTransformed } = useScaleIndicator(
     onZoomChange,
@@ -172,7 +168,7 @@ export const ProgressiveImage = ({
 
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {
-    setState.setIsHighResImageRendered(true);
+    setState.markImageRendered();
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: false,
     });
@@ -345,6 +341,7 @@ export const ProgressiveImage = ({
               alt={alt}
               highResLoaded={highResLoaded}
               onLoad={handleHighResRendered}
+              onError={reportImageFailure}
             >
               {/* LivePhoto/Motion Photo 视频组件作为 children，跟随图片的变换 */}
               {hasVideo && videoSource && (

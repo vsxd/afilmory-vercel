@@ -58,6 +58,7 @@ vi.mock("~/hooks/usePhotoViewer", () => ({
 
 vi.mock("~/runtime/app-runtime", () => ({
   useAfilmoryRuntime: () => ({ navigation }),
+  usePhotoRepositorySnapshot: () => [],
   usePhotoRepository: () => ({
     getAllTags: () => allTags,
     getAllCameras: () => [],

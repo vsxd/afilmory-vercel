@@ -1,4 +1,3 @@
-import { logger } from "../../logger/index.js";
 import type {
   StorageListing,
   StorageObject,
@@ -14,9 +13,19 @@ export interface SourceScanResult {
   incompleteReason?: StorageListing["reason"];
 }
 
+type SourceScanContext = Pick<
+  BuildSession,
+  "config" | "options" | "emit" | "logger"
+> & {
+  storageManager: Pick<
+    BuildSession["storageManager"],
+    "listAllFilesDetailed" | "detectLivePhotos"
+  >;
+};
+
 export class SourceScanner {
-  async scan(session: BuildSession): Promise<SourceScanResult> {
-    const { options, storageManager } = session;
+  async scan(session: SourceScanContext): Promise<SourceScanResult> {
+    const { options, storageManager, logger } = session;
 
     const listing = await storageManager.listAllFilesDetailed();
     const allObjects = listing.objects;
@@ -76,7 +85,7 @@ export class SourceScanner {
   }
 
   private async detectLivePhotos(
-    session: BuildSession,
+    session: SourceScanContext,
     allObjects: StorageObject[],
   ): Promise<Map<string, StorageObject>> {
     if (!session.config.system.processing.enableLivePhotoDetection) {

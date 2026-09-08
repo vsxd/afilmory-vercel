@@ -1,5 +1,6 @@
-import type { PhotoManifestItem } from "@afilmory/schema";
 import type { TFunction } from "i18next";
+
+import type { PhotoManifest } from "~/types/photo";
 
 const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 
@@ -25,7 +26,7 @@ function formatPhotoDate(locale: string, dateTaken?: string): string | null {
  * Storage identifiers are deliberately not exposed as human-facing labels.
  */
 export function getPhotoAccessibleLabel(
-  photo: Pick<PhotoManifestItem, "title" | "description" | "dateTaken">,
+  photo: Pick<PhotoManifest, "title" | "description" | "dateTaken">,
   t: TFunction,
   locale: string,
 ): string {
