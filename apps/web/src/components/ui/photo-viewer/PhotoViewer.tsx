@@ -83,6 +83,17 @@ export const PhotoViewer = ({
   const mediaRef = useRef<HTMLDivElement>(null);
   const entryFlipRef = useRef<HTMLDivElement>(null);
 
+  const completeExit = useCallback(() => {
+    onExitComplete?.();
+    // The exit animation keeps the gallery target visibility:hidden until it
+    // completes. Restore focus only after both that and modal isolation end.
+    requestAnimationFrame(() => {
+      if (triggerElement?.isConnected && !triggerElement.closest("[inert]")) {
+        triggerElement.focus({ preventScroll: true });
+      }
+    });
+  }, [onExitComplete, triggerElement]);
+
   const {
     containerRef,
     entryTransition,
@@ -101,7 +112,7 @@ export const PhotoViewer = ({
     currentBlobSrc,
     isMobile,
     dismissTransformRef,
-    onExitComplete,
+    onExitComplete: completeExit,
   });
 
   const handleDismiss = useCallback(
@@ -203,6 +214,7 @@ export const PhotoViewer = ({
     dialogRef: containerRef,
     initialFocusSelector: "[data-photo-viewer-close]",
     isOpen,
+    restoreFocusOnClose: false,
     returnFocusElement: triggerElement,
   });
 

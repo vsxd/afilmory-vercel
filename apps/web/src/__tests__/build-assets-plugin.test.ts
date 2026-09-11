@@ -46,6 +46,52 @@ function createPhoto(
 }
 
 describe("build asset SEO helpers", () => {
+  it("preserves replacement tokens literally in home metadata", () => {
+    const title = "Price $$; match $&; prefix $`; suffix $'; group $1";
+    const result = injectHomeMetadata(
+      '<html><head></head><body><div id="root"></div></body></html>',
+      {
+        title,
+        description: title,
+        siteName: siteConfig.name,
+        siteUrl: siteConfig.url,
+        imageUrl: "https://example.com/og.png",
+      },
+    );
+    const document = new DOMParser().parseFromString(result, "text/html");
+
+    expect(document.title).toBe(title);
+    expect(
+      document
+        .querySelector('meta[name="description"]')
+        ?.getAttribute("content"),
+    ).toBe(title);
+    expect(document.querySelectorAll("#root")).toHaveLength(1);
+  });
+
+  it("preserves replacement tokens in photo metadata and the noscript shell", () => {
+    const title = "Price $$; match $&; prefix $`; suffix $'; group $1";
+    const result = createPhotoPageHtml(
+      '<html><head></head><body><div id="root"></div></body></html>',
+      createPhoto({ title, description: title }),
+      siteConfig,
+    );
+    const document = new DOMParser().parseFromString(result, "text/html");
+    const expectedTitle = `${title} (photo-1) — ${siteConfig.title}`;
+
+    expect(document.title).toBe(expectedTitle);
+    expect(document.querySelector("noscript h1")?.textContent).toBe(
+      expectedTitle,
+    );
+    expect(document.querySelectorAll("#root")).toHaveLength(1);
+    expect(
+      JSON.parse(
+        document.querySelector('script[type="application/ld+json"]')!
+          .textContent!,
+      ),
+    ).toMatchObject({ name: expectedTitle });
+  });
+
   it("replaces singleton home metadata without adding a second manifest", () => {
     const html = `<!doctype html><html><head>
       <title>Old title</title>

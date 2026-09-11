@@ -44,6 +44,9 @@ overrides:
   # filelist's minimatch 5 range resolves to a brace-expansion release affected
   # by GHSA-mh99-v99m-4gvg. Minimatch 10 uses the patched brace-expansion API.
   filelist>minimatch: 10.2.6
+  # Security patches for GHSA-2883-xcg3-v3hh and GHSA-5qjj-4xww-7phc.
+  js-yaml: 4.3.2
+  valibot: 1.4.2
   # test-exclude otherwise permits the vulnerable glob 10.4.x release pulled by
   # the Vitest coverage stack (GHSA-5j98-mcp5-4vw2).
   test-exclude>glob: 10.5.0

@@ -47,7 +47,7 @@ apps/web/
 │   ├── data-inject.ts          # 注入 manifest loader 和 site config
 │   ├── deps.ts                 # vendor chunk 规则
 │   ├── locales-json.ts         # i18n JSON key 转换
-│   ├── photos-static.ts        # dev only /originals 本地映射
+│   ├── photos-static.ts        # dev 本地原图映射与生产原图复制
 │   └── rss.ts                  # RSS feed 生成
 ├── public/
 │   ├── thumbnails/             # builder 生成的缩略图
@@ -207,7 +207,7 @@ apps/web/dist/
 
 - 本地 provider 在 dev server 中把 `LOCAL_PHOTOS_BASE_URL` 映射到 `LOCAL_PHOTOS_PATH`。
 - 本地 provider 的生产构建把原图复制到 `dist` 中与 URL 前缀匹配的位置；S3 provider 不复制原图。
-- 若 `apps/web/public/<LOCAL_PHOTOS_BASE_URL>` 已存在，会跳过以避免和 Vite 静态目录冲突。
+- 开发时若 `apps/web/public/<LOCAL_PHOTOS_BASE_URL>` 已存在，会警告并跳过 middleware，由 Vite 静态目录优先提供文件。
 
 ### `buildAssetsPlugin`
 
@@ -294,7 +294,7 @@ GIT_COMMIT_HASH;
 
 - 不要在浏览器端直接导入 `env.ts` 或读取 `process.env`。
 - 不要读取旧 `window.__*` manifest/config 名称；应通过 `loadManifestRuntime()`、AppRuntime 或已有 provider 使用 manifest。
-- 原图来自 S3/CDN，生产构建只包含生成缩略图和静态 Web 资源。
+- S3 模式原图来自 S3/CDN；本地模式会把原图复制进生产产物。位置隐私模式仅处理 manifest/geocoding，不会清除原图的 EXIF。
 - code-inspector-plugin 只在 dev server 中启用，按 `Alt` 点击可跳转源码。
 
 ## 更多信息

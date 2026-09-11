@@ -10,12 +10,15 @@
 
 ## Verification
 
+List checks actually run and explain any that are not applicable. Documentation-only
+changes need Markdown formatting and `git diff --check`.
+
 - [ ] `pnpm contracts`
 - [ ] `pnpm format:check`
 - [ ] `pnpm lint`
 - [ ] `pnpm type-check`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
+- [ ] `pnpm test:coverage` and `pnpm coverage:check:partitions`
+- [ ] `pnpm deploy:smoke` (uses the synthetic gallery; no photo credentials needed)
 - [ ] Relevant E2E/deployment smoke checks, or an explanation below
 - [ ] Synthetic fixture regenerated and drift-checked when schema/E2E data changed
 - [ ] Tests and documentation cover new behavior and configuration

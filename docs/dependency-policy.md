@@ -7,8 +7,8 @@ Dependencies are pinned or lockfile-resolved and reviewed through four layers:
 3. Dependabot groups patch/minor updates separately from major updates;
 4. CI emits a CycloneDX production SBOM for each tested revision.
 
-Major updates are kept as grouped Dependabot pull requests rather than silently
-ignored. Maintainers triage that backlog at least monthly. A major group is not
+Major updates remain separate Dependabot pull requests outside the minor/patch
+groups. Maintainers triage that backlog at least monthly. A major update is not
 merged until its migration notes are reviewed, build and browser checks pass, and
 behavioral changes are recorded in `CHANGELOG.md`. Large framework upgrades may
 be split into an issue with independently reviewable milestones.

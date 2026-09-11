@@ -12,22 +12,24 @@ const engineMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("./WebGLImageViewerEngine", () => ({
-  WebGLImageViewerEngine: vi.fn(() => {
-    if (engineMocks.throwOnConstruct) {
-      throw new Error("WebGL init failed");
-    }
+  WebGLImageViewerEngine: vi.fn(
+    class {
+      destroy = engineMocks.destroy;
+      isTileOutlineEnabled = engineMocks.isTileOutlineEnabled;
+      loadImage = engineMocks.loadImage;
+      resetView = vi.fn();
+      zoomIn = vi.fn();
+      zoomOut = vi.fn();
+      getScale = vi.fn(() => 1);
+      setTileOutlineEnabled = vi.fn();
 
-    return {
-      destroy: engineMocks.destroy,
-      isTileOutlineEnabled: engineMocks.isTileOutlineEnabled,
-      loadImage: engineMocks.loadImage,
-      resetView: vi.fn(),
-      zoomIn: vi.fn(),
-      zoomOut: vi.fn(),
-      getScale: vi.fn(() => 1),
-      setTileOutlineEnabled: vi.fn(),
-    };
-  }),
+      constructor() {
+        if (engineMocks.throwOnConstruct) {
+          throw new Error("WebGL init failed");
+        }
+      }
+    },
+  ),
 }));
 
 describe("WebGLImageViewer", () => {

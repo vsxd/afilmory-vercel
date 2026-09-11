@@ -68,7 +68,7 @@ The manifest `source` field records local runs without publishing the machine's 
 
 These environment variables tune a build run without editing `builder.config.ts`. All are optional.
 
-- `BUILDER_WORKER_COUNT` — number of builder workers (positive integer). Defaults to CPU cores x 2. Lower it when local bandwidth is limited: with each worker downloading 2 files concurrently, the default can push large S3 downloads past their timeout.
+- `BUILDER_WORKER_COUNT` — child-process count (positive integer). Defaults to half the available CPU parallelism, rounded up and capped at 4. Each child handles at most 2 tasks concurrently; the global task budget is capped at 8 and the available CPU parallelism. Increasing the process count alone does not increase that global budget.
 - `BUILDER_USE_CLUSTER_MODE` — `true` (default) runs the multi-process cluster pool; set it to `false` to fall back to a single-process concurrency pool when the current Node environment cannot clone plugin hooks into workers.
 - `BUILDER_FAIL_ON_PHOTO_ERROR` — `false` by default, so the build still publishes the remaining photos when some fail. Set it to `true` for strict mode: any photo failure exits the build with a non-zero status code.
 - `THUMBNAIL_STORAGE_CLEANUP` — controls remote thumbnail orphan cleanup. Defaults to a dry-run that only reports orphaned thumbnails; set it to `true` to actually delete them from remote storage.
@@ -99,9 +99,13 @@ Build modes:
 Use `defineBuilderConfig` for config files and `AfilmoryBuilder` for direct orchestration:
 
 ```ts
-import { AfilmoryBuilder, defineBuilderConfig } from "@afilmory/builder";
+import {
+  AfilmoryBuilder,
+  defineBuilderConfig,
+  resolveBuilderConfig,
+} from "@afilmory/builder";
 
-export default defineBuilderConfig(() => ({
+const config = defineBuilderConfig(() => ({
   storage: {
     provider: "s3",
     bucket: process.env.S3_BUCKET_NAME,
@@ -117,7 +121,7 @@ export default defineBuilderConfig(() => ({
   },
 }));
 
-const builder = new AfilmoryBuilder(resolvedConfig);
+const builder = new AfilmoryBuilder(resolveBuilderConfig(config));
 await builder.buildManifest({
   isForceMode: false,
   isForceManifest: false,
@@ -158,7 +162,7 @@ type AfilmoryManifest = {
   schema: "afilmory.manifest";
   version: 2;
   generatedAt: string;
-  source: { provider: "s3"; bucket?: string; prefix?: string };
+  source: ManifestSource; // s3, local, or unknown; defined by @afilmory/schema
   photos: PhotoManifestItem[];
   indexes: {
     cameras: CameraInfo[];
@@ -178,8 +182,9 @@ Plugins are loaded from explicit `plugins` entries:
 
 ## Performance Notes
 
-- `system.processing.defaultConcurrency` controls logical processing concurrency.
-- Cluster mode is enabled by default in `builder.config.ts` through `system.observability.performance.worker.useClusterMode`.
+- `system.processing.worker.globalTaskConcurrency` sets the shared task budget for either execution mode; `system.processing.defaultConcurrency` is the fallback when that budget is absent. A programmatic `concurrencyLimit` overrides both for one run.
+- `system.processing.worker` holds `processCount`, `workerConcurrency`, and `globalTaskConcurrency` for cluster execution.
+- Cluster mode is enabled by default in `builder.config.ts` through `system.processing.worker.useClusterMode`.
 - S3 downloads use an internal semaphore and network timeout/retry settings.
 - Thumbnail, EXIF, and tone-analysis data are reused from the existing manifest where possible.
 

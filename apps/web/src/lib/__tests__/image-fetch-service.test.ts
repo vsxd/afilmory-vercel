@@ -40,6 +40,52 @@ afterEach(() => {
 });
 
 describe("image request settlement", () => {
+  it.each(["constructor", "open", "responseType", "send"] as const)(
+    "settles synchronous %s failures with typed cause and permits retry",
+    async (phase) => {
+      const cause = new DOMException("Request blocked", "SecurityError");
+      vi.stubGlobal(
+        "XMLHttpRequest",
+        class extends FakeXHR {
+          constructor() {
+            super();
+            if (phase === "constructor") throw cause;
+            if (phase === "responseType") {
+              Object.defineProperty(this, "responseType", {
+                set() {
+                  throw cause;
+                },
+              });
+            } else {
+              this[phase].mockImplementation(() => {
+                throw cause;
+              });
+            }
+          }
+        },
+      );
+      const service = new ImageFetchService(1000);
+      const request = service.fetchBlob("blocked", { priority: "high" });
+      const rejected = expect(request).rejects.toMatchObject({
+        stage: "fetch",
+        code: "network",
+        cause,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      await rejected;
+      expect(vi.getTimerCount()).toBe(0);
+      service.cleanup();
+
+      vi.stubGlobal("XMLHttpRequest", FakeXHR);
+      const retry = service.fetchBlob("retry", { priority: "high" });
+      await vi.advanceTimersByTimeAsync(0);
+      const xhr = FakeXHR.instances.at(-1)!;
+      await xhr.onload?.();
+      await expect(retry).resolves.toBe(xhr.response);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
   it("rejects a stalled download with a typed timeout and detaches all handlers", async () => {
     const service = new ImageFetchService(1000);
     const result = service.fetchBlob("stalled", { priority: "high" });

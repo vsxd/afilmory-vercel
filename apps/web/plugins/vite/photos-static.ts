@@ -458,11 +458,20 @@ export function photosStaticPlugin(options: PhotosStaticPluginOptions): Plugin {
         }
 
         const stream = fs.createReadStream(localPhotoPath, range ?? undefined);
+        // pipe() unpipes a closed response but does not close its source. A
+        // cancelled large photo/video request can otherwise leave the file
+        // paused under backpressure with its descriptor still open.
+        const closeStream = () => stream.destroy();
+        response.once("close", closeStream);
+        stream.once("close", () => {
+          response.removeListener("close", closeStream);
+        });
         stream.on("error", (error) => {
           if (!response.headersSent) next(error);
           else response.destroy(error);
         });
-        stream.pipe(response);
+        if (response.destroyed) closeStream();
+        else stream.pipe(response);
       });
     },
     async closeBundle() {

@@ -100,14 +100,18 @@
 
 ## 🚀 快速开始
 
-无需凭据或个人照片即可体验完整界面：
+先安装 Node.js `^20.19.0 || >=22.12.0` 和 pnpm 10.19.0，再运行以下命令，无需凭据或个人照片即可体验完整界面：
 
 ```bash
-pnpm install
+git clone https://github.com/vsxd/afilmory-vercel.git
+cd afilmory-vercel
+pnpm install --frozen-lockfile
 pnpm dev:demo
 ```
 
 该命令在 `http://127.0.0.1:1924` 提供仓库内置的合成相册，不读取 `.env`、S3 凭据或你的 generated manifest。
+
+交互地图使用 MapLibre GL 6，需要浏览器支持 WebGL2。不可用时仍可浏览照片，位置面板显示坐标，完整地图显示不可用状态；照片查看器也支持普通图片降级显示。
 
 ### 一键部署到 Vercel
 
@@ -150,6 +154,8 @@ LOCAL_PHOTOS_BASE_URL=/originals
 `apps/web/dist` 对应路径。建议保留不会与应用路由冲突的 `/originals` 默认值；
 自定义前缀只能使用可移植的 ASCII 路径段；`/photos`、`/assets`、
 `/thumbnails` 和 `/vendor` 是应用保留命名空间。
+
+Git 默认忽略仓库根目录的 `photos/` 和本地 `.env` 变体。若在仓库内改用其他照片目录，请先将它加入 `.gitignore`，再复制个人照片。
 
 ### S3 照片源配置
 
@@ -226,6 +232,8 @@ LOCAL_PHOTOS_BASE_URL=/originals
 
 `PHOTO_LOCATION_MODE=coarse` 是保护隐私的默认值：坐标在写入 manifest 或离开 Builder 前会保留两位小数（公里级）。`strip` 完全不发布坐标和地名；`exact` 会原样发布相机 GPS，只应在被摄人物及地点所有者知情同意时使用。
 
+上述设置仅影响生成的 manifest 和地理编码请求，不会删除原图内的元数据：S3 原图仍由远端提供，本地原图会原样复制。能下载原图的访客仍可能读取其中的 EXIF/GPS。需要保密时，请在发布前清除源照片中的敏感元数据。
+
 反向地理编码**默认关闭**，因为它会把上述位置发送给外部服务。设置 `GEOCODING_ENABLED=true` 才会启用；启用 Nominatim 时，请按其[使用政策](https://operations.osmfoundation.org/policies/nominatim/)提供真实的 `GEOCODING_USER_AGENT`（不超过 1 request/second）。也可以使用 `GEOCODING_PROVIDER=mapbox` 和 `MAPBOX_TOKEN`。`strip` 始终禁止 geocoding，`coarse` 不会发送相机原始精确坐标。完整配置见 `.env.template`。
 
 ### 本地 `.env`
@@ -264,7 +272,7 @@ SOCIAL_RSS=true
 
 ### 前置要求
 
-- Node.js `^20.19.0 || >=22.12.0`（Vite 8 要求）
+- Node.js `^20.19.0 || >=22.12.0`（以 `package.json` 为准）
 - pnpm 10.19.0
 - S3 兼容对象存储或一个本地照片目录
 
@@ -357,6 +365,8 @@ CI/Vercel 构建还会校验发布代码是否能由页脚声明的 Git revision
 
 构建命令使用 `pnpm build`。
 
+当前应用的资源与路由使用根相对 URL，应部署在域名根路径，而非 `/afilmory-vercel/` 等仓库子路径。请为 `/explore` 等应用路由配置 SPA `index.html` 回退，同时保留生成的照片页面和静态资源。`vercel.json` 中的重写与安全响应头只适用于 Vercel，其他平台需配置对应规则。GitHub Pages 需要自行处理 SPA 回退，并使用域名根路径部署，不能直接沿用默认的项目子路径 URL。
+
 ---
 
 ## 🔄 更新照片
@@ -418,7 +428,7 @@ afilmory/
 ├── scripts/                   # 构建期辅助脚本
 ├── site.config.ts             # 浏览器安全的站点默认值
 ├── site.config.build.ts       # 构建期环境变量合并
-├── builder.config.ts          # S3-backed builder 配置
+├── builder.config.ts          # S3/本地照片处理配置
 └── vercel.json                # 静态部署配置
 ```
 

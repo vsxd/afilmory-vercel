@@ -13,6 +13,11 @@ artifacts
 
 # 配置文件
 .env
+.env.*
+!.env.template
+
+# Default local source library (may contain private originals and EXIF)
+/photos/
 
 # 构建产物
 apps/web/public/thumbnails
@@ -40,13 +45,9 @@ packages/webgl-viewer/src/index.js
 packages/webgl-viewer/src/interface.js
 packages/webgl-viewer/src/shaders.js
 
-# Turbo
-.turbo
-
 # IDE
 .claude
 .cursor
 .specstory
 .vscode
 .omx/
-.DS_Store

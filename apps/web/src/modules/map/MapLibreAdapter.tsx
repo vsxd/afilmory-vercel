@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { lazy } from "react";
-import type { MapRef } from "react-map-gl/maplibre";
+import type { MapMouseEvent, MapRef } from "react-map-gl/maplibre";
 
 import type { BaseMapProps, GeographicRegion, PhotoMarker } from "~/types/map";
 
@@ -55,11 +55,7 @@ export const MapLibreMapComponent: React.FC<BaseMapProps> = ({
 
   // Handle GeoJSON click
   const handleGeoJsonClick = React.useCallback(
-    (
-      event: maplibregl.MapMouseEvent & {
-        features?: maplibregl.GeoJSONFeature[];
-      },
-    ) => {
+    (event: MapMouseEvent) => {
       if (!handlers?.onGeoJsonClick) return;
 
       const feature = event.features?.[0];

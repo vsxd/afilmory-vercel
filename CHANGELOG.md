@@ -10,7 +10,6 @@ All notable Project Code changes are recorded here. The format follows
 
 - Source architecture guards, Web test type-checking, and a separately checked
   TypeScript module Worker with a shared bidirectional protocol.
-
 - Workspace, environment-template, fixture-drift, partition-coverage, secret,
   deployment-smoke, and SBOM contracts.
 - WebKit/iPhone smoke coverage and zero-credential synthetic demo mode.
@@ -30,7 +29,12 @@ All notable Project Code changes are recorded here. The format follows
 - Publish immutable photo snapshots through React external-store subscriptions.
 - Model media conversion outcomes, progress events, cancellation and runtime
   disposal explicitly, with presentation-layer translation.
-
+- Upgrade MapLibre GL to 6.4.1 and Vitest/coverage to 4.1.11, and constrain
+  js-yaml/valibot to patched releases. Bundle MapLibre's module worker explicitly;
+  interactive maps now require WebGL2.
+- Include web build plugins/scripts in coverage and calibrate enforced global
+  and partition floors against Vitest 4's AST remapping, retaining all source
+  files and tests in the comparison.
 - Remote artifact caching defaults to a dedicated branch and non-destructive
   commits; optional history compaction now requires explicit consent and uses a
   precise force-with-lease.
@@ -51,9 +55,25 @@ All notable Project Code changes are recorded here. The format follows
 
 - Preserve TIFF grayscale and transparent alpha channels, report DOM image
   decode failures, time out stalled downloads, and cancel queued conversions.
-- Keep hydrated photo details visible under React Compiler memoization and
-  pre-optimize lazy map dependencies to avoid first-navigation dev reloads.
-
+- Keep hydrated photo details visible under React Compiler memoization.
+- Avoid MapLibre initialization when WebGL2 is unavailable, keeping the photo
+  viewer usable during navigation and map teardown.
+- Scan route page entries during Vite dependency optimization so a first visit
+  to the map cannot trigger an optimizer reload that cancels navigation.
+- Make the synthetic demo serve local photos and Live Photo video without
+  Playwright stubs; isolate demo/E2E dependency caches from each other and from
+  regular development.
+- Restore gallery link dimensions, slider drag/cancel behavior, viewer focus
+  return, and rejection of synchronously failed image requests.
+- Regenerate missing addressed thumbnails instead of accepting stale versions,
+  and preserve CDN-renamed thumbnail artifacts during remote cleanup.
+- Reject invalid photo path IDs and unsafe location dictionary keys; preserve
+  literal replacement characters in SEO metadata and numeric EXIF values in RSS.
+- Close local media file streams when a client disconnects.
+- Preserve workspace dependency ownership in the SBOM and allow secret scans
+  after tracked files or directories are removed from the working tree.
+- Ignore private environment variants and the default local photo directory;
+  clarify that location privacy modes do not strip EXIF from public originals.
 - Preserve hash-prefixed accent colors when `.env.template` is parsed by dotenv.
 - Prevent Radix primitives split across manual chunks from failing during
   production ESM initialization.

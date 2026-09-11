@@ -154,10 +154,12 @@ export async function createThumbnailInventory(
         : null;
       if (
         preferredName &&
-        isThumbnailFileNameForPhoto(preferredName, photoId) &&
-        safeFileNames.has(preferredName)
+        isThumbnailFileNameForPhoto(preferredName, photoId)
       ) {
-        return true;
+        // An identifiable published artifact must exist exactly. An older
+        // version is not evidence that the URL retained by a skipped build
+        // still resolves, even when it is the only cached file for this photo.
+        return safeFileNames.has(preferredName);
       }
       if (safeFileNames.has(`${photoId}.jpg`)) return true;
       // A rewritten CDN basename is reusable only when exactly one local
@@ -187,6 +189,19 @@ export async function resolveExistingThumbnail(
   const preferredName = preferredUrl
     ? getThumbnailFileNameFromUrl(preferredUrl)
     : null;
+  // A missing known artifact must be regenerated from source. Reusing an old
+  // addressed/legacy file would silently restore pixels from another version.
+  // The fallback below applies only when the CDN hides the original basename.
+  if (
+    preferredUrl &&
+    preferredName &&
+    isThumbnailFileNameForPhoto(preferredName, photoId)
+  ) {
+    const thumbnailPath = path.join(thumbnailsDir, preferredName);
+    return (await isSafeRegularThumbnail(thumbnailPath))
+      ? { fileName: preferredName, path: thumbnailPath, url: preferredUrl }
+      : null;
+  }
   const candidates = [preferredName, `${photoId}.jpg`].filter(
     (candidate, index, all): candidate is string =>
       Boolean(candidate) &&

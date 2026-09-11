@@ -21,6 +21,14 @@ if (!environment.NODE_OPTIONS?.includes(deprecationFilter)) {
 if (playwrightArguments.some((argument) => argument.includes("prod-smoke"))) {
   environment.E2E_PROD_SMOKE = "true";
 }
+if (
+  playwrightArguments.some(
+    (argument) =>
+      argument.includes("webkit-smoke") || argument.includes("iphone-smoke"),
+  )
+) {
+  environment.E2E_CROSS_BROWSER_SMOKE = "true";
+}
 
 const child = spawn(process.execPath, [playwrightCli, ...playwrightArguments], {
   env: environment,

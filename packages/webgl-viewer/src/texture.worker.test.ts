@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createTextureWorkerHandler } from "./texture-worker-runtime";
@@ -41,10 +42,10 @@ const loadMessage = (sessionId = 1): { data: TextureWorkerRequest } => ({
   },
 });
 
-const bitmap = (): ImageBitmap & { close: ReturnType<typeof vi.fn> } => ({
+const bitmap = (): ImageBitmap & { close: Mock<() => void> } => ({
   width: 4000,
   height: 3000,
-  close: vi.fn(),
+  close: vi.fn<() => void>(),
 });
 
 describe("texture.worker create-tile guard", () => {

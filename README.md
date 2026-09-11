@@ -100,15 +100,22 @@ Huge thanks to [Innei](https://innei.in) and the Afilmory team for creating this
 
 ## 🚀 Quick Start
 
-To explore the complete UI without credentials or personal photos:
+Install Node.js `^20.19.0 || >=22.12.0` and pnpm 10.19.0 first. Then explore
+the complete UI without credentials or personal photos:
 
 ```bash
-pnpm install
+git clone https://github.com/vsxd/afilmory-vercel.git
+cd afilmory-vercel
+pnpm install --frozen-lockfile
 pnpm dev:demo
 ```
 
 This serves the committed synthetic gallery at `http://127.0.0.1:1924` and
 does not read `.env`, S3 credentials, or your generated manifest.
+
+Interactive maps require WebGL2 (MapLibre GL 6). If it is unavailable, photos
+remain browsable and the location panel shows coordinates; the full map displays
+an unavailable state. The photo viewer also supports a DOM image fallback.
 
 ### One-click deploy to Vercel
 
@@ -152,6 +159,10 @@ the matching path. Keep the reserved-route-safe `/originals` default unless
 your static host is configured for another non-reserved public path. Custom
 prefixes use portable ASCII path segments; `/photos`, `/assets`, `/thumbnails`,
 and `/vendor` belong to the application.
+
+The default repository-root `photos/` directory and local `.env` variants are
+ignored by Git. If you choose another source directory inside the repository,
+add it to `.gitignore` before copying personal photos into it.
 
 ### S3 source configuration
 
@@ -238,6 +249,12 @@ enter the manifest or leave the builder. Use `strip` to publish no coordinates
 or place names. `exact` publishes camera GPS unchanged and should be used only
 with the informed consent of photographed people and property owners.
 
+These settings affect the generated manifest and geocoding requests. They do
+not remove metadata from original image files: S3 originals remain remote, and
+local originals are copied unchanged. Anyone who can download an original may
+read its embedded EXIF/GPS. Remove sensitive metadata from source images before
+publishing if it must remain private.
+
 Reverse geocoding is **disabled by default** because it sends the selected
 location to an external provider. Set `GEOCODING_ENABLED=true` to opt in and
 set `GEOCODING_USER_AGENT` to a real identifier per the
@@ -283,7 +300,7 @@ variables shown under [Photo source selection](#photo-source-selection).
 
 ### Prerequisites
 
-- Node.js `^20.19.0 || >=22.12.0` (Vite 8 requirement)
+- Node.js `^20.19.0 || >=22.12.0` (see `package.json`)
 - pnpm 10.19.0
 - Either S3-compatible object storage or a local photo directory
 
@@ -379,6 +396,14 @@ Deploy the contents of `apps/web/dist` to any static hosting provider:
 
 Use `pnpm build` as the build command.
 
+The app currently uses root-relative asset and route URLs, so deploy at the
+domain root rather than a repository subpath such as `/afilmory-vercel/`.
+Configure your host to serve the SPA's `index.html` for application routes such
+as `/explore`, while preserving generated photo pages and static assets.
+`vercel.json` rewrites and security headers are Vercel-specific; configure their
+equivalents on the chosen host. GitHub Pages needs an explicit SPA fallback
+strategy and a root-domain deployment rather than its default project URL.
+
 ---
 
 ## 🔄 Updating Photos
@@ -440,7 +465,7 @@ afilmory/
 ├── scripts/                   # Build-time helper scripts
 ├── site.config.ts             # Client-safe site defaults
 ├── site.config.build.ts       # Build-time environment merge
-├── builder.config.ts          # S3-backed builder configuration
+├── builder.config.ts          # S3/local photo processing configuration
 └── vercel.json                # Static deployment configuration
 ```
 

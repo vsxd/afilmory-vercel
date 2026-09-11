@@ -1,6 +1,6 @@
 # Testing & CI
 
-This repo uses **Vitest** (unit/component) and **Playwright** (e2e), orchestrated
+This repo uses **Vitest 4** (unit/component) and **Playwright** (e2e), orchestrated
 as Vitest _projects_ from the root `vitest.config.ts`.
 
 ## Running tests
@@ -48,11 +48,44 @@ small, well-tested changes brittle. Ratchet them upward as coverage improves.
 pnpm test:coverage && open coverage/index.html
 ```
 
-`coverage.all` is enabled, so untested source files count toward the denominator
-(they show as `0%`) — the baseline reflects real coverage, not just touched files.
+The explicit `coverage.include` patterns include untested source files in the
+denominator (they show as `0%`). Vitest 4 removed `coverage.all`; keeping the
+include patterns is what preserves the complete source baseline. Its V8 provider
+uses AST-based remapping, so coverage counts can differ from older versions even
+when the tested behavior is unchanged. The repository-wide and partition
+thresholds remain enforced.
 `pnpm coverage:check:partitions` also protects separate floors for the web app,
-Builder, WebGL viewer, and shared packages so strength in one area cannot hide a
+Builder, WebGL viewer, web build plugins/scripts, and shared packages so strength in one area cannot hide a
 large regression in another.
+
+Build-time Vite plugins and `apps/web/scripts` count toward coverage as well as
+runtime source; the `web-build` partition guards their own measured baseline.
+
+The September 2026 security upgrade to Vitest 4.1.11 recalibrated the floors for
+its [AST remapping](https://v4.vitest.dev/guide/migration#v8-code-coverage-major-changes).
+A controlled comparison ran the same 1,249 tests and counted the same 371 source
+files in both versions, with no coverage exclusions added:
+
+| Metric     | Vitest 3.2.7           | Vitest 4.1.11          | Current global floor |
+| ---------- | ---------------------- | ---------------------- | -------------------- |
+| Statements | 74.62%                 | 73.14%                 | 70%                  |
+| Branches   | 79.11% (5,568 / 7,038) | 64.44% (5,734 / 8,897) | 63%                  |
+| Functions  | 84.01% (1,366 / 1,626) | 74.51% (1,886 / 2,531) | 73%                  |
+| Lines      | 74.62%                 | 74.29%                 | 70%                  |
+
+The old provider reported 100% branch/function coverage for some unexecuted
+files, including the Builder TUI; the new provider counts their actual
+uncovered branches and functions. The percentages across versions are not a
+behavioral regression comparison. Keep the new floors enforced and raise them
+with meaningful tests; do not remove untested source to increase the numbers.
+
+| Partition       | Statements | Branches | Functions | Lines |
+| --------------- | ---------: | -------: | --------: | ----: |
+| Web             |        68% |      59% |       70% |   68% |
+| Web build       |        59% |      53% |       60% |   60% |
+| Builder         |        75% |      68% |       82% |   75% |
+| WebGL viewer    |        78% |      70% |       79% |   78% |
+| Shared packages |        70% |      75% |       72% |   70% |
 
 Every Vitest project also installs `test/setup/fail-on-console.ts`. An
 unexpected `console.warn` or `console.error` fails the test. If console output is
@@ -71,6 +104,13 @@ Match the surrounding package conventions:
 - Prefer characterization tests that pin down real, subtle behavior over trivial asserts.
 - For object-URL code in jsdom, stub `URL.createObjectURL` / `URL.revokeObjectURL`
   with `vi.spyOn(...).mockImplementation(...)` (jsdom's support is inconsistent).
+- Constructor mocks called with `new` must use a regular function or class as
+  their implementation; arrow functions are not constructable in Vitest 4.
+- Test projects configure automatic JSX through Vite 8's `oxc.jsx` option;
+  Vitest's Oxc defaults supersede the deprecated `esbuild` options.
+- `vi.restoreAllMocks()` restores manual spies without clearing their call
+  history. Use `vi.clearAllMocks()` or the mock's `mockClear()` when a test needs
+  to reset call assertions as well.
 
 ## End-to-end (Playwright)
 
@@ -81,7 +121,11 @@ Existing servers are never reused by default; set
 `PLAYWRIGHT_REUSE_SERVER=true` only when you deliberately own a compatible
 server lifecycle.
 
-Both server wrappers set `AFILMORY_MANIFEST_PATH` to the committed
+E2E and `pnpm dev:demo` use separate Vite modes and dependency caches, with the
+code inspector disabled, so running the demo cannot invalidate a test server's
+optimized dependencies.
+
+The E2E dev and production server wrappers set `AFILMORY_MANIFEST_PATH` to the committed
 `apps/web/e2e/fixtures/photos-manifest.json` and `AFILMORY_PUBLIC_ASSET_DIR` to
 the fixture root. The build-time readers consume those isolated paths directly,
 so an e2e run never reads, writes, locks, or restores the developer's
@@ -124,14 +168,17 @@ pipeline (so `thumbHash` values are genuine), and writes everything under
   the committed fixture manifest
 - **Deployment smoke** — the real `scripts/build-static.sh` entrypoint against
   the isolated synthetic manifest
-- **Cross-browser** — focused Desktop WebKit and iPhone smoke coverage
-- **Supply chain** — workspace contracts, high-confidence secret scanning,
-  dependency review, CodeQL, and a CycloneDX production SBOM
+- **Cross-browser** — focused Desktop WebKit and iPhone smoke coverage, with
+  its own downloadable HTML report and retry traces
+- **Supply chain** — high-confidence secret scanning and a CycloneDX production
+  SBOM; workspace contracts run in the lint job
 - **Node compatibility** — type and contract checks on the Node 20 minimum
 
+Dependency review and CodeQL run in separate workflows on pull requests;
+CodeQL also runs on pushes to `main` and weekly.
 Shared install/setup lives in the composite action `.github/actions/setup`.
 `.github/workflows/security-audit.yml` also runs a weekly full production +
 development dependency audit (and supports manual dispatch). Dependabot opens
 grouped weekly minor/patch updates for pnpm dependencies and GitHub Actions;
-major upgrades remain an explicit maintainer decision and grouped backlog; see
-`docs/dependency-policy.md`.
+major upgrades remain separate pull requests requiring an explicit maintainer
+decision; see [the dependency policy](dependency-policy.md).

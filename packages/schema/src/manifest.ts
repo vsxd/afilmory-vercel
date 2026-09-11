@@ -19,6 +19,11 @@ import {
 } from "./version.ts";
 
 const UNKNOWN_SOURCE: ManifestSource = { provider: "unknown" };
+const DANGEROUS_OBJECT_KEYS = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
 const VALID_TONE_TYPES = new Set<ToneType>([
   "low-key",
   "high-key",
@@ -64,10 +69,18 @@ const isNonEmptyString = (value: unknown): value is string =>
  */
 const isSafePhotoId = (value: unknown): value is string => {
   if (!isNonEmptyString(value)) return false;
+  // These segments collapse in both URLs and static output paths, so they
+  // cannot identify a photo even when the manifest preserves them verbatim.
+  if (value === "." || value === "..") return false;
   if (new TextEncoder().encode(value).length > 512) return false;
   return (
     !/[/\\]/.test(value) &&
-    ![...value].some((character) => (character.codePointAt(0) ?? 0) <= 0x1f)
+    ![...value].some((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      // Iteration combines valid surrogate pairs. Remaining lone surrogates
+      // would make encodeURIComponent throw during route/RSS/SEO generation.
+      return codePoint <= 0x1f || (codePoint >= 0xd800 && codePoint <= 0xdfff);
+    })
   );
 };
 
@@ -365,6 +378,7 @@ function normalizeRecordOf<T>(
   if (!isRecord(value)) return undefined;
   const record: Record<string, T> = {};
   for (const [key, item] of Object.entries(value)) {
+    if (DANGEROUS_OBJECT_KEYS.has(key)) continue;
     const normalized = normalizeItem(item);
     if (normalized !== undefined) record[key] = normalized;
   }
@@ -474,7 +488,6 @@ const videoField: Field<VideoSource | undefined> = {
 
 const INVALID_EXIF_VALUE = Symbol("invalid-exif-value");
 const MAX_EXIF_DEPTH = 32;
-const DANGEROUS_EXIF_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 function isPlainObject(value: unknown): boolean {
   if (!isRecord(value)) return false;
@@ -518,7 +531,7 @@ function sanitizeExifValue(
   for (const [key, item] of Object.entries(value)) {
     // JSON.parse 会把 __proto__ 还原成自有键；constructor/prototype 组合也会在
     // 后续深合并时形成原型污染路径，因此所有层级都显式丢弃。
-    if (DANGEROUS_EXIF_KEYS.has(key)) continue;
+    if (DANGEROUS_OBJECT_KEYS.has(key)) continue;
     const safeItem = sanitizeExifValue(item, ancestors, depth + 1);
     if (safeItem !== INVALID_EXIF_VALUE) sanitized[key] = safeItem;
   }

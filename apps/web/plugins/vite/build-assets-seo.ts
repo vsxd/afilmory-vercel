@@ -118,7 +118,10 @@ function insertBeforeClosingHead(html: string, metadata: string): string {
   if (!/<\/head\s*>/i.test(html)) {
     throw new Error("Cannot inject SEO metadata: HTML has no closing head tag");
   }
-  return html.replaceAll(/<\/head\s*>/gi, `${metadata}\n</head>`);
+  // Metadata is literal content, including JavaScript replacement tokens such
+  // as $& and $`. A replacement callback prevents a title from expanding them
+  // into fragments of the surrounding document after HTML escaping.
+  return html.replaceAll(/<\/head\s*>/gi, () => `${metadata}\n</head>`);
 }
 
 export function injectHomeMetadata(
@@ -291,7 +294,7 @@ export function createPhotoPageHtml(
   }
   return withMetadata.replaceAll(
     /(<div\s[^>]*id=["']root["'][^>]*>)/gi,
-    `${noScript}\n$1`,
+    (rootElement) => `${noScript}\n${rootElement}`,
   );
 }
 

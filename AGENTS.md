@@ -19,6 +19,7 @@ Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构�
 - **根目录**: 统一脚本、`builder.config.ts`、`site.config.ts`、`site.config.build.ts`、`vercel.json`、根 ESLint flat config。
 - **`apps/web`**: 前端 SPA 应用，Vite + React。
 - **`packages/builder`**: 构建期照片处理、EXIF、缩略图、manifest、插件和 S3/本地存储访问。
+- **`packages/build-assets`**: 构建期 manifest 加载、OG 图片、RSS 和 sitemap 生成。
 - **`packages/schema`**: 共享 manifest/photo schema 类型和 manifest v2 解析。
 - **`packages/media`**: 共享 media/binary helper，例如 thumbhash 字节压缩/解压。
 - **`packages/ui`**: 共享 UI 组件、hooks、portal、scroll area、ThumbHash 组件。

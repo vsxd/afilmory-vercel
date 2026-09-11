@@ -131,6 +131,9 @@ export class ImageFetchService {
             renewDeadline();
             request.send();
           } catch (cause) {
+            // Setup and send run in a timer, outside the Promise executor.
+            // Security errors must settle the same typed contract as other
+            // fetch failures so the viewer can leave loading state and retry.
             finish({
               error: new MediaTaskError(
                 "fetch",

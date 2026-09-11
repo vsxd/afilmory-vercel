@@ -166,14 +166,15 @@ export const MasonryPhotoItem = memo(
     const ariaLabel = getPhotoAccessibleLabel(data, t, i18n.language);
 
     return (
-      // 纯 div：入场动画由 MasonryRoot 的包裹层负责，这里不用任何 motion 能力。
-      // m.div 会给每个虚拟格子实例化 visualElement/投影树（热路径的纯浪费）。
+      // The native link needs a block box: its media and error states are
+      // absolutely positioned and cannot give an inline anchor any dimensions.
+      // Entry animation belongs to MasonryRoot's wrapper.
       <a
         href={photoHref}
         aria-label={ariaLabel}
         tabIndex={tabIndex}
         // ring-inset：格子 overflow-hidden 且边贴边，外扩的 ring 会被裁掉/被相邻格子盖住
-        className="bg-fill-quaternary focus-visible:ring-accent/45 group relative w-full cursor-pointer overflow-hidden focus-visible:ring-2 focus-visible:ring-inset"
+        className="bg-fill-quaternary focus-visible:ring-accent/45 group relative block w-full cursor-pointer overflow-hidden focus-visible:ring-2 focus-visible:ring-inset"
         style={{
           width,
           height: calculatedHeight,

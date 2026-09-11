@@ -1,14 +1,20 @@
+import { once } from "node:events";
+import nodeFs from "node:fs";
 import fs from "node:fs/promises";
+import { IncomingMessage, ServerResponse } from "node:http";
+import { Socket } from "node:net";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import type { Connect, ViteDevServer } from "vite";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   copyLocalPhotos,
   getLocalMediaKeyFromUrl,
   normalizeLocalPhotosBaseUrl,
   parseByteRange,
+  photosStaticPlugin,
   resolveLocalPhotoPath,
   resolveRealLocalPhotoPath,
 } from "./photos-static";
@@ -16,11 +22,67 @@ import {
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     temporaryDirectories
       .splice(0)
       .map((directory) => fs.rm(directory, { force: true, recursive: true })),
   );
+});
+
+describe("photosStaticPlugin middleware", () => {
+  it("closes a paused source file when the client disconnects", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "photos-stream-"));
+    temporaryDirectories.push(root);
+    await fs.writeFile(path.join(root, "large.jpg"), Buffer.alloc(1024 * 1024));
+
+    let middleware: Connect.NextHandleFunction | undefined;
+    const plugin = photosStaticPlugin({
+      provider: "local",
+      localPhotosPath: root,
+      baseUrl: "/originals",
+    });
+    const { configureServer } = plugin;
+    if (typeof configureServer !== "function") {
+      throw new TypeError("Expected a configureServer hook");
+    }
+    configureServer.call(
+      {} as never,
+      {
+        config: { publicDir: path.join(root, "public") },
+        middlewares: {
+          use: (_prefix: string, handler: Connect.NextHandleFunction) => {
+            middleware = handler;
+          },
+        },
+      } as ViteDevServer,
+    );
+
+    const createReadStream = vi.spyOn(nodeFs, "createReadStream");
+    const request = new IncomingMessage(new Socket());
+    request.url = "/large.jpg";
+    request.method = "GET";
+    const response = new ServerResponse(request);
+    const next = vi.fn();
+    middleware!(request, response, next);
+    const stream = createReadStream.mock.results[0]?.value as nodeFs.ReadStream;
+    expect(stream).toBeDefined();
+    try {
+      await once(stream, "data");
+      expect(stream.readableEnded).toBe(false);
+      expect(stream.isPaused()).toBe(true);
+      response.emit("close");
+      // A pipe alone leaves the source paused/open after destination close.
+      expect(stream.destroyed).toBe(true);
+      await once(stream, "close");
+      expect(stream.closed).toBe(true);
+      expect(next).not.toHaveBeenCalled();
+    } finally {
+      response.destroy();
+      request.destroy();
+      stream.destroy();
+    }
+  });
 });
 
 describe("photosStaticPlugin helpers", () => {

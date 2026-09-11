@@ -31,6 +31,11 @@ Coordinated disclosure will be agreed with the reporter after a fix is available
 
 ## Secrets and cache credentials
 
+The default local `photos/` library, `.env`, and `.env.*` variants are ignored
+by Git (the public `.env.template` remains tracked). Add any custom local photo
+directory to `.gitignore` before populating it. Ignore rules do not remove files
+that are already tracked.
+
 Never commit `.env`, object-store credentials, real photo manifests, or cache
 tokens. Cache tokens should be fine-grained, restricted to the dedicated cache
 repository, and granted only repository contents read/write access. They do not
@@ -38,3 +43,11 @@ need organization administration, workflow, package, issue, or source-repository
 permissions. Keep the cache repository private: exact-location mode can contain
 precise coordinates in both the manifest and geocoding cache. See [the cache
 security guide](docs/cache-security.md).
+
+## Published photo metadata
+
+`PHOTO_LOCATION_MODE=coarse|strip` limits location data in the generated manifest
+and geocoding requests. It does not sanitize original photos: local originals
+are copied unchanged, and S3/CDN originals are served from the configured source.
+Downloadable originals may still contain exact GPS and other private EXIF.
+Remove sensitive metadata from the source files before publishing them.

@@ -27,6 +27,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: >-
+        Include the browser and OS for UI bugs; Node.js and pnpm versions for
+        build bugs; and the deployment platform when relevant. Do not paste .env.
+  - type: textarea
     id: reproduction
     attributes:
       label: Reproduction

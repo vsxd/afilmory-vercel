@@ -18,25 +18,32 @@ interface Partition {
   minimum: Record<Metric, number>;
 }
 
+// Vitest 4 AST-remapping baselines are recorded in docs/testing.md.
 const PARTITIONS: Record<string, Partition> = {
   web: {
     matches: (file) => file.includes("/apps/web/src/"),
-    minimum: { branches: 70, functions: 72, lines: 68, statements: 68 },
+    minimum: { branches: 59, functions: 70, lines: 68, statements: 68 },
+  },
+  "web-build": {
+    matches: (file) =>
+      file.includes("/apps/web/plugins/") ||
+      file.includes("/apps/web/scripts/"),
+    minimum: { branches: 53, functions: 60, lines: 60, statements: 59 },
   },
   builder: {
     matches: (file) => file.includes("/packages/builder/src/"),
-    minimum: { branches: 77, functions: 88, lines: 75, statements: 75 },
+    minimum: { branches: 68, functions: 82, lines: 75, statements: 75 },
   },
   webgl: {
     matches: (file) => file.includes("/packages/webgl-viewer/src/"),
-    minimum: { branches: 78, functions: 84, lines: 78, statements: 78 },
+    minimum: { branches: 70, functions: 79, lines: 78, statements: 78 },
   },
   shared: {
     matches: (file) =>
       file.includes("/packages/") &&
       !file.includes("/packages/builder/") &&
       !file.includes("/packages/webgl-viewer/"),
-    minimum: { branches: 80, functions: 72, lines: 70, statements: 70 },
+    minimum: { branches: 75, functions: 72, lines: 70, statements: 70 },
   },
 };
 

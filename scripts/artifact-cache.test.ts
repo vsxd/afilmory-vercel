@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { THUMBNAIL_ENCODING_SIGNATURE } from "@afilmory/builder/thumbnail-encoding";
 import { createEmptyManifest } from "@afilmory/schema";
+import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ArtifactCacheConfig } from "./artifact-cache";
@@ -501,7 +502,7 @@ describe("saveArtifacts", () => {
 describe("restoreArtifacts", () => {
   let rootDir: string;
   let config: ArtifactCacheConfig;
-  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: MockInstance<typeof console.warn>;
 
   // fixture 必须在假 `git clone` 的现场（spawn mock 内、同步 fs）写入：
   // cloneCacheRepository 在 spawn 之前会先 rm 掉 cacheDir，beforeEach 里

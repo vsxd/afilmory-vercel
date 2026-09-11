@@ -13,10 +13,12 @@ import { GalleryThumbnail } from "../GalleryThumbnail";
 
 vi.stubGlobal(
   "ResizeObserver",
-  vi.fn(() => ({
-    disconnect: vi.fn(),
-    observe: vi.fn(),
-  })),
+  vi.fn(
+    class {
+      disconnect = vi.fn();
+      observe = vi.fn();
+    },
+  ),
 );
 
 Object.defineProperty(HTMLElement.prototype, "scrollTo", {

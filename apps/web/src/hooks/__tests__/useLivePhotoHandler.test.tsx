@@ -5,6 +5,7 @@ import {
   render,
   waitFor,
 } from "@testing-library/react";
+import type { Mock } from "vitest";
 import {
   afterAll,
   afterEach,
@@ -16,10 +17,12 @@ import {
   vi,
 } from "vitest";
 
+import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+
 import { useLivePhotoHandler } from "../useLivePhotoHandler";
 
-let processVideoMock: ReturnType<typeof vi.fn>;
-let cleanupMock: ReturnType<typeof vi.fn>;
+let processVideoMock: Mock<ImageLoaderManager["processVideo"]>;
+let cleanupMock: Mock<ImageLoaderManager["cleanup"]>;
 
 const deviceState = vi.hoisted(() => ({ isMobile: false }));
 
@@ -113,11 +116,13 @@ describe("useLivePhotoHandler", () => {
 
   beforeEach(() => {
     deviceState.isMobile = false;
-    processVideoMock = vi.fn();
-    cleanupMock = vi.fn();
+    processVideoMock = vi.fn<ImageLoaderManager["processVideo"]>();
+    cleanupMock = vi.fn<ImageLoaderManager["cleanup"]>();
     runtimeMock.imageLoading.createLoader.mockImplementation(() => ({
-      processVideo: (...args: unknown[]) => processVideoMock(...args),
-      cleanup: (...args: unknown[]) => cleanupMock(...args),
+      processVideo: (...args: Parameters<ImageLoaderManager["processVideo"]>) =>
+        processVideoMock(...args),
+      cleanup: (...args: Parameters<ImageLoaderManager["cleanup"]>) =>
+        cleanupMock(...args),
     }));
 
     processVideoMock.mockImplementation(

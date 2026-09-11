@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MAX_TILES_PER_FRAME } from "./tile-cache";
@@ -76,8 +77,8 @@ function createHost(overrides: Partial<HostState> = {}) {
 }
 
 // ImageBitmap 结构上只有 width/height/close，直接用带 spy 的结构化夹具即可
-function makeBitmap(): ImageBitmap & { close: ReturnType<typeof vi.fn> } {
-  return { width: 512, height: 512, close: vi.fn() };
+function makeBitmap(): ImageBitmap & { close: Mock<() => void> } {
+  return { width: 512, height: 512, close: vi.fn<() => void>() };
 }
 
 function requestedKeys(

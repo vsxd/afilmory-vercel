@@ -2,6 +2,7 @@ import type { PhotoManifestItem } from "@afilmory/schema";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { MemoryRouter } from "react-router";
+import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MapSection } from "../MapSection";
@@ -15,7 +16,7 @@ vi.mock("~/navigation/hooks", () => ({
 }));
 
 const genericMapRenders: Array<Record<string, unknown>> = [];
-let mapLoadingStateMock: ReturnType<typeof vi.fn>;
+let mapLoadingStateMock: Mock<(...args: unknown[]) => void>;
 
 vi.mock("~/modules/map/MapProvider", () => ({
   MapProvider: ({ children }: PropsWithChildren) => <>{children}</>,

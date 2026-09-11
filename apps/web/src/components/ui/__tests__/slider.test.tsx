@@ -27,9 +27,45 @@ const renderSlider = (
 
 const getHandle = () => screen.getByRole("slider", { name: "Column Settings" });
 
+function prepareTrack() {
+  const track = getHandle().parentElement!;
+  vi.spyOn(track.firstElementChild!, "getBoundingClientRect").mockReturnValue({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 100,
+    bottom: 10,
+    width: 100,
+    height: 10,
+    toJSON: () => ({}),
+  });
+  return track;
+}
+
+function pointer(
+  target: Element | Document,
+  type: string,
+  clientX: number,
+  pointerId = 1,
+  button = 0,
+) {
+  fireEvent(
+    target,
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      pointerId,
+      button,
+    }),
+  );
+}
+
 describe("Slider", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("exposes the WAI-ARIA slider contract on the handle", () => {
@@ -154,5 +190,83 @@ describe("Slider", () => {
     const handle = getHandle();
     expect(handle.className).toContain("focus-visible:ring-2");
     expect(handle.className).toContain("focus-visible:ring-accent/45");
+  });
+
+  it("allows a controlled drag to return to its starting value", () => {
+    function ControlledSlider() {
+      const [value, setValue] = useState<number | "auto">(3);
+      return <Slider value={value} onChange={setValue} min={3} max={8} />;
+    }
+    render(<ControlledSlider />);
+    const track = prepareTrack();
+    pointer(track, "pointerdown", 15);
+    pointer(track, "pointermove", 100);
+    expect(getHandle().getAttribute("aria-valuenow")).toBe("8");
+    pointer(track, "pointermove", 15);
+    expect(getHandle().getAttribute("aria-valuenow")).toBe("3");
+    pointer(track, "pointerup", 15);
+  });
+
+  it.each(["pointercancel", "lostpointercapture"])(
+    "ends a drag on %s without committing it",
+    (eventType) => {
+      const onChange = vi.fn();
+      const onPointUp = vi.fn();
+      renderSlider({ onChange, onPointUp });
+      const track = prepareTrack();
+      pointer(track, "pointerdown", 15);
+      onChange.mockClear();
+      pointer(track, eventType, 15);
+      pointer(track, "pointermove", 100);
+      pointer(track, "pointerup", 100);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onPointUp).not.toHaveBeenCalled();
+      expect(getHandle().className).not.toContain("scale-110");
+    },
+  );
+
+  it("ignores additional pointers and commits only the captured pointer", () => {
+    const onChange = vi.fn();
+    const onPointUp = vi.fn();
+    renderSlider({ onChange, onPointUp });
+    const track = prepareTrack();
+    pointer(track, "pointerdown", 15);
+    onChange.mockClear();
+    pointer(track, "pointerdown", 100, 2);
+    pointer(track, "pointermove", 100, 2);
+    pointer(track, "pointerup", 100, 2);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onPointUp).not.toHaveBeenCalled();
+    pointer(track, "pointerup", 15);
+    expect(onPointUp).toHaveBeenCalledOnce();
+  });
+
+  it("does not keep document listeners after unmounting during a drag", () => {
+    const onChange = vi.fn();
+    const onPointUp = vi.fn();
+    const { unmount } = renderSlider({ onChange, onPointUp });
+    pointer(prepareTrack(), "pointerdown", 15);
+    unmount();
+    onChange.mockClear();
+    pointer(document, "pointermove", 100);
+    pointer(document, "pointerup", 100);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onPointUp).not.toHaveBeenCalled();
+  });
+
+  it("ignores secondary-button presses", () => {
+    const onChange = vi.fn();
+    renderSlider({ onChange });
+    pointer(prepareTrack(), "pointerdown", 100, 1, 2);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("anchors step values at min and clamps pointer updates to max", () => {
+    const onChange = vi.fn();
+    renderSlider({ value: 3, onChange, step: 2, max: 6 });
+    fireEvent.keyDown(getHandle(), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenLastCalledWith(5);
+    pointer(prepareTrack(), "pointerdown", 100);
+    expect(onChange).toHaveBeenLastCalledWith(6);
   });
 });

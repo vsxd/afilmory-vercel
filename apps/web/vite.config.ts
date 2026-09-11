@@ -111,10 +111,11 @@ const staticWebBuildPlugins: PluginOption[] = [
 ];
 
 // https://vitejs.dev/config/
-export default defineConfig(async ({ command }) => {
+export default defineConfig(async ({ command, mode }) => {
   const devOnlyPlugins: PluginOption[] = [];
+  const isolatedMode = mode === "e2e" || mode === "demo";
 
-  if (command === "serve") {
+  if (command === "serve" && !isolatedMode) {
     devOnlyPlugins.push(
       codeInspectorPlugin({
         bundler: "vite",
@@ -125,6 +126,18 @@ export default defineConfig(async ({ command }) => {
 
   return {
     base: "/",
+    // Parallel demo and browser-test servers must not replace each other's
+    // optimized dependencies and trigger "Outdated Optimize Dep" reloads.
+    cacheDir: isolatedMode
+      ? path.join(__dirname, "node_modules", `.vite-${mode}`)
+      : undefined,
+    optimizeDeps: {
+      // The route manifest is virtual, so Vite's HTML scan cannot follow it.
+      // Scan the real lazy route files before an interaction discovers new
+      // dependencies and reloads the page in the middle of navigation.
+      entries: ["index.html", "src/pages/**/*.tsx"],
+      include: ["react-error-boundary", "supercluster"],
+    },
     // Swiper exposes optional React bindings without declaring React as a peer.
     // Resolve them from the app root and keep one React instance in the bundle.
     resolve: {
@@ -153,11 +166,6 @@ export default defineConfig(async ({ command }) => {
     ],
     server: {
       port: 1924, // 1924 年首款 35mm 相机问世
-    },
-    optimizeDeps: {
-      // Lazy map imports otherwise discover these after navigation and trigger
-      // a full-page optimizer reload, discarding the route being entered.
-      include: ["react-error-boundary", "supercluster"],
     },
     build: {
       cssTarget: "safari16.4",

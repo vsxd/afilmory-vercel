@@ -265,10 +265,10 @@ function buildDescription(photo: PhotoManifestItem): string {
   if (photo.exif) {
     const exifParts: string[] = [];
     if (photo.exif.Model) {
-      exifParts.push(escapeXml(photo.exif.Model));
+      exifParts.push(escapeXmlValue(photo.exif.Model));
     }
     if (photo.exif.LensModel) {
-      exifParts.push(escapeXml(photo.exif.LensModel));
+      exifParts.push(escapeXmlValue(photo.exif.LensModel));
     }
     if (photo.exif.FNumber) {
       exifParts.push(`f/${escapeXmlValue(photo.exif.FNumber)}`);

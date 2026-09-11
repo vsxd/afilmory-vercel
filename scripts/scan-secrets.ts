@@ -62,8 +62,15 @@ export const scanRepositoryForSecrets = async (
   const findings: Array<SecretFinding & { file: string }> = [];
   for (const relativePath of await trackedFiles(rootDir)) {
     const filePath = path.join(rootDir, relativePath);
-    const stats = await fs.lstat(filePath);
-    if (!stats.isFile() || stats.size > MAX_SCANNED_FILE_BYTES) continue;
+    // `git ls-files --cached` includes tracked files deleted in the working
+    // tree. Skip those while still surfacing permission and I/O failures.
+    const stats = await fs
+      .lstat(filePath)
+      .catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+        throw error;
+      });
+    if (!stats?.isFile() || stats.size > MAX_SCANNED_FILE_BYTES) continue;
     const bytes = await fs.readFile(filePath);
     if (bytes.subarray(0, 8192).includes(0)) continue;
     for (const finding of findSecretFindings(bytes.toString("utf-8"))) {

@@ -15,6 +15,7 @@ import {
 import { createDefaultBuilderConfig } from "../../config/defaults.js";
 import type { EmitPluginEventFn } from "../../core/contracts/execution-context.js";
 import type { BuilderServices } from "../../core/contracts/services.js";
+import { createThumbnailFileName } from "../../image/thumbnail.js";
 import type { LogMessage } from "../../logger/index.js";
 import { logger, setLogListener } from "../../logger/index.js";
 import { StorageManager } from "../../storage/index.js";
@@ -410,6 +411,34 @@ describe("thumbnailStoragePlugin afterPhotoProcess", () => {
 });
 
 describe("thumbnailStoragePlugin afterBuild orphan cleanup", () => {
+  it("preserves a published photo's artifacts when its CDN rewrites the basename", async () => {
+    vi.stubEnv("THUMBNAIL_STORAGE_CLEANUP", "true");
+    const harness = createHarness();
+    await harness.init();
+
+    const current = `${DEFAULT_REMOTE_PREFIX}/${createThumbnailFileName("a", Buffer.from("current"))}`;
+    const previous = `${DEFAULT_REMOTE_PREFIX}/${createThumbnailFileName("a", Buffer.from("previous"))}`;
+    const legacy = `${DEFAULT_REMOTE_PREFIX}/a.jpg`;
+    const orphan = `${DEFAULT_REMOTE_PREFIX}/deleted-photo.jpg`;
+    harness.defaultManager.listObjectKeys.mockResolvedValueOnce([
+      current,
+      previous,
+      legacy,
+      orphan,
+      `${DEFAULT_REMOTE_PREFIX}/b.jpg`,
+    ]);
+
+    await harness.runAfterBuild([
+      {
+        ...manifestItem("a"),
+        thumbnailUrl: "https://cdn.example.com/resize/rewritten-name.jpg",
+      },
+      manifestItem("b"),
+    ]);
+
+    expect(deletedKeys(harness.defaultManager)).toEqual([orphan]);
+  });
+
   it("deletes exactly the remote keys that are not expected by the manifest when cleanup is enabled", async () => {
     vi.stubEnv("THUMBNAIL_STORAGE_CLEANUP", "true");
     const harness = createHarness();

@@ -26,6 +26,7 @@ pnpm dev
 pnpm dev:demo
 pnpm contracts
 pnpm lint
+pnpm format:check
 pnpm type-check
 pnpm test
 pnpm build
@@ -76,7 +77,7 @@ required. See [licensing.md](licensing.md) for the path classification.
 
 ## Security and community
 
-Read `SECURITY.md` before reporting a vulnerability and never post secrets,
+Read the [Security Policy](../SECURITY.md) before reporting a vulnerability and never post secrets,
 private manifests, photo URLs, or exact coordinates in an issue. All project
-spaces follow `CODE_OF_CONDUCT.md`. Notable Project Code changes belong in the
-Unreleased section of `CHANGELOG.md`; releases follow [releasing.md](releasing.md).
+spaces follow the [Code of Conduct](../CODE_OF_CONDUCT.md). Notable Project Code changes belong in the
+Unreleased section of [CHANGELOG.md](../CHANGELOG.md); releases follow [releasing.md](releasing.md).

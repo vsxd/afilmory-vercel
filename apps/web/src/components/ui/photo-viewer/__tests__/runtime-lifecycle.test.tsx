@@ -1,5 +1,6 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { useRef } from "react";
+import type { Mock } from "vitest";
 import {
   afterAll,
   afterEach,
@@ -11,15 +12,17 @@ import {
   vi,
 } from "vitest";
 
+import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+
 import { useImageLoader, useProgressiveImageState } from "../hooks";
 import type { LivePhotoVideoHandle } from "../LivePhotoVideo";
 import { LivePhotoVideo } from "../LivePhotoVideo";
 
-let loadImageMock: ReturnType<typeof vi.fn>;
-let processVideoMock: ReturnType<typeof vi.fn>;
-let cleanupMock: ReturnType<typeof vi.fn>;
-let animationStartMock: ReturnType<typeof vi.fn>;
-let animationSetMock: ReturnType<typeof vi.fn>;
+let loadImageMock: Mock<ImageLoaderManager["loadImage"]>;
+let processVideoMock: Mock<ImageLoaderManager["processVideo"]>;
+let cleanupMock: Mock<ImageLoaderManager["cleanup"]>;
+let animationStartMock: Mock<(...args: unknown[]) => Promise<void>>;
+let animationSetMock: Mock<(...args: unknown[]) => void>;
 const runtimeMock = vi.hoisted(() => ({
   imageCache: {},
   imageLoading: {
@@ -30,15 +33,15 @@ const runtimeMock = vi.hoisted(() => ({
 
 vi.mock("~/lib/image-loader-manager", () => {
   class MockImageLoaderManager {
-    loadImage(...args: unknown[]) {
+    loadImage(...args: Parameters<ImageLoaderManager["loadImage"]>) {
       return loadImageMock(...args);
     }
 
-    processVideo(...args: unknown[]) {
+    processVideo(...args: Parameters<ImageLoaderManager["processVideo"]>) {
       return processVideoMock(...args);
     }
 
-    cleanup(...args: unknown[]) {
+    cleanup(...args: Parameters<ImageLoaderManager["cleanup"]>) {
       return cleanupMock(...args);
     }
   }
@@ -143,16 +146,19 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   beforeEach(() => {
-    loadImageMock = vi.fn();
-    processVideoMock = vi.fn();
-    cleanupMock = vi.fn();
+    loadImageMock = vi.fn<ImageLoaderManager["loadImage"]>();
+    processVideoMock = vi.fn<ImageLoaderManager["processVideo"]>();
+    cleanupMock = vi.fn<ImageLoaderManager["cleanup"]>();
     animationStartMock = vi.fn(async () => {});
     animationSetMock = vi.fn();
     runtimeMock.imageLoading.cleanupLoader.mockClear();
     runtimeMock.imageLoading.createLoader.mockImplementation(() => ({
-      loadImage: (...args: unknown[]) => loadImageMock(...args),
-      processVideo: (...args: unknown[]) => processVideoMock(...args),
-      cleanup: (...args: unknown[]) => cleanupMock(...args),
+      loadImage: (...args: Parameters<ImageLoaderManager["loadImage"]>) =>
+        loadImageMock(...args),
+      processVideo: (...args: Parameters<ImageLoaderManager["processVideo"]>) =>
+        processVideoMock(...args),
+      cleanup: (...args: Parameters<ImageLoaderManager["cleanup"]>) =>
+        cleanupMock(...args),
     }));
     loadSpy.mockClear();
     pauseSpy.mockClear();
@@ -256,7 +262,10 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cleans up the active live photo request when the current image changes", async () => {
-    const videoLoad = Promise.withResolvers<void>();
+    const videoLoad =
+      Promise.withResolvers<
+        Awaited<ReturnType<ImageLoaderManager["processVideo"]>>
+      >();
     processVideoMock.mockReturnValue(videoLoad.promise);
 
     const loadingIndicatorRef = {
@@ -293,7 +302,7 @@ describe("photo viewer runtime lifecycle", () => {
 
     expect(cleanupMock).toHaveBeenCalledTimes(1);
 
-    videoLoad.resolve();
+    videoLoad.resolve({});
   });
 
   it("cleans up the live photo manager on unmount", async () => {

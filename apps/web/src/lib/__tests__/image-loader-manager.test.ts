@@ -55,6 +55,7 @@ class MockXMLHttpRequest {
 
   open = vi.fn();
   send = vi.fn();
+  abort = vi.fn(() => this.onabort?.());
   setRequestHeader = vi.fn();
 
   constructor() {
@@ -125,6 +126,52 @@ describe("ImageLoaderManager", () => {
       blob: xhr.response,
     });
   });
+
+  it.each(["open", "send"] as const)(
+    "settles synchronous XHR %s failures and lets the viewer retry",
+    async (phase) => {
+      const error = new DOMException("Request blocked", "SecurityError");
+      vi.stubGlobal(
+        "XMLHttpRequest",
+        class extends MockXMLHttpRequest {
+          constructor() {
+            super();
+            this[phase].mockImplementation(() => {
+              throw error;
+            });
+          }
+        },
+      );
+      const manager = new ImageLoaderManager();
+      const onError = vi.fn();
+      const onLoadingStateUpdate = vi.fn();
+      const result = manager.loadImage("https://example.com/blocked.jpg", {
+        onError,
+        onLoadingStateUpdate,
+      });
+      const rejected = expect(result).rejects.toMatchObject({
+        stage: "fetch",
+        code: "network",
+        cause: error,
+      });
+      await vi.advanceTimersByTimeAsync(300);
+      await rejected;
+      expect(onError).toHaveBeenCalledOnce();
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ cause: error }),
+      );
+      expect(onLoadingStateUpdate).toHaveBeenLastCalledWith({
+        isVisible: false,
+      });
+
+      vi.stubGlobal("XMLHttpRequest", MockXMLHttpRequest);
+      const retry = manager.loadImage("https://example.com/retry.jpg");
+      await vi.advanceTimersByTimeAsync(300);
+      const xhr = MockXMLHttpRequest.instances.at(-1)!;
+      xhr.onload?.();
+      await expect(retry).resolves.toMatchObject({ blob: xhr.response });
+    },
+  );
 
   it("returns cached regular images before starting another network request", async () => {
     const cache = createRegularImageCache();

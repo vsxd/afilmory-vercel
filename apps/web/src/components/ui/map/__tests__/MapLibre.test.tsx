@@ -5,6 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GeographicRegion, PhotoMarker } from "~/types/map";
@@ -12,13 +13,22 @@ import type { GeographicRegion, PhotoMarker } from "~/types/map";
 import { Maplibre } from "../MapLibre";
 
 const motionPreference = vi.hoisted(() => ({ reduce: false }));
+const capabilities = vi.hoisted(() => ({ webgl2: true }));
 
-let setProjectionMock: ReturnType<typeof vi.fn>;
-let fitBoundsMock: ReturnType<typeof vi.fn>;
-let flyToMock: ReturnType<typeof vi.fn>;
-let createMarkerClusterIndexMock: ReturnType<typeof vi.fn>;
-let createRegionClusterIndexMock: ReturnType<typeof vi.fn>;
-let getClusterPointsMock: ReturnType<typeof vi.fn>;
+vi.mock("~/lib/feature", () => ({
+  get canUseWebGL2() {
+    return capabilities.webgl2;
+  },
+}));
+
+vi.mock("~/lib/map/maplibre", () => ({ maplibre: {} }));
+
+let setProjectionMock: Mock<(...args: unknown[]) => void>;
+let fitBoundsMock: Mock<(...args: unknown[]) => void>;
+let flyToMock: Mock<(...args: unknown[]) => void>;
+let createMarkerClusterIndexMock: Mock<(...args: unknown[]) => unknown>;
+let createRegionClusterIndexMock: Mock<(...args: unknown[]) => unknown>;
+let getClusterPointsMock: Mock<(...args: unknown[]) => unknown[]>;
 let capturedOnMove:
   | ((evt: {
       viewState: { longitude: number; latitude: number; zoom: number };
@@ -206,6 +216,7 @@ const createRegion = (marker: PhotoMarker): GeographicRegion => ({
 
 describe("Maplibre", () => {
   beforeEach(() => {
+    capabilities.webgl2 = true;
     motionPreference.reduce = false;
     setProjectionMock = vi.fn();
     fitBoundsMock = vi.fn();
@@ -246,6 +257,18 @@ describe("Maplibre", () => {
     expect(screen.getByTestId("map").dataset.longitude).toBe("121.5");
     expect(screen.getByTestId("map").dataset.latitude).toBe("31.2");
     expect(screen.getByTestId("map").dataset.zoom).toBe("9");
+  });
+
+  it("shows a recoverable map fallback without mounting MapLibre when WebGL2 is unavailable", () => {
+    capabilities.webgl2 = false;
+    const { unmount } = render(<Maplibre autoFitBounds={false} />);
+
+    expect(screen.queryByTestId("map")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe(
+      "explore.map.error.title",
+    );
+    expect(setProjectionMock).not.toHaveBeenCalled();
+    unmount();
   });
 
   it("renders the custom map attribution collapsed by default", () => {

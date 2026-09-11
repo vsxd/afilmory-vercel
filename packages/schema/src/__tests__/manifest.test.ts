@@ -320,6 +320,7 @@ describe("manifest v2 schema", () => {
   it("keeps legacy non-portable IDs and case-variant IDs (published permalinks)", () => {
     const legacyIds = [
       "café".normalize("NFD"),
+      "sunset-🌅",
       "IMG 0001 (2)",
       "scan:2019",
       "Sunset",
@@ -338,6 +339,33 @@ describe("manifest v2 schema", () => {
     expect(skipped).toEqual([]);
     expect(manifest.photos.map((photo) => photo.id)).toEqual(legacyIds);
   });
+
+  it.each([".", "..", "photo-\ud800", "photo-\udfff"])(
+    "rejects IDs that cannot safely form a photo URL: %j",
+    (id) => {
+      const input = createManifest({
+        photos: [
+          createValidPhoto({ id: "valid" }),
+          createValidPhoto({ id, s3Key: "photos/invalid.jpg" }),
+        ],
+      });
+
+      expect(validateManifest(input)).toMatchObject({
+        success: false,
+        issues: ["photos[1].id must be a non-empty safe identifier"],
+      });
+      const recovered = parseManifestLenient(input);
+      expect(recovered.manifest.photos.map((photo) => photo.id)).toEqual([
+        "valid",
+      ]);
+      expect(recovered.skipped).toEqual([
+        {
+          index: 1,
+          issues: ["photos[1].id must be a non-empty safe identifier"],
+        },
+      ]);
+    },
+  );
 
   it("repairs cross-field aspect ratios and validates index references", () => {
     const input = createManifest({

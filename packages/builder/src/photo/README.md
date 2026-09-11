@@ -83,11 +83,12 @@ type VideoSource =
 
 ## Geocoding
 
-反向地理编码由 `plugins/geocoding.ts` 在构建生命周期中调用 `photo/geocoding.ts`，运行时前端只读取 manifest 中已有的结构化行政区信息。根配置默认启用 Nominatim provider；如果不希望构建期访问外部 geocoding 服务，可以显式设置 `GEOCODING_ENABLED=false`。
+反向地理编码由 `plugins/geocoding.ts` 在构建生命周期中调用 `photo/geocoding.ts`，运行时前端只读取 manifest 中已有的结构化行政区信息。根配置默认关闭反向地理编码；仅在显式设置 `GEOCODING_ENABLED=true` 后才访问外部服务，启用后默认使用 Nominatim provider。
 
 当前支持：
 
-- `GEOCODING_ENABLED=true|false`：默认启用；设为 `false` 时关闭构建期反向地理编码。
+- `GEOCODING_ENABLED=true|false`：默认 `false`；设为 `true` 时才启用构建期反向地理编码。
+- `PHOTO_LOCATION_MODE=coarse|strip|exact`：默认 `coarse`，对外发送的位置先取两位小数；`strip` 禁止地理编码，`exact` 才使用相机原始精确坐标。该策略不修改源照片中的 EXIF。
 - `GEOCODING_PROVIDER=nominatim`：默认使用 Nominatim；也兼容 `mapbox` 和 `auto`。
 - `GEOCODING_LOCALES=en,zh-CN`：构建期预计算的地理名称语言列表；`en` 会自动加入并作为稳定区域 ID 的 canonical locale。
 - `GEOCODING_LANGUAGE`：旧配置兼容；未设置 `GEOCODING_LOCALES` 时才读取。
@@ -101,6 +102,6 @@ type VideoSource =
 ## Extending the Pipeline
 
 - 添加新处理步骤时优先放在 `image-pipeline.ts` 附近，保持顺序清晰。
-- 添加新可复用数据时同步更新 cache 判定、manifest 类型和迁移逻辑。
+- 添加新可复用数据时同步更新 cache 判定、manifest 类型和校验器；schema 版本变化要求从照片源重建，不增加旧版本迁移。
 - 添加插件行为时优先通过 plugin lifecycle hook，不要绕过 `AfilmoryBuilder` services。
 - 新字段如果进入 manifest，需要同步 `@afilmory/schema` 类型、web runtime 使用方和测试。

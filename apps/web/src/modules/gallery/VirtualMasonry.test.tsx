@@ -14,11 +14,13 @@ beforeEach(() => {
   scrollEl = null;
   vi.stubGlobal(
     "ResizeObserver",
-    vi.fn(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    })),
+    vi.fn(
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      },
+    ),
   );
 });
 

@@ -3,17 +3,20 @@ import os from "node:os";
 import path from "node:path";
 
 import { createManifest } from "@afilmory/schema";
+import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { precheck } from "../../scripts/precheck";
 
 describe("precheck", () => {
   let tmpDir: string;
-  let runBuilder: ReturnType<typeof vi.fn>;
+  let runBuilder: Mock<(env: NodeJS.ProcessEnv) => Promise<void>>;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "afilmory-precheck-"));
-    runBuilder = vi.fn().mockResolvedValue(null);
+    runBuilder = vi
+      .fn<(env: NodeJS.ProcessEnv) => Promise<void>>()
+      .mockResolvedValue();
   });
 
   afterEach(async () => {

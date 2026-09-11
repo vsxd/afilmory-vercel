@@ -70,7 +70,7 @@ test.describe("production original image loading", () => {
       )
       .toBeGreaterThan(0);
     await page.keyboard.press("ArrowLeft");
-    await expect(page).not.toHaveURL(/\/photos\/SYNTH0001(?:\?|$)/);
+    await expect(page).toHaveURL(/\/photos\/SYNTH0002(?:\?|$)/);
     const second = viewer
       .getByRole("group", { name: "SYNTH0002", exact: true })
       .locator('img[src^="blob:"]');

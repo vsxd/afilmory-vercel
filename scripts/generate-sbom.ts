@@ -17,9 +17,10 @@ interface PnpmDependency {
 interface PnpmPackage {
   dependencies?: Record<string, PnpmDependency>;
   name: string;
+  optionalDependencies?: Record<string, PnpmDependency>;
   path?: string;
   private?: boolean;
-  version: string;
+  version?: string;
 }
 
 interface SbomComponent {
@@ -27,31 +28,38 @@ interface SbomComponent {
   name: string;
   purl: string;
   type: "application" | "library";
-  version: string;
+  version?: string;
 }
 
-const toPurl = (name: string, version: string): string => {
+const toPurl = (name: string, version?: string): string => {
   const encodedName = name.startsWith("@")
     ? `${encodeURIComponent(name.split("/")[0])}/${encodeURIComponent(name.split("/")[1] ?? "")}`
     : encodeURIComponent(name);
-  return `pkg:npm/${encodedName}@${encodeURIComponent(version)}`;
+  return `pkg:npm/${encodedName}${version ? `@${encodeURIComponent(version)}` : ""}`;
 };
 
-const dependencyRecords = (dependency: PnpmDependency) => ({
+const dependencyRecords = (
+  dependency: Pick<PnpmDependency, "dependencies" | "optionalDependencies">,
+) => ({
   ...dependency.dependencies,
   ...dependency.optionalDependencies,
 });
 
 export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
+  const rootPackage = packages[0];
+  if (!rootPackage) throw new Error("pnpm returned an empty package graph");
+  const rootReference = toPurl(rootPackage.name, rootPackage.version);
   const workspaceVersions = new Map(
     packages.map((pkg) => [pkg.name, pkg.version]),
   );
   const components = new Map<string, SbomComponent>();
   const dependencyGraph = new Map<string, Set<string>>();
 
-  const resolveVersion = (name: string, version: string): string =>
+  // Private workspace packages may omit their version. Their links must use
+  // the same unversioned identity instead of inventing a separate 0.0.0 node.
+  const resolveVersion = (name: string, version: string): string | undefined =>
     version.startsWith("link:") || version.startsWith("workspace:")
-      ? (workspaceVersions.get(name) ?? "0.0.0")
+      ? workspaceVersions.get(name)
       : version;
 
   const visitDependency = (
@@ -60,13 +68,15 @@ export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
   ): string => {
     const version = resolveVersion(name, dependency.version);
     const reference = toPurl(name, version);
-    components.set(reference, {
-      "bom-ref": reference,
-      name,
-      purl: reference,
-      type: "library",
-      version,
-    });
+    if (reference !== rootReference && !components.has(reference)) {
+      components.set(reference, {
+        "bom-ref": reference,
+        name,
+        purl: reference,
+        type: "library",
+        ...(version ? { version } : {}),
+      });
+    }
     const children = dependencyGraph.get(reference) ?? new Set<string>();
     dependencyGraph.set(reference, children);
     for (const [childName, child] of Object.entries(
@@ -77,10 +87,10 @@ export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
     return reference;
   };
 
-  const rootPackage = packages[0];
-  if (!rootPackage) throw new Error("pnpm returned an empty package graph");
-  const rootReference = toPurl(rootPackage.name, rootPackage.version);
   const rootDependencies = new Set<string>();
+  dependencyGraph.set(rootReference, rootDependencies);
+  // Register workspaces first so traversing a link cannot turn an application
+  // into a library or replace the package's own dependency relationships.
   for (const pkg of packages) {
     if (pkg !== rootPackage) {
       const reference = toPurl(pkg.name, pkg.version);
@@ -89,12 +99,17 @@ export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
         name: pkg.name,
         purl: reference,
         type: pkg.private ? "application" : "library",
-        version: pkg.version,
+        ...(pkg.version ? { version: pkg.version } : {}),
       });
       rootDependencies.add(reference);
     }
-    for (const [name, dependency] of Object.entries(pkg.dependencies ?? {})) {
-      rootDependencies.add(visitDependency(name, dependency));
+  }
+  for (const pkg of packages) {
+    const reference = toPurl(pkg.name, pkg.version);
+    const children = dependencyGraph.get(reference) ?? new Set<string>();
+    dependencyGraph.set(reference, children);
+    for (const [name, dependency] of Object.entries(dependencyRecords(pkg))) {
+      children.add(visitDependency(name, dependency));
     }
   }
 
@@ -108,14 +123,14 @@ export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
         name: rootPackage.name,
         purl: rootReference,
         type: "application",
-        version: rootPackage.version,
+        ...(rootPackage.version ? { version: rootPackage.version } : {}),
       },
       tools: {
         components: [
           {
             name: "afilmory-sbom-generator",
             type: "application",
-            version: rootPackage.version,
+            ...(rootPackage.version ? { version: rootPackage.version } : {}),
           },
         ],
       },
@@ -126,6 +141,7 @@ export const createCycloneDxSbom = (packages: PnpmPackage[]) => {
     dependencies: [
       { ref: rootReference, dependsOn: [...rootDependencies].sort() },
       ...[...dependencyGraph.entries()]
+        .filter(([ref]) => ref !== rootReference)
         .map(([ref, dependencies]) => ({
           ref,
           dependsOn: [...dependencies].sort(),

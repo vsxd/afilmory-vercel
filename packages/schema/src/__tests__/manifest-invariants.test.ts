@@ -211,6 +211,40 @@ describe("exif sanitization", () => {
   });
 });
 
+describe("localized location sanitization", () => {
+  it("removes prototype keys from locale dictionaries in both parsing modes", () => {
+    const input = createInput([
+      createValidPhoto({
+        location: {
+          latitude: 1,
+          longitude: 2,
+          adminI18n: JSON.parse(
+            '{"en":{"city":"London"},"__proto__":{"city":"Injected"},"constructor":{"city":"Injected"},"prototype":{"city":"Injected"}}',
+          ),
+          locationNameI18n: JSON.parse(
+            '{"en":"London","__proto__":"Injected","constructor":"Injected","prototype":"Injected"}',
+          ),
+        },
+      }),
+    ]);
+    const strict = validateManifest(input);
+    expect(strict.success).toBe(true);
+    if (!strict.success) return;
+
+    for (const manifest of [
+      strict.manifest,
+      parseManifestLenient(input).manifest,
+    ]) {
+      const location = manifest.photos[0]!.location!;
+      expect(location.adminI18n).toEqual({ en: { city: "London" } });
+      expect(Object.getPrototypeOf(location.adminI18n)).toBe(Object.prototype);
+      expect(location.locationNameI18n).toEqual({ en: "London" });
+      expect(Object.keys(location.adminI18n!)).toEqual(["en"]);
+      expect(Object.keys(location.locationNameI18n!)).toEqual(["en"]);
+    }
+  });
+});
+
 describe("local manifest source", () => {
   it("accepts and round-trips a local source in strict mode", () => {
     const input = createManifest({

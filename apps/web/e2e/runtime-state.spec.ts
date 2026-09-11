@@ -194,6 +194,37 @@ test("opens the viewer from command search and restores route and scroll state",
   expect(diagnostics).toEqual([]);
 });
 
+test("keeps gallery links sized and restores keyboard focus after the viewer exits", async ({
+  page,
+}) => {
+  const diagnostics = collectRuntimeDiagnostics(page);
+  await stubOriginalImages(page);
+  await openGallery(page);
+  const photoLink = page.locator("[data-gallery-photo-link]").first();
+  const photoId = await photoLink.getAttribute("data-photo-id");
+  expect(photoId).toBeTruthy();
+  const bounds = await photoLink.boundingBox();
+  expect(bounds?.width).toBeGreaterThan(0);
+  expect(bounds?.height).toBeGreaterThan(0);
+
+  await photoLink.focus();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() => new URL(page.url()).pathname)
+    .toBe(`/photos/${photoId}`);
+  const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+  await expect(viewer).toBeVisible();
+  await expect(
+    viewer.getByRole("button", { name: "Close", exact: true }),
+  ).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
+  await expect(page).toHaveURL(/\/(\?.*)?$/);
+  await expect(photoLink).toBeFocused();
+  expect(diagnostics).toEqual([]);
+});
+
 test("applies and resets command-palette camera filters through URL state", async ({
   page,
 }) => {
@@ -261,6 +292,12 @@ test("opens the map route and renders MapLibre data from runtime services", asyn
   page,
 }) => {
   const diagnostics = collectRuntimeDiagnostics(page);
+  let documentRequests = 0;
+  page.on("request", (request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+      documentRequests++;
+    }
+  });
 
   await openGallery(page);
   await page.getByRole("button", { name: "Map Explore" }).click();
@@ -274,6 +311,9 @@ test("opens the map route and renders MapLibre data from runtime services", asyn
   await expect(page.getByText("Found 4 countries")).toBeVisible();
   await expect(page.locator(".maplibregl-map")).toBeVisible();
   await expect.poll(() => page.locator("canvas").count()).toBeGreaterThan(0);
+  // A cold first visit must stay within the SPA. Late dependency optimization
+  // used to reload the document while the lazy map navigation was pending.
+  expect(documentRequests).toBe(1);
   expect(diagnostics).toEqual([]);
 });
 

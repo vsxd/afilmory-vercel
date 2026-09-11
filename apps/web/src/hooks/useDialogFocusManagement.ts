@@ -25,6 +25,7 @@ interface DialogFocusManagementOptions {
   focusContainerOnOpen?: boolean;
   initialFocusSelector?: string;
   isOpen: boolean;
+  restoreFocusOnClose?: boolean;
   returnFocusElement?: HTMLElement | null;
 }
 
@@ -38,13 +39,19 @@ export function useDialogFocusManagement({
   focusContainerOnOpen = false,
   initialFocusSelector,
   isOpen,
+  restoreFocusOnClose = true,
   returnFocusElement,
 }: DialogFocusManagementOptions): void {
   const returnFocusRef = useRef<HTMLElement | null>(returnFocusElement ?? null);
+  const restoreFocusFrameRef = useRef<number | null>(null);
   returnFocusRef.current = returnFocusElement ?? null;
 
   useEffect(() => {
     if (!isOpen || typeof document === "undefined") return;
+    if (restoreFocusFrameRef.current !== null) {
+      window.cancelAnimationFrame(restoreFocusFrameRef.current);
+      restoreFocusFrameRef.current = null;
+    }
 
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -98,9 +105,21 @@ export function useDialogFocusManagement({
     return () => {
       window.cancelAnimationFrame(frame);
       dialog.removeEventListener("keydown", handleKeyDown);
-      if (focusTarget?.isConnected) {
-        focusTarget.focus({ preventScroll: true });
-      }
+      if (!restoreFocusOnClose) return;
+      // Ancestor/sibling modal-isolation effects may release inert after this
+      // cleanup. Browsers silently ignore focus while the opener is inert.
+      restoreFocusFrameRef.current = window.requestAnimationFrame(() => {
+        restoreFocusFrameRef.current = null;
+        if (focusTarget?.isConnected && !focusTarget.closest("[inert]")) {
+          focusTarget.focus({ preventScroll: true });
+        }
+      });
     };
-  }, [dialogRef, focusContainerOnOpen, initialFocusSelector, isOpen]);
+  }, [
+    dialogRef,
+    focusContainerOnOpen,
+    initialFocusSelector,
+    isOpen,
+    restoreFocusOnClose,
+  ]);
 }

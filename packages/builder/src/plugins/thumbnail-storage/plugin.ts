@@ -2,7 +2,11 @@ import process from "node:process";
 
 import type { BuilderServices } from "../../core/contracts/services.js";
 import type { BuilderStorage } from "../../core/contracts/storage.js";
-import { getThumbnailFileNameFromUrl } from "../../image/thumbnail.js";
+import {
+  getThumbnailFileNameFromUrl,
+  getThumbnailPhotoIdFromFileName,
+  isThumbnailFileNameForPhoto,
+} from "../../image/thumbnail.js";
 import type { S3Config } from "../../storage/interfaces.js";
 import type { BuilderPlugin } from "../types.js";
 import type { ThumbnailPluginData } from "./shared.js";
@@ -220,12 +224,23 @@ export default function thumbnailStoragePlugin(
           if (!storageManager) return;
 
           // 期望存在的远端缩略图 key（来自最终 manifest）。
+          const ambiguousPhotoIds = new Set<string>();
           const expected = new Set(
             payload.manifest.map((photo) => {
-              const fileName =
-                getThumbnailFileNameFromUrl(photo.thumbnailUrl) ??
-                `${photo.id}.jpg`;
-              return joinSegments(config.remotePrefix, fileName);
+              const fileName = getThumbnailFileNameFromUrl(photo.thumbnailUrl);
+              if (
+                !fileName ||
+                !isThumbnailFileNameForPhoto(fileName, photo.id)
+              ) {
+                // A CDN may rewrite the published basename. It is then
+                // impossible to identify the current immutable version from
+                // the URL; keep this photo's artifacts, as local cleanup does.
+                ambiguousPhotoIds.add(photo.id);
+              }
+              return joinSegments(
+                config.remotePrefix,
+                fileName ?? `${photo.id}.jpg`,
+              );
             }),
           );
 
@@ -242,7 +257,12 @@ export default function thumbnailStoragePlugin(
             return;
           }
 
-          const orphans = remoteKeys.filter((key) => !expected.has(key));
+          const orphans = remoteKeys.filter((key) => {
+            if (expected.has(key)) return false;
+            const fileName = key.slice(config.remotePrefix.length + 1);
+            const photoId = getThumbnailPhotoIdFromFileName(fileName);
+            return !photoId || !ambiguousPhotoIds.has(photoId);
+          });
           if (orphans.length === 0) return;
 
           // 破坏性删除默认走 dry-run：仅当显式设置 THUMBNAIL_STORAGE_CLEANUP=true 时才真正删除。

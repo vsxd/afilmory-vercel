@@ -32,12 +32,14 @@ export const Slider = ({
   const sliderRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
+  const activePointerRef = useRef<number | null>(null);
 
   // 将值转换为位置百分比
   const getPositionFromValue = useCallback(
     (val: number | "auto") => {
       if (val === "auto") return 5; // 自动档位置稍微偏右一点
       // 数值档从 15% 开始到 100%
+      if (max === min) return 15;
       return 15 + ((val - min) / (max - min)) * 85;
     },
     [min, max],
@@ -49,60 +51,64 @@ export const Slider = ({
       if (position <= 12) return "auto"; // 左侧 12% 区域为自动档
       const normalizedPosition = (position - 15) / 85; // 从 15% 开始的 85% 区域为数值
       const rawValue = min + Math.max(0, normalizedPosition) * (max - min);
-      return Math.round(Math.max(min, rawValue) / step) * step;
+      return Math.min(
+        max,
+        Math.max(min, min + Math.round((rawValue - min) / step) * step),
+      );
     },
     [min, max, step],
   );
 
+  const updateValue = useCallback(
+    (clientX: number) => {
+      if (!trackRef.current) return;
+      const rect = trackRef.current.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const position = ((clientX - rect.left) / rect.width) * 100;
+      const newValue = getValueFromPosition(
+        Math.max(0, Math.min(100, position)),
+      );
+      if (newValue !== value) onChange(newValue);
+    },
+    [getValueFromPosition, onChange, value],
+  );
+
   const handlePointerDown = useCallback(
-    (event: React.PointerEvent) => {
-      if (disabled) return;
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled || event.button !== 0 || activePointerRef.current !== null)
+        return;
 
       event.preventDefault();
       // preventDefault suppresses native focus-on-click; move focus to the
       // handle explicitly so keyboard adjustment can continue after a drag.
       handleRef.current?.focus();
+      activePointerRef.current = event.pointerId;
+      event.currentTarget.setPointerCapture(event.pointerId);
       setIsDragging(true);
-
-      const updateValue = (clientX: number) => {
-        if (!trackRef.current) return;
-
-        const rect = trackRef.current.getBoundingClientRect();
-        const position = ((clientX - rect.left) / rect.width) * 100;
-        const clampedPosition = Math.max(0, Math.min(100, position));
-        const newValue = getValueFromPosition(clampedPosition);
-
-        if (newValue !== value) {
-          onChange(newValue);
-        }
-      };
-
       updateValue(event.clientX);
-
-      const handlePointerMove = (e: PointerEvent) => {
-        updateValue(e.clientX);
-      };
-
-      const handlePointerUp = (e: PointerEvent) => {
-        setIsDragging(false);
-        if (onPointUp) {
-          onPointUp(e);
-        }
-        document.removeEventListener("pointermove", handlePointerMove);
-        document.removeEventListener("pointerup", handlePointerUp);
-      };
-
-      document.addEventListener("pointermove", handlePointerMove);
-      document.addEventListener("pointerup", handlePointerUp);
     },
-    [disabled, getValueFromPosition, value, onChange, onPointUp],
+    [disabled, updateValue],
+  );
+
+  const finishPointer = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (activePointerRef.current !== event.pointerId) return false;
+      activePointerRef.current = null;
+      setIsDragging(false);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return true;
+    },
+    [],
   );
 
   // 键盘步进：与指针路径一致地吸附到 step 倍数，"auto" 是 min 左侧的一个离散档
   const stepValue = useCallback(
     (val: number | "auto", direction: 1 | -1): number | "auto" => {
       if (val === "auto") return direction === 1 ? min : "auto";
-      const snapped = Math.round((val + direction * step) / step) * step;
+      const snapped =
+        min + Math.round((val - min + direction * step) / step) * step;
       if (snapped < min) return val <= min ? "auto" : min;
       return Math.min(max, snapped);
     },
@@ -162,10 +168,22 @@ export const Slider = ({
       <div
         ref={sliderRef}
         className={clsxm(
-          "relative h-11 cursor-pointer",
+          "relative h-11 touch-none cursor-pointer",
           disabled && "cursor-not-allowed opacity-50",
         )}
         onPointerDown={handlePointerDown}
+        onPointerMove={(event) => {
+          if (!disabled && activePointerRef.current === event.pointerId) {
+            updateValue(event.clientX);
+          }
+        }}
+        onPointerUp={(event) => {
+          if (finishPointer(event) && !disabled) onPointUp?.(event.nativeEvent);
+        }}
+        onPointerCancel={finishPointer}
+        onLostPointerCapture={(event) => {
+          if (event.target === event.currentTarget) finishPointer(event);
+        }}
       >
         {/* 背景轨道 */}
         <div

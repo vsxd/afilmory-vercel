@@ -1,4 +1,5 @@
 import type { PhotoManifestItem } from "@afilmory/schema";
+import { assertManifest, createManifest } from "@afilmory/schema";
 import { describe, expect, it } from "vitest";
 
 import { generateRSSFeed } from "../../plugins/vite/rss";
@@ -27,6 +28,24 @@ function makePhoto(overrides: Partial<PhotoManifestItem>): PhotoManifestItem {
 }
 
 describe("generateRSSFeed XML safety", () => {
+  it("handles numeric camera and lens metadata accepted by manifest validation", () => {
+    const manifest = assertManifest(
+      createManifest({
+        photos: [makePhoto({ exif: { Model: 123, LensModel: 456 } as never })],
+      }),
+    );
+    const xml = generateRSSFeed(manifest.photos, {
+      title: "Test",
+      url: "https://example.com",
+    });
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+
+    expect(doc.querySelector("parsererror")).toBeNull();
+    expect(doc.querySelector("item description")?.textContent).toContain(
+      "123 · 456",
+    );
+  });
+
   it("produces well-formed XML even with hostile EXIF values", () => {
     const photo = makePhoto({
       exif: {
