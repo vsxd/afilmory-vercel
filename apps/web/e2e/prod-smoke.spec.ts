@@ -405,7 +405,7 @@ test.describe("production detail actions", () => {
     const viewer = page.getByRole("dialog", { name: "Photo viewer" });
     await expect(viewer).toBeVisible();
     await viewer.getByRole("button", { name: "Share Photo" }).click();
-    await page.getByRole("button", { name: "Copy Link" }).click();
+    await page.getByRole("menuitem", { name: "Copy Link" }).click();
     await expect
       .poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toBe(`${new URL(page.url()).origin}/photos/SYNTH0001`);

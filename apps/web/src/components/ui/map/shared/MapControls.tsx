@@ -6,11 +6,10 @@ import { toast } from "sonner";
 
 import type { MapControlsProps } from "./types";
 
-const controlShellClassName =
-  "bg-material-thick border-fill-tertiary overflow-hidden rounded-xl border shadow-xl backdrop-blur-2xl";
+const controlShellClassName = "af-popover overflow-hidden rounded-xl";
 
 const controlButtonClassName =
-  "group hover:bg-fill-secondary active:bg-fill-tertiary focus-visible:ring-accent/45 focus-visible:ring-offset-background flex h-12 w-12 items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-offset-0";
+  "group hover:bg-white/10 active:bg-white/15 flex h-12 w-12 items-center justify-center transition-colors [--af-focus-offset:-4px]";
 
 export const MapControls = ({ onGeolocate }: MapControlsProps) => {
   const { current: map } = useMap();

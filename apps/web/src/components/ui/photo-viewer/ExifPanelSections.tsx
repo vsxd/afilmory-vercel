@@ -40,15 +40,9 @@ export function BasicExifSection({
 
   return (
     <div>
-      <h4 className="mb-2 text-sm font-medium text-white/80">
-        {t("exif.basic.info")}
-      </h4>
+      <h4 className="af-exif-section-title">{t("exif.basic.info")}</h4>
       <div className="space-y-1 text-sm">
-        <Row
-          label={t("exif.filename")}
-          value={currentPhoto.title}
-          ellipsis={true}
-        />
+        <Row label={t("exif.filename")} value={currentPhoto.title} />
         <Row label={t("exif.format")} value={imageFormat} />
         <Row
           label={t("exif.dimensions")}
@@ -56,7 +50,7 @@ export function BasicExifSection({
         />
         <Row
           label={t("exif.file.size")}
-          value={`${(currentPhoto.size / 1024 / 1024).toFixed(1)}MB`}
+          value={`${(currentPhoto.size / 1024 / 1024).toFixed(1)} MB`}
         />
         {megaPixels && (
           <Row label={t("exif.pixels")} value={`${megaPixels} MP`} />
@@ -116,40 +110,49 @@ function CaptureParameterBadges({
   }
 
   return (
-    <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
-        {t("exif.capture.parameters")}
-      </h4>
+    <div className="mt-4">
+      <h4 className="af-exif-section-title">{t("exif.capture.parameters")}</h4>
       <div className="grid grid-cols-2 gap-2">
         {formattedExifData.focalLength35mm && (
           <ExifBadge
-            icon={<LensIcon className="text-sm text-white/70" />}
-            value={`${formattedExifData.focalLength35mm}mm`}
+            label={t("exif.focal.length.equivalent")}
+            icon={<LensIcon className="text-text-secondary size-4 shrink-0" />}
+            value={`${formattedExifData.focalLength35mm} mm`}
           />
         )}
         {formattedExifData.aperture && (
           <ExifBadge
-            icon={<TablerAperture className="text-sm text-white/70" />}
+            label={t("exif.aperture.value")}
+            icon={
+              <TablerAperture className="text-text-secondary size-4 shrink-0" />
+            }
             value={formattedExifData.aperture}
           />
         )}
         {formattedExifData.shutterSpeed && (
           <ExifBadge
+            label={t("exif.shutter.speed.value")}
             icon={
-              <MaterialSymbolsShutterSpeed className="text-sm text-white/70" />
+              <MaterialSymbolsShutterSpeed className="text-text-secondary size-4 shrink-0" />
             }
             value={formattedExifData.shutterSpeed}
           />
         )}
         {formattedExifData.iso && (
           <ExifBadge
-            icon={<CarbonIsoOutline className="text-sm text-white/70" />}
+            label="ISO"
+            icon={
+              <CarbonIsoOutline className="text-text-secondary size-4 shrink-0" />
+            }
             value={`ISO ${formattedExifData.iso}`}
           />
         )}
         {formattedExifData.exposureBias && (
           <ExifBadge
-            icon={<MaterialSymbolsExposure className="text-sm text-white/70" />}
+            label="EV"
+            icon={
+              <MaterialSymbolsExposure className="text-text-secondary size-4 shrink-0" />
+            }
             value={formattedExifData.exposureBias}
           />
         )}
@@ -159,16 +162,21 @@ function CaptureParameterBadges({
 }
 
 function ExifBadge({
+  label,
   icon,
   value,
 }: {
+  label: string;
   icon: ReactNode;
   value: string | number;
 }) {
   return (
-    <div className="border-accent/20 bg-accent/10 flex h-6 items-center gap-2 rounded-md border px-2">
-      {icon}
-      <span className="text-xs">{value}</span>
+    <div className="border-fill-tertiary bg-fill-quaternary text-text flex min-h-9 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5">
+      <span aria-hidden="true">{icon}</span>
+      <span className="min-w-0 text-[13px] leading-5 break-words tabular-nums">
+        <span className="sr-only">{label}: </span>
+        {value}
+      </span>
     </div>
   );
 }
@@ -187,10 +195,8 @@ function TagSection({
 
   return (
     <div className="mt-3 mb-3">
-      <h4 className="mb-2 text-sm font-medium text-white/80">
-        {t("exif.tags")}
-      </h4>
-      <div className="-ml-1 flex flex-wrap gap-1.5">
+      <h4 className="af-exif-section-title">{t("exif.tags")}</h4>
+      <div className="flex flex-wrap gap-1.5">
         {currentPhoto.tags.map((tag) => (
           <a
             href={`/${buildSingleTagFilterSearch(tag)}`}
@@ -202,7 +208,7 @@ function TagSection({
               );
             }}
             key={tag}
-            className="glassmorphic-btn border-accent/20 bg-accent/10 focus-visible:ring-accent/45 inline-flex min-h-11 cursor-pointer items-center rounded-full border px-3 py-1 text-xs text-white/90 backdrop-blur-sm focus-visible:ring-2"
+            className="af-control inline-flex min-h-11 max-w-full cursor-pointer items-center rounded-full px-3 py-1 text-[13px] leading-5 break-words lg:min-h-8"
           >
             {tag}
           </a>
@@ -230,9 +236,7 @@ export function ToneExifSection({
 
   return (
     <div>
-      <h4 className="mb-2 text-sm font-medium text-white/80">
-        {t("exif.tone.analysis.title")}
-      </h4>
+      <h4 className="af-exif-section-title">{t("exif.tone.analysis.title")}</h4>
       <div>
         <Row
           label={t("exif.tone.type")}
@@ -241,7 +245,7 @@ export function ToneExifSection({
             currentPhoto.toneAnalysis.toneType
           }
         />
-        <div className="mt-1 mb-3 grid grid-cols-2 gap-x-2 gap-y-1 text-sm">
+        <div className="af-exif-metrics mt-2 mb-3 grid grid-cols-2 gap-2">
           <Row
             label={t("exif.brightness.title")}
             value={`${currentPhoto.toneAnalysis.brightness}%`}
@@ -260,7 +264,7 @@ export function ToneExifSection({
           />
         </div>
         <div className="mb-3">
-          <div className="mb-2 text-xs font-medium text-white/70">
+          <div className="text-text-secondary mb-2 text-xs font-medium">
             {t("exif.histogram")}
           </div>
           <HistogramChart thumbnailUrl={currentPhoto.thumbnailUrl} />
@@ -308,9 +312,7 @@ function CameraExifSection({
 
   return (
     <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
-        {t("exif.device.info")}
-      </h4>
+      <h4 className="af-exif-section-title">{t("exif.device.info")}</h4>
       <div className="space-y-1 text-sm">
         {formattedExifData.camera && (
           <Row label={t("exif.camera")} value={formattedExifData.camera} />
@@ -328,13 +330,13 @@ function CameraExifSection({
         {formattedExifData.focalLength && (
           <Row
             label={t("exif.focal.length.actual")}
-            value={`${formattedExifData.focalLength}mm`}
+            value={`${formattedExifData.focalLength} mm`}
           />
         )}
         {formattedExifData.focalLength35mm && (
           <Row
             label={t("exif.focal.length.equivalent")}
-            value={`${formattedExifData.focalLength35mm}mm`}
+            value={`${formattedExifData.focalLength35mm} mm`}
           />
         )}
         {formattedExifData.maxAperture && (
@@ -370,9 +372,7 @@ function CaptureModeExifSection({
 
   return (
     <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
-        {t("exif.capture.mode")}
-      </h4>
+      <h4 className="af-exif-section-title">{t("exif.capture.mode")}</h4>
       <div className="space-y-1 text-sm">
         {!isNil(formattedExifData.exposureProgram) && (
           <Row
@@ -454,7 +454,7 @@ function FujiRecipeExifSection({
 
   return (
     <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
+      <h4 className="af-exif-section-title">
         {t("exif.fuji.film.simulation")}
       </h4>
       <div className="space-y-1 text-sm">
@@ -545,9 +545,7 @@ function LocationExifSection({
 
   return (
     <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
-        {t("exif.gps.location.info")}
-      </h4>
+      <h4 className="af-exif-section-title">{t("exif.gps.location.info")}</h4>
       <div className="space-y-1 text-sm">
         <Row
           label={t("exif.gps.latitude")}
@@ -580,7 +578,6 @@ function LocationExifSection({
               <Row
                 label={t("exif.gps.address")}
                 value={currentPhoto.location.locationName}
-                ellipsis={true}
               />
             )}
           </div>
@@ -588,7 +585,7 @@ function LocationExifSection({
         {decimalLatitude !== null && decimalLongitude !== null && (
           <Suspense
             fallback={
-              <div className="mt-3 h-40 w-full rounded-lg border border-white/10 bg-white/5" />
+              <div className="border-fill-tertiary bg-fill-quaternary mt-3 h-40 w-full rounded-xl border" />
             }
           >
             <div className="mt-3">
@@ -627,7 +624,7 @@ function TechnicalExifSection({
 
   return (
     <div>
-      <h4 className="my-2 text-sm font-medium text-white/80">
+      <h4 className="af-exif-section-title">
         {t("exif.technical.parameters")}
       </h4>
       <div className="space-y-1 text-sm">

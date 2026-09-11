@@ -1,6 +1,6 @@
-import { clsxm, Spring, useScrollViewElement } from "@afilmory/ui";
+import { Spring, useScrollViewElement } from "@afilmory/ui";
 import { useAtomValue } from "jotai";
-import { AnimatePresence, m, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -13,7 +13,6 @@ import { setGalleryVirtualPhotoTargetResolver } from "~/lib/gallery-virtual-targ
 import { useGalleryViewport } from "~/navigation/useGalleryViewport";
 import type { PhotoManifest } from "~/types/photo";
 
-import { ActionGroup } from "./ActionGroup";
 import type { MasonryItemType } from "./gallery-layout";
 import {
   calculateGalleryColumnWidth,
@@ -26,6 +25,8 @@ import {
   MasonryHeaderItem,
   shouldAnimateMasonryItem,
 } from "./gallery-layout";
+import { GalleryEmptyState } from "./GalleryEmptyState";
+import { GalleryFloatingActions } from "./GalleryFloatingActions";
 import { MasonryHeaderMasonryItem } from "./MasonryHeaderMasonryItem";
 import { MasonryPhotoItem } from "./MasonryPhotoItem";
 import type { MasonryRef } from "./VirtualMasonry";
@@ -195,6 +196,7 @@ export const MasonryRoot = () => {
       setShowFloatingActions(scrollTop > 500);
     };
 
+    handleScroll();
     scrollElement.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       scrollElement.removeEventListener("scroll", handleScroll);
@@ -249,7 +251,6 @@ export const MasonryRoot = () => {
             dateRange={dateRange.formattedRange}
             isVisible={showFloatingActions && !!dateRange.formattedRange}
           />
-          <FloatingActionBar showFloatingActions={showFloatingActions} />
         </>
       )}
 
@@ -265,7 +266,15 @@ export const MasonryRoot = () => {
         </div>
       )}
 
-      <div className="p-1 **:select-none! lg:px-0 lg:pb-0">
+      <GalleryFloatingActions
+        isVisible={showFloatingActions}
+        isMobile={isMobile}
+      />
+
+      <div
+        data-gallery-root
+        className="p-1 pb-[calc(6rem+env(safe-area-inset-bottom))] **:select-none! lg:px-0 lg:pb-0"
+      >
         {isMobile && <MasonryHeaderMasonryItem className="mb-1" />}
         <Masonry<MasonryItemType>
           key={`${isMobile ? "mobile" : "desktop"}:${photosKey}`}
@@ -317,6 +326,7 @@ export const MasonryRoot = () => {
           aria-label={t("common.skip-to-gallery")}
           onKeyDown={handleGridKeyDown}
         />
+        {photos.length === 0 && <GalleryEmptyState />}
       </div>
     </>
   );
@@ -401,49 +411,3 @@ export const MasonryItem = memo(
     }
   },
 );
-
-const FloatingActionBar = ({
-  showFloatingActions,
-}: {
-  showFloatingActions: boolean;
-}) => {
-  const isMobile = useMobile();
-
-  const variants = isMobile
-    ? {
-        initial: {
-          opacity: 0,
-        },
-        animate: { opacity: 1 },
-      }
-    : {
-        initial: {
-          opacity: 0,
-          x: 20,
-          y: 0,
-          scale: 0.95,
-        },
-        animate: { opacity: 1, x: 0, y: 0, scale: 1 },
-      };
-  return (
-    <AnimatePresence>
-      {showFloatingActions && (
-        <m.div
-          variants={variants}
-          initial="initial"
-          animate="animate"
-          exit="initial"
-          transition={Spring.presets.snappy}
-          className={clsxm(
-            "border-material-opaque rounded-xl border bg-black/60 p-3 shadow-xl backdrop-blur-2xl",
-            isMobile
-              ? "rounded-t-none rounded-br-none -translate-y-px"
-              : "fixed top-4 right-4 z-50 lg:top-6 lg:right-6",
-          )}
-        >
-          <ActionGroup />
-        </m.div>
-      )}
-    </AnimatePresence>
-  );
-};

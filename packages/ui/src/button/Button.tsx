@@ -19,12 +19,13 @@ const buttonVariants = tv({
   ],
   variants: {
     variant: {
+      surface: "af-control",
       primary: [
         "border-transparent",
-        "text-text",
+        "text-[var(--color-accent-content)]",
         "bg-accent",
         "hover:bg-accent/90",
-        "disabled:bg-accent/50 disabled:text-text/70",
+        "disabled:opacity-50",
       ],
       secondary: [
         "border border-fill-tertiary dark:border-fill-tertiary",

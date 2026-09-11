@@ -3,7 +3,8 @@ import { createStore, Provider } from "jotai";
 import type { PropsWithChildren } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NavigationController } from "~/navigation/controller";
+import { createTestNavigation } from "~/navigation/__tests__/test-router";
+import type { NavigationController } from "~/navigation/controller";
 
 import { CommandPalette } from "./CommandPalette";
 
@@ -13,7 +14,7 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
   value: vi.fn(),
 });
 
-const navigation = new NavigationController();
+let navigation: NavigationController;
 let isMobile = false;
 let allTags: string[] = [];
 
@@ -32,10 +33,6 @@ vi.mock("react-i18next", () => ({
       },
     },
   }),
-}));
-
-vi.mock("react-router", () => ({
-  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("~/hooks/useMobile", () => ({
@@ -91,6 +88,7 @@ describe("CommandPalette", () => {
     });
 
   beforeEach(() => {
+    navigation = createTestNavigation().navigation;
     isMobile = false;
     allTags = [];
     store = createStore();
@@ -257,5 +255,46 @@ describe("CommandPalette", () => {
     expect(
       getByText("action.search.command-count").getAttribute("aria-live"),
     ).toBe("polite");
+  });
+
+  it("clears an unmatched query without removing applied filters", () => {
+    navigation = createTestNavigation("/?tags=alpha&sort=asc").navigation;
+    allTags = ["alpha", "beta"];
+    const { getByRole, getByTestId } = renderPalette({
+      isOpen: true,
+      onClose: vi.fn(),
+    });
+    const input = getByRole("combobox");
+    fireEvent.change(input, { target: { value: "zzzz-unmatched-query" } });
+
+    fireEvent.click(getByRole("button", { name: "action.search.clear-query" }));
+
+    expect((input as HTMLInputElement).value).toBe("");
+    expect(document.activeElement).toBe(input);
+    expect(getByTestId("filter-panel-button")).toBeDefined();
+    expect(navigation.getGallerySettings()).toMatchObject({
+      selectedTags: ["alpha"],
+      sortOrder: "asc",
+    });
+  });
+
+  it("distinguishes applied filters from the keyboard-highlighted result", () => {
+    navigation = createTestNavigation("/?tags=alpha").navigation;
+    allTags = ["alpha", "beta"];
+    const { getByRole } = renderPalette({ isOpen: true, onClose: vi.fn() });
+    const input = getByRole("combobox");
+    fireEvent.change(input, { target: { value: "tag" } });
+
+    const applied = getByRole("option", { name: /alpha/ });
+    const other = getByRole("option", { name: /beta/ });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+
+    expect(applied.getAttribute("aria-description")).toBe(
+      "action.search.filter-applied",
+    );
+    expect(applied.getAttribute("aria-selected")).toBe("false");
+    expect(other.getAttribute("aria-description")).toBeNull();
+    expect(other.getAttribute("aria-selected")).toBe("true");
+    expect(navigation.getGallerySettings().selectedTags).toEqual(["alpha"]);
   });
 });

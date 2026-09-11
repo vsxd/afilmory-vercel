@@ -50,6 +50,7 @@ export const MasonryPhotoItem = memo(
     const navigation = useAppNavigation();
     const { t, i18n } = useTranslation();
     const [imageError, setImageError] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
 
     const imageRef = useRef<HTMLImageElement>(null);
     const thumbnailCacheKey = getThumbnailLoadCacheKey(
@@ -134,6 +135,7 @@ export const MasonryPhotoItem = memo(
     // onFocus 契约：回调自身身份稳定（由 MasonryRoot 提供单个 useCallback），
     // 格子把自己的 index 传回去 —— 滚动热路径上 memo 不因新箭头函数失效。
     const handleFocus = useCallback(() => {
+      setIsFocused(true);
       onFocus?.(index);
     }, [index, onFocus]);
 
@@ -173,11 +175,12 @@ export const MasonryPhotoItem = memo(
         href={photoHref}
         aria-label={ariaLabel}
         tabIndex={tabIndex}
-        // ring-inset：格子 overflow-hidden 且边贴边，外扩的 ring 会被裁掉/被相邻格子盖住
-        className="bg-fill-quaternary focus-visible:ring-accent/45 group relative block w-full cursor-pointer overflow-hidden focus-visible:ring-2 focus-visible:ring-inset"
+        // Keep the shared outline inside the clipped cell, above neighbouring photos.
+        className="bg-fill-quaternary group relative block w-full cursor-pointer scroll-mt-24 scroll-mb-28 overflow-hidden focus-visible:z-30 lg:scroll-mb-4"
         style={{
           width,
           height: calculatedHeight,
+          outlineOffset: -3,
         }}
         data-photo-id={data.id}
         data-gallery-photo-link
@@ -185,6 +188,7 @@ export const MasonryPhotoItem = memo(
         onClick={handleLinkClick}
         onKeyDown={handleLinkKeyDown}
         onFocus={handleFocus}
+        onBlur={() => setIsFocused(false)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -202,7 +206,7 @@ export const MasonryPhotoItem = memo(
             fetchPriority={isPriorityThumbnail ? "high" : "low"}
             containerClassName="absolute inset-0"
             imageClassName={clsx(
-              "h-full w-full object-cover duration-300 group-hover:scale-105",
+              "h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
             )}
             placeholderClassName="h-full w-full"
             onLoad={handleImageLoad}
@@ -216,7 +220,7 @@ export const MasonryPhotoItem = memo(
           <video
             ref={videoRef}
             className={clsx(
-              "absolute inset-0 h-full w-full object-cover duration-300 group-hover:scale-105",
+              "absolute inset-0 h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
               isPlayingLivePhoto ? "z-10" : "pointer-events-none opacity-0",
             )}
             muted
@@ -242,7 +246,7 @@ export const MasonryPhotoItem = memo(
         {hasVideo && (
           <div
             className={clsx(
-              "absolute z-20 flex items-center space-x-1 rounded-xl bg-black/50 px-1 py-1 text-xs text-white transition-[background-color,color,opacity] duration-200 hover:bg-black/70",
+              "af-glass absolute z-20 flex items-center space-x-1 rounded-lg px-1 py-1 text-xs text-white",
               "top-2 left-2",
               "flex-wrap gap-y-1",
             )}
@@ -282,46 +286,43 @@ export const MasonryPhotoItem = memo(
           </div>
         )}
 
-        {/* 图片信息和 EXIF 覆盖层：仅非触摸（鼠标 hover）设备渲染。移动/触摸端
-            永远 opacity-0（没有 hover），却仍占满 DOM 并参与每帧 style recalc 与
-            backdrop-blur 合成 —— 直接不渲染可把每个 item 的 DOM 从 ~41 降到 ~5，
-            大幅减少滚动时的样式重算与掉帧。移动端看详情请点开查看器。 */}
-        {!isMobileDevice && shouldShowImageDetails && (
-          <div className="pointer-events-none">
-            {/* 渐变背景 - 独立的层 */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        {/* Touch scrolling keeps lightweight cells. An attached keyboard can still
+            reveal the same information by focusing a photo. */}
+        {(!isMobileDevice || isFocused) && shouldShowImageDetails && (
+          <div className="pointer-events-none opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">
+            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/15 to-transparent" />
 
-            {/* 内容层 - 独立的层以支持 backdrop-filter */}
-            <div className="absolute inset-x-0 bottom-0 p-4 pb-0 text-white">
+            {/* Details use one shared reveal layer for hover and keyboard focus. */}
+            <div className="absolute inset-x-0 bottom-0 px-3 pt-4 pb-3 text-white">
               {/* 基本信息和标签 section */}
-              <div className="mb-3 [&_*]:duration-300">
-                <h2 className="mb-2 truncate text-sm font-medium opacity-0 group-hover:opacity-100">
+              <div className="space-y-1.5">
+                <h2 className="truncate text-sm leading-5 font-medium">
                   {data.title}
                 </h2>
                 {data.description && (
-                  <p className="mb-2 line-clamp-2 text-sm text-white/80 opacity-0 group-hover:opacity-100">
+                  <p className="line-clamp-2 text-xs leading-4 text-white/85">
                     {data.description}
                   </p>
                 )}
 
                 {/* 基本信息 */}
-                <div className="mb-2 flex flex-wrap gap-2 text-xs text-white/80 opacity-0 group-hover:opacity-100">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-4 text-white/80 tabular-nums">
                   <span>{imageFormat}</span>
                   <span>•</span>
                   <span>
                     {data.width} × {data.height}
                   </span>
                   <span>•</span>
-                  <span>{(data.size / 1024 / 1024).toFixed(1)}MB</span>
+                  <span>{(data.size / 1024 / 1024).toFixed(1)} MB</span>
                 </div>
 
                 {/* Tags */}
                 {data.tags && data.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex max-h-12 flex-wrap gap-1 overflow-hidden">
                     {data.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full bg-white/20 px-2 py-0.5 text-xs text-white/90 opacity-0 backdrop-blur-sm group-hover:opacity-100"
+                        className="max-w-full truncate rounded-md bg-white/15 px-1.5 py-0.5 text-[11px] leading-4 text-white/90"
                       >
                         {tag}
                       </span>
@@ -332,10 +333,13 @@ export const MasonryPhotoItem = memo(
 
               {/* EXIF 信息网格 */}
               {calculatedHeight >= 200 && (
-                <div className="grid grid-cols-2 gap-2 pb-4 text-xs">
+                <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-4 tabular-nums">
                   {exifData.focalLength35mm && (
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
-                      <LensIcon className="text-white/70" />
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <LensIcon
+                        className="shrink-0 text-sm text-white/70"
+                        aria-hidden="true"
+                      />
                       <span className="text-white/90">
                         {exifData.focalLength35mm}mm
                       </span>
@@ -343,15 +347,21 @@ export const MasonryPhotoItem = memo(
                   )}
 
                   {exifData.aperture && (
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
-                      <TablerAperture className="text-white/70" />
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <TablerAperture
+                        className="shrink-0 text-sm text-white/70"
+                        aria-hidden="true"
+                      />
                       <span className="text-white/90">{exifData.aperture}</span>
                     </div>
                   )}
 
                   {exifData.shutterSpeed && (
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
-                      <MaterialSymbolsShutterSpeed className="text-white/70" />
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <MaterialSymbolsShutterSpeed
+                        className="shrink-0 text-sm text-white/70"
+                        aria-hidden="true"
+                      />
                       <span className="text-white/90">
                         {exifData.shutterSpeed}
                       </span>
@@ -359,8 +369,11 @@ export const MasonryPhotoItem = memo(
                   )}
 
                   {exifData.iso && (
-                    <div className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 opacity-0 backdrop-blur-md transition-opacity duration-300 group-hover:opacity-100">
-                      <CarbonIsoOutline className="text-white/70" />
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <CarbonIsoOutline
+                        className="shrink-0 text-sm text-white/70"
+                        aria-hidden="true"
+                      />
                       <span className="text-white/90">ISO {exifData.iso}</span>
                     </div>
                   )}

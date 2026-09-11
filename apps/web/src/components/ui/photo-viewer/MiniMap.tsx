@@ -35,7 +35,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
   }
 
   return (
-    <div className="relative h-40 w-full overflow-hidden rounded-lg border border-white/10">
+    <div className="border-fill-tertiary bg-fill-quaternary relative h-40 w-full overflow-hidden rounded-xl border">
       {canUseWebGL2 && (
         <Map
           mapLib={maplibre}
@@ -54,22 +54,27 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
       {/* 中心标记 */}
       {canUseWebGL2 && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="relative">
-            <div className="absolute top-1/2 left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full bg-blue-400 opacity-75" />
-            <div className="relative h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white/80" />
-          </div>
+          <div
+            aria-hidden="true"
+            className="bg-accent size-2.5 rounded-full shadow-sm ring-2 shadow-black/50 ring-white"
+          />
         </div>
       )}
 
       {/* 加载状态 */}
       {canUseWebGL2 && !isLoaded && (
-        <div className="bg-material-ultra-thin absolute inset-0 flex items-center justify-center backdrop-blur-sm">
-          <div className="text-xs text-white/60">{t("minimap.loading")}</div>
+        <div
+          role="status"
+          className="af-glass absolute inset-0 flex items-center justify-center"
+        >
+          <div className="text-text-secondary text-xs">
+            {t("minimap.loading")}
+          </div>
         </div>
       )}
 
       {!canUseWebGL2 && (
-        <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-white/60">
+        <div className="text-text-secondary flex h-full flex-col items-center justify-center gap-2 text-[13px] tabular-nums">
           <span>{t("minimap.view.in.map")}</span>
           <span>
             {latitude.toFixed(4)}, {longitude.toFixed(4)}
@@ -86,7 +91,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
             navigation.showMap(photoId);
           }
         }}
-        className="absolute inset-0 cursor-pointer transition-opacity duration-200 hover:bg-black/10"
+        className="absolute inset-0 cursor-pointer rounded-xl transition-colors duration-200 [--af-focus-offset:-3px] hover:bg-black/10"
         aria-label={t("minimap.view.in.map")}
       />
     </div>

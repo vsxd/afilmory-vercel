@@ -72,16 +72,15 @@ describe("SortPanel", () => {
     ).toBe("true");
   });
 
-  it("renders a visible keyboard focus ring on each option (global CSS strips outlines)", () => {
+  it("keeps both sort choices available to keyboard focus", () => {
     const store = createStore();
     navigation = createTestNavigation().navigation;
     renderPanel(store);
 
     for (const name of ["Newest first", "Oldest first"]) {
       const button = screen.getByRole("button", { name });
-      expect(button.className).toContain("focus-visible:ring-2");
-      expect(button.className).toContain("focus-visible:ring-accent/45");
-      expect(button.className).toContain("focus-visible:ring-inset");
+      button.focus();
+      expect(document.activeElement).toBe(button);
     }
   });
 });

@@ -98,8 +98,9 @@ const Viewport = ({
       tabIndex={focusable ? 0 : -1}
       className={clsxm(
         "block size-full",
-        "focus-visible:outline-none",
-        focusable && focusRing,
+        focusable
+          ? [focusRing, "[--af-focus-offset:-3px]"]
+          : "focus-visible:outline-none",
         className,
       )}
     />

@@ -27,7 +27,7 @@ export const ClusterMarker = ({
         <MapPopoverTrigger>
           <m.button
             type="button"
-            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="group relative cursor-pointer rounded-full"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -129,7 +129,7 @@ export const ClusterMarker = ({
               : "explore.cluster.photos",
             { count: pointCount },
           )}
-          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden border-white/20 bg-white/95 p-0 shadow-xl backdrop-blur-2xl dark:bg-black/95"
+          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
         >
           <div className="p-4">
             <ClusterPhotoGrid

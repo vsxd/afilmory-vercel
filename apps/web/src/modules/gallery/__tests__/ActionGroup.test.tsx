@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { Provider, useAtomValue } from "jotai";
 import { createStore } from "jotai/vanilla";
 import type { ComponentPropsWithoutRef, PropsWithChildren } from "react";
@@ -77,6 +83,22 @@ describe("ActionGroup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search & Filter" }));
 
     expect(screen.getByTestId("command-palette-open").textContent).toBe("true");
+  });
+
+  it("reports the unified panel lifecycle so floating triggers stay available for focus return", () => {
+    const store = createStore();
+    const onOverlayOpenChange = vi.fn();
+    navigation = createTestNavigation().navigation;
+    render(
+      <Provider store={store}>
+        <ActionGroup onOverlayOpenChange={onOverlayOpenChange} />
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search & Filter" }));
+    expect(onOverlayOpenChange).toHaveBeenLastCalledWith(true);
+    act(() => store.set(isCommandPaletteOpenAtom, false));
+    expect(onOverlayOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it("counts hidden region and district filters in the search badge", () => {

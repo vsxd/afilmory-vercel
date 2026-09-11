@@ -1,18 +1,10 @@
 import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { ComponentPropsWithoutRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { createExifPanelViewModel } from "../exif-panel-view-model";
 import { BasicExifSection } from "../ExifPanelSections";
 import type { ExifTranslationAdapter } from "../formatExifData";
-
-vi.mock("@afilmory/ui", () => ({
-  EllipsisHorizontalTextWithTooltip: ({
-    children,
-    ...props
-  }: ComponentPropsWithoutRef<"span">) => <span {...props}>{children}</span>,
-}));
 
 const showGallery = vi.fn();
 vi.mock("~/navigation/hooks", () => ({
@@ -72,7 +64,10 @@ describe("ExifPanel sections", () => {
   });
 
   it("renders basic rows and exposes tags as shareable links", async () => {
-    const currentPhoto = createPhoto();
+    const currentPhoto = {
+      ...createPhoto(),
+      title: "Tokyo-nightwalk_with_a_very_long_original_filename_0001.HEIC",
+    };
     const viewModel = createExifPanelViewModel({
       currentPhoto,
       exifData: null,
@@ -87,7 +82,9 @@ describe("ExifPanel sections", () => {
       />,
     );
 
-    expect(screen.getByText("A7C0001")).toBeTruthy();
+    const filename = screen.getByText(currentPhoto.title);
+    expect(filename.tagName).toBe("DD");
+    expect(filename.previousElementSibling?.textContent).toBe("exif.filename");
     expect(screen.getByText("HEIC")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "street" }).getAttribute("href"),

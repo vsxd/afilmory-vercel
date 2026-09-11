@@ -8,8 +8,7 @@ type HighlightStyle = React.CSSProperties & {
 };
 
 const highlightedItemStyle: HighlightStyle = {
-  "--highlight-bg":
-    "linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))",
+  "--highlight-bg": "color-mix(in srgb, var(--color-accent) 12%, transparent)",
 };
 
 const DropdownMenu: typeof DropdownMenuPrimitive.Root = (props) => {
@@ -38,7 +37,7 @@ const DropdownMenuSubTrigger = ({
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={clsxm(
-      "cursor-menu focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
+      "cursor-menu focus:bg-accent focus:text-[var(--color-accent-content)] data-[state=open]:bg-accent data-[state=open]:text-[var(--color-accent-content)] flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
       inset && "pl-8",
       "center gap-2",
       className,
@@ -69,7 +68,7 @@ const DropdownMenuContent = ({
         ref={ref}
         sideOffset={sideOffset}
         className={clsxm(
-          "bg-material-thick border-fill-tertiary text-text z-60 relative min-w-32 overflow-hidden rounded-2xl border p-1 shadow-xl backdrop-blur-2xl",
+          "af-popover text-text z-60 relative min-w-32 overflow-hidden rounded-2xl p-1",
           className,
         )}
         {...props}

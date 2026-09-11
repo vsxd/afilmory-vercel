@@ -1,5 +1,6 @@
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -268,8 +269,17 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
     );
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      activeRequestRef.current?.abort();
+      activeRequestRef.current = null;
+      setIsLoading(false);
+    }
+    setIsOpen(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button
           type="button"
@@ -277,33 +287,54 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
           disabled={isLoading}
           aria-label={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
           title={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
-          className="focus-visible:ring-accent/45 flex size-11 cursor-pointer items-center justify-center rounded-full text-white/70 transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50 md:size-8"
+          className="af-control flex size-11 cursor-pointer items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-50 lg:size-9"
         >
           {isLoading ? (
             <i
-              className="i-mingcute-loading-3-line animate-spin"
+              className="i-mingcute-loading-3-line size-5 animate-spin"
               aria-hidden="true"
             />
           ) : (
-            <i className="i-mingcute-braces-line" aria-hidden="true" />
+            <i className="i-mingcute-braces-line size-5" aria-hidden="true" />
           )}
         </button>
       </DialogTrigger>
-      <DialogContent className="flex h-[80vh] max-w-4xl flex-col gap-2 text-white">
-        <DialogHeader>
-          <DialogTitle>
-            {t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
-          </DialogTitle>
-          <DialogDescription>
-            {t("exif.raw.description", {
-              defaultValue:
-                "Complete EXIF metadata extracted from the image file",
-            })}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        data-photo-viewer-nested-overlay=""
+        className="text-text flex h-[80vh] max-w-4xl flex-col gap-2"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <DialogHeader className="min-w-0 text-start">
+            <DialogTitle>
+              {t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("exif.raw.description", {
+                defaultValue:
+                  "Complete EXIF metadata extracted from the image file",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="af-control flex size-11 shrink-0 items-center justify-center rounded-full"
+              aria-label={t("exif.raw.close", {
+                defaultValue: "Close raw EXIF",
+              })}
+              title={t("exif.raw.close", { defaultValue: "Close raw EXIF" })}
+            >
+              <i className="i-mingcute-close-line size-5" aria-hidden="true" />
+            </button>
+          </DialogClose>
+        </div>
 
         {isLoading && (
-          <div className="flex h-full grow flex-col items-center justify-center gap-4 text-white/70">
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-text-secondary flex h-full grow flex-col items-center justify-center gap-4"
+          >
             <i
               className="i-mingcute-loading-3-line animate-spin text-3xl"
               aria-hidden="true"
@@ -340,8 +371,8 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
               fields={getUncategorizedData()}
             />
 
-            {dataEntries.length === 0 && (
-              <div className="py-8 text-center text-white/50">
+            {!isLoading && dataEntries.length === 0 && (
+              <div className="text-text-secondary py-8 text-center text-sm">
                 {t("exif.raw.no.data", {
                   defaultValue: "No EXIF data available",
                 })}

@@ -339,22 +339,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         aria-modal="true"
         aria-label={t("action.search.unified.title")}
         tabIndex={-1}
-        className="animate-in fade-in slide-in-from-bottom-4 bg-material-thick border-fill-tertiary relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden overscroll-contain rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl duration-200 outline-none lg:mb-6 lg:max-h-[min(86vh,46rem)] lg:rounded-[1.75rem] lg:border"
+        className="af-popover animate-in fade-in slide-in-from-bottom-4 relative flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden overscroll-contain rounded-t-[1.75rem] duration-200 outline-none lg:mb-6 lg:max-h-[min(86vh,46rem)] lg:rounded-[1.75rem]"
         style={{
-          boxShadow:
-            "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
           transform: `translateY(${panelDragOffset}px)`,
           transition: isDraggingPanel ? "none" : "transform 180ms ease-out",
         }}
       >
-        {/* Inner glow layer */}
-        <div
-          className="pointer-events-none absolute inset-0 rounded-2xl"
-          style={{
-            background:
-              "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
-          }}
-        />
         <div
           ref={dragHandleRef}
           className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
@@ -364,9 +354,9 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         {/* Search Input */}
         <div className="border-fill-secondary relative border-b px-6 pb-5">
           <div className="mb-4 flex items-center gap-3">
-            <div className="bg-accent/10 border-accent/20 text-accent flex size-12 shrink-0 items-center justify-center rounded-2xl border shadow-sm">
+            <div className="af-panel text-text-secondary flex size-12 shrink-0 items-center justify-center rounded-2xl">
               <i
-                className="i-mingcute-search-line text-accent text-lg"
+                className="i-mingcute-search-line text-lg"
                 aria-hidden="true"
               />
             </div>
@@ -381,7 +371,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={handleReset}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-11 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+              className="af-control flex size-11 shrink-0 items-center justify-center rounded-xl"
               aria-label={t("action.search.reset")}
               title={t("action.search.reset")}
             >
@@ -393,7 +383,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             <button
               type="button"
               onClick={onClose}
-              className="glassmorphic-btn border-fill-tertiary text-text-secondary hover:text-accent focus-visible:ring-accent/45 flex size-11 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset"
+              className="af-control flex size-11 shrink-0 items-center justify-center rounded-xl"
               aria-label={t("common.close")}
               title={t("common.close")}
             >
@@ -404,7 +394,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
             </button>
           </div>
 
-          <div className="bg-fill-vibrant-quinary border-fill-tertiary focus-within:border-accent/50 focus-within:bg-fill-secondary/70 focus-within:ring-accent/20 flex h-12 items-center gap-3 rounded-2xl border px-3 shadow-inner transition-[background-color,border-color,box-shadow] duration-200 focus-within:ring-2">
+          <div className="af-input-shell flex h-12 items-center gap-3 rounded-2xl px-3">
             <i
               className="i-mingcute-search-line text-text-tertiary shrink-0 text-lg"
               aria-hidden="true"
@@ -446,26 +436,27 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <button
                 type="button"
                 onClick={handleReset}
-                className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 min-h-11 rounded-full px-3 text-xs font-medium transition-colors focus-visible:ring-2"
+                className="af-control min-h-11 shrink-0 rounded-xl px-3 text-xs font-medium"
               >
                 {t("action.search.clear")}
               </button>
             </div>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div className="-mx-1 flex items-start gap-2 overflow-x-auto px-1 pb-1">
               {activeFilterChips.map((chip) => (
                 <button
                   key={chip.id}
                   type="button"
                   onClick={() => executeCommandAction(chip.action)}
-                  className="bg-accent/10 text-accent ring-accent/20 hover:bg-accent/15 focus-visible:ring-accent/45 flex min-h-11 max-w-[16rem] shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 transition-colors ring-inset focus-visible:ring-2"
+                  className="af-control flex min-h-11 max-w-[min(20rem,100%)] shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] leading-5 font-medium [--af-focus-offset:-2px]"
                   aria-label={`${t("action.search.clear")} ${chip.label}`}
-                  title={chip.label}
                 >
                   <i
                     className={clsxm(chip.icon, "shrink-0 text-sm")}
                     aria-hidden="true"
                   />
-                  <span className="truncate">{chip.label}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
+                    {chip.label}
+                  </span>
                   <i
                     className="i-mingcute-close-line shrink-0 text-sm"
                     aria-hidden="true"
@@ -500,6 +491,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               <p className="text-text-secondary text-sm">
                 {t("action.search.no-results")}
               </p>
+              <button
+                type="button"
+                className="af-control mt-4 min-h-11 rounded-xl px-4 text-sm font-medium"
+                onClick={() => {
+                  setQuery("");
+                  setSelectedIndex(0);
+                  inputRef.current?.focus();
+                }}
+              >
+                {t("action.search.clear-query")}
+              </button>
             </div>
           ) : (
             visibleCommands.map((cmd, index) => (
@@ -509,30 +511,18 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 id={getOptionDomId(cmd.id)}
                 role="option"
                 aria-selected={selectedIndex === index}
+                aria-description={
+                  cmd.active ? t("action.search.filter-applied") : undefined
+                }
                 onClick={() => executeCommandAction(cmd.action)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsxm(
-                  "command-item focus-visible:ring-accent/35 group flex w-full items-center gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+                  "command-item group [--af-focus-offset:-2px] flex min-h-16 w-full items-start gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200",
                   selectedIndex === index && "selected",
                 )}
               >
                 {/* Icon */}
-                <div
-                  className={clsxm(
-                    "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg transition-[background-color,color,opacity,transform] duration-200",
-                    cmd.active
-                      ? "bg-accent/10 text-accent"
-                      : "bg-fill-vibrant-quinary text-text-secondary",
-                  )}
-                  style={
-                    cmd.active
-                      ? {
-                          boxShadow:
-                            "inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent)",
-                        }
-                      : undefined
-                  }
-                >
+                <div className="af-panel text-text-secondary flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg">
                   {cmd.thumbnail ? (
                     <ThumbnailImage
                       photoId={cmd.thumbnail.photoId}
@@ -551,18 +541,21 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden">
-                  <div className="flex items-center gap-2">
-                    <span className="text-text min-w-0 truncate text-sm font-medium">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2">
+                    <span className="text-text min-w-0 flex-1 text-sm leading-5 font-medium [overflow-wrap:anywhere] whitespace-normal">
                       {cmd.title}
                     </span>
                     {cmd.badge !== undefined && (
-                      <span className="bg-fill-tertiary text-text-secondary rounded-full px-2 py-0.5 text-xs">
+                      <span className="af-panel text-text-secondary shrink-0 rounded-md px-2 py-0.5 text-xs tabular-nums">
                         {cmd.badge}
                       </span>
                     )}
                     {cmd.active && (
-                      <span className="bg-accent flex h-5 w-5 items-center justify-center rounded-full text-white">
+                      <span
+                        className="bg-accent flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--color-accent-content)]"
+                        aria-hidden="true"
+                      >
                         <i
                           className="i-mingcute-check-line text-xs"
                           aria-hidden="true"
@@ -570,8 +563,13 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                       </span>
                     )}
                   </div>
+                  {cmd.type === "photo" && (
+                    <span className="text-text-tertiary mt-1 block text-xs font-medium">
+                      {t("action.search.photo")}
+                    </span>
+                  )}
                   {cmd.subtitle && (
-                    <p className="text-text-secondary truncate text-xs">
+                    <p className="text-text-secondary mt-1 text-[13px] leading-5 [overflow-wrap:anywhere] whitespace-normal">
                       {cmd.subtitle}
                     </p>
                   )}
@@ -583,7 +581,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
         {/* Footer */}
         <div className="border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4">
-          <div className="text-text-secondary flex items-center justify-between text-xs">
+          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs tabular-nums">
             <span aria-live="polite">{resultSummary}</span>
             {hasFilters && (
               <span>

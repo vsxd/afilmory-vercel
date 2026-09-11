@@ -1,5 +1,5 @@
 import { clsxm } from "@afilmory/ui";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useGallerySettings } from "~/navigation/hooks";
@@ -30,6 +30,7 @@ const FilterSection = ({
   selected,
   onToggle,
   headingLevel,
+  layout = "chips",
 }: {
   title: string;
   icon: string;
@@ -37,18 +38,32 @@ const FilterSection = ({
   selected: string[];
   onToggle: (id: string) => void;
   headingLevel: 3 | 4;
+  layout?: "chips" | "equipment";
 }) => {
+  const headingId = useId();
   if (items.length === 0) return null;
 
   const Heading = headingLevel === 3 ? "h3" : "h4";
 
   return (
-    <section>
-      <div className="text-text-secondary mb-2 flex items-center gap-2 px-1 text-xs font-medium">
+    <section aria-labelledby={headingId}>
+      <div className="text-text-secondary mb-2.5 flex items-center gap-2 px-1 text-xs font-medium">
         <i className={icon} aria-hidden="true" />
-        <Heading>{title}</Heading>
+        <Heading id={headingId}>{title}</Heading>
+        <span
+          className="text-text-tertiary ml-auto tabular-nums"
+          aria-hidden="true"
+        >
+          {items.length}
+        </span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div
+        className={
+          layout === "equipment"
+            ? "grid grid-cols-1 gap-2 sm:grid-cols-2"
+            : "flex flex-wrap gap-2"
+        }
+      >
         {items.map((item) => {
           const isActive = selected.includes(item.id);
 
@@ -59,14 +74,25 @@ const FilterSection = ({
               onClick={() => onToggle(item.id)}
               aria-pressed={isActive}
               className={clsxm(
-                "focus-visible:ring-accent/45 inline-flex min-h-11 max-w-full items-center rounded-full border px-3 text-xs font-medium transition-[background-color,border-color,box-shadow,color] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
-                isActive
-                  ? "bg-accent border-accent text-white shadow-sm"
-                  : "bg-fill-vibrant-quinary border-fill-tertiary text-text-secondary hover:border-accent/25 hover:bg-fill-secondary hover:text-text",
+                "af-control inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] leading-5 font-medium",
+                isActive && "border-accent/45 bg-accent/10",
+                layout === "equipment" && "w-full",
               )}
-              title={item.label}
             >
-              <span className="truncate">{item.label}</span>
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere] whitespace-normal">
+                {item.label}
+              </span>
+              <span
+                aria-hidden="true"
+                className={clsxm(
+                  "flex size-4 shrink-0 items-center justify-center rounded-full",
+                  isActive
+                    ? "bg-accent text-[var(--color-accent-content)]"
+                    : "border-fill-tertiary border",
+                )}
+              >
+                {isActive && <i className="i-mingcute-check-line text-xs" />}
+              </span>
             </button>
           );
         })}
@@ -139,7 +165,7 @@ export const FilterPanel = ({
       {showHeader && (
         <header className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="bg-accent/10 border-accent/15 text-accent flex size-10 shrink-0 items-center justify-center rounded-xl border">
+            <div className="af-panel text-text-secondary flex size-10 shrink-0 items-center justify-center rounded-xl">
               <i
                 className="i-mingcute-filter-3-line text-lg"
                 aria-hidden="true"
@@ -157,14 +183,14 @@ export const FilterPanel = ({
           <button
             type="button"
             onClick={resetFilters}
-            className="text-text-secondary hover:text-accent focus-visible:ring-accent/35 min-h-11 rounded-full px-3 text-xs font-medium transition-colors focus-visible:ring-2"
+            className="af-control min-h-11 shrink-0 rounded-xl px-3 text-xs font-medium"
           >
             {t("action.search.clear")}
           </button>
         </header>
       )}
 
-      <div className={clsxm("space-y-5", showHeader && "mt-5")}>
+      <div className={clsxm("space-y-6", showHeader && "mt-5")}>
         <FilterSection
           title={t("action.tag.filter")}
           icon="i-mingcute-tag-line"
@@ -182,6 +208,7 @@ export const FilterPanel = ({
           title={t("action.camera.filter")}
           icon="i-mingcute-camera-line"
           items={filterItems.cameras}
+          layout="equipment"
           headingLevel={sectionHeadingLevel}
           selected={gallerySetting.selectedCameras}
           onToggle={(id) =>
@@ -195,6 +222,7 @@ export const FilterPanel = ({
           title={t("action.lens.filter")}
           icon="i-mingcute-camera-2-line"
           items={filterItems.lenses}
+          layout="equipment"
           headingLevel={sectionHeadingLevel}
           selected={gallerySetting.selectedLenses}
           onToggle={(id) =>

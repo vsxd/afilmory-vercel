@@ -120,7 +120,7 @@ export const PhotoMarkerPin = ({
 
         <MapPopoverContent
           aria-label={photoLabel}
-          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden border-white/20 bg-white/95 p-0 shadow-xl backdrop-blur-2xl dark:bg-black/95"
+          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
         >
           <div className="relative">
             {/* 选中时显示关闭按钮 */}

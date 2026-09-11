@@ -7,7 +7,7 @@ import type { PhotoManifest } from "~/types/photo";
 import { SharePanel } from "./SharePanel";
 
 const viewerToolbarButtonClassName =
-  "bg-material-ultra-thick pointer-events-auto flex size-11 items-center justify-center rounded-full text-white shadow-lg shadow-black/20 backdrop-blur-xl transition-[background-color,box-shadow,color,transform] duration-200 hover:bg-black/40 focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black/40";
+  "af-glass af-control pointer-events-auto flex size-11 items-center justify-center rounded-full";
 
 interface PhotoViewerToolbarProps {
   currentPhoto: PhotoManifest;
@@ -47,11 +47,14 @@ export const PhotoViewerToolbar = ({
             title={t("photo.viewer.info")}
             className={clsxm(
               viewerToolbarButtonClassName,
-              showExifPanel && "bg-accent hover:bg-accent/90",
+              showExifPanel && "af-viewer-control-active",
             )}
             onClick={onToggleExifPanel}
           >
-            <i className="i-mingcute-information-line" aria-hidden="true" />
+            <i
+              className="i-mingcute-information-line size-5"
+              aria-hidden="true"
+            />
           </button>
         )}
       </div>
@@ -67,7 +70,10 @@ export const PhotoViewerToolbar = ({
               aria-label={t("photo.share.title")}
               title={t("photo.share.title")}
             >
-              <i className="i-mingcute-share-2-line" aria-hidden="true" />
+              <i
+                className="i-mingcute-share-2-line size-5"
+                aria-hidden="true"
+              />
             </button>
           }
         />
@@ -80,7 +86,7 @@ export const PhotoViewerToolbar = ({
           className={viewerToolbarButtonClassName}
           onClick={onClose}
         >
-          <i className="i-mingcute-close-line" aria-hidden="true" />
+          <i className="i-mingcute-close-line size-5" aria-hidden="true" />
         </button>
       </div>
     </m.div>

@@ -114,7 +114,7 @@ export const GalleryThumbnail: FC<{
 
   return (
     <m.div
-      className="pb-safe border-accent/20 bg-material-medium z-10 shrink-0 border-t backdrop-blur-2xl"
+      className="af-glass pb-safe border-fill-tertiary z-10 shrink-0 border-x-0 border-t border-b-0"
       initial={{ y: 100, opacity: 0 }}
       animate={{
         y: visible ? 0 : 48,
@@ -124,18 +124,8 @@ export const GalleryThumbnail: FC<{
       transition={Spring.presets.smooth}
       style={{
         pointerEvents: visible ? "auto" : "none",
-        boxShadow:
-          "0 -8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 -4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -2px 8px rgba(0, 0, 0, 0.1)",
       }}
     >
-      {/* Inner glow layer */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to top, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent)",
-        }}
-      />
       <div
         ref={scrollContainerRef}
         className="relative z-10 flex scrollbar-none overflow-x-auto"
@@ -168,10 +158,10 @@ export const GalleryThumbnail: FC<{
                 // 不用 content-visibility:auto：条目已按 currentIndex 窗口化渲染，
                 // 该属性只会让离屏缩略图被丢弃渲染、横向滚回时重新解码重绘（观感即
                 // 「缓存的小图又在加载」）。
-                "focus-visible:ring-accent/45 focus-visible:ring-offset-background relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,filter,opacity] duration-200 focus-visible:ring-2 focus-visible:ring-offset-2",
+                "relative shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,box-shadow,opacity] duration-200",
                 index === currentIndex
-                  ? "border-accent opacity-100 shadow-[0_0_20px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] ring-2 ring-accent/40"
-                  : "grayscale-50 border-white/15 opacity-75 hover:border-accent/70 hover:opacity-100 hover:grayscale-0",
+                  ? "border-accent opacity-100 ring-2 ring-accent/30"
+                  : "border-white/20 opacity-80 hover:border-white/60 hover:opacity-100",
               )}
               style={
                 isMobile
@@ -206,6 +196,12 @@ export const GalleryThumbnail: FC<{
                 imageClassName="h-full w-full object-cover"
                 placeholderClassName="size-fill"
               />
+              {index === currentIndex && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1 bottom-1 size-1.5 rounded-full bg-white shadow-sm shadow-black/60"
+                />
+              )}
             </button>
           );
         })}

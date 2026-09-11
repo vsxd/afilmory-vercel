@@ -95,7 +95,7 @@ export const RegionMarkerPin = ({
         <MapPopoverTrigger>
           <m.button
             type="button"
-            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative cursor-pointer rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="group relative cursor-pointer rounded-full"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -125,7 +125,9 @@ export const RegionMarkerPin = ({
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 dark:from-white/20 dark:to-white/5" />
               <i
                 className={`i-mingcute-map-pin-fill relative z-10 text-lg drop-shadow-sm ${
-                  isSelected ? "text-white" : "text-gray-700 dark:text-white"
+                  isSelected
+                    ? "text-[var(--color-accent-content)]"
+                    : "text-gray-700 dark:text-white"
                 }`}
                 aria-hidden="true"
               />
@@ -138,7 +140,7 @@ export const RegionMarkerPin = ({
 
         <MapPopoverContent
           aria-label={displayName}
-          className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden border-white/20 bg-white/95 p-0 shadow-xl backdrop-blur-2xl dark:bg-black/95"
+          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
         >
           <div className="relative space-y-3 p-4">
             {isSelected && (
@@ -169,7 +171,7 @@ export const RegionMarkerPin = ({
               <button
                 type="button"
                 onClick={handleFilterRegion}
-                className="focus-visible:ring-accent/45 bg-accent focus-visible:ring-offset-background h-11 w-full rounded-lg px-3 text-xs font-semibold text-[var(--color-accent-content)] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="bg-accent h-11 w-full rounded-lg px-3 text-xs font-semibold text-[var(--color-accent-content)] transition-opacity hover:opacity-90"
               >
                 {t("explore.region.filter")}
               </button>

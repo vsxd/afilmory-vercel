@@ -43,9 +43,9 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
         aria-pressed={isLivePhotoPlaying}
         title={t("photo.live.badge")}
         className={clsxm(
-          "absolute z-20 flex min-h-11 items-center space-x-1 rounded-xl bg-black/50 px-2 py-1 text-xs text-white transition-[background-color,box-shadow,color,transform] duration-200",
-          "cursor-pointer hover:bg-black/70 focus-visible:ring-2 focus-visible:ring-white/80",
-          isLivePhotoPlaying && "bg-accent/70 hover:bg-accent/80",
+          "af-glass af-control absolute z-20 flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-1 text-[13px]",
+          "cursor-pointer",
+          isLivePhotoPlaying && "af-viewer-control-active",
           import.meta.env.DEV ? "top-16 right-4" : "top-12 lg:top-4 left-4",
         )}
         onClick={handleClick}
@@ -73,7 +73,7 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
             role="status"
             aria-live="polite"
           >
-            <div className="flex items-center gap-2 rounded bg-black/50 px-2 py-1 text-xs text-white">
+            <div className="af-glass flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white">
               <i className="i-mingcute-live-photo-fill" aria-hidden="true" />
               <span>{t("photo.live.playing")}</span>
             </div>
@@ -84,7 +84,7 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
       {/* 操作提示 */}
       <div
         className={clsxm(
-          "pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded bg-black/50 px-2 py-1 text-xs text-white opacity-0 duration-200 group-hover:opacity-50",
+          "af-glass pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-lg px-3 py-2 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100",
           isLivePhotoPlaying && "opacity-0!",
         )}
       >

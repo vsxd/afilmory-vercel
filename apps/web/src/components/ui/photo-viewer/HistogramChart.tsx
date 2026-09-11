@@ -378,7 +378,7 @@ export const HistogramChart: FC<{
     <div className={cx("relative grow w-full h-32 group", className)}>
       {loading && (
         <div
-          className="bg-material-ultra-thin absolute inset-0 z-10 flex items-center justify-center rounded-sm backdrop-blur-xl"
+          className="af-panel border-fill-tertiary absolute inset-0 z-10 flex items-center justify-center rounded-lg border"
           role="status"
           aria-label={t("loading.default")}
         >
@@ -390,7 +390,7 @@ export const HistogramChart: FC<{
       )}
       {error && (
         <div
-          className="bg-material-ultra-thin absolute inset-0 flex items-center justify-center rounded-sm backdrop-blur-xl"
+          className="af-panel border-fill-tertiary absolute inset-0 flex items-center justify-center rounded-lg border"
           role="alert"
         >
           <div className="text-center">
@@ -406,7 +406,7 @@ export const HistogramChart: FC<{
           role="img"
           aria-label={t("exif.histogram")}
           className={clsx(
-            "bg-material-ultra-thin ring-fill-tertiary/20 group-hover:ring-fill-tertiary/40 h-full w-full rounded-sm ring-1 backdrop-blur-xl transition-[opacity,box-shadow] duration-200",
+            "bg-fill-quaternary border-fill-tertiary h-full w-full rounded-lg border transition-opacity duration-200",
             loading && "opacity-30",
           )}
         />

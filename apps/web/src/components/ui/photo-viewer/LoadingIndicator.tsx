@@ -156,10 +156,10 @@ export const LoadingIndicator = ({
       aria-live={loadingState.isError ? "assertive" : "polite"}
       aria-atomic="true"
       data-photo-viewer-gesture-ignore
-      className={`${loadingState.isError ? "pointer-events-auto" : "pointer-events-none"} absolute right-4 bottom-4 left-4 z-10 max-w-sm rounded-xl border border-white/10 bg-black/80 px-3 py-2 backdrop-blur sm:left-auto`}
+      className={`${loadingState.isError ? "pointer-events-auto" : "pointer-events-none"} af-glass border-fill-tertiary absolute right-4 bottom-4 left-4 z-10 max-w-sm rounded-xl border px-3 py-2.5 sm:left-auto`}
     >
       <div className="flex items-center gap-3 text-white">
-        <div className="relative">
+        <div className="relative shrink-0" aria-hidden="true">
           {loadingState.isError ? (
             <div className="i-mingcute-warning-line text-lg text-red-400" />
           ) : (
@@ -174,7 +174,7 @@ export const LoadingIndicator = ({
                 {loadingState.errorMessage || t("photo.error.loading")}
               </p>
               {loadingState.errorDescription && (
-                <p className="text-xs leading-relaxed text-white/80">
+                <p className="text-[13px] leading-relaxed text-white/80">
                   {loadingState.errorDescription}
                 </p>
               )}
@@ -182,7 +182,7 @@ export const LoadingIndicator = ({
                 <button
                   type="button"
                   onClick={loadingState.onRetry}
-                  className="mt-2 min-h-11 self-start rounded-lg border border-white/20 px-3 text-sm font-medium text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                  className="af-control mt-2 min-h-11 self-start rounded-lg px-3 text-sm font-medium"
                 >
                   {t("photo.error.retry")}
                 </button>
@@ -191,7 +191,7 @@ export const LoadingIndicator = ({
           ) : loadingState.isConverting ? (
             // 视频转换状态
             <>
-              <p className="text-xs font-medium text-white tabular-nums">
+              <p className="text-[13px] font-medium text-white tabular-nums">
                 {loadingState.isQueueWaiting
                   ? loadingState.conversionMessage || t("loading.queue.waiting")
                   : loadingState.conversionMessage || t("loading.converting")}
@@ -201,7 +201,7 @@ export const LoadingIndicator = ({
             // WebGL 加载状态
             <>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-medium text-white">
+                <p className="text-[13px] font-medium text-white">
                   {loadingState.webglMessage || t("loading.webgl.main")}
                 </p>
                 {webglQualityBadge && (
@@ -218,19 +218,19 @@ export const LoadingIndicator = ({
             // 图片加载状态
             <>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-medium text-white">
+                <p className="text-[13px] font-medium text-white">
                   {loadingState.isHeicFormat
                     ? t("loading.heic.main")
                     : t("loading.default")}
                 </p>
-                <span className="text-xs text-white/60 tabular-nums">
+                <span className="text-xs text-white/80 tabular-nums">
                   {Math.round(loadingState.loadingProgress)}%
                 </span>
               </div>
               {loadingState.totalBytes > 0 && (
                 <p className="text-xs text-white/70 tabular-nums">
-                  {(loadingState.loadedBytes / 1024 / 1024).toFixed(1)}MB /{" "}
-                  {(loadingState.totalBytes / 1024 / 1024).toFixed(1)}MB
+                  {(loadingState.loadedBytes / 1024 / 1024).toFixed(1)} MB /{" "}
+                  {(loadingState.totalBytes / 1024 / 1024).toFixed(1)} MB
                 </p>
               )}
             </>

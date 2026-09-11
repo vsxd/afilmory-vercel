@@ -20,6 +20,7 @@ export const ClusterPhotoGrid = ({
   const displayPhotos = photos.slice(0, 6);
   const remainingCount = Math.max(0, photos.length - 6);
   const primaryPhoto = photos[0];
+  const firstRemainingPhoto = photos[displayPhotos.length];
   const { t, i18n } = useTranslation();
   const latitudeDirection =
     primaryPhoto?.latitudeRef === "S"
@@ -67,7 +68,7 @@ export const ClusterPhotoGrid = ({
   return (
     <div className="space-y-3">
       {/* 标题 */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-text text-sm font-semibold">
           {t("explore.cluster.photos", { count: photos.length })}
         </h3>
@@ -96,7 +97,7 @@ export const ClusterPhotoGrid = ({
                 e.stopPropagation();
                 onPhotoClick?.(photoMarker);
               }}
-              className="block h-full w-full"
+              className="block h-full w-full [--af-focus-offset:-2px]"
               aria-label={getPhotoAccessibleLabel(
                 photoMarker.photo,
                 t,
@@ -114,7 +115,7 @@ export const ClusterPhotoGrid = ({
                 height={photoMarker.photo.height}
                 thumbHash={photoMarker.photo.thumbHash}
                 containerClassName="h-full w-full"
-                imageClassName="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                imageClassName="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loadPolicy="in-view"
                 rootMargin="200px"
                 threshold={0.1}
@@ -124,21 +125,12 @@ export const ClusterPhotoGrid = ({
               <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/20" />
 
               {/* 悬停图标 */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100">
                 <div className="rounded-full bg-black/50 p-2 backdrop-blur-sm">
-                  <svg
-                    className="h-4 w-4 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
+                  <i
+                    className="i-mingcute-fullscreen-line size-4 text-white"
+                    aria-hidden="true"
+                  />
                 </div>
               </div>
             </PhotoLink>
@@ -146,7 +138,7 @@ export const ClusterPhotoGrid = ({
         ))}
 
         {/* 更多照片指示器 */}
-        {remainingCount > 0 && (
+        {firstRemainingPhoto && (
           <m.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -154,16 +146,27 @@ export const ClusterPhotoGrid = ({
               ...Spring.presets.smooth,
               delay: displayPhotos.length * 0.05,
             }}
-            className="bg-fill-secondary flex aspect-square items-center justify-center rounded-lg"
+            className="aspect-square"
           >
-            <div className="text-center">
-              <div className="text-text text-lg font-bold">
+            <PhotoLink
+              photoId={firstRemainingPhoto.photo.id}
+              photoIds={photos.map((marker) => marker.photo.id)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onPhotoClick?.(firstRemainingPhoto);
+              }}
+              className="af-control flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg text-center"
+              aria-label={t("explore.cluster.viewMore", {
+                count: remainingCount,
+              })}
+            >
+              <span className="text-lg font-semibold tabular-nums">
                 +{remainingCount}
-              </div>
-              <div className="text-text-secondary text-xs">
+              </span>
+              <span className="text-text-secondary text-xs">
                 {t("explore.cluster.more")}
-              </div>
-            </div>
+              </span>
+            </PhotoLink>
           </m.div>
         )}
       </div>

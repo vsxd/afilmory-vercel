@@ -179,7 +179,7 @@ test("opens the viewer from command search and restores route and scroll state",
 
   await viewer.getByRole("button", { name: "Share Photo" }).click();
   await expect(page.getByRole("menu")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy Link" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Copy Link" })).toBeVisible();
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);

@@ -38,10 +38,10 @@ export const SortPanel = () => {
             type="button"
             aria-pressed={active}
             className={clsxm(
-              "focus-visible:ring-accent/45 group flex h-12 w-full items-center gap-3 rounded-xl border px-3 text-left transition-[background-color,border-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-inset",
+              "group flex h-12 w-full items-center gap-3 rounded-xl border px-3 text-left transition-[background-color,border-color,box-shadow,color,transform] duration-200",
               active
                 ? "border-accent/35 bg-accent/10 text-accent"
-                : "border-fill-tertiary bg-fill-vibrant-quinary text-text hover:bg-fill-secondary",
+                : "af-control",
             )}
             onClick={() => setSortOrder(option.order)}
           >
@@ -49,7 +49,7 @@ export const SortPanel = () => {
               className={clsxm(
                 "flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors",
                 active
-                  ? "bg-accent text-white shadow-sm"
+                  ? "bg-accent text-[var(--color-accent-content)] shadow-sm"
                   : "bg-material-thin text-text-secondary group-hover:text-text",
               )}
             >

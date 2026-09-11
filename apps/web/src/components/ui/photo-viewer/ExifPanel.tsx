@@ -53,9 +53,9 @@ export const ExifPanel: FC<{
     <m.div
       className={`${
         isMobile
-          ? "exif-panel-mobile fixed right-0 bottom-0 left-0 z-10 max-h-[60vh] w-full rounded-t-2xl backdrop-blur-2xl"
-          : "relative w-80 shrink-0 backdrop-blur-2xl"
-      } border-accent/20 flex flex-col overscroll-contain text-white`}
+          ? "exif-panel-mobile fixed right-0 bottom-0 left-0 z-10 max-h-[60vh] w-full rounded-t-2xl"
+          : "relative w-80 shrink-0"
+      } af-panel border-fill-tertiary text-text flex flex-col overscroll-contain border-t lg:border-t-0 lg:border-l`}
       initial={{
         opacity: 0,
         ...(isMobile ? { y: 100 } : { x: 100 }),
@@ -71,21 +71,10 @@ export const ExifPanel: FC<{
       transition={Spring.presets.smooth}
       style={{
         pointerEvents: visible ? "auto" : "none",
-        backgroundImage:
-          "linear-gradient(to bottom right, rgba(var(--color-materialMedium)), rgba(var(--color-materialThick)), transparent)",
-        boxShadow:
-          "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
       }}
     >
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
-        }}
-      />
       <div className="relative z-10 mb-4 flex shrink-0 items-center justify-between p-4 pb-0">
-        <h3 className={`${isMobile ? "text-base" : "text-lg"} font-semibold`}>
+        <h3 className="text-base font-semibold tracking-tight">
           {t("exif.header.title")}
         </h3>
         <div className="flex items-center gap-2">
@@ -93,15 +82,16 @@ export const ExifPanel: FC<{
           {isMobile && onClose && (
             <button
               type="button"
-              aria-label={t("common.close", { defaultValue: "Close" })}
-              title={t("common.close", { defaultValue: "Close" })}
-              className="glassmorphic-btn border-accent/20 focus-visible:ring-accent/45 flex size-11 items-center justify-center rounded-full border text-white/70 transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:text-white focus-visible:ring-2 focus-visible:ring-inset"
+              aria-label={t("photo.viewer.info-close", {
+                defaultValue: "Close photo information",
+              })}
+              title={t("photo.viewer.info-close", {
+                defaultValue: "Close photo information",
+              })}
+              className="af-control flex size-11 items-center justify-center rounded-full"
               onClick={onClose}
             >
-              <i
-                className="i-mingcute-close-line text-base"
-                aria-hidden="true"
-              />
+              <i className="i-mingcute-close-line size-5" aria-hidden="true" />
             </button>
           )}
         </div>
@@ -115,7 +105,7 @@ export const ExifPanel: FC<{
             : "px-4 pb-4 **:select-text"
         }
       >
-        <div className={isMobile ? "space-y-3" : "space-y-4"}>
+        <div className="space-y-5">
           <BasicExifSection
             currentPhoto={currentPhoto}
             t={sectionT}

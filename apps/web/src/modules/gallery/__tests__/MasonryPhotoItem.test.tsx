@@ -12,6 +12,13 @@ import type { PhotoManifest } from "~/types/photo";
 
 import { MasonryPhotoItem } from "../MasonryPhotoItem";
 
+const device = vi.hoisted(() => ({ isMobile: false }));
+vi.mock("~/lib/device-viewport", () => ({
+  get isMobileDevice() {
+    return device.isMobile;
+  },
+}));
+
 const navigate = vi.fn();
 let contextPhotos: PhotoManifest[] = [];
 vi.mock("~/navigation/hooks", () => ({
@@ -114,6 +121,7 @@ describe("MasonryPhotoItem", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    device.isMobile = false;
     contextPhotos = [photo];
     store = createStore();
   });
@@ -191,15 +199,29 @@ describe("MasonryPhotoItem", () => {
     expect(img.getAttribute("fetchpriority")).toBe("low");
   });
 
-  it("renders a visible keyboard focus ring on the cell root (global CSS strips outlines)", () => {
-    // styles/tailwind.css 全局压掉 outline，可聚焦控件必须自带 focus-visible ring；
-    // ring-inset 是因为格子 overflow-hidden 且边贴边，外扩 ring 会被裁掉。
+  it("keeps the shared keyboard outline inside the clipped photo cell", () => {
     const { getByRole } = renderItem({ data: photo, width: 300, index: 0 });
-
     const cell = getByRole("link", { name: "A7C01202" });
-    expect(cell.className).toContain("focus-visible:ring-2");
-    expect(cell.className).toContain("focus-visible:ring-accent/45");
-    expect(cell.className).toContain("focus-visible:ring-inset");
+    expect(cell.style.outlineOffset).toBe("-3px");
+    expect(cell.className).not.toContain("focus-visible:ring-");
+  });
+
+  it("reveals metadata for keyboard focus on a touch device without adding it to scrolling cells", () => {
+    device.isMobile = true;
+    markThumbnailLoaded(getThumbnailLoadCacheKey(photo.id, photo.thumbnailUrl));
+    const { getByRole, queryByRole } = renderItem({
+      data: photo,
+      width: 300,
+      index: 0,
+    });
+    const link = getByRole("link", { name: "A7C01202" });
+    expect(queryByRole("heading", { level: 2 })).toBeNull();
+
+    fireEvent.focus(link);
+    expect(getByRole("heading", { level: 2, name: "A7C01202" })).toBeTruthy();
+
+    fireEvent.blur(link);
+    expect(queryByRole("heading", { level: 2 })).toBeNull();
   });
 
   it("uses a level-two heading beneath the gallery's page heading", () => {

@@ -5,13 +5,17 @@ import { useTranslation } from "react-i18next";
 
 import { siteConfig } from "~/config";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
-import { MageLens, TablerAperture } from "~/icons";
+import { TablerAperture } from "~/icons";
 import { getPhotoGeoData } from "~/lib/geo-regions";
 import { useGallerySettings } from "~/navigation/hooks";
 import { usePhotoRepositorySnapshot } from "~/runtime/app-runtime";
 import type { PhotoManifest } from "~/types/photo";
 
 import { ActionGroup } from "./ActionGroup";
+import {
+  applyGalleryCommandAction,
+  buildActiveFilterChips,
+} from "./command-palette/model";
 import { createGeoRegionLabelMaps } from "./filter-options";
 
 const getPhotoCameraName = (photo: PhotoManifest) => {
@@ -44,7 +48,7 @@ export const MasonryHeaderMasonryItem = ({
   className?: string;
 }) => {
   const { t, i18n } = useTranslation();
-  const [gallerySetting] = useGallerySettings();
+  const [gallerySetting, setGallerySetting] = useGallerySettings();
   const visiblePhotos = useContextPhotos();
   const photos = usePhotoRepositorySnapshot();
   const visiblePhotoCount = visiblePhotos.length;
@@ -117,54 +121,8 @@ export const MasonryHeaderMasonryItem = ({
       i18n.language,
     );
 
-    return [
-      ...gallerySetting.selectedTags.map((tag) => ({
-        id: `tag-${tag}`,
-        label: tag,
-        icon: null,
-      })),
-      ...gallerySetting.selectedCameras.map((camera) => ({
-        id: `camera-${camera}`,
-        label: camera,
-        icon: "camera" as const,
-      })),
-      ...gallerySetting.selectedLenses.map((lens) => ({
-        id: `lens-${lens}`,
-        label: lens,
-        icon: "lens" as const,
-      })),
-      ...gallerySetting.selectedGeoCountries.map((id) => ({
-        id: `geo-country-${id}`,
-        label: regionLabelMaps.selectedGeoCountries.get(id) ?? id,
-        icon: "location" as const,
-      })),
-      ...gallerySetting.selectedGeoRegions.map((id) => ({
-        id: `geo-region-${id}`,
-        label: regionLabelMaps.selectedGeoRegions.get(id) ?? id,
-        icon: "location" as const,
-      })),
-      ...gallerySetting.selectedGeoCities.map((id) => ({
-        id: `geo-city-${id}`,
-        label: regionLabelMaps.selectedGeoCities.get(id) ?? id,
-        icon: "location" as const,
-      })),
-      ...gallerySetting.selectedGeoDistricts.map((id) => ({
-        id: `geo-district-${id}`,
-        label: regionLabelMaps.selectedGeoDistricts.get(id) ?? id,
-        icon: "location" as const,
-      })),
-    ];
-  }, [
-    gallerySetting.selectedCameras,
-    gallerySetting.selectedGeoCities,
-    gallerySetting.selectedGeoCountries,
-    gallerySetting.selectedGeoDistricts,
-    gallerySetting.selectedGeoRegions,
-    gallerySetting.selectedLenses,
-    gallerySetting.selectedTags,
-    i18n.language,
-    photos,
-  ]);
+    return buildActiveFilterChips({ gallerySetting, regionLabelMaps });
+  }, [gallerySetting, i18n.language, photos]);
 
   useEffect(() => {
     const element = statsGridRef.current;
@@ -196,17 +154,15 @@ export const MasonryHeaderMasonryItem = ({
 
   return (
     <div
-      className={clsxm(
-        "overflow-hidden border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900",
-        className,
-      )}
+      className={clsxm("af-panel overflow-hidden", className)}
       style={style}
+      data-gallery-header
     >
-      <div className="px-6 pt-8 pb-6 text-center">
-        <div className="mb-4 flex justify-center">
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3 lg:flex-col lg:gap-3 lg:px-5 lg:pt-6 lg:pb-4 lg:text-center">
+        <div className="flex shrink-0 justify-center">
           <div className="relative inline-flex">
             {siteConfig.author.avatar && (
-              <AvatarPrimitive.Root className="inline-flex size-16 items-center justify-center overflow-hidden rounded-full">
+              <AvatarPrimitive.Root className="inline-flex size-12 items-center justify-center overflow-hidden rounded-full lg:size-16">
                 <AvatarPrimitive.Image
                   src={siteConfig.author.avatar}
                   className="size-full object-cover"
@@ -218,9 +174,9 @@ export const MasonryHeaderMasonryItem = ({
               </AvatarPrimitive.Root>
             )}
             {!siteConfig.author.avatar && (
-              <div className="from-accent to-accent/80 inline-flex size-16 items-center justify-center rounded-full bg-gradient-to-br shadow-sm">
+              <div className="bg-accent text-accent-content inline-flex size-12 items-center justify-center rounded-full lg:size-16">
                 <i
-                  className="i-mingcute-camera-2-line text-2xl text-white"
+                  className="i-mingcute-camera-2-line text-2xl"
                   aria-hidden="true"
                 />
               </div>
@@ -228,62 +184,64 @@ export const MasonryHeaderMasonryItem = ({
           </div>
         </div>
 
-        <h1 className="text-text mb-2 truncate text-xl leading-tight font-semibold text-balance">
-          {siteConfig.name}
-        </h1>
+        <div className="min-w-0 flex-1 lg:w-full">
+          <h1 className="text-text text-lg leading-snug font-semibold text-balance wrap-anywhere lg:text-xl">
+            {siteConfig.name}
+          </h1>
 
-        {siteConfig.social && (
-          <div className="flex items-center justify-center gap-2">
-            {githubUrl && (
-              <a
-                href={githubUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-11 items-center justify-center rounded-full transition-colors"
-                title="GitHub"
-                aria-label="GitHub"
-              >
-                <i
-                  className="i-mingcute-github-fill text-base"
-                  aria-hidden="true"
-                />
-              </a>
-            )}
-            {siteConfig.social.twitter && (
-              <a
-                href={`https://twitter.com/${siteConfig.social.twitter.replace("@", "")}`}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
-                title="Twitter"
-                aria-label="Twitter"
-              >
-                <i
-                  className="i-mingcute-twitter-fill text-base"
-                  aria-hidden="true"
-                />
-              </a>
-            )}
-            {siteConfig.social.rss && (
-              <a
-                href="/feed.xml"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
-                title="RSS"
-                aria-label="RSS"
-              >
-                <i
-                  className="i-mingcute-rss-2-fill text-base"
-                  aria-hidden="true"
-                />
-              </a>
-            )}
-          </div>
-        )}
+          {siteConfig.social && (
+            <div className="-ml-2 flex flex-wrap items-center gap-1 lg:ml-0 lg:justify-center">
+              {githubUrl && (
+                <a
+                  href={githubUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-11 items-center justify-center rounded-full transition-colors"
+                  title="GitHub"
+                  aria-label="GitHub"
+                >
+                  <i
+                    className="i-mingcute-github-fill text-base"
+                    aria-hidden="true"
+                  />
+                </a>
+              )}
+              {siteConfig.social.twitter && (
+                <a
+                  href={`https://twitter.com/${siteConfig.social.twitter.replace("@", "")}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
+                  title="Twitter"
+                  aria-label="Twitter"
+                >
+                  <i
+                    className="i-mingcute-twitter-fill text-base"
+                    aria-hidden="true"
+                  />
+                </a>
+              )}
+              {siteConfig.social.rss && (
+                <a
+                  href="/feed.xml"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
+                  title="RSS"
+                  aria-label="RSS"
+                >
+                  <i
+                    className="i-mingcute-rss-2-fill text-base"
+                    aria-hidden="true"
+                  />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="px-6 pb-6">
+      <div className="px-4 pb-4 lg:px-5 lg:pb-5">
         <ActionGroup />
       </div>
 
@@ -303,31 +261,61 @@ export const MasonryHeaderMasonryItem = ({
 
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {filterChips.map((chip) => (
-                <span
+                <button
                   key={chip.id}
-                  className="bg-fill-secondary/50 text-text-secondary inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] leading-4 sm:px-2.5 sm:py-1 sm:text-[11px] sm:leading-5"
-                  title={chip.label}
+                  type="button"
+                  data-filter-chip={chip.id}
+                  className="af-control text-text-secondary inline-flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left text-xs leading-4"
+                  aria-label={t("gallery.filters.remove", {
+                    label: chip.label,
+                  })}
+                  onClick={(event) => {
+                    const button = event.currentTarget;
+                    const nextChip =
+                      button.nextElementSibling ??
+                      button.previousElementSibling;
+                    const nextId =
+                      nextChip instanceof HTMLElement
+                        ? nextChip.dataset.filterChip
+                        : undefined;
+                    const gallery =
+                      button.closest("[data-gallery-root]") ??
+                      button.closest("[data-gallery-header]");
+                    setGallerySetting((previous) =>
+                      applyGalleryCommandAction(previous, chip.action),
+                    );
+                    // Filtering can remount the measured desktop header. Resolve the
+                    // replacement control after the new photo set has committed.
+                    requestAnimationFrame(() => {
+                      const header = gallery?.matches("[data-gallery-header]")
+                        ? gallery
+                        : gallery?.querySelector("[data-gallery-header]");
+                      const next = Array.from(
+                        header?.querySelectorAll<HTMLButtonElement>(
+                          "[data-filter-chip]",
+                        ) ?? [],
+                      ).find(
+                        (element) => element.dataset.filterChip === nextId,
+                      );
+                      (
+                        next ??
+                        header?.querySelector<HTMLButtonElement>(
+                          "[data-gallery-search]",
+                        )
+                      )?.focus({ preventScroll: true });
+                    });
+                  }}
                 >
-                  {chip.icon === "camera" && (
-                    <i
-                      className="i-mingcute-camera-line shrink-0 text-[11px] sm:text-xs"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {chip.icon === "lens" && (
-                    <MageLens
-                      className="shrink-0 text-[11px] sm:text-xs"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {chip.icon === "location" && (
-                    <i
-                      className="i-mingcute-location-line shrink-0 text-[11px] sm:text-xs"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span className="min-w-0 truncate">{chip.label}</span>
-                </span>
+                  <i
+                    className={clsxm(chip.icon, "shrink-0 text-sm")}
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 wrap-anywhere">{chip.label}</span>
+                  <i
+                    className="i-mingcute-close-line ml-auto shrink-0 text-sm"
+                    aria-hidden="true"
+                  />
+                </button>
               ))}
             </div>
           </div>
@@ -388,7 +376,7 @@ export const MasonryHeaderMasonryItem = ({
                   </span>
                   <span
                     className={clsxm(
-                      "text-text-secondary block shrink-0 whitespace-nowrap leading-none font-medium tabular-nums",
+                      "text-text block shrink-0 whitespace-nowrap leading-none font-medium tabular-nums",
                       statsGridDensity === "normal" && "text-[15px]",
                       statsGridDensity === "compact" && "text-sm",
                       statsGridDensity === "tight" && "text-[13px]",

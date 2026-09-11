@@ -38,6 +38,20 @@
   --border: 0 0% 22.1%;
 }
 
+:root {
+  /* Shared chrome stays neutral while the viewer retains photo-derived color. */
+  --af-surface-panel: #1b1d21;
+  --af-surface-popover: rgb(29 31 36 / 96%);
+  --af-surface-glass: rgb(25 27 31 / 82%);
+  --af-surface-control: rgb(255 255 255 / 6%);
+  --af-surface-hover: rgb(255 255 255 / 11%);
+  --af-border: rgb(255 255 255 / 11%);
+  --af-border-strong: rgb(255 255 255 / 20%);
+  --af-text: #f2f3f5;
+  --af-text-secondary: #b4b8c1;
+  --af-shadow: 0 12px 40px rgb(0 0 0 / 28%), 0 2px 8px rgb(0 0 0 / 18%);
+}
+
 @theme {
   /* Container */
   --container-padding: 2rem;
@@ -67,10 +81,10 @@
   /* Font families */
   --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
   --font-serif:
-    "Noto Serif CJK SC", "Noto Serif SC", var(--font-serif),
-    "Source Han Serif SC", "Source Han Serif", source-han-serif-sc, SongTi SC,
-    SimSum, "Hiragino Sans GB", system-ui, -apple-system, Segoe UI, Roboto,
-    Helvetica, "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
+    "Noto Serif CJK SC", "Noto Serif SC", ui-serif, "Source Han Serif SC",
+    "Source Han Serif", source-han-serif-sc, SongTi SC, SimSum,
+    "Hiragino Sans GB", system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    "Microsoft YaHei", "WenQuanYi Micro Hei", sans-serif;
   --font-mono:
     "OperatorMonoSSmLig Nerd Font", "Cascadia Code PL",
     "FantasqueSansMono Nerd Font", "operator mono", JetBrainsMono,
@@ -123,7 +137,13 @@ html body {
   [tabindex]:not([tabindex="-1"])
 ):focus-visible {
   outline: 2px solid var(--color-accent, currentColor);
-  outline-offset: 2px;
+  outline-offset: var(--af-focus-offset, 2px);
+}
+
+/* The shell owns the focus boundary for this compound input. Keep all other
+   inputs on the global keyboard-focus rule above. */
+.af-input-shell input:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -138,6 +158,78 @@ html body {
 }
 
 @layer components {
+  .af-panel {
+    background-color: var(--af-surface-panel);
+    color: var(--af-text);
+    border: 1px solid var(--af-border);
+  }
+
+  .af-popover {
+    background-color: var(--af-surface-popover);
+    color: var(--af-text);
+    border: 1px solid var(--af-border);
+    box-shadow: var(--af-shadow);
+    backdrop-filter: blur(24px);
+  }
+
+  .af-glass {
+    background-color: var(--af-surface-glass);
+    color: var(--af-text);
+    border: 1px solid var(--af-border);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 16%);
+    backdrop-filter: blur(16px);
+  }
+
+  .af-control {
+    background-color: var(--af-surface-control);
+    border: 1px solid var(--af-border);
+    color: var(--af-text);
+    transition-property: background-color, border-color, color, opacity;
+    transition-duration: 160ms;
+    touch-action: manipulation;
+  }
+
+  .af-control:hover:not(:disabled) {
+    background-color: var(--af-surface-hover);
+    border-color: var(--af-border-strong);
+  }
+
+  .af-control:active:not(:disabled) {
+    background-color: rgb(255 255 255 / 15%);
+  }
+
+  .af-control:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* Image-overlay controls need a stable dark backing on bright photographs. */
+  .af-glass.af-control {
+    background-color: var(--af-surface-glass);
+  }
+
+  .af-glass.af-control:hover:not(:disabled) {
+    background-color: rgb(42 44 49 / 94%);
+  }
+
+  .af-glass.af-control:active:not(:disabled) {
+    background-color: rgb(51 53 59 / 96%);
+  }
+
+  .af-input-shell {
+    background-color: rgb(0 0 0 / 16%);
+    border: 1px solid var(--af-border-strong);
+    transition:
+      border-color 160ms,
+      box-shadow 160ms;
+  }
+
+  .af-input-shell:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
   .shadow-context-menu {
     box-shadow:
       rgba(0, 0, 0, 0.067) 0px 3px 8px,
@@ -164,68 +256,25 @@ html body {
 }
 
 [data-sonner-toast] {
-  border-color: color-mix(
-    in srgb,
-    var(--color-accent) 20%,
-    transparent
-  ) !important;
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent),
-    0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent),
-    0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  background: var(--af-surface-popover) !important;
+  color: var(--af-text) !important;
+  border-color: var(--af-border) !important;
+  box-shadow: var(--af-shadow) !important;
 }
 
-[data-sonner-toast][data-type="success"] {
-  border-color: rgba(48, 209, 88, 0.3) !important;
+[data-sonner-toast] [data-description] {
+  color: var(--af-text-secondary) !important;
 }
 
-[data-sonner-toast][data-type="error"] {
-  border-color: rgba(255, 69, 58, 0.3) !important;
-}
-
-[data-sonner-toast][data-type="warning"] {
-  border-color: rgba(255, 159, 10, 0.3) !important;
-}
-
-[data-sonner-toast][data-type="info"] {
-  border-color: rgba(10, 132, 255, 0.3) !important;
-}
-
-[data-sonner-toast][data-type="loading"] {
-  border-color: rgba(142, 142, 147, 0.3) !important;
-}
-
-[data-sonner-toast]::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom right,
-    color-mix(in srgb, var(--color-accent) 5%, transparent),
-    transparent,
-    color-mix(in srgb, var(--color-accent) 5%, transparent)
-  );
-}
 @layer components {
-  /* Glassmorphic button hover effect */
   .glassmorphic-btn:hover {
-    background: linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-accent) 8%, transparent),
-      color-mix(in srgb, var(--color-accent) 5%, transparent)
-    ) !important;
-    color: var(--color-accent) !important;
+    background-color: var(--af-surface-hover);
+    border-color: var(--af-border-strong);
+    color: var(--af-text);
   }
 
-  /* Command item hover/selected effect */
   .command-item:hover,
   .command-item.selected {
-    background: linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-accent) 8%, transparent),
-      color-mix(in srgb, var(--color-accent) 5%, transparent)
-    ) !important;
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
   }
 }

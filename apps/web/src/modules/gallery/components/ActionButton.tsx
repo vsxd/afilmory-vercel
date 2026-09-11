@@ -32,21 +32,18 @@ export const ActionButton = ({
 }) => {
   return (
     <Button
-      variant="ghost"
+      variant="surface"
       size="sm"
-      className="bg-material-medium border-fill-tertiary hover:bg-fill-secondary focus-visible:ring-accent/45 focus-visible:ring-offset-background relative h-11 w-11 rounded-full border shadow-sm backdrop-blur-xl transition-[background-color,border-color,box-shadow,color,transform] duration-200 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2"
+      className="af-control relative h-11 w-11 rounded-full"
       aria-label={title}
       title={title}
       onClick={onClick}
       ref={ref}
       {...props}
     >
-      <i
-        className={clsxm(icon, "text-text-secondary text-base")}
-        aria-hidden="true"
-      />
+      <i className={clsxm(icon, "text-lg")} aria-hidden="true" />
       {badge && (
-        <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-white shadow-sm">
+        <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-[var(--color-accent-content)] shadow-sm">
           {badge}
         </span>
       )}
@@ -141,7 +138,7 @@ export const MobileActionButton = ({
         />
       </Drawer.Trigger>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xl" />
+        <Drawer.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
         <Drawer.Content
           ref={contentRef}
           tabIndex={-1}
@@ -150,7 +147,7 @@ export const MobileActionButton = ({
             event.preventDefault();
             triggerRef.current?.focus({ preventScroll: true });
           }}
-          className="bg-material-thick border-fill-tertiary fixed right-0 bottom-0 left-0 z-50 flex max-h-[88vh] flex-col overflow-hidden overscroll-contain rounded-t-[1.75rem] border-x border-t shadow-2xl backdrop-blur-2xl"
+          className="af-popover fixed right-0 bottom-0 left-0 z-50 flex max-h-[88dvh] flex-col overflow-hidden overscroll-contain rounded-t-3xl"
         >
           <Drawer.Title className="sr-only">{title}</Drawer.Title>
           <div className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing">
@@ -189,6 +186,7 @@ export const ResponsiveActionButton = ({
 }) => {
   const isMobile = useMobile();
   const [open, setOpen] = useState(false);
+  const [, setGallerySetting] = useGallerySettings();
 
   if (isMobile) {
     return (
@@ -196,8 +194,11 @@ export const ResponsiveActionButton = ({
         icon={icon}
         title={title}
         badge={badge}
-        open={open}
-        onOpenChange={setOpen}
+        open={globalOpen ?? open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          onGlobalOpenChange?.(nextOpen, setGallerySetting);
+        }}
       >
         {children}
       </MobileActionButton>

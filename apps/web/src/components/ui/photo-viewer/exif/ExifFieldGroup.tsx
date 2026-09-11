@@ -19,10 +19,10 @@ export const ExifFieldGroup = ({
 
   return (
     <div>
-      <h4 className="mb-3 border-b border-white/25 pb-2 text-sm font-semibold text-white/90">
+      <h4 className="af-exif-section-title">
         {t(translationKey, { defaultValue: title })}
       </h4>
-      <div className="space-y-2">
+      <div>
         {fields.map(([key, value]) => (
           <ExifFieldRow key={key} label={key} value={String(value)} />
         ))}

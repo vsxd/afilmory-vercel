@@ -8,8 +8,7 @@ type HighlightStyle = React.CSSProperties & {
 };
 
 const highlightedItemStyle: HighlightStyle = {
-  "--highlight-bg":
-    "linear-gradient(to right, color-mix(in srgb, var(--color-accent) 8%, transparent), color-mix(in srgb, var(--color-accent) 5%, transparent))",
+  "--highlight-bg": "color-mix(in srgb, var(--color-accent) 12%, transparent)",
 };
 
 const ContextMenu = ContextMenuPrimitive.Root;
@@ -35,7 +34,7 @@ const ContextMenuSubTrigger = ({
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={clsxm(
-      "focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
+      "focus:bg-accent focus:text-[var(--color-accent-content)] data-[state=open]:bg-accent data-[state=open]:text-[var(--color-accent-content)] flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
       inset && "pl-8",
       "flex items-center justify-center gap-2",
       className,
@@ -62,18 +61,12 @@ const ContextMenuSubContent = ({
     <ContextMenuPrimitive.SubContent
       ref={ref}
       className={clsxm(
-        "backdrop-blur-2xl text-text text-body",
+        "af-popover text-text text-body",
         "min-w-32 overflow-hidden",
-        "rounded-xl p-1 relative border border-accent/20",
+        "rounded-xl p-1 relative",
         "z-10061",
         className,
       )}
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))",
-        boxShadow:
-          "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
-      }}
       {...props}
     />
   </RootPortal>
@@ -91,16 +84,10 @@ const ContextMenuContent = ({
     <ContextMenuPrimitive.Content
       ref={ref}
       className={clsxm(
-        "backdrop-blur-2xl text-text z-10060 min-w-32 overflow-hidden rounded-xl p-1 relative border border-accent/20",
+        "af-popover text-text z-10060 min-w-32 overflow-hidden rounded-xl p-1 relative",
         "motion-scale-in-75 motion-duration-150 text-body lg:animate-none",
         className,
       )}
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))",
-        boxShadow:
-          "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
-      }}
       {...props}
     />
   </RootPortal>

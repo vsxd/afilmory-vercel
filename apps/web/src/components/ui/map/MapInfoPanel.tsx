@@ -87,38 +87,40 @@ export const MapInfoPanel = ({
 
   return (
     <m.div
-      className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 max-w-xs"
+      className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-[calc(env(safe-area-inset-right)+1rem)] z-40 w-[min(20rem,calc(100vw-5.5rem))]"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
     >
-      <div className="bg-material-thick border-fill-tertiary rounded-2xl border shadow-xl backdrop-blur-2xl">
+      <div className="af-popover max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl">
         {/* Header Section */}
-        <div className="p-5">
+        <div className="p-4">
           <m.div
-            className="flex items-center gap-4"
+            className="flex items-start gap-3"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
           >
             {/* Icon container with enhanced styling */}
-            <div className="bg-blue/10 ring-blue/20 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ring-1 ring-inset">
+            <div className="bg-accent/10 flex size-10 shrink-0 items-center justify-center rounded-xl max-sm:hidden">
               <i
-                className="i-mingcute-map-line text-blue text-lg"
+                className="i-mingcute-map-line text-accent text-lg"
                 aria-hidden="true"
               />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <h1 className="text-text text-lg leading-tight font-semibold tracking-tight">
+              <div className="flex items-center justify-between gap-2">
+                <h1 className="text-text text-base leading-snug font-semibold">
                   {t("explore.explore.map")}
                 </h1>
                 {/* Collapse/Expand Button */}
                 <button
                   type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="bg-fill-secondary/50 ring-fill-tertiary/20 hover:bg-fill-tertiary focus-visible:ring-accent/45 relative -top-2 -mb-2 flex size-11 flex-shrink-0 items-center justify-center rounded-xl ring-1 transition-[background-color,box-shadow,color,transform] duration-200 ring-inset focus-visible:ring-2"
+                  className="af-control flex size-11 shrink-0 items-center justify-center rounded-xl"
+                  aria-expanded={isExpanded}
+                  aria-controls="map-range-details"
                   aria-label={t(
                     isExpanded
                       ? "explore.panel.toggle.collapse"
@@ -138,20 +140,19 @@ export const MapInfoPanel = ({
                 </button>
               </div>
               <div className="mt-1.5 flex items-center gap-2">
-                <div className="bg-green/10 ring-green/20 flex items-center gap-1.5 rounded-full px-2.5 py-1 ring-1 ring-inset">
-                  <div className="bg-green h-1.5 w-1.5 rounded-full" />
-                  <span className="text-text-secondary text-xs font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-text text-sm font-medium">
                     {primaryCountLabel}
                   </span>
                 </div>
               </div>
-              <div className="text-text-tertiary mt-2 text-xs font-medium">
+              <div className="text-text-secondary mt-1.5 text-xs leading-relaxed">
                 {secondaryCountLabel}
               </div>
             </div>
           </m.div>
 
-          <div className="bg-fill-secondary/45 ring-fill-tertiary/25 mt-4 grid grid-cols-2 gap-1 rounded-xl p-1 ring-1 ring-inset">
+          <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/20 p-1">
             {modes.map((mode) => {
               const isActive = displayMode === mode.value;
 
@@ -159,9 +160,9 @@ export const MapInfoPanel = ({
                 <button
                   key={mode.value}
                   type="button"
-                  className={`flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-[background-color,box-shadow,color] ${
+                  className={`flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium transition-[background-color,box-shadow,color] ${
                     isActive
-                      ? "bg-fill-vibrant-secondary text-text shadow-sm"
+                      ? "text-text bg-white/10 shadow-sm"
                       : "text-text-secondary hover:bg-fill-tertiary/70"
                   }`}
                   aria-pressed={isActive}
@@ -184,10 +185,12 @@ export const MapInfoPanel = ({
             opacity: isExpanded && bounds ? 1 : 0,
           }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
+          id="map-range-details"
+          aria-hidden={!isExpanded}
           className="overflow-hidden"
         >
           {bounds && (
-            <div className="border-fill-secondary border-t px-5 pt-4 pb-5">
+            <div className="border-fill-secondary border-t px-4 pt-4 pb-4">
               {/* Section header */}
               <div className="mb-4 flex items-center gap-2.5">
                 <i
@@ -202,7 +205,7 @@ export const MapInfoPanel = ({
               {/* Enhanced coordinate cards */}
               <div className="space-y-3">
                 {/* Min coordinates */}
-                <div className="bg-fill-vibrant-quinary border-fill-tertiary rounded-xl border p-4">
+                <div className="rounded-lg bg-black/15 p-3">
                   <div className="text-text-secondary mb-2 flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
                     <i
                       className="i-mingcute-arrow-left-down-line text-sm"
@@ -211,19 +214,19 @@ export const MapInfoPanel = ({
                     {t("explore.bounds.southwest")}
                   </div>
                   <div className="space-y-1">
-                    <div className="text-text flex items-center justify-between">
+                    <div className="text-text flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">
                         {t("explore.coordinates.latitude")}
                       </span>
-                      <span className="font-mono text-sm tabular-nums">
+                      <span className="text-xs tabular-nums">
                         {formatLatitude(bounds.minLat)}
                       </span>
                     </div>
-                    <div className="text-text flex items-center justify-between">
+                    <div className="text-text flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">
                         {t("explore.coordinates.longitude")}
                       </span>
-                      <span className="font-mono text-sm tabular-nums">
+                      <span className="text-xs tabular-nums">
                         {formatLongitude(bounds.minLng)}
                       </span>
                     </div>
@@ -231,7 +234,7 @@ export const MapInfoPanel = ({
                 </div>
 
                 {/* Max coordinates */}
-                <div className="bg-fill-vibrant-quinary border-fill-tertiary rounded-xl border p-4">
+                <div className="rounded-lg bg-black/15 p-3">
                   <div className="text-text-secondary mb-2 flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
                     <i
                       className="i-mingcute-arrow-right-up-line text-sm"
@@ -240,19 +243,19 @@ export const MapInfoPanel = ({
                     {t("explore.bounds.northeast")}
                   </div>
                   <div className="space-y-1">
-                    <div className="text-text flex items-center justify-between">
+                    <div className="text-text flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">
                         {t("explore.coordinates.latitude")}
                       </span>
-                      <span className="font-mono text-sm tabular-nums">
+                      <span className="text-xs tabular-nums">
                         {formatLatitude(bounds.maxLat)}
                       </span>
                     </div>
-                    <div className="text-text flex items-center justify-between">
+                    <div className="text-text flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">
                         {t("explore.coordinates.longitude")}
                       </span>
-                      <span className="font-mono text-sm tabular-nums">
+                      <span className="text-xs tabular-nums">
                         {formatLongitude(bounds.maxLng)}
                       </span>
                     </div>
@@ -261,7 +264,7 @@ export const MapInfoPanel = ({
               </div>
 
               {/* Coverage area calculation */}
-              <div className="bg-fill-vibrant-quinary border-fill-tertiary mt-4 rounded-xl border p-3">
+              <div className="mt-3 rounded-lg bg-black/15 p-3">
                 <div className="text-text-secondary flex items-center gap-2 text-xs">
                   <i className="i-mingcute-grid-line" aria-hidden="true" />
                   <span className="font-medium">

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ScrollArea } from "./ScrollArea";
 
 describe("ScrollArea", () => {
-  it("puts a visible-ring scroll viewport in the keyboard tab order", () => {
+  it("puts the scroll viewport in the keyboard tab order and accepts focus", () => {
     const { container } = render(
       <ScrollArea>
         <div>content</div>
@@ -12,11 +12,12 @@ describe("ScrollArea", () => {
     );
 
     expect(screen.getByText("content")).toBeTruthy();
-    const viewport = container.querySelector(
+    const viewport = container.querySelector<HTMLElement>(
       "[data-radix-scroll-area-viewport]",
     );
     expect(viewport?.getAttribute("tabindex")).toBe("0");
-    expect(viewport?.className).toContain("focus-visible:ring-2");
+    viewport?.focus();
+    expect(document.activeElement).toBe(viewport);
   });
 
   it("removes an explicitly non-focusable viewport from the tab order", () => {

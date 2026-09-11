@@ -217,7 +217,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
             <DropdownMenuPrimitive.Content
               align="end"
               sideOffset={8}
-              className="z-10000 min-w-[280px] will-change-[opacity,transform]"
+              className="z-10000 max-h-[var(--radix-dropdown-menu-content-available-height)] w-80 max-w-[calc(100vw-1.5rem)] overflow-y-auto will-change-[opacity,transform]"
               asChild
             >
               <m.div
@@ -226,25 +226,11 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                 transition={Spring.presets.smooth}
-                className="border-accent/20 rounded-2xl border p-4 backdrop-blur-2xl"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to bottom right, color-mix(in srgb, var(--color-background) 98%, transparent), color-mix(in srgb, var(--color-background) 95%, transparent))",
-                  boxShadow:
-                    "0 8px 32px color-mix(in srgb, var(--color-accent) 8%, transparent), 0 4px 16px color-mix(in srgb, var(--color-accent) 6%, transparent), 0 2px 8px rgba(0, 0, 0, 0.1)",
-                }}
+                className="af-popover rounded-2xl p-4"
               >
-                {/* Inner glow layer */}
-                <div
-                  className="pointer-events-none absolute inset-0 rounded-2xl"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom right, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent, color-mix(in srgb, var(--color-accent) 5%, transparent))",
-                  }}
-                />
                 {/* 标题区域 */}
-                <div className="relative mb-4 text-center">
-                  <h3 className="text-text font-semibold">
+                <div className="relative mb-4">
+                  <h3 className="text-text text-sm font-semibold">
                     {t("photo.share.title")}
                   </h3>
                   {photo.title && (
@@ -255,42 +241,44 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 </div>
 
                 {/* 社交媒体分享 - 第一排 */}
-                <div className="relative mb-6">
+                <div className="relative mb-4">
                   <div className="mb-3">
-                    <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
+                    <h4 className="text-text-secondary text-xs font-medium">
                       {t("photo.share.social.media")}
                     </h4>
                   </div>
-                  <div className="flex gap-6 px-2">
+                  <div className="grid grid-cols-4 gap-1">
                     {socialOptions.map((option) => (
-                      <button
+                      <DropdownMenuPrimitive.Item
                         key={option.id}
-                        type="button"
-                        className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background flex flex-col items-center gap-2 rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2"
-                        aria-label={option.label}
-                        onClick={() => handleSocialShare(option.url)}
+                        asChild
+                        onSelect={() => handleSocialShare(option.url)}
                       >
-                        <div
-                          className={clsxm(
-                            "flex size-12 items-center justify-center rounded-full transition-transform duration-200",
-                            option.bgColor,
-                            "group-hover:scale-110 group-active:scale-95",
-                            "shadow-lg",
-                          )}
+                        <button
+                          type="button"
+                          className="af-control group data-[highlighted]:bg-fill-secondary flex min-w-0 flex-col items-center gap-2 rounded-xl px-1 py-2"
+                          aria-label={option.label}
                         >
-                          <i
+                          <div
                             className={clsxm(
-                              option.icon,
-                              "size-5",
-                              option.color,
+                              "flex size-10 shrink-0 items-center justify-center rounded-full",
+                              option.bgColor,
                             )}
-                            aria-hidden="true"
-                          />
-                        </div>
-                        <span className="text-text-secondary text-xs font-medium">
-                          {option.label}
-                        </span>
-                      </button>
+                          >
+                            <i
+                              className={clsxm(
+                                option.icon,
+                                "size-5",
+                                option.color,
+                              )}
+                              aria-hidden="true"
+                            />
+                          </div>
+                          <span className="text-text-secondary text-xs font-medium">
+                            {option.label}
+                          </span>
+                        </button>
+                      </DropdownMenuPrimitive.Item>
                     ))}
                   </div>
                 </div>
@@ -298,34 +286,41 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 {/* 功能选项 - 第二排 */}
                 <div className="relative">
                   <div className="mb-3">
-                    <h4 className="text-text-secondary text-xs font-medium tracking-wide uppercase">
+                    <h4 className="text-text-secondary text-xs font-medium">
                       {t("photo.share.actions")}
                     </h4>
                   </div>
-                  <div className="grid grid-cols-2 gap-1">
+                  <div className="grid gap-2">
                     {actionOptions.map((option) => (
-                      <button
+                      <DropdownMenuPrimitive.Item
                         key={option.id}
-                        type="button"
-                        className="glassmorphic-btn focus-visible:ring-accent/45 group relative flex min-h-11 cursor-pointer items-center rounded-lg px-2 py-2 text-sm transition-[background-color,box-shadow,color,transform] duration-200 outline-none select-none focus-visible:ring-2"
-                        onClick={() => option.action()}
+                        asChild
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          void option.action();
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="bg-accent/10 flex size-7 items-center justify-center rounded-full transition-colors duration-200">
-                            <i
-                              className={clsxm(
-                                option.icon,
-                                "size-3.5",
-                                option.color || "text-text-secondary",
-                              )}
-                              aria-hidden="true"
-                            />
+                        <button
+                          type="button"
+                          className="af-control group data-[highlighted]:bg-fill-secondary relative flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2 text-sm select-none"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="flex size-5 shrink-0 items-center justify-center">
+                              <i
+                                className={clsxm(
+                                  option.icon,
+                                  "size-5",
+                                  option.color || "text-text-secondary",
+                                )}
+                                aria-hidden="true"
+                              />
+                            </div>
+                            <span className="text-text text-[13px] font-medium">
+                              {option.label}
+                            </span>
                           </div>
-                          <span className="text-text text-xs font-medium">
-                            {option.label}
-                          </span>
-                        </div>
-                      </button>
+                        </button>
+                      </DropdownMenuPrimitive.Item>
                     ))}
                   </div>
                 </div>

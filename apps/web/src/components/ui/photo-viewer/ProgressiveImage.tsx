@@ -396,37 +396,40 @@ export const ProgressiveImage = ({
       {highResLoaded && blobSrc && isActiveImage && !error && (
         <div
           data-photo-viewer-gesture-ignore
-          className="absolute right-4 bottom-4 z-30 flex overflow-hidden rounded-full bg-black/55 text-white shadow-lg backdrop-blur-xl"
+          className="af-glass absolute right-4 bottom-4 z-30 flex gap-1 rounded-full p-1 text-white"
           role="toolbar"
           aria-label={t("photo.zoom.controls")}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button
             type="button"
-            className="focus-visible:ring-accent/60 flex size-11 items-center justify-center hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-inset"
+            className="af-control flex size-11 items-center justify-center rounded-full"
             aria-label={t("explore.controls.zoom.out")}
             title={`${t("explore.controls.zoom.out")} (-)`}
             onClick={zoomOut}
           >
-            <i className="i-mingcute-zoom-out-line" aria-hidden="true" />
+            <i className="i-mingcute-zoom-out-line size-5" aria-hidden="true" />
           </button>
           <button
             type="button"
-            className="focus-visible:ring-accent/60 flex size-11 items-center justify-center border-x border-white/10 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-inset"
+            className="af-control flex size-11 items-center justify-center rounded-full"
             aria-label={t("photo.zoom.reset")}
             title={`${t("photo.zoom.reset")} (0)`}
             onClick={resetZoom}
           >
-            <i className="i-mingcute-refresh-2-line" aria-hidden="true" />
+            <i
+              className="i-mingcute-refresh-2-line size-5"
+              aria-hidden="true"
+            />
           </button>
           <button
             type="button"
-            className="focus-visible:ring-accent/60 flex size-11 items-center justify-center hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-inset"
+            className="af-control flex size-11 items-center justify-center rounded-full"
             aria-label={t("explore.controls.zoom.in")}
             title={`${t("explore.controls.zoom.in")} (+)`}
             onClick={zoomIn}
           >
-            <i className="i-mingcute-zoom-in-line" aria-hidden="true" />
+            <i className="i-mingcute-zoom-in-line size-5" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -439,7 +442,7 @@ export const ProgressiveImage = ({
         blobSrc &&
         isActiveImage &&
         !error && (
-          <div className="pointer-events-none absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded bg-black/50 px-3 py-1.5 text-white">
+          <div className="af-glass pointer-events-none absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-lg px-3 py-2 text-white">
             <i
               className="i-mingcute-warning-line text-base"
               aria-hidden="true"
@@ -450,7 +453,7 @@ export const ProgressiveImage = ({
 
       {/* 操作提示 */}
       {!hasVideo && (
-        <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded bg-black/50 px-2 py-1 text-xs text-white opacity-0 duration-200 group-hover:opacity-50">
+        <div className="af-glass pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-lg px-3 py-2 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {t("photo.zoom.hint")}
         </div>
       )}
@@ -462,7 +465,7 @@ export const ProgressiveImage = ({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-0.5 rounded bg-black/50 px-3 py-1 text-lg text-white tabular-nums"
+            className="af-glass pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-0.5 rounded-lg px-3 py-2 text-sm text-white tabular-nums"
           >
             <SlidingNumber number={currentScale} decimalPlaces={1} />x
           </m.div>
