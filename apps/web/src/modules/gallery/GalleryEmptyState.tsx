@@ -14,7 +14,7 @@ export const GalleryEmptyState = () => {
 
   return (
     <div className="af-panel mx-auto mt-4 flex max-w-lg flex-col items-center gap-3 rounded-2xl px-5 py-6 text-center">
-      <p role="status" className="text-text-secondary text-sm leading-relaxed">
+      <p role="status" className="text-ui-secondary text-sm leading-relaxed">
         {t("gallery.empty.filtered")}
       </p>
       <button

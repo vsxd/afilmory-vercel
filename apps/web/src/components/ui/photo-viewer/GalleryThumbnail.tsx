@@ -114,7 +114,7 @@ export const GalleryThumbnail: FC<{
 
   return (
     <m.div
-      className="af-glass pb-safe border-fill-tertiary z-10 shrink-0 border-x-0 border-t border-b-0"
+      className="af-glass pb-safe z-10 shrink-0 border-x-0 border-t border-b-0"
       initial={{ y: 100, opacity: 0 }}
       animate={{
         y: visible ? 0 : 48,

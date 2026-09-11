@@ -1,0 +1,70 @@
+@layer components {
+  .af-command-option:hover,
+  .af-command-option[aria-selected="true"] {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  }
+
+  /* Density follows the statistics area, not the viewport or photo column.
+     Preserve the existing 210px / 280px breakpoints and cell dimensions. */
+  .af-gallery-stats {
+    container: af-gallery-stats / inline-size;
+  }
+
+  .af-gallery-stat {
+    padding-inline: 0;
+  }
+
+  .af-gallery-stat-icon-frame {
+    width: 1rem;
+    height: 0.875rem;
+  }
+
+  .af-gallery-stat-icon {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .af-gallery-stat-value {
+    font-size: 13px;
+  }
+
+  @container af-gallery-stats (width >= 210px) {
+    .af-gallery-stat {
+      padding-inline: 0.125rem;
+    }
+
+    .af-gallery-stat-icon-frame {
+      width: 1.25rem;
+      height: 1rem;
+    }
+
+    .af-gallery-stat-icon {
+      font-size: 15px;
+      line-height: inherit;
+    }
+
+    .af-gallery-stat-value {
+      font-size: 0.875rem;
+    }
+  }
+
+  @container af-gallery-stats (width >= 280px) {
+    .af-gallery-stat {
+      padding-inline: 0.375rem;
+    }
+
+    .af-gallery-stat-icon {
+      font-size: 16px;
+    }
+
+    .af-gallery-stat-value {
+      font-size: 15px;
+    }
+
+    @media (width >= 40rem) {
+      .af-gallery-stat {
+        padding-inline: 0.5rem;
+      }
+    }
+  }
+}

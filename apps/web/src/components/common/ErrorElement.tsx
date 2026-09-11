@@ -69,7 +69,7 @@ export function ErrorElement() {
             className="i-mingcute-loading-line text-accent mx-auto mb-3 block text-3xl motion-safe:animate-spin"
             aria-hidden="true"
           />
-          <p className="text-text-secondary">{i18n.t("error.reload")}</p>
+          <p className="text-ui-secondary">{i18n.t("error.reload")}</p>
         </div>
       </div>
     );
@@ -85,9 +85,9 @@ export function ErrorElement() {
         <div className="w-full max-w-lg">
           {/* Error icon and status */}
           <div className="mb-8 text-center">
-            <div className="bg-background-secondary mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
+            <div className="bg-ui-subtle mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
               <svg
-                className="text-red h-8 w-8"
+                className="text-error h-8 w-8"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
@@ -100,17 +100,17 @@ export function ErrorElement() {
                 />
               </svg>
             </div>
-            <h1 className="text-text mb-2 text-3xl font-medium">
+            <h1 className="text-ui mb-2 text-3xl font-medium">
               {i18n.t("error.title")}
             </h1>
-            <p className="text-text-secondary text-lg">
+            <p className="text-ui-secondary text-lg">
               {i18n.t("error.temporary.description")}
             </p>
           </div>
 
           {/* Error message */}
-          <div className="bg-material-medium border-fill-tertiary mb-6 rounded-lg border p-4">
-            <p className="text-text-secondary font-mono text-sm break-words">
+          <div className="af-panel rounded-panel mb-6 p-4">
+            <p className="text-ui-secondary font-mono text-sm break-words">
               {message}
             </p>
           </div>
@@ -118,8 +118,8 @@ export function ErrorElement() {
           {/* Stack trace in development */}
           {import.meta.env.DEV && stack && (
             <div className="mb-6">
-              <div className="bg-material-medium border-fill-tertiary overflow-auto rounded-lg border p-4">
-                <pre className="text-red font-mono text-xs break-words whitespace-pre-wrap">
+              <div className="af-panel rounded-panel overflow-auto p-4">
+                <pre className="text-error font-mono text-xs break-words whitespace-pre-wrap">
                   {stack}
                 </pre>
               </div>
@@ -130,13 +130,14 @@ export function ErrorElement() {
           <div className="mb-8 flex flex-col gap-3 sm:flex-row">
             <Button
               onClick={() => void recoverFromStaleRuntime()}
-              className="bg-material-opaque text-text-vibrant hover:bg-control-enabled/90 h-11 flex-1 border-0 font-medium transition-colors"
+              className="h-11 flex-1"
             >
               {i18n.t("error.reload")}
             </Button>
             <Button
               onClick={() => window.history.back()}
-              className="bg-material-thin text-text border-fill-tertiary hover:bg-fill-tertiary h-11 flex-1 border font-medium transition-colors"
+              variant="surface"
+              className="h-11 flex-1"
             >
               {i18n.t("error.go.back")}
             </Button>
@@ -144,7 +145,7 @@ export function ErrorElement() {
 
           {/* Help text */}
           <div className="text-center">
-            <p className="text-text-secondary mb-3 text-sm">
+            <p className="text-ui-secondary mb-3 text-sm">
               {i18n.t("error.feedback")}
             </p>
             <a
@@ -155,7 +156,7 @@ export function ErrorElement() {
               )}&labels=bug`}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-text-secondary hover:text-text inline-flex items-center text-sm transition-colors"
+              className="text-ui-secondary hover:text-ui inline-flex items-center text-sm transition-colors"
             >
               <svg
                 className="mr-2 h-4 w-4"

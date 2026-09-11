@@ -93,7 +93,7 @@ export default defineConfig({
         test: {
           name: "web-build",
           root: "./apps/web",
-          include: ["plugins/**/*.test.ts"],
+          include: ["plugins/**/*.test.ts", "scripts/**/*.test.ts"],
           environment: "node",
           setupFiles: [failOnConsole],
         },

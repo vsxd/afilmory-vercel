@@ -16,7 +16,7 @@ import { LoadingIndicator } from "./LoadingIndicator";
 import { ProgressiveImage } from "./ProgressiveImage";
 
 const viewerNavButtonClassName =
-  "af-glass af-control absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100";
+  "af-glass af-control absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100";
 
 interface PhotoViewerMediaCarouselProps {
   photos: readonly PhotoManifest[];

@@ -50,7 +50,8 @@ const photo = {
   width: 6000,
 } satisfies PhotoManifest;
 
-vi.mock("@afilmory/ui", () => ({
+vi.mock("@afilmory/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@afilmory/ui")>()),
   Thumbhash: ({ className }: { className?: string }) => (
     <div className={className} />
   ),

@@ -1,4 +1,4 @@
-import { clsxm, Spring } from "@afilmory/ui";
+import { Spring } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -44,11 +44,9 @@ export const PhotoViewerToolbar = ({
             type="button"
             aria-label={t("photo.viewer.info")}
             aria-pressed={showExifPanel}
+            data-variant="solid"
             title={t("photo.viewer.info")}
-            className={clsxm(
-              viewerToolbarButtonClassName,
-              showExifPanel && "af-viewer-control-active",
-            )}
+            className={viewerToolbarButtonClassName}
             onClick={onToggleExifPanel}
           >
             <i

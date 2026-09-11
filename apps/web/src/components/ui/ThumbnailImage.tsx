@@ -1,4 +1,4 @@
-import { Thumbhash } from "@afilmory/ui";
+import { clsxm, Thumbhash } from "@afilmory/ui";
 import clsx from "clsx";
 import type { CSSProperties, ReactEventHandler, Ref } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -159,7 +159,9 @@ export const ThumbnailImage = ({
   return (
     <div
       ref={inViewRef}
-      className={clsx("relative overflow-hidden", containerClassName)}
+      // A caller's absolute positioning must replace the default relative box;
+      // otherwise intrinsic image height can differ from the rounded photo cell.
+      className={clsxm("relative overflow-hidden", containerClassName)}
       style={style}
     >
       {/* thumbhash 常驻在 img 下层：虚拟列表重挂载时（isLoaded 已为 true）新 img

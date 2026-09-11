@@ -16,6 +16,7 @@
     "lint": "eslint . --cache --cache-location ../../node_modules/.cache/eslint/apps-web",
     "lint:fix": "eslint . --fix",
     "serve": "vite preview --configLoader runner",
+    "styles:check": "node --import tsx scripts/check-styles.ts",
     "test": "pnpm --dir ../.. exec vitest run --project web",
     "type-check": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "web": "vite --configLoader runner"
@@ -93,7 +94,6 @@
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "catalog:",
     "tailwindcss-safe-area": "catalog:",
-    "tailwindcss-uikit-colors": "catalog:",
     "vite": "8.2.2",
     "vite-bundle-analyzer": "1.3.9",
     "vite-plugin-html": "3.2.2",

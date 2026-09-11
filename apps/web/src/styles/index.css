@@ -1,40 +1,7 @@
+/* Order: framework → tokens → document → recipes → focus.
+   Feature CSS is imported by the feature that owns it. */
 @import "./tailwind.css";
-
-@font-face {
-  font-family: "Geist";
-  src: url("../assets/fonts/GeistVF.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-}
-
-html {
-  @apply fixed inset-0 overflow-hidden flex flex-col;
-}
-
-body {
-  @apply grow h-0 shrink-0 overflow-auto relative;
-}
-
-@media screen and (min-width: 1024px) {
-  ::-webkit-scrollbar {
-    width: 6px !important;
-    height: 6px !important;
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background-color: transparent;
-    border: 3px solid theme(colors.zinc.500);
-    @apply rounded-xl;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: theme(colors.zinc.500/0.5);
-    border-color: theme(colors.zinc.500/0.8);
-  }
-
-  ::-webkit-scrollbar-corner {
-    background: theme(colors.zinc.100);
-  }
-}
+@import "./tokens.css";
+@import "./base.css";
+@import "./surfaces.css";
+@import "./accessibility.css";

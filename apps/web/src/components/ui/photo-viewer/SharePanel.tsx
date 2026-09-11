@@ -230,11 +230,11 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
               >
                 {/* 标题区域 */}
                 <div className="relative mb-4">
-                  <h3 className="text-text text-sm font-semibold">
+                  <h3 className="text-ui text-sm font-semibold">
                     {t("photo.share.title")}
                   </h3>
                   {photo.title && (
-                    <p className="text-text-secondary mt-1 line-clamp-1 text-sm">
+                    <p className="text-ui-secondary mt-1 line-clamp-1 text-sm">
                       {photo.title}
                     </p>
                   )}
@@ -243,7 +243,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 {/* 社交媒体分享 - 第一排 */}
                 <div className="relative mb-4">
                   <div className="mb-3">
-                    <h4 className="text-text-secondary text-xs font-medium">
+                    <h4 className="text-ui-secondary text-xs font-medium">
                       {t("photo.share.social.media")}
                     </h4>
                   </div>
@@ -256,7 +256,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       >
                         <button
                           type="button"
-                          className="af-control group data-[highlighted]:bg-fill-secondary flex min-w-0 flex-col items-center gap-2 rounded-xl px-1 py-2"
+                          className="af-control group flex min-w-0 flex-col items-center gap-2 rounded-xl px-1 py-2"
                           aria-label={option.label}
                         >
                           <div
@@ -274,7 +274,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                               aria-hidden="true"
                             />
                           </div>
-                          <span className="text-text-secondary text-xs font-medium">
+                          <span className="text-ui-secondary text-xs font-medium">
                             {option.label}
                           </span>
                         </button>
@@ -286,7 +286,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                 {/* 功能选项 - 第二排 */}
                 <div className="relative">
                   <div className="mb-3">
-                    <h4 className="text-text-secondary text-xs font-medium">
+                    <h4 className="text-ui-secondary text-xs font-medium">
                       {t("photo.share.actions")}
                     </h4>
                   </div>
@@ -302,7 +302,7 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                       >
                         <button
                           type="button"
-                          className="af-control group data-[highlighted]:bg-fill-secondary relative flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2 text-sm select-none"
+                          className="af-menu-item group relative flex min-h-11 cursor-pointer items-center rounded-xl px-3 py-2 text-sm select-none"
                         >
                           <div className="flex items-center gap-2">
                             <div className="flex size-5 shrink-0 items-center justify-center">
@@ -310,12 +310,12 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
                                 className={clsxm(
                                   option.icon,
                                   "size-5",
-                                  option.color || "text-text-secondary",
+                                  option.color || "text-ui-secondary",
                                 )}
                                 aria-hidden="true"
                               />
                             </div>
-                            <span className="text-text text-[13px] font-medium">
+                            <span className="text-ui text-[13px] font-medium">
                               {option.label}
                             </span>
                           </div>

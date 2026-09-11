@@ -1,0 +1,41 @@
+@layer components {
+  .af-map-marker-surface {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--af-border-strong);
+    border-radius: 50%;
+    color: var(--af-text);
+    background-color: var(--af-surface-glass);
+    box-shadow: var(--af-shadow-sm);
+    backdrop-filter: blur(var(--af-blur-glass));
+    transition:
+      background-color var(--af-duration-normal),
+      border-color var(--af-duration-normal);
+  }
+
+  .af-map-marker:hover .af-map-marker-surface:not([data-selected="true"]) {
+    background-color: var(--af-surface-panel);
+  }
+
+  .af-map-marker-surface[data-selected="true"] {
+    color: var(--color-accent-content);
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .af-map-marker-halo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+    pointer-events: none;
+  }
+
+  .af-map-marker-count {
+    color: var(--af-text);
+    background-color: var(--af-surface-glass);
+    box-shadow: 0 0 0 1px var(--af-border-strong);
+  }
+}

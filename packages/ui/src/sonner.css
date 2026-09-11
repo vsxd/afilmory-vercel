@@ -1,0 +1,17 @@
+/* Sonner injects an unlayered dark description color even in unstyled mode.
+   Its description has no style hook or color variable; keep this integration
+   exception scoped to the adapter, specific enough to ignore load order. */
+.af-toaster[data-sonner-toaster][data-sonner-theme]
+  [data-sonner-toast]
+  [data-description] {
+  color: var(--af-text-secondary);
+}
+
+/* The injected toast reset also clears outline and adds a focused shadow.
+   Scope both overrides to the adapter so they win even when Sonner's script
+   appends its CSS after the production stylesheet. */
+.af-toaster [data-sonner-toast]:focus-visible {
+  outline: 2px solid var(--color-accent, currentColor);
+  outline-offset: var(--af-focus-offset, 2px);
+  box-shadow: var(--af-shadow);
+}

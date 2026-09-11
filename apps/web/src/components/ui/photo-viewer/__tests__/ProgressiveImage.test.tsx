@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactNode, RefObject } from "react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -20,9 +20,13 @@ import {
 import type { LoadingIndicatorRef } from "../LoadingIndicator";
 import { LoadingIndicator } from "../LoadingIndicator";
 import { ProgressiveImage } from "../ProgressiveImage";
+import type { LivePhotoVideoHandle } from "../types";
 
 const hoisted = vi.hoisted(() => ({
   canUseWebGL: false,
+  supportsHDR: false,
+  playLivePhoto: vi.fn(),
+  stopLivePhoto: vi.fn(),
   failWebGL: false,
   zoomIn: vi.fn(),
   zoomOut: vi.fn(),
@@ -138,7 +142,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("usehooks-ts", () => ({
-  useMediaQuery: () => false,
+  useMediaQuery: () => hoisted.supportsHDR,
 }));
 
 vi.mock("react-zoom-pan-pinch", () => {
@@ -149,6 +153,32 @@ vi.mock("react-zoom-pan-pinch", () => {
     TransformComponent: ({ children }: { children?: any }) => (
       <div>{children}</div>
     ),
+  };
+});
+
+vi.mock("../LivePhotoVideo", async () => {
+  const { useImperativeHandle } = await import("react");
+  return {
+    LivePhotoVideo: ({
+      ref,
+      onPlayingChange,
+    }: {
+      ref?: RefObject<LivePhotoVideoHandle | null>;
+      onPlayingChange?: (playing: boolean) => void;
+    }) => {
+      useImperativeHandle(ref, () => ({
+        getIsVideoLoaded: () => true,
+        play: () => {
+          hoisted.playLivePhoto();
+          onPlayingChange?.(true);
+        },
+        stop: () => {
+          hoisted.stopLivePhoto();
+          onPlayingChange?.(false);
+        },
+      }));
+      return null;
+    },
   };
 });
 
@@ -163,6 +193,41 @@ vi.mock("~/lib/feature", () => ({
 }));
 
 describe("ProgressiveImage", () => {
+  it("keeps Live and HDR badges together while playback feedback stays outside their layout", async () => {
+    hoisted.supportsHDR = true;
+    const { container } = render(
+      <ProgressiveImage
+        src="photo-with-live-and-hdr.jpg"
+        alt="HDR Live Photo"
+        loadingIndicatorRef={{ current: null }}
+        isCurrentImage
+        isHDR
+        videoSource={{ type: "live-photo", videoUrl: "live.mov" }}
+      />,
+    );
+    const live = await screen.findByRole("button", {
+      name: "photo.live.badge",
+    });
+    const badges = container.querySelector("[data-photo-viewer-media-badges]");
+    expect(badges?.contains(live)).toBe(true);
+    expect(badges?.contains(screen.getByText("HDR"))).toBe(true);
+    expect(live.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(live);
+    expect(hoisted.playLivePhoto).toHaveBeenCalledOnce();
+    expect(live.getAttribute("aria-pressed")).toBe("true");
+    expect(badges?.contains(screen.getByRole("status"))).toBe(false);
+    expect(screen.getByRole("status").textContent).toContain(
+      "photo.live.playing",
+    );
+    expect(screen.getByText("HDR")).toBeTruthy();
+
+    fireEvent.click(live);
+    expect(hoisted.stopLivePhoto).toHaveBeenCalledOnce();
+    expect(live.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it.each([false, true])(
     "reports a native decode failure once, including after WebGL fallback (%s)",
     async (webgl) => {
@@ -210,6 +275,9 @@ describe("ProgressiveImage", () => {
 
   afterEach(() => {
     hoisted.canUseWebGL = false;
+    hoisted.supportsHDR = false;
+    hoisted.playLivePhoto.mockClear();
+    hoisted.stopLivePhoto.mockClear();
     hoisted.failWebGL = false;
     hoisted.zoomIn.mockReset();
     hoisted.zoomOut.mockReset();

@@ -287,7 +287,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
           disabled={isLoading}
           aria-label={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
           title={t("exif.raw.title", { defaultValue: "Raw EXIF Data" })}
-          className="af-control flex size-11 cursor-pointer items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-50 lg:size-9"
+          className="af-control flex size-11 cursor-pointer items-center justify-center rounded-full lg:size-9"
         >
           {isLoading ? (
             <i
@@ -301,7 +301,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
       </DialogTrigger>
       <DialogContent
         data-photo-viewer-nested-overlay=""
-        className="text-text flex h-[80vh] max-w-4xl flex-col gap-2"
+        className="text-ui flex h-[80vh] max-w-4xl flex-col gap-2"
       >
         <div className="flex items-start justify-between gap-4">
           <DialogHeader className="min-w-0 text-start">
@@ -333,7 +333,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
           <div
             role="status"
             aria-live="polite"
-            className="text-text-secondary flex h-full grow flex-col items-center justify-center gap-4"
+            className="text-ui-secondary flex h-full grow flex-col items-center justify-center gap-4"
           >
             <i
               className="i-mingcute-loading-3-line animate-spin text-3xl"
@@ -372,7 +372,7 @@ export const RawExifViewer: React.FC<RawExifViewerProps> = ({
             />
 
             {!isLoading && dataEntries.length === 0 && (
-              <div className="text-text-secondary py-8 text-center text-sm">
+              <div className="text-ui-secondary py-8 text-center text-sm">
                 {t("exif.raw.no.data", {
                   defaultValue: "No EXIF data available",
                 })}

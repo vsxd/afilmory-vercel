@@ -1,0 +1,54 @@
+@font-face {
+  font-family: "Geist";
+  src: url("../assets/fonts/GeistVF.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    @apply fixed inset-0 flex flex-col overflow-hidden font-sans;
+    color-scheme: dark;
+  }
+
+  /* Body owns mobile scrolling; desktop uses the gallery ScrollArea. */
+  body {
+    @apply relative h-0 max-w-screen grow shrink-0 overflow-auto overflow-x-hidden;
+    background-color: var(--color-background);
+    color: var(--af-text);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .container {
+    margin-inline: auto;
+    padding: var(--container-padding);
+  }
+
+  @media (min-width: 1536px) {
+    .container {
+      max-width: var(--container-max-width-2xl);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--af-border-strong);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--af-text-muted);
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+}

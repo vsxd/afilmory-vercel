@@ -19,6 +19,7 @@ import {
   computeMasonryItemHeight,
   createMasonryItems,
   estimatePhotoVirtualRect,
+  GALLERY_GUTTER,
   getMasonryAnimationDelay,
   getMasonryItemKey,
   getPhotoSetKey,
@@ -308,8 +309,8 @@ export const MasonryRoot = () => {
           )}
           onRender={handleMasonryRender}
           columnWidth={columnWidth}
-          columnGutter={4}
-          rowGutter={4}
+          columnGutter={GALLERY_GUTTER}
+          rowGutter={GALLERY_GUTTER}
           itemHeightEstimate={400}
           itemHeight={useCallback(
             (data: MasonryItemType, colWidth: number) =>

@@ -156,9 +156,9 @@ export const LoadingIndicator = ({
       aria-live={loadingState.isError ? "assertive" : "polite"}
       aria-atomic="true"
       data-photo-viewer-gesture-ignore
-      className={`${loadingState.isError ? "pointer-events-auto" : "pointer-events-none"} af-glass border-fill-tertiary absolute right-4 bottom-4 left-4 z-10 max-w-sm rounded-xl border px-3 py-2.5 sm:left-auto`}
+      className={`${loadingState.isError ? "pointer-events-auto" : "pointer-events-none"} af-glass absolute right-4 bottom-4 left-4 z-10 max-w-sm rounded-xl px-3 py-2.5 sm:left-auto`}
     >
-      <div className="flex items-center gap-3 text-white">
+      <div className="text-ui flex items-center gap-3">
         <div className="relative shrink-0" aria-hidden="true">
           {loadingState.isError ? (
             <div className="i-mingcute-warning-line text-lg text-red-400" />
@@ -174,7 +174,7 @@ export const LoadingIndicator = ({
                 {loadingState.errorMessage || t("photo.error.loading")}
               </p>
               {loadingState.errorDescription && (
-                <p className="text-[13px] leading-relaxed text-white/80">
+                <p className="text-ui-secondary text-[13px] leading-relaxed">
                   {loadingState.errorDescription}
                 </p>
               )}
@@ -191,7 +191,7 @@ export const LoadingIndicator = ({
           ) : loadingState.isConverting ? (
             // 视频转换状态
             <>
-              <p className="text-[13px] font-medium text-white tabular-nums">
+              <p className="text-ui text-[13px] font-medium tabular-nums">
                 {loadingState.isQueueWaiting
                   ? loadingState.conversionMessage || t("loading.queue.waiting")
                   : loadingState.conversionMessage || t("loading.converting")}
@@ -201,7 +201,7 @@ export const LoadingIndicator = ({
             // WebGL 加载状态
             <>
               <div className="flex items-center gap-2">
-                <p className="text-[13px] font-medium text-white">
+                <p className="text-ui text-[13px] font-medium">
                   {loadingState.webglMessage || t("loading.webgl.main")}
                 </p>
                 {webglQualityBadge && (
@@ -210,7 +210,7 @@ export const LoadingIndicator = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-white/70">
+              <p className="text-ui-secondary text-xs">
                 {t("loading.webgl.building")}
               </p>
             </>
@@ -218,17 +218,17 @@ export const LoadingIndicator = ({
             // 图片加载状态
             <>
               <div className="flex items-center gap-2">
-                <p className="text-[13px] font-medium text-white">
+                <p className="text-ui text-[13px] font-medium">
                   {loadingState.isHeicFormat
                     ? t("loading.heic.main")
                     : t("loading.default")}
                 </p>
-                <span className="text-xs text-white/80 tabular-nums">
+                <span className="text-ui-secondary text-xs tabular-nums">
                   {Math.round(loadingState.loadingProgress)}%
                 </span>
               </div>
               {loadingState.totalBytes > 0 && (
-                <p className="text-xs text-white/70 tabular-nums">
+                <p className="text-ui-secondary text-xs tabular-nums">
                   {(loadingState.loadedBytes / 1024 / 1024).toFixed(1)} MB /{" "}
                   {(loadingState.totalBytes / 1024 / 1024).toFixed(1)} MB
                 </p>

@@ -1,3 +1,5 @@
+import "./MapMarker.css";
+
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
@@ -27,7 +29,7 @@ export const ClusterMarker = ({
         <MapPopoverTrigger>
           <m.button
             type="button"
-            className="group relative cursor-pointer rounded-full"
+            className="af-map-marker group relative cursor-pointer rounded-full"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -45,9 +47,9 @@ export const ClusterMarker = ({
               { count: pointCount },
             )}
           >
-            {/* Subtle pulse ring for attention */}
+            {/* Cluster halo remains still while browsing the map. */}
             <div
-              className="bg-blue/20 absolute inset-0 animate-pulse rounded-full opacity-60"
+              className="af-map-marker-halo opacity-60"
               style={{
                 width: size + 12,
                 height: size + 12,
@@ -58,7 +60,7 @@ export const ClusterMarker = ({
 
             {/* Main cluster container */}
             <div
-              className="relative flex items-center justify-center rounded-full border border-white/40 bg-white/95 shadow-lg backdrop-blur-md transition-[background-color,border-color,box-shadow,transform] duration-300 hover:bg-white hover:shadow-xl dark:border-white/10 dark:bg-black/80 dark:hover:bg-black/90"
+              className="af-map-marker-surface"
               style={{
                 width: size,
                 height: size,
@@ -108,16 +110,10 @@ export const ClusterMarker = ({
                 </div>
               )}
 
-              {/* Glass morphism overlay */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 dark:from-white/20 dark:to-white/5" />
-
               {/* Count display */}
               <div className="relative z-10 flex flex-col items-center text-xs">
-                <span className="text-text font-bold">{pointCount}</span>
+                <span className="text-ui font-bold">{pointCount}</span>
               </div>
-
-              {/* Subtle inner shadow for depth */}
-              <div className="absolute inset-0 rounded-full shadow-inner shadow-black/5" />
             </div>
           </m.button>
         </MapPopoverTrigger>
@@ -129,7 +125,6 @@ export const ClusterMarker = ({
               : "explore.cluster.photos",
             { count: pointCount },
           )}
-          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
         >
           <div className="p-4">
             <ClusterPhotoGrid

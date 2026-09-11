@@ -58,6 +58,11 @@ pnpm deploy:smoke
 
 For photo viewer or WebGL changes, include the relevant viewer tests and `@afilmory/webgl-viewer` verification in the PR notes.
 
+For UI changes, follow the [styling contract](styling.md), run
+`pnpm styles:check`, and verify the affected interactions with real CSS in
+the browser. Shared controls use the same tokens, surface recipes, and
+keyboard focus boundary as the app.
+
 When a schema or E2E fixture generator changes, run `pnpm check:fixtures` and
 commit the deterministic synthetic result. Never derive test fixtures from a
 real photo library: filenames, EXIF, URLs, and GPS are personal data.

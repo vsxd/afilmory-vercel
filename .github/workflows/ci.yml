@@ -29,6 +29,8 @@ jobs:
         run: pnpm format:check
       - name: Check workspace contracts
         run: pnpm contracts
+      - name: Check style contracts
+        run: pnpm styles:check
       - name: Lint
         run: pnpm lint
 

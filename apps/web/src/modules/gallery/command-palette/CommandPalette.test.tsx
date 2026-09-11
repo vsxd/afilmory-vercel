@@ -16,7 +16,12 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 
 let navigation: NavigationController;
 let isMobile = false;
+let shouldReduceMotion = false;
 let allTags: string[] = [];
+
+vi.mock("motion/react", () => ({
+  useReducedMotion: () => shouldReduceMotion,
+}));
 
 vi.mock("@afilmory/ui", () => ({
   clsxm: (...values: unknown[]) => values.filter(Boolean).join(" "),
@@ -90,6 +95,7 @@ describe("CommandPalette", () => {
   beforeEach(() => {
     navigation = createTestNavigation().navigation;
     isMobile = false;
+    shouldReduceMotion = false;
     allTags = [];
     store = createStore();
     main = document.createElement("main");
@@ -256,6 +262,31 @@ describe("CommandPalette", () => {
       getByText("action.search.command-count").getAttribute("aria-live"),
     ).toBe("polite");
   });
+
+  it.each([
+    { reducedMotion: false, behavior: "smooth" },
+    { reducedMotion: true, behavior: "auto" },
+  ])(
+    "scrolls the keyboard target with $behavior behavior when reduced motion is $reducedMotion",
+    ({ reducedMotion, behavior }) => {
+      shouldReduceMotion = reducedMotion;
+      allTags = ["alpha", "beta"];
+      const { getByRole } = renderPalette({ isOpen: true, onClose: vi.fn() });
+      const input = getByRole("combobox");
+      fireEvent.change(input, { target: { value: "tag" } });
+      const target = getByRole("option", { name: /beta/ });
+      const scrollIntoView = vi.spyOn(target, "scrollIntoView");
+
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+
+      expect(input.getAttribute("aria-activedescendant")).toBe(target.id);
+      expect(target.getAttribute("aria-selected")).toBe("true");
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: "nearest",
+        behavior,
+      });
+    },
+  );
 
   it("clears an unmatched query without removing applied filters", () => {
     navigation = createTestNavigation("/?tags=alpha&sort=asc").navigation;

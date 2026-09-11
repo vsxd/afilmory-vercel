@@ -184,12 +184,15 @@ describe("Slider", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("renders a visible keyboard focus ring on the handle (global CSS strips outlines)", () => {
-    renderSlider({ value: 5 });
+  it("keeps the slider keyboard focus while changing its value", () => {
+    const onChange = vi.fn();
+    renderSlider({ value: 5, onChange });
 
     const handle = getHandle();
-    expect(handle.className).toContain("focus-visible:ring-2");
-    expect(handle.className).toContain("focus-visible:ring-accent/45");
+    handle.focus();
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(handle);
+    expect(onChange).toHaveBeenCalledWith(6);
   });
 
   it("allows a controlled drag to return to its starting value", () => {

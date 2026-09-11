@@ -550,13 +550,14 @@ const MasonryCell = ({
         top: 0,
         left: 0,
         width: cell.width,
-        // 显式高度让 contain:paint 的绘制边界与布局值精确一致（内容驱动的高度在
-        // 光栅化时可能与布局值有亚像素出入 → hairline 缝）。待测量的 cell（header）
-        // 高度未知，保持内容驱动。
+        // Keep the shell aligned with the calculated photo geometry. The
+        // measured header still needs a content-driven height.
         height: needsMeasure ? undefined : cell.height,
         transform: `translate(${cell.left}px, ${cell.top}px)`,
-        // 限制布局/重绘的影响范围到单个 cell，进一步减少滚动时的样式重算成本。
-        contain: "layout paint",
+        // Keep layout containment, but let each component own its paint clip.
+        // Paint containment here cuts the photo shade's 1px bleed a second time
+        // and leaves bright seams at fractional device-pixel boundaries.
+        contain: "layout",
       }}
     >
       {children}

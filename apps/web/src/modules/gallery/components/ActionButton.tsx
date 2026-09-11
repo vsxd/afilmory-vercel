@@ -43,7 +43,7 @@ export const ActionButton = ({
     >
       <i className={clsxm(icon, "text-lg")} aria-hidden="true" />
       {badge && (
-        <span className="bg-accent absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium text-[var(--color-accent-content)] shadow-sm">
+        <span className="bg-accent text-accent-content absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium shadow-sm">
           {badge}
         </span>
       )}
@@ -152,7 +152,7 @@ export const MobileActionButton = ({
           <Drawer.Title className="sr-only">{title}</Drawer.Title>
           <div className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing">
             <div
-              className="bg-fill-tertiary h-1.5 w-12 rounded-full"
+              className="bg-ui-hover h-1.5 w-12 rounded-full"
               aria-hidden="true"
             />
           </div>

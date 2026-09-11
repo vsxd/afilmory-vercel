@@ -94,7 +94,7 @@ export default defineConfig({
         {
           name: "prod-smoke",
           use: { ...devices["Desktop Chrome"] },
-          testMatch: /prod-smoke\.spec\.ts/,
+          testMatch: /(?:prod-smoke|style-system|toast-focus)\.spec\.ts/,
         },
       ]
     : crossBrowserSmoke

@@ -1,3 +1,5 @@
+import "./MapControls.css";
+
 import { m, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +11,7 @@ import type { MapControlsProps } from "./types";
 const controlShellClassName = "af-popover overflow-hidden rounded-xl";
 
 const controlButtonClassName =
-  "group hover:bg-white/10 active:bg-white/15 flex h-12 w-12 items-center justify-center transition-colors [--af-focus-offset:-4px]";
+  "af-control af-map-control group flex h-12 w-12 items-center justify-center [--af-focus-offset:-4px]";
 
 export const MapControls = ({ onGeolocate }: MapControlsProps) => {
   const { current: map } = useMap();
@@ -102,13 +104,13 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           title={t("explore.controls.zoom.in")}
         >
           <i
-            className="i-mingcute-add-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95"
+            className="i-mingcute-add-line text-ui size-5 transition-transform group-hover:scale-110 group-active:scale-95"
             aria-hidden="true"
           />
         </button>
 
         {/* Divider */}
-        <div className="bg-fill-secondary h-px w-full" />
+        <div className="border-ui-border h-0 w-full border-t" />
 
         {/* Zoom Out */}
         <button
@@ -119,7 +121,7 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           title={t("explore.controls.zoom.out")}
         >
           <i
-            className="i-mingcute-minimize-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95"
+            className="i-mingcute-minimize-line text-ui size-5 transition-transform group-hover:scale-110 group-active:scale-95"
             aria-hidden="true"
           />
         </button>
@@ -135,7 +137,7 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           title={t("explore.controls.compass")}
         >
           <i
-            className="i-mingcute-navigation-line text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95"
+            className="i-mingcute-navigation-line text-ui size-5 transition-transform group-hover:scale-110 group-active:scale-95"
             aria-hidden="true"
           />
         </button>
@@ -153,7 +155,7 @@ export const MapControls = ({ onGeolocate }: MapControlsProps) => {
           title={t("explore.controls.locate")}
         >
           <i
-            className={`i-mingcute-location-fill text-text size-5 transition-transform group-hover:scale-110 group-active:scale-95 ${
+            className={`i-mingcute-location-fill text-ui size-5 transition-transform group-hover:scale-110 group-active:scale-95 ${
               isLocating ? "animate-pulse" : ""
             }`}
             aria-hidden="true"

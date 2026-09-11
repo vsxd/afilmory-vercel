@@ -116,7 +116,7 @@ function CaptureParameterBadges({
         {formattedExifData.focalLength35mm && (
           <ExifBadge
             label={t("exif.focal.length.equivalent")}
-            icon={<LensIcon className="text-text-secondary size-4 shrink-0" />}
+            icon={<LensIcon className="text-ui-secondary size-4 shrink-0" />}
             value={`${formattedExifData.focalLength35mm} mm`}
           />
         )}
@@ -124,7 +124,7 @@ function CaptureParameterBadges({
           <ExifBadge
             label={t("exif.aperture.value")}
             icon={
-              <TablerAperture className="text-text-secondary size-4 shrink-0" />
+              <TablerAperture className="text-ui-secondary size-4 shrink-0" />
             }
             value={formattedExifData.aperture}
           />
@@ -133,7 +133,7 @@ function CaptureParameterBadges({
           <ExifBadge
             label={t("exif.shutter.speed.value")}
             icon={
-              <MaterialSymbolsShutterSpeed className="text-text-secondary size-4 shrink-0" />
+              <MaterialSymbolsShutterSpeed className="text-ui-secondary size-4 shrink-0" />
             }
             value={formattedExifData.shutterSpeed}
           />
@@ -142,7 +142,7 @@ function CaptureParameterBadges({
           <ExifBadge
             label="ISO"
             icon={
-              <CarbonIsoOutline className="text-text-secondary size-4 shrink-0" />
+              <CarbonIsoOutline className="text-ui-secondary size-4 shrink-0" />
             }
             value={`ISO ${formattedExifData.iso}`}
           />
@@ -151,7 +151,7 @@ function CaptureParameterBadges({
           <ExifBadge
             label="EV"
             icon={
-              <MaterialSymbolsExposure className="text-text-secondary size-4 shrink-0" />
+              <MaterialSymbolsExposure className="text-ui-secondary size-4 shrink-0" />
             }
             value={formattedExifData.exposureBias}
           />
@@ -171,7 +171,7 @@ function ExifBadge({
   value: string | number;
 }) {
   return (
-    <div className="border-fill-tertiary bg-fill-quaternary text-text flex min-h-9 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5">
+    <div className="border-ui-border bg-ui-subtle text-ui flex min-h-9 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5">
       <span aria-hidden="true">{icon}</span>
       <span className="min-w-0 text-[13px] leading-5 break-words tabular-nums">
         <span className="sr-only">{label}: </span>
@@ -264,7 +264,7 @@ export function ToneExifSection({
           />
         </div>
         <div className="mb-3">
-          <div className="text-text-secondary mb-2 text-xs font-medium">
+          <div className="text-ui-secondary mb-2 text-xs font-medium">
             {t("exif.histogram")}
           </div>
           <HistogramChart thumbnailUrl={currentPhoto.thumbnailUrl} />
@@ -585,7 +585,7 @@ function LocationExifSection({
         {decimalLatitude !== null && decimalLongitude !== null && (
           <Suspense
             fallback={
-              <div className="border-fill-tertiary bg-fill-quaternary mt-3 h-40 w-full rounded-xl border" />
+              <div className="border-ui-border bg-ui-subtle mt-3 h-40 w-full rounded-xl border" />
             }
           >
             <div className="mt-3">

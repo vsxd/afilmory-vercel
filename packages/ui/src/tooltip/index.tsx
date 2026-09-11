@@ -1,9 +1,7 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { m } from "motion/react";
 import * as React from "react";
 
 import { clsxm } from "../utils/cn";
-import { Spring } from "../utils/spring";
 import { tooltipStyle } from "./styles";
 
 const TooltipProvider = TooltipPrimitive.Provider;
@@ -27,22 +25,10 @@ const TooltipContent = ({
 }) => (
   <TooltipPrimitive.Content
     ref={ref}
-    asChild
     sideOffset={sideOffset}
     className={clsxm(tooltipStyle.content, className)}
     {...props}
-  >
-    <m.div
-      className="af-popover relative overflow-hidden"
-      initial={{ opacity: 0, scale: 0.95, y: 4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: 4 }}
-      transition={Spring.presets.snappy}
-    >
-      {/* Content */}
-      <div className="relative">{props.children}</div>
-    </m.div>
-  </TooltipPrimitive.Content>
+  />
 );
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 

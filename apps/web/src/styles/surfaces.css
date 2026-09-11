@@ -1,0 +1,151 @@
+/* Recipes own material/state; utilities own layout/size. Local control
+   variables compose glass + control without competing background overrides. */
+@layer components {
+  .af-panel,
+  .af-popover,
+  .af-glass {
+    color: var(--af-text);
+    border: 1px solid var(--af-border);
+  }
+
+  .af-control {
+    /* Reset local recipe variables so a nested control does not inherit its
+       parent overlay's material or selection. */
+    --af-control-bg: var(--af-surface-control);
+    --af-control-hover: var(--af-surface-hover);
+    --af-control-active: var(--af-surface-active);
+    --af-control-border: var(--af-border);
+    --af-control-hover-border: var(--af-border-strong);
+    --af-control-text: var(--af-text);
+    background-color: var(--af-control-bg, var(--af-surface-control));
+    border: 1px solid var(--af-control-border, var(--af-border));
+    color: var(--af-control-text, var(--af-text));
+    transition-property: background-color, border-color, color, opacity, scale;
+    transition-duration: var(--af-duration-fast);
+    transition-timing-function: var(--af-ease);
+    touch-action: manipulation;
+  }
+
+  .af-panel {
+    background-color: var(--af-surface-panel);
+    backdrop-filter: blur(var(--af-blur-glass));
+  }
+
+  .af-popover {
+    background-color: var(--af-surface-popover);
+    box-shadow: var(--af-shadow);
+    backdrop-filter: blur(var(--af-blur-popover));
+  }
+
+  .af-glass {
+    --af-control-bg: var(--af-surface-glass);
+    --af-control-hover: var(--af-surface-glass-hover);
+    --af-control-active: var(--af-surface-glass-active);
+    background-color: var(--af-control-bg);
+    box-shadow: var(--af-shadow-sm);
+    backdrop-filter: blur(var(--af-blur-glass));
+  }
+
+  .af-control[aria-pressed="true"] {
+    --af-control-bg: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    --af-control-hover: color-mix(
+      in srgb,
+      var(--color-accent) 17%,
+      transparent
+    );
+    --af-control-active: color-mix(
+      in srgb,
+      var(--color-accent) 22%,
+      transparent
+    );
+    --af-control-border: color-mix(
+      in srgb,
+      var(--color-accent) 45%,
+      transparent
+    );
+    --af-control-hover-border: var(--af-control-border);
+  }
+
+  .af-control[data-variant="solid"][aria-pressed="true"] {
+    --af-control-bg: var(--color-accent);
+    --af-control-hover: color-mix(in srgb, var(--color-accent) 90%, white);
+    --af-control-active: color-mix(in srgb, var(--color-accent) 85%, black);
+    --af-control-border: var(--color-accent);
+    --af-control-text: var(--color-accent-content);
+  }
+
+  @media (hover: hover) {
+    .af-control:hover:not(
+        :disabled,
+        [aria-disabled="true"],
+        [data-disabled]:not([data-disabled="false"])
+      ) {
+      background-color: var(--af-control-hover, var(--af-surface-hover));
+      border-color: var(--af-control-hover-border);
+    }
+  }
+
+  .af-control[data-highlighted]:not(
+      :disabled,
+      [aria-disabled="true"],
+      [data-disabled]:not([data-disabled="false"])
+    ) {
+    background-color: var(--af-control-hover, var(--af-surface-hover));
+    border-color: var(--af-control-hover-border);
+  }
+
+  .af-control:active:not(
+      :disabled,
+      [aria-disabled="true"],
+      [data-disabled]:not([data-disabled="false"])
+    ) {
+    background-color: var(--af-control-active, var(--af-surface-active));
+  }
+
+  .af-control:is(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled]:not([data-disabled="false"])
+  ) {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .af-input-shell {
+    background-color: var(--af-surface-input);
+    border: 1px solid var(--af-border-strong);
+    transition-property: border-color, box-shadow;
+    transition-duration: var(--af-duration-fast);
+    transition-timing-function: var(--af-ease);
+  }
+
+  .af-input-shell:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+
+  .af-menu-item {
+    --af-focus-offset: -2px;
+    color: var(--af-text);
+    transition-property: background-color, color;
+    transition-duration: var(--af-duration-fast);
+    touch-action: manipulation;
+  }
+
+  .af-menu-item:is([data-highlighted], [data-state="open"]):not(
+      [data-disabled]:not([data-disabled="false"])
+    ) {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--af-text);
+  }
+
+  .af-menu-item:is(
+    [data-disabled]:not([data-disabled="false"]),
+    [aria-disabled="true"]
+  ) {
+    opacity: 0.45;
+    pointer-events: none;
+    cursor: default;
+  }
+}

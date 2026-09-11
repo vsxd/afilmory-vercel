@@ -69,10 +69,10 @@ export const ClusterPhotoGrid = ({
     <div className="space-y-3">
       {/* 标题 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-text text-sm font-semibold">
+        <h3 className="text-ui text-sm font-semibold">
           {t("explore.cluster.photos", { count: photos.length })}
         </h3>
-        <div className="text-text-secondary text-xs">
+        <div className="text-ui-secondary text-xs">
           {t("explore.cluster.click.details")}
         </div>
       </div>
@@ -163,7 +163,7 @@ export const ClusterPhotoGrid = ({
               <span className="text-lg font-semibold tabular-nums">
                 +{remainingCount}
               </span>
-              <span className="text-text-secondary text-xs">
+              <span className="text-ui-secondary text-xs">
                 {t("explore.cluster.more")}
               </span>
             </PhotoLink>
@@ -174,7 +174,7 @@ export const ClusterPhotoGrid = ({
       {/* 位置信息 */}
       {primaryPhoto && (
         <div className="border-border space-y-2 border-t pt-3">
-          <div className="text-text-secondary flex items-center gap-2 text-xs">
+          <div className="text-ui-secondary flex items-center gap-2 text-xs">
             <i
               className="i-mingcute-location-line text-sm"
               aria-hidden="true"
@@ -184,7 +184,7 @@ export const ClusterPhotoGrid = ({
 
           {/* 拍摄时间范围 */}
           {dateRangeLabel && (
-            <div className="text-text-secondary flex items-center gap-2 text-xs">
+            <div className="text-ui-secondary flex items-center gap-2 text-xs">
               <i
                 className="i-mingcute-calendar-line text-sm"
                 aria-hidden="true"

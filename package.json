@@ -34,6 +34,7 @@
     "preview": "pnpm --filter @afilmory/web serve",
     "sbom": "pnpm exec tsx scripts/generate-sbom.ts",
     "security:secrets": "pnpm exec tsx scripts/scan-secrets.ts",
+    "styles:check": "pnpm --filter @afilmory/web styles:check",
     "test": "pnpm exec vitest run",
     "test:coverage": "pnpm exec vitest run --coverage",
     "test:e2e": "node scripts/run-playwright.mjs test",

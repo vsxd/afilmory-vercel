@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },

@@ -1,4 +1,4 @@
-import "./PhotoViewer.css";
+import "./Exif.css";
 
 import { ScrollArea, Spring } from "@afilmory/ui";
 import { m } from "motion/react";
@@ -55,7 +55,7 @@ export const ExifPanel: FC<{
         isMobile
           ? "exif-panel-mobile fixed right-0 bottom-0 left-0 z-10 max-h-[60vh] w-full rounded-t-2xl"
           : "relative w-80 shrink-0"
-      } af-panel border-fill-tertiary text-text flex flex-col overscroll-contain border-t lg:border-t-0 lg:border-l`}
+      } af-panel text-ui flex flex-col overscroll-contain border-t lg:border-t-0 lg:border-l`}
       initial={{
         opacity: 0,
         ...(isMobile ? { y: 100 } : { x: 100 }),

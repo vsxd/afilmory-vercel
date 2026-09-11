@@ -3,14 +3,6 @@ import * as React from "react";
 
 import { clsxm } from "./utils/cn";
 
-type HighlightStyle = React.CSSProperties & {
-  "--highlight-bg": string;
-};
-
-const highlightedItemStyle: HighlightStyle = {
-  "--highlight-bg": "color-mix(in srgb, var(--color-accent) 12%, transparent)",
-};
-
 const DropdownMenu: typeof DropdownMenuPrimitive.Root = (props) => {
   return <DropdownMenuPrimitive.Root {...props} />;
 };
@@ -20,37 +12,6 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
-
-const DropdownMenuSubTrigger = ({
-  ref,
-  className,
-  inset,
-  children,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
-  inset?: boolean;
-} & {
-  ref?: React.Ref<React.ElementRef<
-    typeof DropdownMenuPrimitive.SubTrigger
-  > | null>;
-}) => (
-  <DropdownMenuPrimitive.SubTrigger
-    ref={ref}
-    className={clsxm(
-      "cursor-menu focus:bg-accent focus:text-[var(--color-accent-content)] data-[state=open]:bg-accent data-[state=open]:text-[var(--color-accent-content)] flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
-      inset && "pl-8",
-      "center gap-2",
-      className,
-      props.disabled && "cursor-not-allowed opacity-30",
-    )}
-    {...props}
-  >
-    {children}
-    <i className="i-mingcute-right-line -mr-1 ml-auto size-3.5" />
-  </DropdownMenuPrimitive.SubTrigger>
-);
-DropdownMenuSubTrigger.displayName =
-  DropdownMenuPrimitive.SubTrigger.displayName;
 
 const DropdownMenuContent = ({
   ref,
@@ -68,7 +29,7 @@ const DropdownMenuContent = ({
         ref={ref}
         sideOffset={sideOffset}
         className={clsxm(
-          "af-popover text-text z-60 relative min-w-32 overflow-hidden rounded-2xl p-1",
+          "af-popover relative z-60 min-w-32 overflow-hidden rounded-panel p-1",
           className,
         )}
         {...props}
@@ -100,14 +61,10 @@ const DropdownMenuItem = ({
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={clsxm(
-      "cursor-menu relative flex select-none items-center rounded-lg px-2.5 py-1 outline-none data-disabled:pointer-events-none data-disabled:opacity-50",
-      "focus-within:outline-transparent text-sm my-0.5 transition-[background-color,color,opacity] duration-200",
-      "data-highlighted:text-accent",
-      "h-[28px]",
+      "af-menu-item relative my-0.5 flex min-h-8 cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm",
       inset && "pl-8",
       className,
     )}
-    style={highlightedItemStyle}
     {...props}
   >
     {!!icon && (
@@ -139,13 +96,10 @@ const DropdownMenuCheckboxItem = ({
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={clsxm(
-      "cursor-menu relative flex select-none items-center rounded-lg py-1.5 pl-2 pr-2 text-sm outline-none transition-[background-color,color,opacity] duration-200",
-      "data-disabled:pointer-events-none data-disabled:opacity-50",
-      "data-highlighted:text-accent",
+      "af-menu-item relative flex min-h-8 cursor-default select-none items-center rounded-lg px-2 py-1.5 text-sm",
       className,
     )}
     checked={checked}
-    style={highlightedItemStyle}
     {...props}
   >
     {!!icon && (
@@ -156,7 +110,7 @@ const DropdownMenuCheckboxItem = ({
     {children}
     <span className="ml-auto flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator className="ml-1 flex items-center justify-center">
-        <i className="i-mingcute-check-line size-4" />
+        <i aria-hidden="true" className="i-mingcute-check-line size-4" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
   </DropdownMenuPrimitive.CheckboxItem>
@@ -177,7 +131,7 @@ const DropdownMenuLabel = ({
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={clsxm(
-      "text-text px-2 py-1 text-sm font-semibold",
+      "text-ui-secondary px-2 py-1 text-sm font-semibold",
       inset && "pl-8",
       className,
     )}
@@ -188,6 +142,7 @@ DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
 const DropdownMenuSeparator = ({
   ref,
+  className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator> & {
   ref?: React.Ref<React.ElementRef<
@@ -195,11 +150,7 @@ const DropdownMenuSeparator = ({
   > | null>;
 }) => (
   <DropdownMenuPrimitive.Separator
-    className="mx-2 my-1 h-px px-2"
-    style={{
-      background:
-        "linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)",
-    }}
+    className={clsxm("border-ui-border mx-2 my-1 border-t", className)}
     ref={ref}
     {...props}
   />

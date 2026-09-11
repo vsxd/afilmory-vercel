@@ -10,13 +10,13 @@ export const MapLoadingState = () => {
     >
       <div className="max-w-sm space-y-2 text-center">
         <i
-          className="i-mingcute-map-line text-text-secondary mx-auto mb-4 block size-8"
+          className="i-mingcute-map-line text-ui-secondary mx-auto mb-4 block size-8"
           aria-hidden="true"
         />
-        <p className="text-text text-base font-medium">
+        <p className="text-ui text-base font-medium">
           {t("explore.loading.map")}
         </p>
-        <p className="text-text-secondary text-sm leading-relaxed">
+        <p className="text-ui-secondary text-sm leading-relaxed">
           {t("explore.parsing.location")}
         </p>
       </div>

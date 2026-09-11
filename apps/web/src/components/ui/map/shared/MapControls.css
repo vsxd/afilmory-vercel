@@ -1,0 +1,6 @@
+@layer components {
+  /* The enclosing control group owns its border and clipping. */
+  .af-map-control {
+    border-width: 0;
+  }
+}

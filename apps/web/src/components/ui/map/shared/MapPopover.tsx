@@ -140,7 +140,7 @@ export function MapPopoverContent({
       role="dialog"
       tabIndex={-1}
       className={clsxm(
-        "absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 -translate-x-1/2 rounded-2xl outline-none",
+        "af-popover absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl p-0 outline-none",
         "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2",
         className,
       )}

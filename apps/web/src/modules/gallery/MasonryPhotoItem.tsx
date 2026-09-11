@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import type { ComponentType, PropsWithChildren, SVGProps } from "react";
 import {
   Fragment,
   memo,
@@ -31,6 +32,21 @@ import { useAppNavigation } from "~/navigation/hooks";
 import type { PhotoManifest } from "~/types/photo";
 
 import { computeMasonryItemHeight } from "./gallery-layout";
+
+const mediaClassName =
+  "h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none";
+
+function PhotoMetric({
+  icon: Icon,
+  children,
+}: PropsWithChildren<{ icon: ComponentType<SVGProps<SVGSVGElement>> }>) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Icon className="shrink-0 text-sm text-white/70" aria-hidden="true" />
+      <span className="text-white/90">{children}</span>
+    </div>
+  );
+}
 
 export const MasonryPhotoItem = memo(
   ({
@@ -175,8 +191,8 @@ export const MasonryPhotoItem = memo(
         href={photoHref}
         aria-label={ariaLabel}
         tabIndex={tabIndex}
-        // Keep the shared outline inside the clipped cell, above neighbouring photos.
-        className="bg-fill-quaternary group relative block w-full cursor-pointer scroll-mt-24 scroll-mb-28 overflow-hidden focus-visible:z-30 lg:scroll-mb-4"
+        // Keep the shared outline inside the photo boundary, above neighbours.
+        className="bg-ui-subtle group relative isolate block w-full cursor-pointer scroll-mt-24 scroll-mb-28 focus-visible:z-30 lg:scroll-mb-4"
         style={{
           width,
           height: calculatedHeight,
@@ -192,55 +208,58 @@ export const MasonryPhotoItem = memo(
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Thumbhash 占位符 */}
-        {!imageError && (
-          <ThumbnailImage
-            ref={imageRef}
-            photoId={data.id}
-            src={data.thumbnailUrl}
-            alt={ariaLabel}
-            width={data.width}
-            height={data.height}
-            thumbHash={data.thumbHash}
-            loading={shouldLoadEagerly ? "eager" : "lazy"}
-            fetchPriority={isPriorityThumbnail ? "high" : "low"}
-            containerClassName="absolute inset-0"
-            imageClassName={clsx(
-              "h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
-            )}
-            placeholderClassName="h-full w-full"
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            onLoadStateChange={setImageLoaded}
-          />
-        )}
+        {/* Clip the zooming media once. The shade below bleeds past this edge
+            instead of receiving a second, independently antialiased clip. */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Thumbhash 占位符 */}
+          {!imageError && (
+            <ThumbnailImage
+              ref={imageRef}
+              photoId={data.id}
+              src={data.thumbnailUrl}
+              alt={ariaLabel}
+              width={data.width}
+              height={data.height}
+              thumbHash={data.thumbHash}
+              loading={shouldLoadEagerly ? "eager" : "lazy"}
+              fetchPriority={isPriorityThumbnail ? "high" : "low"}
+              containerClassName="absolute inset-0 overflow-visible"
+              imageClassName={mediaClassName}
+              placeholderClassName="h-full w-full"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              onLoadStateChange={setImageLoaded}
+            />
+          )}
 
-        {/* Live Photo/Motion Photo 视频 */}
-        {hasVideo && (
-          <video
-            ref={videoRef}
-            className={clsx(
-              "absolute inset-0 h-full w-full object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
-              isPlayingLivePhoto ? "z-10" : "pointer-events-none opacity-0",
-            )}
-            muted
-            playsInline
-            onEnded={handleVideoEnded}
-          />
-        )}
+          {/* Live Photo/Motion Photo 视频 */}
+          {hasVideo && (
+            <video
+              ref={videoRef}
+              className={clsx(
+                "absolute inset-0",
+                mediaClassName,
+                isPlayingLivePhoto ? "z-10" : "pointer-events-none opacity-0",
+              )}
+              muted
+              playsInline
+              onEnded={handleVideoEnded}
+            />
+          )}
 
-        {/* 错误状态 */}
-        {imageError && (
-          <div className="bg-fill-quaternary text-text-tertiary absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <i
-                className="i-mingcute-image-line text-2xl"
-                aria-hidden="true"
-              />
-              <p className="mt-2 text-sm">{t("photo.error.loading")}</p>
+          {/* 错误状态 */}
+          {imageError && (
+            <div className="bg-ui-subtle text-ui-muted absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <i
+                  className="i-mingcute-image-line text-2xl"
+                  aria-hidden="true"
+                />
+                <p className="mt-2 text-sm">{t("photo.error.loading")}</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Live Photo/Motion Photo 标识 */}
         {hasVideo && (
@@ -274,7 +293,7 @@ export const MasonryPhotoItem = memo(
                 {videoConversionError ? (
                   <span className={"bg-warning/20 ml-0.5 rounded px-1 text-xs"}>
                     <span
-                      className="text-yellow w-3 text-center font-bold"
+                      className="text-warning w-3 text-center font-bold"
                       title={(videoConversionError as Error).message}
                     >
                       !
@@ -289,8 +308,13 @@ export const MasonryPhotoItem = memo(
         {/* Touch scrolling keeps lightweight cells. An attached keyboard can still
             reveal the same information by focusing a photo. */}
         {(!isMobileDevice || isFocused) && shouldShowImageDetails && (
-          <div className="pointer-events-none opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">
-            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/15 to-transparent" />
+          <div
+            data-gallery-photo-overlay
+            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+          >
+            {/* One CSS pixel covers fractional device-pixel edges at browser
+                zoom levels without resizing the photo or its layout cell. */}
+            <div className="absolute -inset-px bg-linear-to-t from-black/85 via-black/15 to-transparent" />
 
             {/* Details use one shared reveal layer for hover and keyboard focus. */}
             <div className="absolute inset-x-0 bottom-0 px-3 pt-4 pb-3 text-white">
@@ -335,47 +359,27 @@ export const MasonryPhotoItem = memo(
               {calculatedHeight >= 200 && (
                 <div className="mt-2.5 grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-4 tabular-nums">
                   {exifData.focalLength35mm && (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <LensIcon
-                        className="shrink-0 text-sm text-white/70"
-                        aria-hidden="true"
-                      />
-                      <span className="text-white/90">
-                        {exifData.focalLength35mm}mm
-                      </span>
-                    </div>
+                    <PhotoMetric icon={LensIcon}>
+                      {exifData.focalLength35mm}mm
+                    </PhotoMetric>
                   )}
 
                   {exifData.aperture && (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <TablerAperture
-                        className="shrink-0 text-sm text-white/70"
-                        aria-hidden="true"
-                      />
-                      <span className="text-white/90">{exifData.aperture}</span>
-                    </div>
+                    <PhotoMetric icon={TablerAperture}>
+                      {exifData.aperture}
+                    </PhotoMetric>
                   )}
 
                   {exifData.shutterSpeed && (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <MaterialSymbolsShutterSpeed
-                        className="shrink-0 text-sm text-white/70"
-                        aria-hidden="true"
-                      />
-                      <span className="text-white/90">
-                        {exifData.shutterSpeed}
-                      </span>
-                    </div>
+                    <PhotoMetric icon={MaterialSymbolsShutterSpeed}>
+                      {exifData.shutterSpeed}
+                    </PhotoMetric>
                   )}
 
                   {exifData.iso && (
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <CarbonIsoOutline
-                        className="shrink-0 text-sm text-white/70"
-                        aria-hidden="true"
-                      />
-                      <span className="text-white/90">ISO {exifData.iso}</span>
-                    </div>
+                    <PhotoMetric icon={CarbonIsoOutline}>
+                      ISO {exifData.iso}
+                    </PhotoMetric>
                   )}
                 </div>
               )}

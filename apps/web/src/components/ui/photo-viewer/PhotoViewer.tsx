@@ -235,7 +235,7 @@ export const PhotoViewer = ({
             className="fixed inset-0"
           >
             <m.div
-              className="bg-material-opaque size-full"
+              className="bg-ui-backdrop size-full"
               style={{ opacity: revealOpacity }}
             />
           </m.div>
@@ -273,7 +273,8 @@ export const PhotoViewer = ({
             role="dialog"
             aria-modal="true"
             aria-label={t("photo.viewer.label")}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="af-photo-viewer fixed inset-0 z-50 flex items-center justify-center"
+            data-viewport={isMobile ? "mobile" : "desktop"}
             style={{
               touchAction: isMobile ? "manipulation" : "none",
               // 入场动画期间也允许触摸，以便下滑关闭手势能中断入场（见 useDismissGesture）

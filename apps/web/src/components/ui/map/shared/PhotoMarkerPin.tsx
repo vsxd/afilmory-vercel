@@ -1,3 +1,5 @@
+import "./MapMarker.css";
+
 import { GlassButton } from "@afilmory/ui";
 import { m } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -56,7 +58,7 @@ export const PhotoMarkerPin = ({
         <MapPopoverTrigger>
           <m.button
             type="button"
-            className="focus-visible:ring-accent/45 group focus-visible:ring-offset-background relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="af-map-marker group relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -70,9 +72,7 @@ export const PhotoMarkerPin = ({
             aria-label={photoLabel}
           >
             {/* Selection ring - 只有选中时显示 */}
-            {isSelected && (
-              <div className="bg-blue/30 absolute inset-0 -m-2 animate-pulse rounded-full" />
-            )}
+            {isSelected && <div className="af-map-marker-halo -m-2" />}
 
             {/* Photo background preview */}
             <div className="absolute inset-0.5 overflow-hidden rounded-full">
@@ -95,33 +95,19 @@ export const PhotoMarkerPin = ({
 
             {/* Main marker container */}
             <div
-              className={`relative flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-[background-color,border-color,box-shadow,transform] duration-300 hover:shadow-xl ${
-                isSelected
-                  ? "border-blue/40 bg-blue/90 shadow-blue/50 dark:border-blue/30 dark:bg-blue/80"
-                  : "border-white/40 bg-white/95 hover:bg-white dark:border-white/20 dark:bg-black/80 dark:hover:bg-black/90"
-              }`}
+              className="af-map-marker-surface size-10"
+              data-selected={isSelected}
             >
-              {/* Glass morphism overlay */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 dark:from-white/20 dark:to-white/5" />
-
               {/* Camera icon */}
               <i
-                className={`i-mingcute-camera-line relative z-10 text-lg drop-shadow-sm ${
-                  isSelected ? "text-white" : "text-gray-700 dark:text-white"
-                }`}
+                className="i-mingcute-camera-line relative z-10 text-lg"
                 aria-hidden="true"
               />
-
-              {/* Subtle inner shadow for depth */}
-              <div className="absolute inset-0 rounded-full shadow-inner shadow-black/5" />
             </div>
           </m.button>
         </MapPopoverTrigger>
 
-        <MapPopoverContent
-          aria-label={photoLabel}
-          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
-        >
+        <MapPopoverContent aria-label={photoLabel}>
           <div className="relative">
             {/* 选中时显示关闭按钮 */}
             {isSelected && (
@@ -162,16 +148,16 @@ export const PhotoMarkerPin = ({
               {/* Title with link */}
               <PhotoLink
                 photoId={marker.photo.id}
-                className="group/link hover:text-blue flex items-center gap-2 transition-colors"
+                className="group/link hover:text-accent flex items-center gap-2 transition-colors"
               >
                 <h3
-                  className="text-text flex-1 truncate text-sm font-semibold"
+                  className="text-ui flex-1 truncate text-sm font-semibold"
                   title={photoLabel}
                 >
                   {photoLabel}
                 </h3>
                 <i
-                  className="i-mingcute-arrow-right-line text-text-secondary transition-transform group-hover/link:translate-x-0.5"
+                  className="i-mingcute-arrow-right-line text-ui-secondary transition-transform group-hover/link:translate-x-0.5"
                   aria-hidden="true"
                 />
               </PhotoLink>
@@ -179,7 +165,7 @@ export const PhotoMarkerPin = ({
               {/* Metadata */}
               <div className="space-y-2">
                 {marker.photo.exif?.DateTimeOriginal && (
-                  <div className="text-text-secondary flex items-center gap-2 text-xs">
+                  <div className="text-ui-secondary flex items-center gap-2 text-xs">
                     <i
                       className="i-mingcute-calendar-line text-sm"
                       aria-hidden="true"
@@ -198,7 +184,7 @@ export const PhotoMarkerPin = ({
                 )}
 
                 {marker.photo.exif?.Make && marker.photo.exif?.Model && (
-                  <div className="text-text-secondary flex items-center gap-2 text-xs">
+                  <div className="text-ui-secondary flex items-center gap-2 text-xs">
                     <i
                       className="i-mingcute-camera-line text-sm"
                       aria-hidden="true"
@@ -209,7 +195,7 @@ export const PhotoMarkerPin = ({
                   </div>
                 )}
 
-                <div className="text-text-secondary space-y-1 text-xs">
+                <div className="text-ui-secondary space-y-1 text-xs">
                   <div className="flex items-center gap-2">
                     <i
                       className="i-mingcute-location-line text-sm"

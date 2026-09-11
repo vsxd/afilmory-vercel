@@ -159,7 +159,7 @@ export const Slider = ({
   return (
     <div className={clsxm("w-full", className)}>
       {/* 标签 */}
-      <div className="text-text-secondary mb-2 flex justify-between text-xs">
+      <div className="text-ui-secondary mb-2 flex justify-between text-xs">
         <span>{finalAutoLabel}</span>
         <span>{max}</span>
       </div>
@@ -188,10 +188,10 @@ export const Slider = ({
         {/* 背景轨道 */}
         <div
           ref={trackRef}
-          className="bg-fill-secondary absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full"
+          className="bg-ui-hover absolute top-1/2 h-1.5 w-full -translate-y-1/2 rounded-full"
         >
           {/* 自动档区域指示 */}
-          <div className="bg-fill-tertiary absolute top-0 left-0 h-full w-[12%] rounded-l-full" />
+          <div className="bg-ui-subtle absolute top-0 left-0 h-full w-[12%] rounded-l-full" />
 
           {/* 激活区域 */}
           <div
@@ -224,7 +224,6 @@ export const Slider = ({
           onKeyDown={handleKeyDown}
           className={clsxm(
             "absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-lg transition-[background-color,box-shadow,transform] duration-150",
-            "focus-visible:ring-accent/45 focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2",
             isDragging ? "scale-110" : "hover:scale-105",
             value === "auto" ? "bg-accent/80" : "bg-accent",
             disabled && "cursor-not-allowed",
@@ -235,7 +234,7 @@ export const Slider = ({
         />
 
         {/* 数值刻度 */}
-        <div className="text-text-secondary absolute top-full mt-1 flex w-full text-xs">
+        <div className="text-ui-secondary absolute top-full mt-1 flex w-full text-xs">
           <div className="w-[15%] text-left">
             <span
               className={clsxm(
@@ -265,7 +264,7 @@ export const Slider = ({
       </div>
 
       {/* 当前值显示 */}
-      <div className="mt-8 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="text-ui-secondary mt-8 text-center text-sm font-medium">
         {value === "auto"
           ? finalAutoLabel
           : t("slider.columns", { count: value })}

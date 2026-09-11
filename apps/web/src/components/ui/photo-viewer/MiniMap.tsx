@@ -35,7 +35,7 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
   }
 
   return (
-    <div className="border-fill-tertiary bg-fill-quaternary relative h-40 w-full overflow-hidden rounded-xl border">
+    <div className="border-ui-border bg-ui-subtle relative h-40 w-full overflow-hidden rounded-xl border">
       {canUseWebGL2 && (
         <Map
           mapLib={maplibre}
@@ -67,14 +67,14 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
           role="status"
           className="af-glass absolute inset-0 flex items-center justify-center"
         >
-          <div className="text-text-secondary text-xs">
+          <div className="text-ui-secondary text-xs">
             {t("minimap.loading")}
           </div>
         </div>
       )}
 
       {!canUseWebGL2 && (
-        <div className="text-text-secondary flex h-full flex-col items-center justify-center gap-2 text-[13px] tabular-nums">
+        <div className="text-ui-secondary flex h-full flex-col items-center justify-center gap-2 text-[13px] tabular-nums">
           <span>{t("minimap.view.in.map")}</span>
           <span>
             {latitude.toFixed(4)}, {longitude.toFixed(4)}

@@ -35,33 +35,35 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
   }, [livePhotoRef, isLivePhotoPlaying, handlePlay, handleStop]);
 
   return (
-    <>
-      {/* Live Photo 标识 */}
-      <button
-        type="button"
-        aria-label={t("photo.live.badge")}
-        aria-pressed={isLivePhotoPlaying}
-        title={t("photo.live.badge")}
+    <button
+      type="button"
+      aria-label={t("photo.live.badge")}
+      aria-pressed={isLivePhotoPlaying}
+      title={t("photo.live.badge")}
+      data-variant="solid"
+      className="af-glass af-control pointer-events-auto flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1 text-[13px]"
+      onClick={handleClick}
+    >
+      <i
         className={clsxm(
-          "af-glass af-control absolute z-20 flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-1 text-[13px]",
-          "cursor-pointer",
-          isLivePhotoPlaying && "af-viewer-control-active",
-          import.meta.env.DEV ? "top-16 right-4" : "top-12 lg:top-4 left-4",
+          "size-4",
+          isLivePhotoPlaying
+            ? "i-mingcute-live-photo-fill"
+            : "i-mingcute-live-photo-line",
         )}
-        onClick={handleClick}
-      >
-        <i
-          className={clsxm(
-            "size-4",
-            isLivePhotoPlaying
-              ? "i-mingcute-live-photo-fill"
-              : "i-mingcute-live-photo-line",
-          )}
-          aria-hidden="true"
-        />
-        <span className="mr-1">{t("photo.live.badge")}</span>
-      </button>
+        aria-hidden="true"
+      />
+      <span className="mr-1">{t("photo.live.badge")}</span>
+    </button>
+  );
+};
 
+export const LivePhotoFeedback = ({
+  isLivePhotoPlaying,
+}: Pick<LivePhotoBadgeProps, "isLivePhotoPlaying">) => {
+  const { t } = useTranslation();
+  return (
+    <>
       {/* 播放状态提示 */}
       <AnimatePresence>
         {isLivePhotoPlaying && (
@@ -73,7 +75,7 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
             role="status"
             aria-live="polite"
           >
-            <div className="af-glass flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white">
+            <div className="af-glass text-ui flex items-center gap-2 rounded-lg px-3 py-2 text-xs">
               <i className="i-mingcute-live-photo-fill" aria-hidden="true" />
               <span>{t("photo.live.playing")}</span>
             </div>
@@ -84,7 +86,7 @@ export const LivePhotoBadge: FC<LivePhotoBadgeProps> = ({
       {/* 操作提示 */}
       <div
         className={clsxm(
-          "af-glass pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-lg px-3 py-2 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+          "af-glass pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-lg px-3 py-2 text-xs text-ui opacity-0 transition-opacity duration-200 group-hover:opacity-100",
           isLivePhotoPlaying && "opacity-0!",
         )}
       >

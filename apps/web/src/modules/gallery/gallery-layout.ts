@@ -9,6 +9,7 @@ export class MasonryHeaderItem {
 export type MasonryItemType = PhotoManifest | MasonryHeaderItem;
 
 export const FIRST_SCREEN_ITEMS_COUNT = 30;
+export const GALLERY_GUTTER = 4;
 
 /**
  * Resolve a safe, positive, finite aspect ratio for a photo. Falls back to the
@@ -91,7 +92,7 @@ export function calculateGalleryColumnWidth({
   isMobile: boolean;
 }): number {
   const { auto, min, max } = COLUMN_WIDTH_CONFIG;
-  const gutter = 4;
+  const gutter = GALLERY_GUTTER;
   const availableWidth = containerWidth;
 
   if (columns === "auto") {

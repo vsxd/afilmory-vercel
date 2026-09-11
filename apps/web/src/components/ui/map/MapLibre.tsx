@@ -56,7 +56,7 @@ const MapAttribution = ({ geocodingLabel }: { geocodingLabel: string }) => {
       data-testid="map-attribution"
     >
       {isOpen && (
-        <div className="afilmory-map-attribution-panel">
+        <div className="af-popover afilmory-map-attribution-panel">
           <span>{geocodingLabel}</span>
           <span aria-hidden="true">|</span>
           <a
@@ -84,7 +84,9 @@ const MapAttribution = ({ geocodingLabel }: { geocodingLabel: string }) => {
         title={label}
         onClick={() => setIsOpen((value) => !value)}
       >
-        <span aria-hidden="true">i</span>
+        <span className="af-glass" aria-hidden="true">
+          i
+        </span>
       </button>
     </div>
   );

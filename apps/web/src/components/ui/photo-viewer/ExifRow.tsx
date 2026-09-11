@@ -1,4 +1,4 @@
-import "./PhotoViewer.css";
+import "./Exif.css";
 
 import type { FC } from "react";
 

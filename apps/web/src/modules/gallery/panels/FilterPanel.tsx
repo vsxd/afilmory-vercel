@@ -47,13 +47,10 @@ const FilterSection = ({
 
   return (
     <section aria-labelledby={headingId}>
-      <div className="text-text-secondary mb-2.5 flex items-center gap-2 px-1 text-xs font-medium">
+      <div className="text-ui-secondary mb-2.5 flex items-center gap-2 px-1 text-xs font-medium">
         <i className={icon} aria-hidden="true" />
         <Heading id={headingId}>{title}</Heading>
-        <span
-          className="text-text-tertiary ml-auto tabular-nums"
-          aria-hidden="true"
-        >
+        <span className="text-ui-muted ml-auto tabular-nums" aria-hidden="true">
           {items.length}
         </span>
       </div>
@@ -75,7 +72,6 @@ const FilterSection = ({
               aria-pressed={isActive}
               className={clsxm(
                 "af-control inline-flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] leading-5 font-medium",
-                isActive && "border-accent/45 bg-accent/10",
                 layout === "equipment" && "w-full",
               )}
             >
@@ -87,8 +83,8 @@ const FilterSection = ({
                 className={clsxm(
                   "flex size-4 shrink-0 items-center justify-center rounded-full",
                   isActive
-                    ? "bg-accent text-[var(--color-accent-content)]"
-                    : "border-fill-tertiary border",
+                    ? "bg-accent text-accent-content"
+                    : "border-ui-strong border",
                 )}
               >
                 {isActive && <i className="i-mingcute-check-line text-xs" />}
@@ -165,17 +161,17 @@ export const FilterPanel = ({
       {showHeader && (
         <header className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="af-panel text-text-secondary flex size-10 shrink-0 items-center justify-center rounded-xl">
+            <div className="af-panel text-ui-secondary flex size-10 shrink-0 items-center justify-center rounded-xl">
               <i
                 className="i-mingcute-filter-3-line text-lg"
                 aria-hidden="true"
               />
             </div>
             <div className="min-w-0">
-              <h3 className="text-text text-sm font-semibold">
+              <h3 className="text-ui text-sm font-semibold">
                 {t("action.filter.title")}
               </h3>
-              <p className="text-text-secondary mt-0.5 text-xs">
+              <p className="text-ui-secondary mt-0.5 text-xs">
                 {t("action.filter.subtitle")}
               </p>
             </div>

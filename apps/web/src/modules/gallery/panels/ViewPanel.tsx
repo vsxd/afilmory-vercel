@@ -17,10 +17,10 @@ export const ViewPanel = () => {
           />
         </div>
         <div className="min-w-0">
-          <h3 className="text-text text-lg leading-tight font-semibold text-pretty lg:text-base">
+          <h3 className="text-ui text-lg leading-tight font-semibold text-pretty lg:text-base">
             {t("action.view.settings")}
           </h3>
-          <p className="text-text-secondary mt-1 text-sm lg:text-xs">
+          <p className="text-ui-secondary mt-1 text-sm lg:text-xs">
             {t("action.view.subtitle")}
           </p>
         </div>
@@ -28,7 +28,7 @@ export const ViewPanel = () => {
 
       {/* 排序部分 */}
       <section className="mt-6">
-        <div className="text-text-secondary mb-2 flex items-center gap-2 px-1 text-xs font-medium">
+        <div className="text-ui-secondary mb-2 flex items-center gap-2 px-1 text-xs font-medium">
           <i className="i-mingcute-sort-descending-line" aria-hidden="true" />
           <h4>{t("action.sort.mode")}</h4>
         </div>
@@ -36,11 +36,11 @@ export const ViewPanel = () => {
       </section>
 
       {/* 分隔线 */}
-      <div className="bg-fill-secondary my-5 h-px" />
+      <div className="bg-ui-subtle my-5 h-px" />
 
       {/* 列数部分 */}
       <section>
-        <div className="text-text-secondary mb-3 flex items-center gap-2 px-1 text-xs font-medium">
+        <div className="text-ui-secondary mb-3 flex items-center gap-2 px-1 text-xs font-medium">
           <i className="i-mingcute-grid-line" aria-hidden="true" />
           <h4>{t("action.columns.setting")}</h4>
         </div>

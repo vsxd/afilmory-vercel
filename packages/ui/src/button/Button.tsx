@@ -11,54 +11,32 @@ import { clsxm, focusRing } from "../utils/cn";
 
 const buttonVariants = tv({
   base: [
-    "relative inline-flex items-center justify-center whitespace-nowrap rounded text-center font-medium transition-[background-color,border-color,box-shadow,color,opacity,transform] duration-100 ease-in-out",
+    "relative inline-flex items-center justify-center whitespace-nowrap rounded-control text-center font-medium",
     "active:scale-95",
     "disabled:pointer-events-none",
-    "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
     focusRing,
   ],
   variants: {
     variant: {
       surface: "af-control",
       primary: [
-        "border-transparent",
-        "text-[var(--color-accent-content)]",
-        "bg-accent",
-        "hover:bg-accent/90",
-        "disabled:opacity-50",
+        "border border-transparent bg-accent text-accent-content hover:bg-accent/90",
+        "transition-[background-color,color,opacity,scale] duration-(--af-duration-fast) ease-(--af-ease)",
+        "disabled:opacity-45 aria-disabled:opacity-45",
       ],
-      secondary: [
-        "border border-fill-tertiary dark:border-fill-tertiary",
-        "text-text",
-        "bg-fill-tertiary",
-        "hover:bg-fill-tertiary/10",
-        "disabled:bg-fill-tertiary/10",
-        "disabled:dark:bg-fill-tertiary/10",
-      ],
+      secondary: "af-control",
       light: [
-        "shadow-none",
-        "border-transparent",
-        "text-gray-900 dark:text-gray-50",
-        "bg-gray-200 dark:bg-gray-900",
-        "hover:bg-gray-300/70 dark:hover:bg-gray-800/80",
-        "disabled:bg-gray-100 disabled:text-gray-400",
-        "disabled:dark:bg-gray-800 disabled:dark:text-gray-600",
+        "af-control shadow-none",
+        "[--af-control-bg:var(--af-surface-active)]",
       ],
       ghost: [
-        "shadow-none",
-        "border-transparent",
-        "text-gray-900 dark:text-gray-50",
-        "bg-transparent dark:hover:bg-fill-tertiary",
-        "disabled:text-gray-400",
-        "disabled:dark:text-gray-600",
+        "af-control shadow-none",
+        "[--af-control-bg:transparent] [--af-control-border:transparent]",
       ],
       destructive: [
-        "text-white",
-        "border-transparent",
-        "bg-red-600 dark:bg-red-700",
-        "hover:bg-red-700 dark:hover:bg-red-600",
-        "disabled:bg-red-300 disabled:text-white",
-        "disabled:dark:bg-red-950 disabled:dark:text-red-400",
+        "border border-transparent bg-red-600 text-white hover:bg-red-700",
+        "transition-[background-color,color,opacity,scale] duration-(--af-duration-fast) ease-(--af-ease)",
+        "disabled:opacity-45 aria-disabled:opacity-45",
       ],
     },
     size: {
@@ -70,7 +48,7 @@ const buttonVariants = tv({
     },
     flat: {
       true: "shadow-none",
-      false: "shadow-sm",
+      false: "shadow-(--af-shadow-sm)",
     },
   },
   defaultVariants: {
@@ -113,7 +91,7 @@ const Button = ({
         <span className="pointer-events-none inline-flex items-center justify-center gap-1.5">
           <i
             className={clsxm(
-              "shrink-0 animate-spin i-mingcute-loading-3-line !duration-1000",
+              "shrink-0 animate-spin i-mingcute-loading-3-line",
               size === "xs" || size === "sm" ? "size-3" : "size-4",
             )}
             aria-hidden="true"

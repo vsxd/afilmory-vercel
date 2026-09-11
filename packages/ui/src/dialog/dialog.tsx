@@ -94,7 +94,7 @@ const DialogContent = ({
       {...props}
     >
       <m.div
-        className="af-popover gap-4 overflow-hidden rounded-2xl p-6"
+        className="af-popover rounded-panel flex flex-col gap-4 overflow-hidden p-6"
         initial={{
           opacity: 0,
           scale: 0.95,
@@ -107,7 +107,7 @@ const DialogContent = ({
         transition={Spring.presets.smooth}
       >
         {/* Content */}
-        <div className="relative flex h-0 flex-1 flex-col">{children}</div>
+        <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
       </m.div>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -152,7 +152,7 @@ const DialogTitle = ({
   <DialogPrimitive.Title
     ref={ref}
     className={clsxm(
-      "text-lg font-semibold leading-none tracking-tight text-white",
+      "text-ui text-lg font-semibold leading-none tracking-tight",
       className,
     )}
     {...props}
@@ -171,7 +171,7 @@ const DialogDescription = ({
 }) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={clsxm("text-sm text-white/70", className)}
+    className={clsxm("text-ui-secondary text-sm", className)}
     {...props}
   />
 );

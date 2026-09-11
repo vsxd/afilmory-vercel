@@ -14,14 +14,16 @@ export const GlassButton: FC<HTMLMotionProps<"button"> & PropsWithChildren> = (
       type="button"
       {...props}
       className={clsxm(
-        "af-glass pointer-events-auto relative flex size-11 items-center justify-center rounded-full text-lg transition-colors hover:bg-white/15 disabled:opacity-45",
+        "af-glass af-control pointer-events-auto relative flex size-11 items-center justify-center rounded-full text-lg",
         props.className,
       )}
       whileHover={reduceMotion ? undefined : { scale: 1.04 }}
       whileTap={reduceMotion ? undefined : { scale: 0.96 }}
       transition={{ duration: 0.16 }}
     >
-      <span className="center relative flex">{props.children}</span>
+      <span className="relative flex items-center justify-center">
+        {props.children}
+      </span>
     </m.button>
   );
 };

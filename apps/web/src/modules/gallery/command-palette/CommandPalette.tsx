@@ -1,4 +1,7 @@
+import "../Gallery.css";
+
 import { clsxm } from "@afilmory/ui";
+import { useReducedMotion } from "motion/react";
 import * as React from "react";
 import {
   useCallback,
@@ -86,6 +89,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   const [query, setQuery] = useState("");
   const deferredQuery = React.useDeferredValue(query);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const shouldReduceMotion = useReducedMotion() === true;
   const isMobile = useMobile();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -282,9 +286,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   useEffect(() => {
     const selectedElement = listRef.current?.children[selectedIndex];
     if (selectedElement instanceof HTMLElement) {
-      selectedElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      selectedElement.scrollIntoView({
+        block: "nearest",
+        behavior: shouldReduceMotion ? "auto" : "smooth",
+      });
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, shouldReduceMotion]);
 
   // Stable signature of the filtered result set (ids + order). Filtering often
   // changes the contents while keeping the same length, so resetting on length
@@ -349,22 +356,22 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           ref={dragHandleRef}
           className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
         >
-          <div className="bg-fill-tertiary h-1.5 w-12 rounded-full" />
+          <div className="bg-ui-hover h-1.5 w-12 rounded-full" />
         </div>
         {/* Search Input */}
-        <div className="border-fill-secondary relative border-b px-6 pb-5">
+        <div className="border-ui-border relative border-b px-6 pb-5">
           <div className="mb-4 flex items-center gap-3">
-            <div className="af-panel text-text-secondary flex size-12 shrink-0 items-center justify-center rounded-2xl">
+            <div className="af-panel text-ui-secondary flex size-12 shrink-0 items-center justify-center rounded-2xl">
               <i
                 className="i-mingcute-search-line text-lg"
                 aria-hidden="true"
               />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-text text-lg leading-tight font-semibold text-pretty">
+              <h2 className="text-ui text-lg leading-tight font-semibold text-pretty">
                 {t("action.search.unified.title")}
               </h2>
-              <p className="text-text-secondary mt-1 text-sm">
+              <p className="text-ui-secondary mt-1 text-sm">
                 {t("action.search.indexed-photos", { count: allPhotos.length })}
               </p>
             </div>
@@ -396,7 +403,7 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
 
           <div className="af-input-shell flex h-12 items-center gap-3 rounded-2xl px-3">
             <i
-              className="i-mingcute-search-line text-text-tertiary shrink-0 text-lg"
+              className="i-mingcute-search-line text-ui-muted shrink-0 text-lg"
               aria-hidden="true"
             />
             <input
@@ -414,15 +421,15 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
               aria-controls={isListboxVisible ? listboxDomId : undefined}
               aria-activedescendant={activeOptionDomId}
               aria-autocomplete="list"
-              className="text-text placeholder-text-tertiary h-full min-w-0 flex-1 bg-transparent text-base outline-none"
+              className="text-ui placeholder:text-ui-muted h-full min-w-0 flex-1 bg-transparent text-base outline-none"
             />
           </div>
         </div>
 
         {hasFilters && (
-          <div className="border-fill-secondary relative border-b px-6 py-3">
+          <div className="border-ui-border relative border-b px-6 py-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <div className="text-text-secondary flex items-center gap-2 text-xs font-medium">
+              <div className="text-ui-secondary flex items-center gap-2 text-xs font-medium">
                 <i
                   className="i-mingcute-filter-3-line text-sm"
                   aria-hidden="true"
@@ -485,10 +492,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
           ) : visibleCommands.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <i
-                className="i-mingcute-search-line text-text-quaternary mb-3 text-4xl"
+                className="i-mingcute-search-line text-ui-muted mb-3 text-4xl"
                 aria-hidden="true"
               />
-              <p className="text-text-secondary text-sm">
+              <p className="text-ui-secondary text-sm">
                 {t("action.search.no-results")}
               </p>
               <button
@@ -516,13 +523,10 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 }
                 onClick={() => executeCommandAction(cmd.action)}
                 onMouseEnter={() => setSelectedIndex(index)}
-                className={clsxm(
-                  "command-item group [--af-focus-offset:-2px] flex min-h-16 w-full items-start gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200",
-                  selectedIndex === index && "selected",
-                )}
+                className="af-command-option group flex min-h-16 w-full items-start gap-3 px-6 py-3 text-left transition-[background-color,box-shadow,color] duration-200 [--af-focus-offset:-2px]"
               >
                 {/* Icon */}
-                <div className="af-panel text-text-secondary flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg">
+                <div className="af-panel text-ui-secondary flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg">
                   {cmd.thumbnail ? (
                     <ThumbnailImage
                       photoId={cmd.thumbnail.photoId}
@@ -543,17 +547,17 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                 {/* Content */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
-                    <span className="text-text min-w-0 flex-1 text-sm leading-5 font-medium [overflow-wrap:anywhere] whitespace-normal">
+                    <span className="text-ui min-w-0 flex-1 text-sm leading-5 font-medium [overflow-wrap:anywhere] whitespace-normal">
                       {cmd.title}
                     </span>
                     {cmd.badge !== undefined && (
-                      <span className="af-panel text-text-secondary shrink-0 rounded-md px-2 py-0.5 text-xs tabular-nums">
+                      <span className="af-panel text-ui-secondary shrink-0 rounded-md px-2 py-0.5 text-xs tabular-nums">
                         {cmd.badge}
                       </span>
                     )}
                     {cmd.active && (
                       <span
-                        className="bg-accent flex size-5 shrink-0 items-center justify-center rounded-full text-[var(--color-accent-content)]"
+                        className="bg-accent text-accent-content flex size-5 shrink-0 items-center justify-center rounded-full"
                         aria-hidden="true"
                       >
                         <i
@@ -564,12 +568,12 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
                     )}
                   </div>
                   {cmd.type === "photo" && (
-                    <span className="text-text-tertiary mt-1 block text-xs font-medium">
+                    <span className="text-ui-muted mt-1 block text-xs font-medium">
                       {t("action.search.photo")}
                     </span>
                   )}
                   {cmd.subtitle && (
-                    <p className="text-text-secondary mt-1 text-[13px] leading-5 [overflow-wrap:anywhere] whitespace-normal">
+                    <p className="text-ui-secondary mt-1 text-[13px] leading-5 [overflow-wrap:anywhere] whitespace-normal">
                       {cmd.subtitle}
                     </p>
                   )}
@@ -580,8 +584,8 @@ export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
         </div>
 
         {/* Footer */}
-        <div className="border-fill-secondary bg-fill-vibrant-quinary/40 relative border-t px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4">
-          <div className="text-text-secondary flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs tabular-nums">
+        <div className="border-ui-border bg-ui-subtle relative border-t px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:pb-4">
+          <div className="text-ui-secondary flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs tabular-nums">
             <span aria-live="polite">{resultSummary}</span>
             {hasFilters && (
               <span>

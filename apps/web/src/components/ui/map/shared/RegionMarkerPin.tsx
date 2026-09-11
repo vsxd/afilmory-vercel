@@ -1,3 +1,5 @@
+import "./MapMarker.css";
+
 import { buildGeoRegionId } from "@afilmory/schema/geo";
 import { GlassButton } from "@afilmory/ui";
 import { m } from "motion/react";
@@ -95,7 +97,7 @@ export const RegionMarkerPin = ({
         <MapPopoverTrigger>
           <m.button
             type="button"
-            className="group relative cursor-pointer rounded-full"
+            className="af-map-marker group relative cursor-pointer rounded-full"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -111,37 +113,24 @@ export const RegionMarkerPin = ({
               count: region.photoCount,
             })}
           >
-            {isSelected && (
-              <div className="bg-accent/30 absolute inset-0 -m-2 animate-pulse rounded-full" />
-            )}
+            {isSelected && <div className="af-map-marker-halo -m-2" />}
 
             <div
-              className={`relative flex h-11 w-11 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-[background-color,border-color,box-shadow,transform] duration-300 hover:shadow-xl ${
-                isSelected
-                  ? "border-accent/40 bg-accent/90 shadow-accent/50"
-                  : "border-white/40 bg-white/95 hover:bg-white dark:border-white/20 dark:bg-black/80 dark:hover:bg-black/90"
-              }`}
+              className="af-map-marker-surface size-11"
+              data-selected={isSelected}
             >
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-white/10 dark:from-white/20 dark:to-white/5" />
               <i
-                className={`i-mingcute-map-pin-fill relative z-10 text-lg drop-shadow-sm ${
-                  isSelected
-                    ? "text-[var(--color-accent-content)]"
-                    : "text-gray-700 dark:text-white"
-                }`}
+                className="i-mingcute-map-pin-fill relative z-10 text-lg"
                 aria-hidden="true"
               />
-              <div className="absolute -right-1 -bottom-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/75 px-1 text-[10px] font-semibold text-white ring-1 ring-white/30">
+              <div className="af-map-marker-count absolute -right-1 -bottom-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
                 {region.photoCount}
               </div>
             </div>
           </m.button>
         </MapPopoverTrigger>
 
-        <MapPopoverContent
-          aria-label={displayName}
-          className="af-popover w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-0"
-        >
+        <MapPopoverContent aria-label={displayName}>
           <div className="relative space-y-3 p-4">
             {isSelected && (
               <GlassButton
@@ -157,10 +146,8 @@ export const RegionMarkerPin = ({
               </GlassButton>
             )}
             <div className="pr-14">
-              <div className="text-text text-sm font-semibold">
-                {displayName}
-              </div>
-              <div className="text-text-secondary mt-1 text-xs">
+              <div className="text-ui text-sm font-semibold">{displayName}</div>
+              <div className="text-ui-secondary mt-1 text-xs">
                 {t("explore.region.summary", {
                   count: region.photoCount,
                 })}
@@ -171,7 +158,7 @@ export const RegionMarkerPin = ({
               <button
                 type="button"
                 onClick={handleFilterRegion}
-                className="bg-accent h-11 w-full rounded-lg px-3 text-xs font-semibold text-[var(--color-accent-content)] transition-opacity hover:opacity-90"
+                className="bg-accent text-accent-content h-11 w-full rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90"
               >
                 {t("explore.region.filter")}
               </button>

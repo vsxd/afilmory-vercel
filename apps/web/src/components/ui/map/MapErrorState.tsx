@@ -11,13 +11,13 @@ export const MapErrorState = ({ onRetry }: { onRetry?: () => void }) => {
     >
       <div className="max-w-sm space-y-2 text-center">
         <i
-          className="i-mingcute-warning-line text-text-secondary mx-auto mb-4 block size-8"
+          className="i-mingcute-warning-line text-ui-secondary mx-auto mb-4 block size-8"
           aria-hidden="true"
         />
-        <p className="text-text text-base font-medium">
+        <p className="text-ui text-base font-medium">
           {t("explore.map.error.title")}
         </p>
-        <p className="text-text-secondary text-sm leading-relaxed">
+        <p className="text-ui-secondary text-sm leading-relaxed">
           {t("explore.map.error.description")}
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">

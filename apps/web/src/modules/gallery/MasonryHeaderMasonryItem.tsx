@@ -1,6 +1,8 @@
+import "./Gallery.css";
+
 import { clsxm } from "@afilmory/ui";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { siteConfig } from "~/config";
@@ -53,10 +55,6 @@ export const MasonryHeaderMasonryItem = ({
   const photos = usePhotoRepositorySnapshot();
   const visiblePhotoCount = visiblePhotos.length;
   const githubUrl = getGitHubUrl(siteConfig.social?.github);
-  const statsGridRef = useRef<HTMLDivElement>(null);
-  const [statsGridDensity, setStatsGridDensity] = useState<
-    "normal" | "compact" | "tight"
-  >("normal");
 
   const hasFilters =
     gallerySetting.selectedTags.length > 0 ||
@@ -124,34 +122,6 @@ export const MasonryHeaderMasonryItem = ({
     return buildActiveFilterChips({ gallerySetting, regionLabelMaps });
   }, [gallerySetting, i18n.language, photos]);
 
-  useEffect(() => {
-    const element = statsGridRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-
-    const updateLayout = (width: number) => {
-      if (width < 210) {
-        setStatsGridDensity("tight");
-        return;
-      }
-
-      if (width < 280) {
-        setStatsGridDensity("compact");
-        return;
-      }
-
-      setStatsGridDensity("normal");
-    };
-
-    updateLayout(element.clientWidth);
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) updateLayout(entry.contentRect.width);
-    });
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [hasFilters]);
-
   return (
     <div
       className={clsxm("af-panel overflow-hidden", className)}
@@ -169,7 +139,7 @@ export const MasonryHeaderMasonryItem = ({
                   alt={siteConfig.author.name || siteConfig.name}
                 />
                 <AvatarPrimitive.Fallback className="size-full">
-                  <div className="bg-material-medium size-full" />
+                  <div className="bg-ui-subtle size-full" />
                 </AvatarPrimitive.Fallback>
               </AvatarPrimitive.Root>
             )}
@@ -185,7 +155,7 @@ export const MasonryHeaderMasonryItem = ({
         </div>
 
         <div className="min-w-0 flex-1 lg:w-full">
-          <h1 className="text-text text-lg leading-snug font-semibold text-balance wrap-anywhere lg:text-xl">
+          <h1 className="text-ui text-lg leading-snug font-semibold text-balance wrap-anywhere lg:text-xl">
             {siteConfig.name}
           </h1>
 
@@ -196,7 +166,7 @@ export const MasonryHeaderMasonryItem = ({
                   href={githubUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-text-secondary hover:bg-fill-secondary hover:text-text inline-flex size-11 items-center justify-center rounded-full transition-colors"
+                  className="text-ui-secondary hover:bg-ui-hover hover:text-ui inline-flex size-11 items-center justify-center rounded-full transition-colors"
                   title="GitHub"
                   aria-label="GitHub"
                 >
@@ -211,7 +181,7 @@ export const MasonryHeaderMasonryItem = ({
                   href={`https://twitter.com/${siteConfig.social.twitter.replace("@", "")}`}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
+                  className="text-ui-secondary hover:bg-ui-hover inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#1da1f2]"
                   title="Twitter"
                   aria-label="Twitter"
                 >
@@ -226,7 +196,7 @@ export const MasonryHeaderMasonryItem = ({
                   href="/feed.xml"
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-text-secondary hover:bg-fill-secondary inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
+                  className="text-ui-secondary hover:bg-ui-hover inline-flex size-11 items-center justify-center rounded-full transition-colors hover:text-[#ec672c]"
                   title="RSS"
                   aria-label="RSS"
                 >
@@ -245,14 +215,14 @@ export const MasonryHeaderMasonryItem = ({
         <ActionGroup />
       </div>
 
-      <div className="border-fill-secondary border-t px-4 py-2 sm:px-5 sm:py-2.5">
+      <div className="border-ui-border border-t px-4 py-2 sm:px-5 sm:py-2.5">
         {hasFilters ? (
           <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-text-secondary text-[10px] leading-none font-medium sm:text-xs">
+              <span className="text-ui-secondary text-[10px] leading-none font-medium sm:text-xs">
                 {t("gallery.library.filters.title")}
               </span>
-              <span className="text-text-secondary text-[10px] leading-none font-medium tabular-nums sm:text-xs">
+              <span className="text-ui-secondary text-[10px] leading-none font-medium tabular-nums sm:text-xs">
                 {t("gallery.library.filters.subtitle", {
                   count: visiblePhotoCount,
                 })}
@@ -265,7 +235,7 @@ export const MasonryHeaderMasonryItem = ({
                   key={chip.id}
                   type="button"
                   data-filter-chip={chip.id}
-                  className="af-control text-text-secondary inline-flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left text-xs leading-4"
+                  className="af-control text-ui-secondary inline-flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-left text-xs leading-4"
                   aria-label={t("gallery.filters.remove", {
                     label: chip.label,
                   })}
@@ -320,68 +290,32 @@ export const MasonryHeaderMasonryItem = ({
             </div>
           </div>
         ) : (
-          <div
-            ref={statsGridRef}
-            className="divide-fill-secondary grid grid-cols-4 divide-x"
-          >
+          <div className="af-gallery-stats divide-ui-border grid grid-cols-4 divide-x">
             {libraryStats.map((stat) => (
               <div
                 key={stat.id}
-                className={clsxm(
-                  "flex min-w-0 justify-center first:pl-0 last:pr-0",
-                  statsGridDensity === "tight" && "px-0",
-                  statsGridDensity === "compact" && "px-0.5",
-                  statsGridDensity === "normal" && "px-1.5 sm:px-2",
-                )}
+                className="af-gallery-stat flex min-w-0 justify-center first:pl-0 last:pr-0"
               >
                 <div
-                  className={clsxm(
-                    "inline-flex min-w-max flex-col items-center justify-center text-center",
-                    statsGridDensity === "normal" && "gap-0.5",
-                    statsGridDensity === "compact" && "gap-0.5",
-                    statsGridDensity === "tight" && "gap-0.5",
-                  )}
+                  className="inline-flex min-w-max flex-col items-center justify-center gap-0.5 text-center"
                   title={`${stat.label}: ${stat.value}`}
                   role="group"
                   aria-label={`${stat.label}: ${stat.value}`}
                 >
-                  <span
-                    className={clsxm(
-                      "text-text-secondary flex shrink-0 items-center justify-center",
-                      statsGridDensity === "normal" && "h-4 w-5",
-                      statsGridDensity === "compact" && "h-4 w-5",
-                      statsGridDensity === "tight" && "h-3.5 w-4",
-                    )}
-                  >
+                  <span className="af-gallery-stat-icon-frame text-ui-secondary flex shrink-0 items-center justify-center">
                     {stat.icon === "aperture" ? (
                       <TablerAperture
-                        className={clsxm(
-                          statsGridDensity === "normal" && "text-[16px]",
-                          statsGridDensity === "compact" && "text-[15px]",
-                          statsGridDensity === "tight" && "text-sm",
-                        )}
+                        className="af-gallery-stat-icon"
                         aria-hidden="true"
                       />
                     ) : (
                       <i
-                        className={clsxm(
-                          stat.icon,
-                          statsGridDensity === "normal" && "text-[16px]",
-                          statsGridDensity === "compact" && "text-[15px]",
-                          statsGridDensity === "tight" && "text-sm",
-                        )}
+                        className={clsxm(stat.icon, "af-gallery-stat-icon")}
                         aria-hidden="true"
                       />
                     )}
                   </span>
-                  <span
-                    className={clsxm(
-                      "text-text block shrink-0 whitespace-nowrap leading-none font-medium tabular-nums",
-                      statsGridDensity === "normal" && "text-[15px]",
-                      statsGridDensity === "compact" && "text-sm",
-                      statsGridDensity === "tight" && "text-[13px]",
-                    )}
-                  >
+                  <span className="af-gallery-stat-value text-ui block shrink-0 leading-none font-medium whitespace-nowrap tabular-nums">
                     {stat.value}
                   </span>
                 </div>

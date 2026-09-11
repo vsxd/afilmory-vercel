@@ -9,7 +9,6 @@ import { NotFound } from "~/components/common/NotFound";
 import { PhotoViewer } from "~/components/ui/photo-viewer";
 import { usePhotoViewer, useViewerPhotos } from "~/hooks/usePhotoViewer";
 import { useTitle } from "~/hooks/useTitle";
-import { applyAccentTransitionStyle } from "~/lib/accent-transition-style";
 import { deriveAccentFromSources } from "~/lib/color";
 import { getReadableTextColor } from "~/lib/color-contrast";
 import { usePhotoRouteUnavailable } from "~/providers/photo-route-availability";
@@ -113,7 +112,6 @@ export const Component = () => {
     if (!currentPhoto) return;
 
     let isCancelled = false;
-    let cleanupAccentTransitionStyle: (() => void) | null = null;
 
     (async () => {
       try {
@@ -122,7 +120,6 @@ export const Component = () => {
           thumbnailUrl: currentPhoto.thumbnailUrl,
         });
         if (!isCancelled) {
-          cleanupAccentTransitionStyle = applyAccentTransitionStyle(100);
           setAccentColor(color ?? null);
         }
       } catch {
@@ -132,7 +129,6 @@ export const Component = () => {
 
     return () => {
       isCancelled = true;
-      cleanupAccentTransitionStyle?.();
     };
   }, [currentPhoto]);
 

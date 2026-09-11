@@ -12,7 +12,8 @@ import { ThumbnailImage } from "../ThumbnailImage";
 
 let mockInView = false;
 
-vi.mock("@afilmory/ui", () => ({
+vi.mock("@afilmory/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@afilmory/ui")>()),
   Thumbhash: ({ thumbHash }: { thumbHash: string }) => (
     <div data-testid="thumbhash" data-thumbhash={thumbHash} />
   ),

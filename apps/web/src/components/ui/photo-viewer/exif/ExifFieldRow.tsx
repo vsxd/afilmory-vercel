@@ -1,4 +1,4 @@
-import "../PhotoViewer.css";
+import "../Exif.css";
 
 interface ExifFieldRowProps {
   label: string;
@@ -6,7 +6,7 @@ interface ExifFieldRowProps {
 }
 
 export const ExifFieldRow = ({ label, value }: ExifFieldRowProps) => (
-  <dl className="af-exif-row af-exif-row-raw border-fill-tertiary border-b last:border-b-0">
+  <dl className="af-exif-row af-exif-row-raw border-ui-border border-b last:border-b-0">
     <dt className="af-exif-label">{label}</dt>
     <dd className="af-exif-value font-mono">{value}</dd>
   </dl>

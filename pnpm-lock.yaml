@@ -54,9 +54,6 @@ catalogs:
     tailwindcss-safe-area:
       specifier: 1.3.0
       version: 1.3.0
-    tailwindcss-uikit-colors:
-      specifier: 1.0.0
-      version: 1.0.0
     typescript:
       specifier: 5.9.3
       version: 5.9.3
@@ -382,9 +379,6 @@ importers:
       tailwindcss-safe-area:
         specifier: 'catalog:'
         version: 1.3.0(tailwindcss@4.3.3)
-      tailwindcss-uikit-colors:
-        specifier: 'catalog:'
-        version: 1.0.0
       vite:
         specifier: 8.2.2
         version: 8.2.2(@types/node@24.9.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(tsx@4.23.13)(yaml@2.9.0)
@@ -3266,9 +3260,6 @@ packages:
     resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
     engines: {node: '>=12'}
 
-  apple-uikit-colors@1.0.0:
-    resolution: {integrity: sha512-G2Ti2ogMOOC1phfHacSrLacDiE0RcLI7IG3aNoaw7Ack23WI8/9QczmUuhxxkU9BoIR2euCZ2G4lD5qJ+OknwA==}
-
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -5957,9 +5948,6 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       tailwindcss: ^4.0.0
-
-  tailwindcss-uikit-colors@1.0.0:
-    resolution: {integrity: sha512-18MGdMVSoXFKjcVkUIu7Q5USqdenAvgFJT9DEocPmdS94b8d/z3s0Uw8LvaNDINfDN9ls24hfg6/hyFqpcZpxw==}
 
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
@@ -9292,8 +9280,6 @@ snapshots:
 
   ansi-styles@6.2.3: {}
 
-  apple-uikit-colors@1.0.0: {}
-
   argparse@2.0.1: {}
 
   aria-hidden@1.2.6:
@@ -12214,10 +12200,6 @@ snapshots:
   tailwindcss-safe-area@1.3.0(tailwindcss@4.3.3):
     dependencies:
       tailwindcss: 4.3.3
-
-  tailwindcss-uikit-colors@1.0.0:
-    dependencies:
-      apple-uikit-colors: 1.0.0
 
   tailwindcss@4.3.3: {}
 

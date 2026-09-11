@@ -1,0 +1,55 @@
+@layer components {
+  .af-exif-row {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 0.75rem;
+    align-items: start;
+    padding-block: 0.125rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .af-exif-label,
+  .af-exif-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .af-exif-label {
+    color: var(--af-text-secondary);
+  }
+
+  .af-exif-value {
+    text-align: end;
+    color: var(--af-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .af-exif-section-title {
+    margin-block: 0 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--af-border);
+    color: var(--af-text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .af-exif-row-raw {
+    padding-block: 0.5rem;
+  }
+
+  .af-exif-metrics .af-exif-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.125rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--af-border);
+    border-radius: 0.5rem;
+    background: var(--af-surface-control);
+  }
+
+  .af-exif-metrics .af-exif-value {
+    text-align: start;
+    font-weight: 500;
+  }
+}

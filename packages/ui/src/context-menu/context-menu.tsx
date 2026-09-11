@@ -3,14 +3,6 @@ import * as React from "react";
 
 import { clsxm } from "../utils/cn";
 
-type HighlightStyle = React.CSSProperties & {
-  "--highlight-bg": string;
-};
-
-const highlightedItemStyle: HighlightStyle = {
-  "--highlight-bg": "color-mix(in srgb, var(--color-accent) 12%, transparent)",
-};
-
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
 const ContextMenuGroup = ContextMenuPrimitive.Group;
@@ -34,16 +26,17 @@ const ContextMenuSubTrigger = ({
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={clsxm(
-      "focus:bg-accent focus:text-[var(--color-accent-content)] data-[state=open]:bg-accent data-[state=open]:text-[var(--color-accent-content)] flex select-none items-center rounded-[5px] px-2.5 py-1.5 outline-none",
+      "af-menu-item flex min-h-8 cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm",
       inset && "pl-8",
-      "flex items-center justify-center gap-2",
       className,
-      props.disabled && "cursor-not-allowed opacity-30",
     )}
     {...props}
   >
     {children}
-    <i className="i-mingcute-right-line -mr-1 ml-auto size-3.5" />
+    <i
+      aria-hidden="true"
+      className="i-mingcute-right-line -mr-1 ml-auto size-3.5"
+    />
   </ContextMenuPrimitive.SubTrigger>
 );
 ContextMenuSubTrigger.displayName = ContextMenuPrimitive.SubTrigger.displayName;
@@ -61,10 +54,7 @@ const ContextMenuSubContent = ({
     <ContextMenuPrimitive.SubContent
       ref={ref}
       className={clsxm(
-        "af-popover text-text text-body",
-        "min-w-32 overflow-hidden",
-        "rounded-xl p-1 relative",
-        "z-10061",
+        "af-popover relative z-10061 min-w-32 overflow-hidden rounded-panel p-1",
         className,
       )}
       {...props}
@@ -84,8 +74,7 @@ const ContextMenuContent = ({
     <ContextMenuPrimitive.Content
       ref={ref}
       className={clsxm(
-        "af-popover text-text z-10060 min-w-32 overflow-hidden rounded-xl p-1 relative",
-        "motion-scale-in-75 motion-duration-150 text-body lg:animate-none",
+        "af-popover relative z-10060 min-w-32 overflow-hidden rounded-panel p-1",
         className,
       )}
       {...props}
@@ -107,14 +96,10 @@ const ContextMenuItem = ({
   <ContextMenuPrimitive.Item
     ref={ref}
     className={clsxm(
-      "cursor-menu text-sm relative flex select-none items-center rounded-lg px-2.5 py-1 outline-none data-disabled:pointer-events-none data-disabled:opacity-50",
-      "focus-within:outline-transparent transition-[background-color,color,opacity] duration-200",
-      "data-highlighted:text-accent",
-      "h-[28px]",
+      "af-menu-item relative flex min-h-8 cursor-default select-none items-center rounded-lg px-2.5 py-1.5 text-sm",
       inset && "pl-8",
       className,
     )}
-    style={highlightedItemStyle}
     {...props}
   />
 );
@@ -134,19 +119,15 @@ const ContextMenuCheckboxItem = ({
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={clsxm(
-      "cursor-checkbox text-sm relative flex select-none items-center rounded-lg px-8 py-1.5 outline-none data-disabled:pointer-events-none data-disabled:opacity-50",
-      "focus-within:outline-transparent transition-[background-color,color,opacity] duration-200",
-      "data-highlighted:text-accent",
-      "h-[28px]",
+      "af-menu-item relative flex min-h-8 cursor-default select-none items-center rounded-lg px-8 py-1.5 text-sm",
       className,
     )}
     checked={checked}
-    style={highlightedItemStyle}
     {...props}
   >
     <span className="absolute left-2 flex items-center justify-center">
       <ContextMenuPrimitive.ItemIndicator asChild>
-        <i className="i-mgc-check-filled size-3" />
+        <i aria-hidden="true" className="i-mingcute-check-line size-3.5" />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -168,7 +149,7 @@ const ContextMenuLabel = ({
   <ContextMenuPrimitive.Label
     ref={ref}
     className={clsxm(
-      "text-text px-2 py-1.5 font-semibold",
+      "text-ui-secondary px-2 py-1.5 text-sm font-semibold",
       inset && "pl-8",
       className,
     )}
@@ -179,6 +160,7 @@ ContextMenuLabel.displayName = ContextMenuPrimitive.Label.displayName;
 
 const ContextMenuSeparator = ({
   ref,
+  className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Separator> & {
   ref?: React.Ref<React.ElementRef<
@@ -186,11 +168,7 @@ const ContextMenuSeparator = ({
   > | null>;
 }) => (
   <ContextMenuPrimitive.Separator
-    className="mx-2 my-1 h-px"
-    style={{
-      background:
-        "linear-gradient(to right, transparent, color-mix(in srgb, var(--color-accent) 20%, transparent), transparent)",
-    }}
+    className={clsxm("border-ui-border mx-2 my-1 border-t", className)}
     ref={ref}
     {...props}
   />
