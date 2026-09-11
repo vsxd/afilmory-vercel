@@ -12,7 +12,7 @@ pnpm test:e2e:install  # one-time: download the chromium browser Playwright need
 pnpm test:e2e          # Playwright e2e (spawns a Vite dev server)
 pnpm test:e2e:prod     # production build + service-worker smoke test
 pnpm test:e2e:webkit   # focused Desktop Safari + iPhone smoke
-pnpm deploy:smoke      # real build-static.sh against the synthetic fixture
+pnpm deploy:smoke      # clean Builder + build-static.sh with synthetic local photos
 ```
 
 Run a single project or file:
@@ -158,6 +158,22 @@ data, renders deterministic gradient thumbnails through the real builder
 pipeline (so `thumbHash` values are genuine), and writes everything under
 `apps/web/e2e/fixtures/`.
 
+## Clean deployment smoke
+
+`pnpm deploy:smoke` copies the current source into a temporary workspace and
+reuses installed external dependencies. It excludes private environment files,
+local photo libraries, generated manifests, thumbnails, and prior build output.
+Two synthetic originals are created from scratch, then the real
+`build-static.sh → pnpm build → precheck → Builder CLI → Vite` chain runs with
+fresh-build mode enabled and the Builder skip flag disabled.
+
+The smoke verifies the resulting manifest, original and thumbnail images,
+photo HTML shells, delivery JSON, and static site assets. Temporary output is
+removed afterward; the developer's manifest and build output are untouched.
+The source snapshot is a local test with no invented Git revision, so it is
+never used as a publishable deployment. This covers the complete local-provider
+build path; it does not provision or verify a real Vercel account or S3 bucket.
+
 ## CI
 
 `.github/workflows/ci.yml` runs these jobs in parallel on every PR/push to `main`:
@@ -166,8 +182,8 @@ pipeline (so `thumbHash` values are genuine), and writes everything under
 - **Test + coverage** — `pnpm test:coverage`, uploads coverage, writes a summary
 - **E2E (Playwright)** — dev-server specs, then a prod-smoke run, both against
   the committed fixture manifest
-- **Deployment smoke** — the real `scripts/build-static.sh` entrypoint against
-  the isolated synthetic manifest
+- **Deployment smoke** — the real `scripts/build-static.sh` entrypoint from a
+  clean workspace, with Builder processing synthetic local originals
 - **Cross-browser** — focused Desktop WebKit and iPhone smoke coverage, with
   its own downloadable HTML report and retry traces
 - **Supply chain** — high-confidence secret scanning and a CycloneDX production

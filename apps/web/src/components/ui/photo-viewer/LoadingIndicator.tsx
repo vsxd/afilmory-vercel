@@ -44,6 +44,8 @@ interface LoadingState {
   // 错误状态
   isError?: boolean; // 是否出现错误
   errorMessage?: string; // 错误消息
+  errorDescription?: string;
+  onRetry?: () => void;
 }
 
 interface LoadingIndicatorRef {
@@ -67,6 +69,8 @@ const initialLoadingState: LoadingState = {
 
   isError: false,
   errorMessage: undefined,
+  errorDescription: undefined,
+  onRetry: undefined,
 };
 
 export const LoadingIndicator = ({
@@ -151,7 +155,8 @@ export const LoadingIndicator = ({
       role={loadingState.isError ? "alert" : "status"}
       aria-live={loadingState.isError ? "assertive" : "polite"}
       aria-atomic="true"
-      className="pointer-events-none absolute right-4 bottom-4 z-10 rounded-xl border border-white/10 bg-black/80 px-3 py-2 backdrop-blur"
+      data-photo-viewer-gesture-ignore
+      className={`${loadingState.isError ? "pointer-events-auto" : "pointer-events-none"} absolute right-4 bottom-4 left-4 z-10 max-w-sm rounded-xl border border-white/10 bg-black/80 px-3 py-2 backdrop-blur sm:left-auto`}
     >
       <div className="flex items-center gap-3 text-white">
         <div className="relative">
@@ -164,9 +169,25 @@ export const LoadingIndicator = ({
         <div className="flex min-w-0 flex-col gap-0.5">
           {loadingState.isError ? (
             // 错误状态
-            <p className="text-xs font-medium text-red-400">
-              {loadingState.errorMessage || t("photo.error.loading")}
-            </p>
+            <>
+              <p className="text-sm font-medium text-red-400">
+                {loadingState.errorMessage || t("photo.error.loading")}
+              </p>
+              {loadingState.errorDescription && (
+                <p className="text-xs leading-relaxed text-white/80">
+                  {loadingState.errorDescription}
+                </p>
+              )}
+              {loadingState.onRetry && (
+                <button
+                  type="button"
+                  onClick={loadingState.onRetry}
+                  className="mt-2 min-h-11 self-start rounded-lg border border-white/20 px-3 text-sm font-medium text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                >
+                  {t("photo.error.retry")}
+                </button>
+              )}
+            </>
           ) : loadingState.isConverting ? (
             // 视频转换状态
             <>

@@ -6,6 +6,7 @@ import { createManifest } from "@afilmory/schema";
 import type { Mock } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import fixtureManifest from "../../e2e/fixtures/photos-manifest.json";
 import { precheck } from "../../scripts/precheck";
 
 describe("precheck", () => {
@@ -273,5 +274,80 @@ describe("precheck", () => {
       }),
     ).rejects.toThrow("builder failed");
     await expect(fs.readFile(manifestPath, "utf-8")).resolves.toBe("{broken");
+  });
+
+  it("warns without failing production when the newly built original is forbidden", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 403 }));
+    runBuilder.mockImplementationOnce(async () => {
+      expect(fetcher).not.toHaveBeenCalled();
+      await fs.mkdir(path.join(tmpDir, "generated"), { recursive: true });
+      await fs.writeFile(
+        path.join(tmpDir, "generated/photos-manifest.json"),
+        JSON.stringify(fixtureManifest),
+      );
+    });
+    await precheck({
+      workdir: tmpDir,
+      env: {
+        S3_BUCKET_NAME: "bucket",
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+        VERCEL_PROJECT_PRODUCTION_URL: "gallery.vercel.app",
+      },
+      runBuilder,
+      fetch: fetcher,
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[1]?.headers).toEqual({
+      Origin: "https://gallery.vercel.app",
+      Range: "bytes=0-1023",
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Public original check (forbidden)"),
+    );
+  });
+
+  it.each([
+    { PHOTO_STORAGE_PROVIDER: "local", REQUIRE_FRESH_BUILD: "true" },
+    { S3_BUCKET_NAME: "bucket" },
+    { S3_BUCKET_NAME: "bucket", SKIP_MANIFEST_BUILD: "true", VERCEL: "1" },
+  ])(
+    "does not probe local, development, or explicitly skipped builds",
+    async (env) => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const fetcher = vi.fn<typeof fetch>();
+      await writeManifest();
+      await precheck({ workdir: tmpDir, env, runBuilder, fetch: fetcher });
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not probe a stale manifest after a Preview builder failure", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await writeManifest();
+    runBuilder.mockRejectedValueOnce(new Error("offline"));
+    const fetcher = vi.fn<typeof fetch>();
+    await precheck({
+      workdir: tmpDir,
+      env: { S3_BUCKET_NAME: "bucket", VERCEL: "1", VERCEL_ENV: "preview" },
+      runBuilder,
+      fetch: fetcher,
+    });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("skips the original sample for an empty gallery", async () => {
+    await writeManifest();
+    const fetcher = vi.fn<typeof fetch>();
+    await precheck({
+      workdir: tmpDir,
+      env: { S3_BUCKET_NAME: "bucket", REQUIRE_FRESH_BUILD: "true" },
+      runBuilder,
+      fetch: fetcher,
+    });
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

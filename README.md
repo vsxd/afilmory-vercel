@@ -18,7 +18,7 @@ English | [简体中文](./README.zh-CN.md)
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20storage%20and%20site%20configurations&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-environment-variables&project-name=my-afilmory&repository-name=my-afilmory">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT&envDescription=Bucket+and+read+credentials%3B+adjust+the+prefilled+region+and+endpoint+for+your+storage+provider.&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23s3-source-configuration&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D">
     <img src="https://vercel.com/button" alt="Deploy with Vercel"/>
   </a>
 </p>
@@ -119,17 +119,38 @@ an unavailable state. The photo viewer also supports a DOM image fallback.
 
 ### One-click deploy to Vercel
 
-Click the button below and follow the prompts to configure S3-related environment variables:
+Prepare a bucket with at least one photo and a key pair with permission to list
+and read it. The button asks for five storage settings: bucket, key pair, region,
+and endpoint. Region and endpoint are prefilled for AWS S3 in `us-east-1`;
+change them to match your storage provider.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20storage%20and%20site%20configurations&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23-environment-variables&project-name=my-afilmory&repository-name=my-afilmory)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT&envDescription=Bucket+and+read+credentials%3B+adjust+the+prefilled+region+and+endpoint+for+your+storage+provider.&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23s3-source-configuration&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D)
+
+If originals use a separate CDN or public domain, use [Deploy with a public original-image domain](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT%2CS3_CUSTOM_DOMAIN&envDescription=Bucket+and+read+credentials%3B+adjust+the+prefilled+region+and+endpoint+for+your+storage+provider.&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%23s3-source-configuration&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D) to also enter `S3_CUSTOM_DOMAIN`. The main button works when the bucket endpoint itself serves public originals.
 
 **Deployment steps:**
 
 1. Click the deploy button above.
 2. Sign in to Vercel and fork/import the repository.
-3. Configure the S3 bucket and either an explicit key pair or another supported AWS credential source.
+3. Fill in the storage settings. Originals must be publicly readable from the bucket or CDN, with CORS allowing your gallery's origin.
 4. Click **Deploy**.
 5. The Vercel build runs `scripts/build-static.sh`, which runs `pnpm build`; precheck refreshes the manifest when the bucket and credential source are valid.
+
+Vercel builds automatically use the project's production domain for site links,
+including on preview deployments. Set `SITE_URL` only to choose a different
+canonical domain. Add your site name, author, social links, map preferences, and
+other optional settings later in **Project Settings → Environment Variables**,
+then redeploy. Import the repository directly if you already use another AWS
+credential source and do not need the button's key-pair prompts.
+
+After a successful S3 refresh, Vercel and fresh builds anonymously sample one
+original's public URL. The check requests only an initial byte range, stops
+after the first response chunk, and has a five-second deadline. Build logs
+explain permission errors, missing objects, error pages, and missing or
+mismatched CORS headers without printing photo URLs. These are warnings: one
+sample cannot verify every photo, CDN redirect, or Preview origin. Open a photo
+in the deployed viewer to confirm access; failed originals show a specific
+message and a **Try again** action.
 
 ---
 
@@ -211,13 +232,20 @@ This cache is not a photo storage backend. Source photos still come from the con
 
 ### Site configuration
 
-| Variable            | Description      | Example                               |
-| ------------------- | ---------------- | ------------------------------------- |
-| `SITE_NAME`         | Site name        | `My Photo Gallery`                    |
-| `SITE_TITLE`        | Site title       | `My Photo Gallery`                    |
-| `SITE_DESCRIPTION`  | Site description | `Capturing beautiful moments in life` |
-| `SITE_URL`          | Site URL         | `https://your-site.vercel.app`        |
-| `SITE_ACCENT_COLOR` | Accent color     | `#007bff`                             |
+| Variable            | Description                          | Example                               |
+| ------------------- | ------------------------------------ | ------------------------------------- |
+| `SITE_NAME`         | Site name                            | `My Photo Gallery`                    |
+| `SITE_TITLE`        | Site title                           | `My Photo Gallery`                    |
+| `SITE_DESCRIPTION`  | Site description                     | `Capturing beautiful moments in life` |
+| `SITE_URL`          | Optional canonical site URL override | `https://your-site.vercel.app`        |
+| `SITE_ACCENT_COLOR` | Accent color                         | `#007bff`                             |
+
+Site URL precedence is explicit `SITE_URL`, then Vercel's
+`VERCEL_PROJECT_PRODUCTION_URL` (with `https://`), then `site.config.ts`.
+The Vercel fallback is used only when `VERCEL=1`; local and other static builds
+keep their configured defaults. Temporary preview URLs never become canonical
+URLs. Keep Vercel's automatic system environment variables enabled to use this
+fallback, or set `SITE_URL` explicitly.
 
 | Variable        | Description       | Example                     |
 | --------------- | ----------------- | --------------------------- |

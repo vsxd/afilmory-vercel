@@ -70,6 +70,7 @@ export class ImageFetchService {
                     "fetch",
                     "http",
                     `HTTP ${request.status}`,
+                    { httpStatus: request.status },
                   ),
                 });
                 return;

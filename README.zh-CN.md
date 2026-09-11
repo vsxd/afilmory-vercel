@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23-%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT&envDescription=%E5%A1%AB%E5%86%99%E5%AD%98%E5%82%A8%E6%A1%B6%E5%92%8C%E8%AF%BB%E5%8F%96%E5%87%AD%E6%8D%AE%EF%BC%9B%E6%8C%89%E5%AD%98%E5%82%A8%E6%9C%8D%E5%8A%A1%E8%B0%83%E6%95%B4%E9%A2%84%E5%A1%AB%E7%9A%84%E5%8C%BA%E5%9F%9F%E5%92%8C%E7%AB%AF%E7%82%B9%E3%80%82&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23s3-%E7%85%A7%E7%89%87%E6%BA%90%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D">
     <img src="https://vercel.com/button" alt="Deploy with Vercel"/>
   </a>
 </p>
@@ -115,17 +115,23 @@ pnpm dev:demo
 
 ### 一键部署到 Vercel
 
-点击下方按钮，并按提示配置 S3 相关环境变量：
+准备至少包含一张照片的存储桶，以及具有列出和读取权限的密钥对。按钮只要求五项存储设置：桶名、密钥对、区域和端点。区域和端点已预填 AWS S3 `us-east-1` 的值，使用其他存储服务时按实际配置修改。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME,S3_REGION,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,S3_ENDPOINT,S3_PREFIX,S3_CUSTOM_DOMAIN,S3_EXCLUDE_REGEX,SITE_NAME,SITE_TITLE,SITE_DESCRIPTION,SITE_URL,SITE_ACCENT_COLOR,AUTHOR_NAME,AUTHOR_URL,AUTHOR_AVATAR,SOCIAL_GITHUB,SOCIAL_TWITTER,SOCIAL_RSS,FEED_FOLO_FEED_ID,FEED_FOLO_USER_ID,MAP_STYLE,MAP_PROJECTION&envDescription=S3%20存储配置与站点信息&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23-%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT&envDescription=%E5%A1%AB%E5%86%99%E5%AD%98%E5%82%A8%E6%A1%B6%E5%92%8C%E8%AF%BB%E5%8F%96%E5%87%AD%E6%8D%AE%EF%BC%9B%E6%8C%89%E5%AD%98%E5%82%A8%E6%9C%8D%E5%8A%A1%E8%B0%83%E6%95%B4%E9%A2%84%E5%A1%AB%E7%9A%84%E5%8C%BA%E5%9F%9F%E5%92%8C%E7%AB%AF%E7%82%B9%E3%80%82&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23s3-%E7%85%A7%E7%89%87%E6%BA%90%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D)
+
+原图使用独立 CDN 或公开域名时，请选择[配置公开原图域名并部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel&env=S3_BUCKET_NAME%2CS3_ACCESS_KEY_ID%2CS3_SECRET_ACCESS_KEY%2CS3_REGION%2CS3_ENDPOINT%2CS3_CUSTOM_DOMAIN&envDescription=%E5%A1%AB%E5%86%99%E5%AD%98%E5%82%A8%E6%A1%B6%E5%92%8C%E8%AF%BB%E5%8F%96%E5%87%AD%E6%8D%AE%EF%BC%9B%E6%8C%89%E5%AD%98%E5%82%A8%E6%9C%8D%E5%8A%A1%E8%B0%83%E6%95%B4%E9%A2%84%E5%A1%AB%E7%9A%84%E5%8C%BA%E5%9F%9F%E5%92%8C%E7%AB%AF%E7%82%B9%E3%80%82&envLink=https%3A%2F%2Fgithub.com%2Fvsxd%2Fafilmory-vercel%2Fblob%2Fmain%2FREADME.zh-CN.md%23s3-%E7%85%A7%E7%89%87%E6%BA%90%E9%85%8D%E7%BD%AE&project-name=my-afilmory&repository-name=my-afilmory&envDefaults=%7B%22S3_REGION%22%3A%22us-east-1%22%2C%22S3_ENDPOINT%22%3A%22https%3A%2F%2Fs3.us-east-1.amazonaws.com%22%7D)，额外填写 `S3_CUSTOM_DOMAIN`。存储桶端点本身可公开读取原图时，使用上方主按钮即可。
 
 **部署步骤：**
 
 1. 点击上方部署按钮。
 2. 登录 Vercel，并 fork/import 仓库。
-3. 配置 S3 bucket，并提供显式密钥对或其他受支持的 AWS 凭据来源。
+3. 填写存储设置。原图必须能从存储桶或 CDN 公开读取，并配置允许图库来源的 CORS。
 4. 点击 **Deploy**。
 5. Vercel 构建会运行 `scripts/build-static.sh`，其内部执行 `pnpm build`；bucket 与凭据来源有效时由 precheck 刷新 manifest。
+
+Vercel 构建会自动使用项目的生产域名生成站点链接，预览部署也保持该域名。只有需要指定其他 canonical 域名时才填写 `SITE_URL`。站点名称、作者、社交链接、地图偏好等可选设置可在部署后通过 **Project Settings → Environment Variables** 添加，再重新部署。已经配置其他 AWS 凭据来源、不需要密钥对表单时，可直接导入仓库。
+
+S3 刷新成功后，Vercel 部署和 fresh build 会匿名抽查一张原图的公开地址：只请求开头的一段字节，读取第一个响应块后停止，最长五秒。构建日志会提示权限不足、对象不存在、返回错误页或 CORS 响应不匹配等问题，不打印照片 URL。这些检查只产生警告，无法覆盖所有照片、CDN 跳转和预览域名；部署后请打开一张照片验证实际访问。原图加载失败时，查看器会显示具体提示，并提供“重试”操作。
 
 ---
 
@@ -198,13 +204,15 @@ Git 默认忽略仓库根目录的 `photos/` 和本地 `.env` 变体。若在仓
 
 ### 站点配置
 
-| 环境变量            | 说明     | 示例                                  |
-| ------------------- | -------- | ------------------------------------- |
-| `SITE_NAME`         | 站点名称 | `My Photo Gallery`                    |
-| `SITE_TITLE`        | 站点标题 | `My Photo Gallery`                    |
-| `SITE_DESCRIPTION`  | 站点描述 | `Capturing beautiful moments in life` |
-| `SITE_URL`          | 站点 URL | `https://your-site.vercel.app`        |
-| `SITE_ACCENT_COLOR` | 主题色   | `#007bff`                             |
+| 环境变量            | 说明                           | 示例                                  |
+| ------------------- | ------------------------------ | ------------------------------------- |
+| `SITE_NAME`         | 站点名称                       | `My Photo Gallery`                    |
+| `SITE_TITLE`        | 站点标题                       | `My Photo Gallery`                    |
+| `SITE_DESCRIPTION`  | 站点描述                       | `Capturing beautiful moments in life` |
+| `SITE_URL`          | 可选的 canonical 站点 URL 覆盖 | `https://your-site.vercel.app`        |
+| `SITE_ACCENT_COLOR` | 主题色                         | `#007bff`                             |
+
+站点 URL 的优先级为：显式 `SITE_URL` → Vercel 的 `VERCEL_PROJECT_PRODUCTION_URL`（补上 `https://`）→ `site.config.ts`。只有 `VERCEL=1` 时才使用 Vercel 的生产域名，本地和其他静态构建保留原有默认值；临时预览地址不会成为 canonical URL。请保留 Vercel 自动暴露系统环境变量的设置，或显式填写 `SITE_URL`。
 
 | 环境变量        | 说明         | 示例                        |
 | --------------- | ------------ | --------------------------- |

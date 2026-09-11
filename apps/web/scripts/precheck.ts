@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 import { isAfilmoryManifest } from "@afilmory/schema";
 import { $ } from "execa";
 
+import { checkOriginalAccess } from "../../../scripts/check-original-access";
+import { resolveSiteUrl } from "../../../scripts/site-url";
+import baseSiteConfig from "../../../site.config";
+
 interface ManifestSnapshot {
   content: string;
   path: string;
@@ -16,6 +20,7 @@ interface ManifestSnapshot {
 interface PrecheckOptions {
   env?: NodeJS.ProcessEnv;
   runBuilder?: (env: NodeJS.ProcessEnv) => Promise<void>;
+  fetch?: typeof fetch;
   workdir?: string;
 }
 
@@ -149,6 +154,38 @@ export const precheck = async (options: PrecheckOptions = {}) => {
           error instanceof Error ? error.message : String(error)
         }`,
     );
+    return;
+  }
+
+  if (
+    photoStorageProvider === "s3" &&
+    (requireFreshBuild || env.VERCEL === "1")
+  ) {
+    try {
+      const snapshot = await readExistingManifestSnapshot();
+      const manifest = JSON.parse(snapshot.content);
+      if (!isAfilmoryManifest(manifest) || manifest.photos.length === 0) return;
+      const result = await checkOriginalAccess(
+        manifest.photos[0]!.originalUrl,
+        resolveSiteUrl(
+          {
+            SITE_URL: env.SITE_URL,
+            VERCEL: env.VERCEL,
+            VERCEL_PROJECT_PRODUCTION_URL: env.VERCEL_PROJECT_PRODUCTION_URL,
+          },
+          baseSiteConfig.url,
+        ),
+        options.fetch,
+      );
+      const log = result.code === "ok" ? console.info : console.warn;
+      log(
+        `[precheck] Public original check (${result.code}): ${result.message}`,
+      );
+    } catch {
+      console.warn(
+        "[precheck] Public original check could not run. Verify the generated manifest, SITE_URL, and public original access after deployment.",
+      );
+    }
   }
 };
 

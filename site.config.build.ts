@@ -10,6 +10,7 @@
  */
 
 import { env } from "./env";
+import { resolveSiteUrl } from "./scripts/site-url";
 import type { SiteConfig } from "./site.config";
 import { siteConfig as baseSiteConfig } from "./site.config";
 
@@ -17,7 +18,7 @@ const envConfig: Partial<SiteConfig> = {
   name: env.SITE_NAME || baseSiteConfig.name,
   title: env.SITE_TITLE || baseSiteConfig.title,
   description: env.SITE_DESCRIPTION || baseSiteConfig.description,
-  url: env.SITE_URL || baseSiteConfig.url,
+  url: resolveSiteUrl(env, baseSiteConfig.url),
   accentColor: env.SITE_ACCENT_COLOR || baseSiteConfig.accentColor,
   language: env.SITE_LANGUAGE || baseSiteConfig.language,
   author: {

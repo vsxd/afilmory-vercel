@@ -1,4 +1,10 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LoadingIndicatorRef } from "../LoadingIndicator";
@@ -93,5 +99,27 @@ describe("LoadingIndicator", () => {
     expect(alert.getAttribute("aria-atomic")).toBe("true");
     expect(alert.textContent).toContain("photo.error.loading");
     expect(alert.textContent).not.toContain("loading.default");
+  });
+
+  it("shows an actionable failure and a retry button outside the dismiss gesture", () => {
+    const onRetry = vi.fn();
+    const ref = renderIndicator();
+    act(() => {
+      ref.current!.updateLoadingState({
+        isVisible: true,
+        isError: true,
+        errorMessage: "Original photo not found",
+        errorDescription: "Let the site owner know.",
+        onRetry,
+      });
+    });
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Original photo not found");
+    expect(alert.textContent).toContain("Let the site owner know.");
+    expect(alert.dataset.photoViewerGestureIgnore).toBeDefined();
+    expect(alert.classList.contains("pointer-events-auto")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "photo.error.retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

@@ -338,17 +338,23 @@ test("map photo roundtrip restores the selected marker and panned camera", async
   await expect
     .poll(async () => Math.abs((await markerPosition()).x - initial.x))
     .toBeGreaterThan(50);
-  // Wait for the real map's pan inertia to settle before capturing its position.
-  let last = await markerPosition();
-  await expect
-    .poll(async () => {
-      const next = await markerPosition();
-      const difference = Math.abs(next.x - last.x) + Math.abs(next.y - last.y);
-      last = next;
-      return difference;
-    })
-    .toBeLessThan(1);
-  const before = await markerPosition();
+  // Immediate polls can sample the same frame while the keyboard pan is still
+  // running. Require consecutive stable frames before saving the camera position.
+  const before = await photoLink.evaluate(async (element) => {
+    const marker = element.closest(".maplibregl-marker")!;
+    let previous = marker.getBoundingClientRect();
+    let stableFrames = 0;
+    while (stableFrames < 6) {
+      await new Promise(requestAnimationFrame);
+      const current = marker.getBoundingClientRect();
+      stableFrames =
+        current.x === previous.x && current.y === previous.y
+          ? stableFrames + 1
+          : 0;
+      previous = current;
+    }
+    return { x: previous.x, y: previous.y };
+  });
   await photoLink.click();
   const viewer = page.getByRole("dialog", { name: "Photo viewer" });
   await expect(viewer).toBeVisible();

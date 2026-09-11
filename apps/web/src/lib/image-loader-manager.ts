@@ -15,7 +15,7 @@ import {
   MediaResourceScope,
   throwIfAborted,
 } from "./media-resource";
-import { MediaTaskError } from "./media-task";
+import { getMediaTaskDiagnostic, MediaTaskError } from "./media-task";
 
 export class ImageLoaderManager {
   private imageTask: AbortController | null = null;
@@ -100,7 +100,7 @@ export class ImageLoaderManager {
           guarded.onEvent?.({ type: "native-fallback", error });
           console.warn(
             "Image conversion failed; trying the native decoder:",
-            error,
+            getMediaTaskDiagnostic(error),
           );
           blob = original;
         }

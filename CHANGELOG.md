@@ -8,6 +8,10 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Added
 
+- Advisory public-original access and CORS sampling after successful S3 builds
+  on Vercel or in fresh-build mode, with bounded requests and redacted diagnostics.
+- Clean deployment smoke coverage that starts without generated artifacts and
+  runs the real Builder and static build against synthetic local photos.
 - Source architecture guards, Web test type-checking, and a separately checked
   TypeScript module Worker with a shared bidirectional protocol.
 - Workspace, environment-template, fixture-drift, partition-coverage, secret,
@@ -25,6 +29,10 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Changed
 
+- Reduce Vercel's primary Deploy Button to five storage settings with region
+  and endpoint defaults; offer a separate public-image-domain deployment link.
+- Derive canonical site URLs from Vercel's stable production domain when
+  `SITE_URL` is not set, keeping preview hostnames out of public metadata.
 - Separate Builder requests, captured build plans and plugin execution inputs.
 - Publish immutable photo snapshots through React external-store subscriptions.
 - Model media conversion outcomes, progress events, cancellation and runtime
@@ -53,6 +61,8 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Fixed
 
+- Explain original-image HTTP, network, timeout and decode failures in the
+  viewer and allow retries to discard failed cached image data.
 - Preserve TIFF grayscale and transparent alpha channels, report DOM image
   decode failures, time out stalled downloads, and cancel queued conversions.
 - Keep hydrated photo details visible under React Compiler memoization.

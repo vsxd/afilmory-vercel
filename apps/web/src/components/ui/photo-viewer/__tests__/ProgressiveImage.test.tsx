@@ -6,8 +6,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
+import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { MediaTaskError } from "~/lib/media-task";
 import {
   getThumbnailLoadCacheKey,
   hasLoadedThumbnail,
@@ -15,6 +17,8 @@ import {
   resetThumbnailLoadCache,
 } from "~/lib/thumbnail-load-cache";
 
+import type { LoadingIndicatorRef } from "../LoadingIndicator";
+import { LoadingIndicator } from "../LoadingIndicator";
 import { ProgressiveImage } from "../ProgressiveImage";
 
 const hoisted = vi.hoisted(() => ({
@@ -24,7 +28,7 @@ const hoisted = vi.hoisted(() => ({
   zoomOut: vi.fn(),
   resetView: vi.fn(),
   runtime: {
-    imageCache: {},
+    imageCache: { delete: vi.fn() },
     imageLoading: {
       createLoader: vi.fn(() => ({
         loadImage: () =>
@@ -191,11 +195,15 @@ describe("ProgressiveImage", () => {
       expect(errorLog).toHaveBeenCalledOnce();
       expect(
         loadingIndicatorRef.current.updateLoadingState,
-      ).toHaveBeenCalledWith({
-        isVisible: true,
-        isError: true,
-        errorMessage: "photo.error.loading",
-      });
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isVisible: true,
+          isError: true,
+          errorMessage: "photo.error.unsupported.title",
+          errorDescription: "photo.error.unsupported.description",
+          onRetry: expect.any(Function),
+        }),
+      );
       expect(screen.queryByRole("img", { name: "Broken photo" })).toBeNull();
     },
   );
@@ -206,9 +214,74 @@ describe("ProgressiveImage", () => {
     hoisted.zoomIn.mockReset();
     hoisted.zoomOut.mockReset();
     hoisted.resetView.mockReset();
+    hoisted.runtime.imageLoading.createLoader.mockClear();
+    hoisted.runtime.imageCache.delete.mockClear();
     resetThumbnailLoadCache();
     vi.restoreAllMocks();
     cleanup();
+  });
+
+  it("retries repeated image failures and clears the alert when loading succeeds", async () => {
+    const signedUrl =
+      "https://photos.example.test/original?signature=private-token";
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const failure of [
+      new MediaTaskError("fetch", "http", signedUrl, {
+        httpStatus: 403,
+        cause: new Error(signedUrl),
+      }),
+      new MediaTaskError("fetch", "timeout", signedUrl),
+    ]) {
+      hoisted.runtime.imageLoading.createLoader.mockReturnValueOnce({
+        loadImage: () => Promise.reject(failure),
+        cleanup: vi.fn(),
+      });
+    }
+    const Harness = () => {
+      const ref = useRef<LoadingIndicatorRef>(null);
+      return (
+        <>
+          <LoadingIndicator ref={ref} />
+          <ProgressiveImage
+            src={signedUrl}
+            alt="Retry photo"
+            thumbnailSrc="/thumbnail.jpg"
+            isCurrentImage
+            loadingIndicatorRef={ref}
+          />
+        </>
+      );
+    };
+    render(<Harness />);
+
+    await screen.findByText("photo.error.forbidden.title");
+    expect(
+      screen.getByRole("img", { name: "Retry photo" }).getAttribute("src"),
+    ).toBe("/thumbnail.jpg");
+    fireEvent.click(screen.getByRole("button", { name: "photo.error.retry" }));
+    await screen.findByText("photo.error.timeout.title");
+    fireEvent.click(screen.getByRole("button", { name: "photo.error.retry" }));
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole("img", { name: "Retry photo" })
+          .some((image) => image.getAttribute("src") === "blob:mock-image"),
+      ).toBe(true);
+    });
+    const original = screen
+      .getAllByRole("img", { name: "Retry photo" })
+      .find((image) => image.getAttribute("src") === "blob:mock-image")!;
+    fireEvent.load(original);
+    expect(screen.getByRole("img", { name: "Retry photo" })).toBe(original);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(hoisted.runtime.imageLoading.createLoader).toHaveBeenCalledTimes(3);
+    expect(hoisted.runtime.imageCache.delete).toHaveBeenCalledTimes(2);
+    expect(hoisted.runtime.imageCache.delete).toHaveBeenLastCalledWith(
+      signedUrl,
+    );
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private-token");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("photos.example.test");
   });
 
   it("offers visible zoom controls and +, -, 0 keyboard shortcuts", async () => {

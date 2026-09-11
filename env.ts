@@ -91,7 +91,11 @@ export const env = createEnv({
     SITE_NAME: z.string().optional(),
     SITE_TITLE: z.string().optional(),
     SITE_DESCRIPTION: z.string().optional(),
-    SITE_URL: safePublicUrl.optional(),
+    SITE_URL: z.preprocess(
+      (value) =>
+        typeof value === "string" && !value.trim() ? undefined : value,
+      safePublicUrl.optional(),
+    ),
     SITE_ACCENT_COLOR: z
       .string()
       .regex(/^#(?:[\da-f]{3}|[\da-f]{6}|[\da-f]{8})$/i)
@@ -117,6 +121,11 @@ export const env = createEnv({
     // Map config (optional)
     MAP_STYLE: z.string().optional(), // 'builtin' or custom
     MAP_PROJECTION: z.enum(["globe", "mercator"]).optional(),
+
+    // Vercel sets these automatically. Only use its stable production hostname
+    // for site metadata; a preview deployment URL is never a canonical URL.
+    VERCEL: z.string().optional(),
+    VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
 
     // Build-time reverse geocoding (optional)
     // The boolean switch is enum-constrained so a typo fails immediately at build

@@ -40,6 +40,29 @@ afterEach(() => {
 });
 
 describe("image request settlement", () => {
+  it.each([403, 404, 503])(
+    "preserves HTTP %i for a specific failure message",
+    async (httpStatus) => {
+      const service = new ImageFetchService(1000);
+      const request = service.fetchBlob(
+        "https://example.test/photo?signature=private",
+        { priority: "high" },
+      );
+      const rejected = expect(request).rejects.toMatchObject({
+        stage: "fetch",
+        code: "http",
+        httpStatus,
+        message: `HTTP ${httpStatus}`,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      const xhr = FakeXHR.instances[0];
+      xhr.status = httpStatus;
+      await xhr.onload?.();
+      await rejected;
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
   it.each(["constructor", "open", "responseType", "send"] as const)(
     "settles synchronous %s failures with typed cause and permits retry",
     async (phase) => {

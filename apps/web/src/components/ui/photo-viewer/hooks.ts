@@ -14,10 +14,14 @@ import { toast } from "sonner";
 import { MenuItemSeparator, MenuItemText } from "~/atoms/context-menu";
 import { isMobileDevice } from "~/lib/device-viewport";
 import type { MediaLease } from "~/lib/media-resource";
+import { getMediaTaskDiagnostic } from "~/lib/media-task";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
-import { presentMediaTaskEvent } from "./media-loading-presentation";
+import {
+  presentMediaTaskError,
+  presentMediaTaskEvent,
+} from "./media-loading-presentation";
 import type {
   ImageContentState,
   LivePhotoVideoHandle,
@@ -117,16 +121,30 @@ export function useImageLoader({
       imageLeaseRef.current = null;
       setImageError(failure);
       onBlobSrcChange?.(null);
-      console.error("Failed to load image:", failure);
-      loadingIndicatorRef?.current?.updateLoadingState({
-        isVisible: true,
-        isError: true,
-        errorMessage: t("photo.error.loading"),
-      });
+      console.error("Failed to load image:", getMediaTaskDiagnostic(failure));
       onError?.(failure);
     },
-    [setImageError, onBlobSrcChange, loadingIndicatorRef, t, onError],
+    [setImageError, onBlobSrcChange, onError],
   );
+
+  const retry = useCallback(() => {
+    reportedFailureRef.current = false;
+    // A response can pass format detection but fail decoding. Fetch fresh
+    // bytes on an explicit retry instead of replaying the cached bad image.
+    runtime.imageCache.delete(src);
+    loadingIndicatorRef?.current?.resetLoadingState();
+    resetImage();
+  }, [runtime.imageCache, src, loadingIndicatorRef, resetImage]);
+
+  useEffect(() => {
+    if (image.status !== "failed" || !isCurrentImage) return;
+    const indicator = loadingIndicatorRef?.current;
+    indicator?.updateLoadingState({
+      ...presentMediaTaskError(image.error, t),
+      onRetry: retry,
+    });
+    return () => indicator?.resetLoadingState();
+  }, [image, isCurrentImage, loadingIndicatorRef, retry, t]);
 
   useEffect(() => {
     if (status !== "empty" || !isCurrentImage) return;
