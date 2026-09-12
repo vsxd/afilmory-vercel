@@ -27,7 +27,39 @@ const MiniMap = lazy(() =>
 
 type ExifPanelTranslation = (key: string) => string;
 
-export function BasicExifSection({
+export function ExifPanelSections({
+  currentPhoto,
+  t,
+  viewModel,
+}: {
+  currentPhoto: PhotoManifest;
+  t: ExifPanelTranslation;
+  viewModel: ExifPanelViewModel;
+}) {
+  return (
+    <Fragment>
+      <CaptureParameterSection t={t} viewModel={viewModel} />
+      <CameraExifSection t={t} viewModel={viewModel} />
+      <CaptureModeExifSection t={t} viewModel={viewModel} />
+      <FujiRecipeExifSection t={t} viewModel={viewModel} />
+      <ToneExifSection currentPhoto={currentPhoto} t={t} />
+      <LocationExifSection
+        currentPhoto={currentPhoto}
+        t={t}
+        viewModel={viewModel}
+      />
+      <TagSection currentPhoto={currentPhoto} t={t} />
+      <FileExifSection
+        currentPhoto={currentPhoto}
+        t={t}
+        viewModel={viewModel}
+      />
+      <TechnicalExifSection t={t} viewModel={viewModel} />
+    </Fragment>
+  );
+}
+
+function FileExifSection({
   currentPhoto,
   t,
   viewModel,
@@ -83,14 +115,11 @@ export function BasicExifSection({
           <Row label={t("exif.software")} value={formattedExifData.software} />
         )}
       </div>
-
-      <CaptureParameterBadges t={t} viewModel={viewModel} />
-      <TagSection currentPhoto={currentPhoto} t={t} />
     </div>
   );
 }
 
-function CaptureParameterBadges({
+function CaptureParameterSection({
   t,
   viewModel,
 }: {
@@ -110,7 +139,7 @@ function CaptureParameterBadges({
   }
 
   return (
-    <div className="mt-4">
+    <div>
       <h4 className="af-exif-section-title">{t("exif.capture.parameters")}</h4>
       <div className="grid grid-cols-2 gap-2">
         {formattedExifData.focalLength35mm && (
@@ -194,7 +223,7 @@ function TagSection({
   }
 
   return (
-    <div className="mt-3 mb-3">
+    <div>
       <h4 className="af-exif-section-title">{t("exif.tags")}</h4>
       <div className="flex flex-wrap gap-1.5">
         {currentPhoto.tags.map((tag) => (
@@ -218,7 +247,7 @@ function TagSection({
   );
 }
 
-export function ToneExifSection({
+function ToneExifSection({
   currentPhoto,
   t,
 }: {
@@ -271,32 +300,6 @@ export function ToneExifSection({
         </div>
       </div>
     </div>
-  );
-}
-
-export function FormattedExifSections({
-  currentPhoto,
-  t,
-  viewModel,
-}: {
-  currentPhoto: PhotoManifest;
-  t: ExifPanelTranslation;
-  viewModel: ExifPanelViewModel;
-}) {
-  if (!viewModel.formattedExifData) return null;
-
-  return (
-    <Fragment>
-      <CameraExifSection t={t} viewModel={viewModel} />
-      <CaptureModeExifSection t={t} viewModel={viewModel} />
-      <FujiRecipeExifSection t={t} viewModel={viewModel} />
-      <LocationExifSection
-        currentPhoto={currentPhoto}
-        t={t}
-        viewModel={viewModel}
-      />
-      <TechnicalExifSection t={t} viewModel={viewModel} />
-    </Fragment>
   );
 }
 

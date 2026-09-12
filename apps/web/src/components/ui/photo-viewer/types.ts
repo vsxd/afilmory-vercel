@@ -33,6 +33,7 @@ export interface ProgressiveImageProps {
 
   isCurrentImage?: boolean;
   shouldRenderHighRes?: boolean;
+  fitOnViewportResize?: boolean;
 
   // Video source (Live Photo or Motion Photo)
   videoSource?: VideoSource;

@@ -1,5 +1,109 @@
 /* Third-party media overrides belong only to the viewer. Its viewport state
    follows the same breakpoint as the carousel and EXIF panel. */
+.af-photo-viewer .af-viewer-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.af-photo-viewer .af-viewer-info-shell {
+  flex: 0 0 20rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.af-photo-viewer .af-viewer-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.af-photo-viewer .af-viewer-toolbar-slot {
+  flex-shrink: 0;
+}
+
+.af-photo-viewer[data-viewport="mobile"] .af-viewer-layout {
+  flex-direction: column;
+}
+
+.af-photo-viewer[data-viewport="mobile"] .af-viewer-info-shell {
+  flex-basis: var(--af-viewer-info-size, 44%);
+}
+
+.af-photo-viewer[data-viewport="mobile"] [data-photo-viewer-sequence] {
+  padding-inline: 0.5rem;
+}
+
+.af-photo-viewer[data-viewport="mobile"][data-info-open="true"]
+  .af-viewer-toolbar {
+  position: relative;
+  inset: auto;
+  flex-wrap: wrap;
+  padding: calc(env(safe-area-inset-top) + 0.5rem)
+    calc(env(safe-area-inset-right) + 0.5rem) 0.5rem
+    calc(env(safe-area-inset-left) + 0.5rem);
+}
+
+/* The information panel owns the bottom safe area in the split layout. */
+.af-photo-viewer[data-viewport="mobile"][data-info-open="true"]
+  .af-viewer-filmstrip
+  .pb-safe {
+  padding-bottom: 0;
+}
+
+.af-photo-viewer[data-viewport="mobile"] .af-viewer-info-heading {
+  padding: 0.5rem 1rem;
+}
+
+.af-photo-viewer .af-viewer-space-controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.af-photo-viewer .af-viewer-space-controls button {
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.75rem;
+}
+
+/* Short landscape screens need width, rather than height, for readable EXIF. */
+@media (orientation: landscape) and (min-width: 32rem) and (max-height: 32.5rem) {
+  .af-photo-viewer[data-viewport="mobile"][data-info-open="true"]
+    .af-viewer-layout {
+    flex-direction: row;
+  }
+
+  .af-photo-viewer[data-viewport="mobile"] .af-viewer-info-shell {
+    flex-basis: clamp(14rem, var(--af-viewer-info-size, 44%), 54%);
+  }
+
+  .af-photo-viewer[data-viewport="mobile"][data-info-open="true"]
+    .af-viewer-filmstrip
+    .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .af-photo-viewer .exif-panel-mobile {
+    border-top-width: 0;
+    border-left-width: 1px;
+  }
+}
+
 .af-photo-viewer .swiper-button-next,
 .af-photo-viewer .swiper-button-prev {
   display: none;

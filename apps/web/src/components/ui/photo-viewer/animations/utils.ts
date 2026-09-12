@@ -51,6 +51,7 @@ export const computeViewerImageFrame = (
   photo: PhotoManifest,
   viewportRect: DOMRect | null,
   isMobile: boolean,
+  mediaRect?: DOMRect | null,
 ): AnimationFrameRect => {
   const baseFontSize = getRootFontSize();
   const exifWidth = isMobile ? 0 : DESKTOP_EXIF_PANEL_WIDTH_REM * baseFontSize;
@@ -60,11 +61,19 @@ export const computeViewerImageFrame = (
 
   const viewportWidth = viewportRect?.width ?? window.innerWidth;
   const viewportHeight = viewportRect?.height ?? window.innerHeight;
-  const viewportLeft = viewportRect?.left ?? 0;
-  const viewportTop = viewportRect?.top ?? 0;
+  const viewportLeft = mediaRect?.left ?? viewportRect?.left ?? 0;
+  const viewportTop = mediaRect?.top ?? viewportRect?.top ?? 0;
 
-  const contentWidth = Math.max(0, viewportWidth - exifWidth);
-  const contentHeight = Math.max(0, viewportHeight - thumbnailHeight);
+  // The media viewport already excludes every visible piece of chrome, including
+  // the adjustable mobile information panel. Only legacy callers need estimates.
+  const contentWidth = Math.max(
+    0,
+    mediaRect?.width ?? viewportWidth - exifWidth,
+  );
+  const contentHeight = Math.max(
+    0,
+    mediaRect?.height ?? viewportHeight - thumbnailHeight,
+  );
 
   const photoWidth = photo.width || contentWidth;
   const photoHeight = photo.height || contentHeight || 1;

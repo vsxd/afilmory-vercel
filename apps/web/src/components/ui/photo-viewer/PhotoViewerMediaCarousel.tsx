@@ -70,6 +70,7 @@ export const PhotoViewerMediaCarousel = ({
   return (
     <m.div
       ref={ref}
+      data-photo-viewer-media
       className="group relative flex min-h-0 min-w-0 flex-1"
       animate={{ opacity: isViewerContentVisible ? 1 : 0 }}
       transition={Spring.presets.snappy}
@@ -130,6 +131,7 @@ export const PhotoViewerMediaCarousel = ({
                     height={isCurrentImage ? currentPhoto.height : undefined}
                     className="h-full w-full object-contain"
                     shouldRenderHighRes={isViewerContentVisible && isOpen}
+                    fitOnViewportResize={isMobile}
                     onZoomChange={isCurrentImage ? onZoomChange : undefined}
                     onBlobSrcChange={
                       isCurrentImage ? onBlobSrcChange : undefined

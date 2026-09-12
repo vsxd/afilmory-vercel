@@ -1,14 +1,20 @@
 import type { PhotoManifestItem, PickedExif } from "@afilmory/schema";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createExifPanelViewModel } from "../exif-panel-view-model";
-import { BasicExifSection } from "../ExifPanelSections";
+import { ExifPanelSections } from "../ExifPanelSections";
 import type { ExifTranslationAdapter } from "../formatExifData";
 
 const showGallery = vi.fn();
 vi.mock("~/navigation/hooks", () => ({
   useAppNavigation: () => ({ showGallery }),
+}));
+vi.mock("../HistogramChart", () => ({
+  HistogramChart: () => <div>Histogram preview</div>,
+}));
+vi.mock("../MiniMap", () => ({
+  MiniMap: ({ photoId }: { photoId: string }) => <div>Map for {photoId}</div>,
 }));
 
 const testTranslator: ExifTranslationAdapter = {
@@ -41,6 +47,11 @@ function createPhoto(): PhotoManifestItem {
 }
 
 describe("ExifPanel sections", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
   it("builds a view model with format, megapixels, and signed GPS", () => {
     const exif: PickedExif = {
       GPSLatitude: 41.4031,
@@ -75,7 +86,7 @@ describe("ExifPanel sections", () => {
     });
 
     render(
-      <BasicExifSection
+      <ExifPanelSections
         currentPhoto={currentPhoto}
         t={t}
         viewModel={viewModel}
@@ -93,5 +104,95 @@ describe("ExifPanel sections", () => {
     expect(showGallery).toHaveBeenCalledWith(
       expect.objectContaining({ selectedTags: ["street"] }),
     );
+  });
+
+  it("puts capture settings and equipment before file details while retaining the other metadata", async () => {
+    const currentPhoto: PhotoManifestItem = {
+      ...createPhoto(),
+      location: {
+        latitude: 35.69,
+        longitude: 139.7,
+        city: "Tokyo",
+        country: "Japan",
+        locationName: "Shinjuku",
+      },
+      toneAnalysis: {
+        toneType: "low-key",
+        brightness: 35,
+        contrast: 70,
+        shadowRatio: 0.4,
+        highlightRatio: 0.1,
+      },
+    };
+    const exif: PickedExif = {
+      Make: "FUJIFILM",
+      Model: "X-T5",
+      LensModel: "XF 35mm F1.4 R",
+      FocalLength: "35 mm",
+      FocalLengthIn35mmFormat: "53 mm",
+      FNumber: 1.4,
+      ExposureTime: "1/250",
+      ISO: 400,
+      ExposureCompensation: 0,
+      ExposureMode: "Manual",
+      FujiRecipe: { FilmMode: "Classic Chrome" },
+      BrightnessValue: 2,
+      GPSLatitude: 35.69,
+      GPSLongitude: 139.7,
+      Artist: "Afilmory",
+      Copyright: "All rights reserved",
+      Software: "Photo editor",
+      ColorSpace: "sRGB",
+      DateTimeOriginal: "2026-06-06T18:30:00+09:00",
+      zone: "Asia/Tokyo",
+    };
+    const viewModel = createExifPanelViewModel({
+      currentPhoto,
+      exifData: exif,
+      translator: testTranslator,
+    });
+
+    render(
+      <ExifPanelSections
+        currentPhoto={currentPhoto}
+        t={t}
+        viewModel={viewModel}
+      />,
+    );
+
+    const fileHeading = screen.getByRole("heading", {
+      name: "exif.basic.info",
+    });
+    for (const name of ["exif.capture.parameters", "exif.device.info"]) {
+      const heading = screen.getByRole("heading", { name });
+      expect(
+        heading.compareDocumentPosition(fileHeading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    for (const value of [
+      "FUJIFILM X-T5",
+      "XF 35mm F1.4 R",
+      "f/1.4",
+      "1/250s",
+      "ISO 400",
+      "0 EV",
+      "Manual",
+      "Classic Chrome",
+      "Tokyo, Japan",
+      "Shinjuku",
+      "2.0 EV",
+      "Afilmory",
+      "All rights reserved",
+      "Photo editor",
+      "sRGB",
+      "Asia/Tokyo",
+      currentPhoto.title,
+    ]) {
+      expect(screen.getAllByText(value)).toHaveLength(1);
+    }
+    expect(screen.getByText("exif.capture.time")).toBeTruthy();
+    expect(screen.getByText("Histogram preview")).toBeTruthy();
+    expect(await screen.findByText("Map for photo")).toBeTruthy();
   });
 });

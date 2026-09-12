@@ -13,7 +13,6 @@ import type { PhotoManifest } from "~/types/photo";
 
 import type { DismissTransform } from "../useDismissGesture";
 import type {
-  AnimationFrameRect,
   PhotoViewerTransition,
   PhotoViewerTransitionState,
 } from "./types";
@@ -29,6 +28,8 @@ interface UsePhotoViewerTransitionsParams {
   currentPhoto: PhotoManifest | undefined;
   currentBlobSrc: string | null;
   isMobile: boolean;
+  /** The untransformed photo viewport, excluding toolbar, filmstrip and EXIF. */
+  mediaRef?: RefObject<HTMLElement | null>;
   /**
    * 下滑关闭释放时的拖拽变换。存在时，退出 FLIP 的 `from` 用它做种子，
    * 让照片从被拖到的位置无缝飞回原格子（否则从居中帧起飞会跳变）。
@@ -56,6 +57,7 @@ export const usePhotoViewerTransitions = ({
   currentPhoto,
   currentBlobSrc,
   isMobile,
+  mediaRef,
   dismissTransformRef,
   onExitComplete,
 }: UsePhotoViewerTransitionsParams): UsePhotoViewerTransitionsResult => {
@@ -69,9 +71,9 @@ export const usePhotoViewerTransitions = ({
   const wasOpenRef = useRef(isOpen);
   const activeExitRef = useRef<PhotoViewerTransition | null>(null);
   const viewerBoundsRef = useRef<DOMRect | null>(null);
+  const mediaBoundsRef = useRef<DOMRect | null>(null);
   const hiddenTriggerRef = useRef<HTMLElement | null>(null);
   const hiddenTriggerPrevVisibilityRef = useRef<string | null>(null);
-  const viewerImageFrameRef = useRef<AnimationFrameRect | null>(null);
 
   const [entryTransition, setEntryTransition] =
     useState<PhotoViewerTransition | null>(null);
@@ -159,7 +161,6 @@ export const usePhotoViewerTransitions = ({
     if (!isOpen) {
       setEntryTransition(null);
       setIsViewerContentVisible(false);
-      viewerImageFrameRef.current = null;
     }
   }, [isOpen]);
 
@@ -167,6 +168,45 @@ export const usePhotoViewerTransitions = ({
     if (!isOpen) return;
     resolveTriggerElement();
   }, [isOpen, resolveTriggerElement]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    // A new opening must never inherit a viewport from the previous session.
+    viewerBoundsRef.current = null;
+    mediaBoundsRef.current = null;
+    const updateBounds = () => {
+      viewerBoundsRef.current =
+        getVisibleBounds(containerRef.current) ?? viewerBoundsRef.current;
+      mediaBoundsRef.current =
+        getVisibleBounds(mediaRef?.current) ?? mediaBoundsRef.current;
+    };
+
+    updateBounds();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateBounds);
+    if (containerRef.current) observer?.observe(containerRef.current);
+    if (mediaRef?.current) observer?.observe(mediaRef.current);
+    window.addEventListener("resize", updateBounds);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateBounds);
+    };
+  }, [isOpen, mediaRef]);
+
+  const resolveViewerImageFrame = useCallback(
+    (photo: PhotoManifest) =>
+      computeViewerImageFrame(
+        photo,
+        getVisibleBounds(containerRef.current) ?? viewerBoundsRef.current,
+        isMobile,
+        getVisibleBounds(mediaRef?.current) ?? mediaBoundsRef.current,
+      ),
+    [isMobile, mediaRef],
+  );
 
   useLayoutEffect(() => {
     if (!isOpen || !currentPhoto) return;
@@ -192,15 +232,7 @@ export const usePhotoViewerTransitions = ({
     }
 
     const fromRect = triggerEl.getBoundingClientRect();
-    const viewportRect =
-      viewerBoundsRef.current ??
-      containerRef.current?.getBoundingClientRect() ??
-      null;
-    const targetFrame = computeViewerImageFrame(
-      currentPhoto,
-      viewportRect,
-      isMobile,
-    );
+    const targetFrame = resolveViewerImageFrame(currentPhoto);
 
     if (
       !fromRect.width ||
@@ -232,16 +264,6 @@ export const usePhotoViewerTransitions = ({
     );
 
     setIsViewerContentVisible(true);
-    viewerImageFrameRef.current = {
-      left: targetFrame.left,
-      top: targetFrame.top,
-      width: targetFrame.width,
-      height: targetFrame.height,
-      borderRadius: targetFrame.borderRadius,
-    };
-
-    const frameForAnimation = viewerImageFrameRef.current;
-
     const transitionState: PhotoViewerTransitionState = {
       photoId: currentPhoto.id,
       imageSrc,
@@ -254,11 +276,11 @@ export const usePhotoViewerTransitions = ({
         borderRadius: triggerBorderRadius,
       },
       to: {
-        left: frameForAnimation.left,
-        top: frameForAnimation.top,
-        width: frameForAnimation.width,
-        height: frameForAnimation.height,
-        borderRadius: frameForAnimation.borderRadius,
+        left: targetFrame.left,
+        top: targetFrame.top,
+        width: targetFrame.width,
+        height: targetFrame.height,
+        borderRadius: targetFrame.borderRadius,
       },
     };
 
@@ -269,7 +291,7 @@ export const usePhotoViewerTransitions = ({
     entryTransition,
     isViewerContentVisible,
     currentBlobSrc,
-    isMobile,
+    resolveViewerImageFrame,
     resolveTriggerElement,
     hideTriggerElement,
     restoreTriggerElementVisibility,
@@ -326,15 +348,9 @@ export const usePhotoViewerTransitions = ({
       return;
     }
 
-    const viewportRect =
-      viewerBoundsRef.current ??
-      containerRef.current?.getBoundingClientRect() ??
-      null;
-    const computedFrame = computeViewerImageFrame(
-      currentPhoto,
-      viewportRect,
-      isMobile,
-    );
+    // Refit the current photo against today's layout. Entry geometry can be
+    // obsolete after a panel resize, orientation change or photo navigation.
+    const computedFrame = resolveViewerImageFrame(currentPhoto);
     const viewerFrame = {
       left: computedFrame.left,
       top: computedFrame.top,
@@ -351,8 +367,6 @@ export const usePhotoViewerTransitions = ({
       exitCallbackRef.current?.();
       return;
     }
-
-    viewerImageFrameRef.current = viewerFrame;
 
     const borderRadius = triggerEl
       ? getBorderRadius(
@@ -429,30 +443,13 @@ export const usePhotoViewerTransitions = ({
     isOpen,
     currentPhoto,
     currentBlobSrc,
-    isMobile,
+    resolveViewerImageFrame,
     dismissTransformRef,
     resolveTriggerElement,
     restoreTriggerElementVisibility,
     hideTriggerElement,
     shouldReduceMotion,
   ]);
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-
-    const updateBounds = () => {
-      if (containerRef.current) {
-        viewerBoundsRef.current = containerRef.current.getBoundingClientRect();
-      }
-    };
-
-    updateBounds();
-    window.addEventListener("resize", updateBounds);
-
-    return () => {
-      window.removeEventListener("resize", updateBounds);
-    };
-  }, [isOpen]);
 
   const handleEntryAnimationComplete = useCallback(() => {
     setIsViewerContentVisible(true);
@@ -487,4 +484,9 @@ export const usePhotoViewerTransitions = ({
     handleEntryAnimationComplete,
     handleExitAnimationComplete,
   };
+};
+
+const getVisibleBounds = (element: HTMLElement | null | undefined) => {
+  const rect = element?.getBoundingClientRect();
+  return rect && rect.width > 0 && rect.height > 0 ? rect : null;
 };

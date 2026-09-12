@@ -271,6 +271,61 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(gl.drawArrays).not.toHaveBeenCalled();
   });
 
+  it("stops an active zoom when smooth motion is disabled without disposing image resources", () => {
+    let pendingFrame: FrameRequestCallback | undefined;
+    const scheduleFrame = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => {
+        pendingFrame = callback;
+        return 42;
+      });
+    const cancelFrame = vi.spyOn(window, "cancelAnimationFrame");
+    const now = vi.spyOn(performance, "now").mockReturnValue(0);
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, 100, 100),
+    );
+    const engine = createEngine(canvas, {
+      doubleClick: { step: 2, mode: "toggle", animationTime: 200 },
+    });
+    engine.loadImage("blob:photo", 1000, 1000).catch(() => {});
+    const worker = WorkerMock.instances.at(-1)!;
+    const loadCalls = worker.postMessage.mock.calls.length;
+
+    engine.zoomAt(50, 50, 2, true);
+    now.mockReturnValue(50);
+    pendingFrame?.(50);
+    const interruptedScale = engine.getScale();
+    expect(interruptedScale).toBeGreaterThan(0.1);
+    expect(interruptedScale).toBeLessThan(0.2);
+
+    engine.setSmooth(false);
+    expect(cancelFrame).toHaveBeenCalledWith(42);
+    scheduleFrame.mockClear();
+    now.mockReturnValue(500);
+    pendingFrame?.(500);
+    expect(engine.getScale()).toBe(interruptedScale);
+    expect(scheduleFrame).not.toHaveBeenCalled();
+    expect(worker.postMessage).toHaveBeenCalledTimes(loadCalls);
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(gl.__loseContext).not.toHaveBeenCalled();
+
+    // Future reset and double-click actions are immediate, including actions
+    // that explicitly configured a nonzero animation duration.
+    engine.resetView();
+    expect(engine.getScale()).toBeCloseTo(0.1);
+    doubleTap(canvas, 50, 50);
+    expect(engine.getScale()).toBeCloseTo(0.2);
+    expect(scheduleFrame).not.toHaveBeenCalled();
+
+    engine.setSmooth(true);
+    engine.resetView();
+    expect(scheduleFrame).toHaveBeenCalledTimes(1);
+    engine.destroy();
+  });
+
   it("treats the configured initial scale as the fitted zoom baseline", () => {
     const onZoomChange = vi.fn();
     const canvas = document.createElement("canvas");

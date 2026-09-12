@@ -121,9 +121,7 @@ vi.mock("../animations/usePhotoViewerTransitions", () => ({
 }));
 
 vi.mock("../ExifPanelSections", () => ({
-  BasicExifSection: () => <div data-testid="basic-exif-section" />,
-  ToneExifSection: () => null,
-  FormattedExifSections: () => null,
+  ExifPanelSections: () => <div data-testid="basic-exif-section" />,
 }));
 
 vi.mock("../PhotoViewerController", () => ({

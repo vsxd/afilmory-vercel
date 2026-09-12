@@ -26,6 +26,7 @@ interface NavigationEntry {
   returnTo?: AppDestination;
   originKey?: string;
   photoIds?: string[];
+  photoSequenceOrigin?: "map" | "gallery";
   mapView?: MapViewState;
 }
 const EMPTY_LOCATION: Location = {
@@ -114,6 +115,12 @@ export class NavigationController {
     )
       return undefined;
     if (
+      value.photoSequenceOrigin !== undefined &&
+      value.photoSequenceOrigin !== "map" &&
+      value.photoSequenceOrigin !== "gallery"
+    )
+      return undefined;
+    if (
       value.returnTo &&
       !safeDestination(`${value.returnTo.pathname}${value.returnTo.search}`)
     )
@@ -146,6 +153,8 @@ export class NavigationController {
     return this.settings;
   };
   readonly getPhotoIds = () => this.entry()?.photoIds;
+  readonly getPhotoSequenceOrigin = () =>
+    this.isPhotoOpen() ? (this.entry()?.photoSequenceOrigin ?? null) : null;
   readonly getMapView = () =>
     this.entry()?.mapView ??
     (this.router?.state.historyAction === "POP"
@@ -180,6 +189,9 @@ export class NavigationController {
           version: 1,
           gallerySearch: this.getGallerySearch(),
           photoIds: options.photoIds ?? this.getPhotoIds(),
+          photoSequenceOrigin: options.photoIds
+            ? "gallery"
+            : (this.getPhotoSequenceOrigin() ?? undefined),
         },
         true,
       );
@@ -195,6 +207,13 @@ export class NavigationController {
       returnTo,
       originKey: location.key,
       photoIds: options.photoIds,
+      // Only an explicitly supplied map sequence belongs to the map scope.
+      // stepPhoto may later persist a full-library fallback for a map pin.
+      photoSequenceOrigin: options.photoIds
+        ? fromMap
+          ? "map"
+          : "gallery"
+        : undefined,
       mapView: fromMap ? this.currentMapView : undefined,
     });
   }

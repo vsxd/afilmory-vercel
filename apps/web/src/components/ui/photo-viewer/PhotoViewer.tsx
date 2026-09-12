@@ -5,6 +5,7 @@ import "swiper/css/navigation";
 
 import { Spring, Thumbhash } from "@afilmory/ui";
 import { AnimatePresence, m } from "motion/react";
+import type { CSSProperties } from "react";
 import {
   lazy,
   Suspense,
@@ -20,12 +21,16 @@ import { useDialogFocusManagement } from "~/hooks/useDialogFocusManagement";
 import { useExifPanel } from "~/hooks/useExifPanel";
 import { useMobile } from "~/hooks/useMobile";
 import { usePhotoNavigation } from "~/hooks/usePhotoNavigation";
+import type { ViewerSequenceSource } from "~/hooks/usePhotoViewer";
 import type { PhotoManifest } from "~/types/photo";
 
 import { PhotoViewerTransitionPreview } from "./animations/PhotoViewerTransitionPreview";
 import { usePhotoViewerTransitions } from "./animations/usePhotoViewerTransitions";
 import { getGalleryThumbnailStripHeight } from "./gallery-thumbnail-metrics";
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
+import type { PhotoInfoSpace } from "./photo-info-layout";
+import { photoInfoSpaceRatio } from "./photo-info-layout";
+import { PhotoInfoSpaceControls } from "./PhotoInfoSpaceControls";
 import {
   usePhotoViewerBlobSource,
   usePhotoViewerKeyboard,
@@ -52,6 +57,7 @@ const GalleryThumbnail = lazy(() =>
 interface PhotoViewerProps {
   photos: readonly PhotoManifest[];
   currentIndex: number;
+  sequenceSource?: ViewerSequenceSource;
   isOpen: boolean;
   onClose: () => void;
   onExitComplete?: () => void;
@@ -62,6 +68,7 @@ interface PhotoViewerProps {
 export const PhotoViewer = ({
   photos,
   currentIndex,
+  sequenceSource = "all",
   isOpen,
   onClose,
   onExitComplete,
@@ -71,6 +78,7 @@ export const PhotoViewer = ({
   const { t } = useTranslation();
   const swiperRef = useRef<SwiperType | null>(null);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [infoSpace, setInfoSpace] = useState<PhotoInfoSpace>("balanced");
   const { showExifPanel, toggleExifPanel, closeExifPanel } = useExifPanel();
   const { currentBlobSrc, resetBlobSource, handleBlobSrcChange } =
     usePhotoViewerBlobSource();
@@ -111,9 +119,26 @@ export const PhotoViewer = ({
     currentPhoto,
     currentBlobSrc,
     isMobile,
+    mediaRef,
     dismissTransformRef,
     onExitComplete: completeExit,
   });
+
+  const handleCloseInfo = useCallback(() => {
+    closeExifPanel();
+    requestAnimationFrame(() => {
+      containerRef.current
+        ?.querySelector<HTMLButtonElement>("[data-photo-viewer-info-toggle]")
+        ?.focus({ preventScroll: true });
+    });
+  }, [closeExifPanel, containerRef]);
+
+  const handleToggleInfo = useCallback(() => {
+    // An entry FLIP targets the original viewport. Finish it before changing
+    // the photo's available space so it cannot fly to an obsolete frame.
+    handleEntryAnimationComplete();
+    toggleExifPanel();
+  }, [handleEntryAnimationComplete, toggleExifPanel]);
 
   const handleDismiss = useCallback(
     (transform: DismissTransform) => {
@@ -275,28 +300,36 @@ export const PhotoViewer = ({
             aria-label={t("photo.viewer.label")}
             className="af-photo-viewer fixed inset-0 z-50 flex items-center justify-center"
             data-viewport={isMobile ? "mobile" : "desktop"}
-            style={{
-              touchAction: isMobile ? "manipulation" : "none",
-              // 入场动画期间也允许触摸，以便下滑关闭手势能中断入场（见 useDismissGesture）
-              pointerEvents: !isViewerContentVisible ? "none" : "auto",
-            }}
+            data-info-open={isMobile && showExifPanel ? "true" : "false"}
+            style={
+              {
+                "--af-viewer-info-size": photoInfoSpaceRatio[infoSpace],
+                touchAction: isMobile ? "manipulation" : "none",
+                // 入场动画期间也允许触摸，以便下滑关闭手势能中断入场（见 useDismissGesture）
+                pointerEvents: !isViewerContentVisible ? "none" : "auto",
+              } as CSSProperties
+            }
             initial={{ opacity: 0 }}
             animate={{ opacity: isViewerContentVisible ? 1 : 0 }}
             exit={{ opacity: 0 }}
             transition={Spring.presets.snappy}
           >
-            <div
-              className={`flex size-full ${isMobile ? "flex-col" : "flex-row"}`}
-            >
-              <div className="relative z-1 flex min-h-0 min-w-0 flex-1 flex-col">
-                <m.div style={{ opacity: chromeOpacity }}>
+            <div className="af-viewer-layout">
+              <div className="af-viewer-main">
+                <m.div
+                  className="af-viewer-toolbar-slot"
+                  style={{ opacity: chromeOpacity }}
+                >
                   <PhotoViewerToolbar
                     currentPhoto={currentPhoto}
                     currentBlobSrc={currentBlobSrc}
+                    sequenceSource={sequenceSource}
+                    currentIndex={currentIndex}
+                    totalPhotos={photos.length}
                     isMobile={isMobile}
                     isVisible={isViewerContentVisible}
                     showExifPanel={showExifPanel}
-                    onToggleExifPanel={toggleExifPanel}
+                    onToggleExifPanel={handleToggleInfo}
                     onClose={onClose}
                   />
                 </m.div>
@@ -323,7 +356,10 @@ export const PhotoViewer = ({
                   onBlobSrcChange={handleBlobSrcChange}
                 />
 
-                <m.div className="shrink-0" style={{ opacity: chromeOpacity }}>
+                <m.div
+                  className="af-viewer-filmstrip shrink-0"
+                  style={{ opacity: chromeOpacity }}
+                >
                   <Suspense
                     fallback={
                       // 占住缩略图条的高度（结构镜像其 border-t + 内容 + pb-safe），
@@ -347,24 +383,31 @@ export const PhotoViewer = ({
                 </m.div>
               </div>
 
-              {/* ExifPanel - 在桌面端始终显示，在移动端根据状态显示 */}
-
-              <Suspense
-                // 桌面端 fallback 占住侧栏宽度（面板本体是 w-80 shrink-0），chunk
-                // 到达时取景框不重排；移动端面板是按需弹出的覆盖层，无需占位。
-                fallback={isMobile ? null : <div className="w-80 shrink-0" />}
-              >
-                <AnimatePresenceOnlyMobile>
-                  {(!isMobile || showExifPanel) && (
+              {(!isMobile || showExifPanel) && (
+                <div className="af-viewer-info-shell">
+                  {/* Reserve the final panel geometry while its lazy chunk loads. */}
+                  <Suspense
+                    fallback={
+                      <div className="af-panel size-full" aria-busy="true" />
+                    }
+                  >
                     <ExifPanel
                       currentPhoto={currentPhoto}
                       exifData={currentPhoto.exif}
                       visible={isViewerContentVisible}
-                      onClose={isMobile ? closeExifPanel : undefined}
+                      onClose={isMobile ? handleCloseInfo : undefined}
+                      mobileControls={
+                        isMobile ? (
+                          <PhotoInfoSpaceControls
+                            value={infoSpace}
+                            onChange={setInfoSpace}
+                          />
+                        ) : undefined
+                      }
                     />
-                  )}
-                </AnimatePresenceOnlyMobile>
-              </Suspense>
+                  </Suspense>
+                </div>
+              )}
             </div>
           </m.div>
         )}
@@ -386,14 +429,4 @@ export const PhotoViewer = ({
       )}
     </>
   );
-};
-
-const AnimatePresenceOnlyMobile = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const isMobile = useMobile();
-  if (!isMobile) return children;
-  return <AnimatePresence>{children}</AnimatePresence>;
 };

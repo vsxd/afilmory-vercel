@@ -2,7 +2,7 @@ import "./Exif.css";
 
 import { ScrollArea, Spring } from "@afilmory/ui";
 import { m } from "motion/react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,11 +11,7 @@ import { translateDynamicKey } from "~/lib/i18n-dynamic";
 import type { PhotoExif, PhotoManifest } from "~/types/photo";
 
 import { createExifPanelViewModel } from "./exif-panel-view-model";
-import {
-  BasicExifSection,
-  FormattedExifSections,
-  ToneExifSection,
-} from "./ExifPanelSections";
+import { ExifPanelSections } from "./ExifPanelSections";
 import type { ExifTranslationAdapter } from "./formatExifData";
 import { RawExifViewer } from "./RawExifViewer";
 
@@ -24,7 +20,8 @@ export const ExifPanel: FC<{
   exifData: PhotoExif | null;
   onClose?: () => void;
   visible?: boolean;
-}> = ({ currentPhoto, exifData, onClose, visible = true }) => {
+  mobileControls?: ReactNode;
+}> = ({ currentPhoto, exifData, onClose, visible = true, mobileControls }) => {
   const { t, i18n } = useTranslation();
   const isMobile = useMobile();
   const sectionT = useCallback(
@@ -52,28 +49,27 @@ export const ExifPanel: FC<{
   return (
     <m.div
       className={`${
-        isMobile
-          ? "exif-panel-mobile fixed right-0 bottom-0 left-0 z-10 max-h-[60vh] w-full rounded-t-2xl"
-          : "relative w-80 shrink-0"
-      } af-panel text-ui flex flex-col overscroll-contain border-t lg:border-t-0 lg:border-l`}
+        isMobile ? "exif-panel-mobile" : "w-80 shrink-0"
+      } af-panel text-ui relative flex size-full min-h-0 flex-col overflow-hidden overscroll-contain border-t lg:border-t-0 lg:border-l`}
+      data-photo-info
       initial={{
         opacity: 0,
-        ...(isMobile ? { y: 100 } : { x: 100 }),
+        ...(isMobile ? { y: 0 } : { x: 100 }),
       }}
       animate={{
         opacity: visible ? 1 : 0,
-        ...(isMobile ? { y: visible ? 0 : 100 } : { x: visible ? 0 : 100 }),
+        ...(isMobile ? { y: 0 } : { x: visible ? 0 : 100 }),
       }}
       exit={{
         opacity: 0,
-        ...(isMobile ? { y: 100 } : { x: 100 }),
+        ...(isMobile ? { y: 0 } : { x: 100 }),
       }}
       transition={Spring.presets.smooth}
       style={{
         pointerEvents: visible ? "auto" : "none",
       }}
     >
-      <div className="relative z-10 mb-4 flex shrink-0 items-center justify-between p-4 pb-0">
+      <div className="af-viewer-info-heading relative z-10 flex shrink-0 items-center justify-between gap-2 p-4">
         <h3 className="text-base font-semibold tracking-tight">
           {t("exif.header.title")}
         </h3>
@@ -97,6 +93,8 @@ export const ExifPanel: FC<{
         </div>
       </div>
 
+      {isMobile && mobileControls}
+
       <ScrollArea
         rootClassName="flex-1 min-h-0 overflow-auto lg:overflow-hidden"
         viewportClassName={
@@ -106,13 +104,7 @@ export const ExifPanel: FC<{
         }
       >
         <div className="space-y-5">
-          <BasicExifSection
-            currentPhoto={currentPhoto}
-            t={sectionT}
-            viewModel={viewModel}
-          />
-          <ToneExifSection currentPhoto={currentPhoto} t={sectionT} />
-          <FormattedExifSections
+          <ExifPanelSections
             currentPhoto={currentPhoto}
             t={sectionT}
             viewModel={viewModel}

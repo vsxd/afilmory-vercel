@@ -7,7 +7,7 @@ import { useParams } from "react-router";
 
 import { NotFound } from "~/components/common/NotFound";
 import { PhotoViewer } from "~/components/ui/photo-viewer";
-import { usePhotoViewer, useViewerPhotos } from "~/hooks/usePhotoViewer";
+import { usePhotoViewer, useViewerSequence } from "~/hooks/usePhotoViewer";
 import { useTitle } from "~/hooks/useTitle";
 import { deriveAccentFromSources } from "~/lib/color";
 import { getReadableTextColor } from "~/lib/color-contrast";
@@ -18,7 +18,7 @@ export const Component = () => {
   const { t } = useTranslation();
   const { photoId } = useParams();
   const photoRepository = usePhotoRepository();
-  const photos = useViewerPhotos(photoId);
+  const { photos, source: sequenceSource } = useViewerSequence(photoId);
   const photoViewer = usePhotoViewer();
 
   // 直接根据 photoId 从 Context 的照片列表中查找照片和索引
@@ -160,6 +160,7 @@ export const Component = () => {
         >
           <PhotoViewer
             photos={photos}
+            sequenceSource={sequenceSource}
             currentIndex={photoIndex}
             isOpen={photoViewer.isOpen}
             triggerElement={photoViewer.triggerElement}

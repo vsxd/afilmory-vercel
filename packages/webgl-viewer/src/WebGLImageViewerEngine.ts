@@ -618,7 +618,7 @@ export class WebGLImageViewerEngine {
     this.translateY = tempTranslateY;
 
     this.animationController.start({
-      duration: animationTime ?? (this.config.smooth ? 300 : 0),
+      duration: this.config.smooth ? (animationTime ?? 300) : 0,
       from: startTransform,
       startLOD,
       startTime: performance.now(),
@@ -816,6 +816,23 @@ export class WebGLImageViewerEngine {
   }
 
   // 公共方法
+  public setSmooth(smooth: boolean): void {
+    if (this.isDestroyed || this.config.smooth === smooth) return;
+    this.config.smooth = smooth;
+    if (smooth || !this.animationController.isAnimating) return;
+
+    // Respect a newly enabled reduced-motion preference immediately. Keep the
+    // current visible transform instead of continuing an in-flight zoom.
+    this.animationController.cancel();
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    this.render();
+    this.notifyZoomChange();
+    this.tileManager.updateTileCache();
+  }
+
   public zoomIn(animated = false) {
     const centerX = this.canvasWidth / 2;
     const centerY = this.canvasHeight / 2;

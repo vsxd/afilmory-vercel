@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WebGLImageViewer } from "./WebGLImageViewer";
@@ -8,6 +8,7 @@ const engineMocks = vi.hoisted(() => ({
   destroy: vi.fn(),
   isTileOutlineEnabled: vi.fn(() => false),
   loadImage: vi.fn(() => Promise.resolve()),
+  setSmooth: vi.fn(),
   throwOnConstruct: false,
 }));
 
@@ -17,6 +18,7 @@ vi.mock("./WebGLImageViewerEngine", () => ({
       destroy = engineMocks.destroy;
       isTileOutlineEnabled = engineMocks.isTileOutlineEnabled;
       loadImage = engineMocks.loadImage;
+      setSmooth = engineMocks.setSmooth;
       resetView = vi.fn();
       zoomIn = vi.fn();
       zoomOut = vi.fn();
@@ -41,7 +43,7 @@ describe("WebGLImageViewer", () => {
     vi.unstubAllGlobals();
   });
 
-  it("disables smooth animation when reduced motion is requested", async () => {
+  it("initializes reduced motion correctly without destroying or reloading the canvas", () => {
     vi.stubGlobal("matchMedia", () => ({
       matches: true,
       addEventListener: vi.fn(),
@@ -50,10 +52,54 @@ describe("WebGLImageViewer", () => {
 
     render(<WebGLImageViewer src="blob:photo" smooth />);
 
-    await waitFor(() => {
-      const { calls } = vi.mocked(WebGLImageViewerEngine).mock;
-      expect(calls.at(-1)?.[1].smooth).toBe(false);
+    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(WebGLImageViewerEngine).mock.calls[0][1].smooth).toBe(
+      false,
+    );
+    expect(engineMocks.loadImage).toHaveBeenCalledTimes(1);
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
+  });
+
+  it("updates live motion preferences and the smooth prop without rebuilding the engine", () => {
+    let onPreferenceChange: (() => void) | undefined;
+    const media = {
+      matches: false,
+      addEventListener: vi.fn((_event: string, listener: () => void) => {
+        onPreferenceChange = listener;
+      }),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal("matchMedia", () => media);
+    const { rerender, unmount } = render(
+      <WebGLImageViewer src="blob:photo" smooth />,
+    );
+    expect(vi.mocked(WebGLImageViewerEngine).mock.calls[0][1].smooth).toBe(
+      true,
+    );
+
+    act(() => {
+      media.matches = true;
+      onPreferenceChange?.();
     });
+    expect(engineMocks.setSmooth).toHaveBeenLastCalledWith(false);
+
+    act(() => {
+      media.matches = false;
+      onPreferenceChange?.();
+    });
+    expect(engineMocks.setSmooth).toHaveBeenLastCalledWith(true);
+
+    rerender(<WebGLImageViewer src="blob:photo" smooth={false} />);
+    expect(engineMocks.setSmooth).toHaveBeenLastCalledWith(false);
+    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
+    expect(engineMocks.loadImage).toHaveBeenCalledTimes(1);
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
+
+    unmount();
+    expect(media.removeEventListener).toHaveBeenCalledWith(
+      "change",
+      onPreferenceChange,
+    );
   });
 
   it("creates and disposes the viewer engine", () => {

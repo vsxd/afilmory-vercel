@@ -29,6 +29,7 @@ import {
 import { LivePhotoBadge, LivePhotoFeedback } from "./LivePhotoBadge";
 import { LivePhotoVideo } from "./LivePhotoVideo";
 import type { ProgressiveImageProps, WebGLImageViewerRef } from "./types";
+import { useMediaViewportRefit } from "./useMediaViewportRefit";
 
 const PHOTO_VIEWER_FIT_IMAGE_STYLE = {
   top: "50%",
@@ -57,6 +58,7 @@ export const ProgressiveImage = ({
   minZoom = 1,
   isCurrentImage = false,
   shouldRenderHighRes = true,
+  fitOnViewportResize = false,
   videoSource,
   shouldAutoPlayVideoOnce = false,
   isHDR = false,
@@ -102,6 +104,7 @@ export const ProgressiveImage = ({
 
   // Refs
   const thumbnailRef = useRef<HTMLImageElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const webglImageViewerRef = useRef<WebGLImageViewerRef | null>(null);
   const domImageViewerRef = useRef<ReactZoomPanPinchRef>(null);
   const livePhotoRef = useRef<any>(null);
@@ -230,6 +233,19 @@ export const ProgressiveImage = ({
     }
   }, [shouldReduceMotion, shouldUseDomImageViewer]);
 
+  const refitViewport = useCallback(() => {
+    if (shouldUseDomImageViewer) {
+      domImageViewerRef.current?.resetTransform(0);
+    } else {
+      webglImageViewerRef.current?.resetView();
+    }
+  }, [shouldUseDomImageViewer]);
+  useMediaViewportRefit(
+    viewportRef,
+    fitOnViewportResize && isActiveImage && highResLoaded,
+    refitViewport,
+  );
+
   const handleZoomKeyboard = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (
@@ -268,6 +284,7 @@ export const ProgressiveImage = ({
 
   return (
     <div
+      ref={viewportRef}
       className={clsxm("relative overflow-hidden", className)}
       role="group"
       aria-label={alt}

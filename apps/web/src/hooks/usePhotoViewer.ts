@@ -155,23 +155,65 @@ const getPhotosByIds = (
   return resolved;
 };
 
-const resolveViewerPhotos = (
+export type ViewerSequenceSource = "all" | "filtered" | "map" | "sequence";
+
+export interface ViewerSequence {
+  photos: readonly PhotoManifest[];
+  source: ViewerSequenceSource;
+}
+
+const hasGalleryFilters = (settings: GallerySetting) =>
+  settings.selectedTags.length > 0 ||
+  settings.selectedCameras.length > 0 ||
+  settings.selectedLenses.length > 0 ||
+  settings.selectedGeoCountries.length > 0 ||
+  settings.selectedGeoRegions.length > 0 ||
+  settings.selectedGeoCities.length > 0 ||
+  settings.selectedGeoDistricts.length > 0;
+
+const hasSamePhotoIds = (
+  photos: readonly PhotoManifest[],
+  candidates: readonly PhotoManifest[],
+) => {
+  if (photos.length !== candidates.length) return false;
+  const ids = new Set(photos.map((photo) => photo.id));
+  return (
+    ids.size === photos.length && candidates.every((photo) => ids.has(photo.id))
+  );
+};
+
+// Resolve the list and its label together: an origin alone cannot tell us
+// whether a stale source or an out-of-filter search fell back to all photos.
+const resolveViewerSequence = (
   photoId: string | null | undefined,
   allPhotos: readonly PhotoManifest[],
   filteredPhotos: readonly PhotoManifest[],
-  sortOrder: "asc" | "desc",
+  gallerySetting: GallerySetting,
   viewerSourcePhotoIds?: string[] | null,
-) => {
+  photoSequenceOrigin?: "map" | "gallery" | null,
+): ViewerSequence => {
+  const isFiltered = hasGalleryFilters(gallerySetting);
   if (viewerSourcePhotoIds?.length) {
     const sourcePhotos = getPhotosByIds(allPhotos, viewerSourcePhotoIds);
     if (!photoId || sourcePhotos.some((photo) => photo.id === photoId)) {
-      return sourcePhotos;
+      const source =
+        photoSequenceOrigin === "map"
+          ? "map"
+          : isFiltered && hasSamePhotoIds(sourcePhotos, filteredPhotos)
+            ? "filtered"
+            : hasSamePhotoIds(sourcePhotos, allPhotos)
+              ? "all"
+              : "sequence";
+      return { photos: sourcePhotos, source };
     }
   }
 
   return photoId && !filteredPhotos.some((photo) => photo.id === photoId)
-    ? getAllPhotosForViewer(allPhotos, sortOrder)
-    : filteredPhotos;
+    ? {
+        photos: getAllPhotosForViewer(allPhotos, gallerySetting.sortOrder),
+        source: "all",
+      }
+    : { photos: filteredPhotos, source: isFiltered ? "filtered" : "all" };
 };
 
 export const getFilteredPhotos = (runtime: AppRuntime) => {
@@ -182,23 +224,27 @@ export const getFilteredPhotos = (runtime: AppRuntime) => {
   );
 };
 
-export const getViewerPhotos = (
+export const getViewerSequence = (
   runtime: AppRuntime,
   photoId?: string | null,
 ) => {
-  const { sortOrder } = runtime.navigation.getGallerySettings();
+  const gallerySetting = runtime.navigation.getGallerySettings();
   const allPhotos = runtime.photoRepository.getPhotos();
   const filteredPhotos = getFilteredPhotos(runtime);
   const viewerSourcePhotoIds = runtime.navigation.getPhotoIds();
 
-  return resolveViewerPhotos(
+  return resolveViewerSequence(
     photoId,
     allPhotos,
     filteredPhotos,
-    sortOrder,
+    gallerySetting,
     viewerSourcePhotoIds,
+    runtime.navigation.getPhotoSequenceOrigin(),
   );
 };
+
+export const getViewerPhotos = (runtime: AppRuntime, photoId?: string | null) =>
+  getViewerSequence(runtime, photoId).photos;
 
 export const usePhotos = () => {
   const [gallerySetting] = useGallerySettings();
@@ -211,34 +257,40 @@ export const usePhotos = () => {
   return masonryItems;
 };
 
-export const useViewerPhotos = (photoId?: string | null) => {
-  const [{ sortOrder }] = useGallerySettings();
+export const useViewerSequence = (photoId?: string | null) => {
+  const [gallerySetting] = useGallerySettings();
   const navigation = useAppNavigation();
   useNavigationLocation();
   const isOpen = navigation.isPhotoOpen();
   const viewerSourcePhotoIds = navigation.getPhotoIds();
+  const photoSequenceOrigin = navigation.getPhotoSequenceOrigin();
   const filteredPhotos = usePhotos();
   const allPhotos = usePhotoRepositorySnapshot();
 
   return useMemo(
     () =>
-      resolveViewerPhotos(
+      resolveViewerSequence(
         photoId,
         allPhotos,
         filteredPhotos,
-        sortOrder,
+        gallerySetting,
         isOpen ? viewerSourcePhotoIds : null,
+        photoSequenceOrigin,
       ),
     [
       allPhotos,
       filteredPhotos,
+      gallerySetting,
       isOpen,
       photoId,
-      sortOrder,
+      photoSequenceOrigin,
       viewerSourcePhotoIds,
     ],
   );
 };
+
+export const useViewerPhotos = (photoId?: string | null) =>
+  useViewerSequence(photoId).photos;
 
 export const useContextPhotos = () => {
   const photos = use(PhotosContext);

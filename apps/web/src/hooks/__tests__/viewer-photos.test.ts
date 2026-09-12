@@ -10,8 +10,10 @@ import {
   filterAndSortPhotos,
   getFilteredPhotos,
   getViewerPhotos,
+  getViewerSequence,
   usePhotoViewer,
   usePhotoViewerBodyScrollLock,
+  useViewerSequence,
 } from "~/hooks/usePhotoViewer";
 import { createTestNavigation } from "~/navigation/__tests__/test-router";
 import { useAppNavigation } from "~/navigation/hooks";
@@ -187,6 +189,7 @@ describe("viewer photo resolution", () => {
 
     expect(filteredPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
     expect(viewerPhotos.map((photo) => photo.id)).toEqual(["visible-photo"]);
+    expect(getViewerSequence(runtime, "visible-photo").source).toBe("filtered");
   });
 
   it("uses OR within a filter group and AND across filter groups", () => {
@@ -295,6 +298,91 @@ describe("viewer photo resolution", () => {
     expect(
       getViewerPhotos(runtime, "hidden-photo").map((photo) => photo.id),
     ).toEqual(["visible-photo", "hidden-photo"]);
+  });
+
+  it("labels an unfiltered direct link as all photos", () => {
+    runtime.navigation = createTestNavigation(
+      "/photos/hidden-photo",
+    ).navigation;
+    const sequence = getViewerSequence(runtime, "hidden-photo");
+    expect(sequence.source).toBe("all");
+    expect(sequence.photos.map((photo) => photo.id)).toEqual([
+      "visible-photo",
+      "hidden-photo",
+    ]);
+  });
+
+  it("labels the selected-filter sequence even when it matches the whole library", () => {
+    runtime.navigation.updateGallerySettings({
+      ...defaultGallerySetting,
+      selectedTags: ["keep", "other"],
+    });
+    runtime.navigation.openPhoto("visible-photo", {
+      photoIds: ["visible-photo", "hidden-photo"],
+    });
+    expect(getViewerSequence(runtime, "visible-photo").source).toBe("filtered");
+  });
+
+  it("labels full-library fallback truthfully after stepping back into a filter match", () => {
+    runtime.navigation = createTestNavigation(
+      "/photos/hidden-photo?tags=keep",
+    ).navigation;
+    const { result } = renderHook(
+      () => ({
+        viewer: usePhotoViewer(),
+        sequence: useViewerSequence(runtime.navigation.getPhotoId()),
+      }),
+      { wrapper },
+    );
+    expect(result.current.sequence.source).toBe("all");
+    act(() => result.current.viewer.goToIndex(0));
+    expect(runtime.navigation.getPhotoId()).toBe("visible-photo");
+    expect(result.current.sequence.source).toBe("all");
+    expect(result.current.sequence.photos).toHaveLength(2);
+  });
+
+  it("retains map sequence order and source while stepping", () => {
+    runtime.navigation = createTestNavigation(
+      "/explore?mode=photos",
+    ).navigation;
+    runtime.navigation.openPhoto("hidden-photo", {
+      photoIds: ["hidden-photo", "visible-photo"],
+    });
+    const { result } = renderHook(() => usePhotoViewer(), { wrapper });
+    expect(getViewerSequence(runtime, "hidden-photo").source).toBe("map");
+    expect(
+      getViewerSequence(runtime, "hidden-photo").photos.map(
+        (photo) => photo.id,
+      ),
+    ).toEqual(["hidden-photo", "visible-photo"]);
+    act(() => result.current.goToIndex(1));
+    expect(getViewerSequence(runtime, "visible-photo").source).toBe("map");
+    expect(runtime.navigation.getPhotoSequenceOrigin()).toBe("map");
+  });
+
+  it("does not call a fallback full-library sequence map photos just because it came from a map", () => {
+    runtime.navigation = createTestNavigation("/explore").navigation;
+    runtime.navigation.openPhoto("hidden-photo");
+    expect(getViewerSequence(runtime, "hidden-photo").source).toBe("all");
+    const { result } = renderHook(() => usePhotoViewer(), { wrapper });
+    act(() => result.current.goToIndex(0));
+    expect(getViewerSequence(runtime, "visible-photo").source).toBe("all");
+    expect(runtime.navigation.getPhotoSequenceOrigin()).toBeNull();
+
+    act(() => {
+      runtime.navigation.closePhoto();
+      runtime.navigation.openPhoto("visible-photo", {
+        photoIds: ["visible-photo"],
+      });
+    });
+    expect(getViewerSequence(runtime, "hidden-photo").source).toBe("all");
+  });
+
+  it("does not mislabel an arbitrary stored subset as all photos or current filters", () => {
+    runtime.navigation.openPhoto("visible-photo", {
+      photoIds: ["visible-photo"],
+    });
+    expect(getViewerSequence(runtime, "visible-photo").source).toBe("sequence");
   });
 
   it("restores body overflow on close and unmount", async () => {

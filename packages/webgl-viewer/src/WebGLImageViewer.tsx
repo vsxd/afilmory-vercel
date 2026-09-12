@@ -61,7 +61,15 @@ export const WebGLImageViewer = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<WebGLImageViewerEngine | null>(null);
   const [tileOutlineEnabled, setTileOutlineEnabled] = useState(false);
-  const [shouldReduceMotion, setShouldReduceMotion] = useState(false);
+  const [shouldReduceMotion, setShouldReduceMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+        false),
+  );
+  const effectiveSmooth = smooth && !shouldReduceMotion;
+  const smoothRef = useRef(effectiveSmooth);
+  smoothRef.current = effectiveSmooth;
 
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -107,7 +115,7 @@ export const WebGLImageViewer = ({
 
   // config 的引用变化会销毁并重建引擎（重新拉取、解码、上传整张原图），
   // 因此依赖只列真正需要重建的值；回调与 className 被刻意排除在外。
-  const config: Required<WebGLImageViewerProps> = useMemo(
+  const config: Omit<Required<WebGLImageViewerProps>, "smooth"> = useMemo(
     () => ({
       src,
       sourceBlob: sourceBlob ?? null,
@@ -129,7 +137,6 @@ export const WebGLImageViewer = ({
       panning: { disabled: panningDisabled },
       limitToBounds,
       centerOnInit,
-      smooth: smooth && !shouldReduceMotion,
       onZoomChange: (originalScale, relativeScale) =>
         callbacksRef.current.onZoomChange?.(originalScale, relativeScale),
       onLoadingStateChange: (isLoading, state, quality) =>
@@ -156,8 +163,6 @@ export const WebGLImageViewer = ({
       panningDisabled,
       limitToBounds,
       centerOnInit,
-      smooth,
-      shouldReduceMotion,
       debug,
     ],
   );
@@ -178,7 +183,7 @@ export const WebGLImageViewer = ({
     try {
       webGLImageViewerEngine = new WebGLImageViewerEngine(
         canvasRef.current,
-        config,
+        { ...config, smooth: smoothRef.current },
         debug ? setDebugInfo : undefined,
       );
       // 如果提供了尺寸，传递给loadImage进行优化
@@ -204,6 +209,12 @@ export const WebGLImageViewer = ({
       viewerRef.current = null;
     };
   }, [config, debug]);
+
+  // Animation preferences are live state, not GPU resource configuration.
+  // Rebuilding here would lose the canvas context and decode the image again.
+  useEffect(() => {
+    viewerRef.current?.setSmooth(effectiveSmooth);
+  }, [effectiveSmooth]);
 
   const handleOutlineToggle = useCallback(
     (enabled: boolean) => {
