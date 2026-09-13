@@ -54,6 +54,7 @@ vi.mock("~/hooks/usePanelDragDismiss", () => ({
 
 vi.mock("~/hooks/usePhotoViewer", () => ({
   getViewerPhotos: () => [],
+  usePhotos: () => [],
   getViewerSourceMode: () => "all",
   useOpenPhotoViewer: () => vi.fn(),
 }));
@@ -159,33 +160,37 @@ describe("CommandPalette", () => {
   });
 
   it("wraps Tab from the last focusable element back to the first", () => {
-    const { getByRole, getByTestId } = renderPalette({
+    const { getByRole } = renderPalette({
       isOpen: true,
       onClose: vi.fn(),
     });
 
-    const lastFocusable = getByTestId("filter-panel-button");
+    const lastFocusable = getByRole("button", {
+      name: "action.search.view-photos",
+    });
     lastFocusable.focus();
     fireEvent.keyDown(lastFocusable, { key: "Tab" });
 
     expect(document.activeElement).toBe(
-      getByRole("button", { name: "action.search.reset" }),
+      getByRole("button", { name: "common.close" }),
     );
   });
 
   it("wraps Shift+Tab from the first focusable element to the last", () => {
-    const { getByRole, getByTestId } = renderPalette({
+    const { getByRole } = renderPalette({
       isOpen: true,
       onClose: vi.fn(),
     });
 
     const firstFocusable = getByRole("button", {
-      name: "action.search.reset",
+      name: "common.close",
     });
     firstFocusable.focus();
     fireEvent.keyDown(firstFocusable, { key: "Tab", shiftKey: true });
 
-    expect(document.activeElement).toBe(getByTestId("filter-panel-button"));
+    expect(document.activeElement).toBe(
+      getByRole("button", { name: "action.search.view-photos" }),
+    );
   });
 
   it("restores focus to the previously focused element on close", () => {
@@ -259,7 +264,7 @@ describe("CommandPalette", () => {
     fireEvent.change(getByRole("combobox"), { target: { value: "tag" } });
 
     expect(
-      getByText("action.search.command-count").getAttribute("aria-live"),
+      getByText("action.search.grouped-summary").getAttribute("aria-live"),
     ).toBe("polite");
   });
 
@@ -291,14 +296,16 @@ describe("CommandPalette", () => {
   it("clears an unmatched query without removing applied filters", () => {
     navigation = createTestNavigation("/?tags=alpha&sort=asc").navigation;
     allTags = ["alpha", "beta"];
-    const { getByRole, getByTestId } = renderPalette({
+    const { getByRole, getAllByRole, getByTestId } = renderPalette({
       isOpen: true,
       onClose: vi.fn(),
     });
     const input = getByRole("combobox");
     fireEvent.change(input, { target: { value: "zzzz-unmatched-query" } });
 
-    fireEvent.click(getByRole("button", { name: "action.search.clear-query" }));
+    fireEvent.click(
+      getAllByRole("button", { name: "action.search.clear-query" })[0],
+    );
 
     expect((input as HTMLInputElement).value).toBe("");
     expect(document.activeElement).toBe(input);

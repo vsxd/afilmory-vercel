@@ -1,5 +1,6 @@
 import type { CameraInfo, LensInfo } from "@afilmory/schema";
 import type { GeoFilterState } from "@afilmory/schema/geo";
+import { getLanguageCandidates, getPhotoAdmin } from "@afilmory/schema/geo";
 
 import type { GallerySetting } from "~/atoms/app";
 import { getRegionDisplayName } from "~/lib/geo-regions";
@@ -35,6 +36,11 @@ export interface ActiveFilterChip {
   label: string;
   icon: string;
   action: CommandAction;
+}
+
+export interface CommandResultGroup {
+  type: "filters" | "photos";
+  commands: Command[];
 }
 
 type GalleryTranslation = (
@@ -241,6 +247,7 @@ export function buildCommandIndex(input: {
     commands.push(
       ...buildPhotoCommands({
         t,
+        language,
         photos: searchPhotos(allPhotos, query).slice(0, 10),
       }),
     );
@@ -251,12 +258,13 @@ export function buildCommandIndex(input: {
 
 export function buildPhotoCommands(input: {
   t: GalleryTranslation;
+  language?: string;
   photos: readonly PhotoManifest[];
 }): Command[] {
-  const { t, photos } = input;
+  const { t, language, photos } = input;
   return photos.map((photo) => {
     const locationTokens = getLocationTokens(photo.location);
-    const locationSubtitle = locationTokens.join(", ");
+    const locationSubtitle = getPhotoLocationSubtitle(photo, language);
     return {
       id: `photo-${photo.id}`,
       type: "photo",
@@ -285,6 +293,31 @@ export function buildPhotoCommands(input: {
       ].filter(isNonEmptyString),
     } satisfies Command;
   });
+}
+
+function getPhotoLocationSubtitle(
+  photo: PhotoManifest,
+  language?: string,
+): string | undefined {
+  const admin = getPhotoAdmin(photo, language);
+  const parts = [admin?.region, admin?.city, admin?.district].filter(
+    isNonEmptyString,
+  );
+  const seen = new Set<string>();
+  const displayParts = parts.filter((part) => {
+    const key = part.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (displayParts.length > 0) return displayParts.join(" · ");
+  if (admin?.country) return admin.country;
+
+  for (const locale of getLanguageCandidates(language)) {
+    const name = photo.location?.locationNameI18n?.[locale]?.trim();
+    if (name) return name;
+  }
+  return photo.location?.locationName?.trim();
 }
 
 export function applyGalleryCommandAction(
@@ -339,6 +372,31 @@ export function filterCommands(commands: Command[], query: string): Command[] {
       return fuzzyMatch(searchText, query);
     })
     .slice(0, 20);
+}
+
+/**
+ * Photo commands must already be matched by the photo search index. Their
+ * camera or lens metadata may not appear in the displayed label or keywords.
+ */
+export function groupCommandResults(
+  commands: Command[],
+  query: string,
+): CommandResultGroup[] {
+  if (!query.trim()) return [];
+
+  const filters = filterCommands(
+    commands.filter((command) => command.type !== "photo"),
+    query,
+  );
+  const photos = commands
+    .filter((command) => command.type === "photo")
+    .slice(0, 10);
+  const groups: CommandResultGroup[] = [];
+
+  if (filters.length > 0) groups.push({ type: "filters", commands: filters });
+  if (photos.length > 0) groups.push({ type: "photos", commands: photos });
+
+  return groups;
 }
 
 function toggleValue(values: string[], value: string): string[] {

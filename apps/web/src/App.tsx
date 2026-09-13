@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Outlet } from "react-router";
 
-import { useCommandPaletteShortcut } from "./hooks/useCommandPaletteShortcut";
+import { useCommandPaletteSession } from "./hooks/useCommandPaletteSession";
 import { RootProviders } from "./providers/root-providers";
 import type { AppRuntime } from "./runtime/app-runtime";
 
@@ -23,14 +23,14 @@ function App({ runtime }: { runtime: AppRuntime }) {
 }
 
 const CommandPaletteContainer = () => {
-  const { isOpen, setIsOpen } = useCommandPaletteShortcut();
-  if (!isOpen) {
+  const { shouldMount, ...paletteProps } = useCommandPaletteSession();
+  if (!shouldMount) {
     return null;
   }
 
   return (
     <Suspense fallback={null}>
-      <CommandPalette isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <CommandPalette {...paletteProps} />
     </Suspense>
   );
 };

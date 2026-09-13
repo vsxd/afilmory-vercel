@@ -5,12 +5,17 @@ import type { AfilmoryManifest } from "@afilmory/schema";
 import { createManifest } from "@afilmory/schema";
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
+import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const manifest: AfilmoryManifest = createManifest();
 
 describe("bootstrap splash", () => {
+  const roots: Root[] = [];
+  let settleBootstrap: (() => Promise<void>) | undefined;
+
   beforeEach(() => {
+    settleBootstrap = undefined;
     vi.resetModules();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("__AFILMORY__", {
@@ -25,7 +30,12 @@ describe("bootstrap splash", () => {
     document.body.innerHTML = "";
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await act(async () => {
+      await settleBootstrap?.();
+      // main creates its own React root, which testing-library cannot track.
+      for (const root of roots.splice(0)) root.unmount();
+    });
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -81,6 +91,29 @@ describe("bootstrap splash", () => {
     const markStartup = vi.fn();
     const flushStartupMetrics = vi.fn();
     const installCriticalRoutePreloads = vi.fn(() => criticalRoutesPromise);
+    const idleCallbacks: IdleRequestCallback[] = [];
+    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    });
+    const loadPhotoViewer = vi.fn(() => ({ default: () => null }));
+    vi.stubGlobal("requestIdleCallback", requestIdleCallback);
+
+    vi.doMock("react-dom/client", async (importOriginal) => {
+      const original =
+        await importOriginal<typeof import("react-dom/client")>();
+      return {
+        ...original,
+        createRoot: (...args: Parameters<typeof original.createRoot>) => {
+          const root = original.createRoot(...args);
+          roots.push(root);
+          return root;
+        },
+      };
+    });
+    // The viewer dependency graph is outside this bootstrap/splash contract;
+    // still execute its scheduled import and await its completion explicitly.
+    vi.doMock("../pages/(main)/photos/[photoId]/index.tsx", loadPhotoViewer);
 
     vi.doMock("../data-runtime/manifest-runtime", () => ({
       loadManifestRuntime: vi.fn(() => manifestPromise),
@@ -112,6 +145,19 @@ describe("bootstrap splash", () => {
       '<div id="splash-screen" role="status" aria-label="Loading">Static splash</div><div id="root"></div>';
 
     let importPromise!: Promise<unknown>;
+    const flushIdlePreloads = async () => {
+      for (const callback of idleCallbacks.splice(0)) {
+        callback({ didTimeout: false, timeRemaining: () => 50 });
+      }
+      await vi.dynamicImportSettled();
+    };
+    settleBootstrap = async () => {
+      // Also release pending test promises if an earlier assertion fails.
+      resolveManifest(manifest);
+      resolveCriticalRoutes();
+      await importPromise;
+      await flushIdlePreloads();
+    };
     await act(async () => {
       importPromise = import("../main");
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -164,5 +210,9 @@ describe("bootstrap splash", () => {
       via: "timeout",
     });
     expect(flushStartupMetrics).toHaveBeenCalledWith("splash-removed");
+    expect(requestIdleCallback).toHaveBeenCalledOnce();
+    expect(loadPhotoViewer).not.toHaveBeenCalled();
+    await act(flushIdlePreloads);
+    expect(loadPhotoViewer).toHaveBeenCalledOnce();
   });
 });

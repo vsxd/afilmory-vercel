@@ -188,9 +188,12 @@ test("opens the viewer from command search and restores route and scroll state",
     0,
   );
   await expect(page).toHaveURL(/\/(\?.*)?$/);
+  await expect(
+    page.getByRole("dialog", { name: "Search & Filter" }),
+  ).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => getComputedStyle(document.body).overflow))
-    .not.toBe("hidden");
+    .toBe("hidden");
   expect(diagnostics).toEqual([]);
 });
 
@@ -244,7 +247,9 @@ test("applies and resets command-palette camera filters through URL state", asyn
     page.getByRole("button", { name: "Clear Lumina LX-7" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Reset search and filters" }).click();
+  await page
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .click();
   await page.keyboard.press("Escape");
 
   await expect

@@ -13,18 +13,39 @@ const FOCUSABLE_SELECTOR = [
 const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
   Array.from(
     container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter(
-    (element) =>
-      !element.hidden &&
-      element.getAttribute("aria-hidden") !== "true" &&
-      !element.closest("[inert]"),
-  );
+  ).filter((element) => {
+    if (element.closest("[inert]")) return false;
+
+    // Responsive rules can hide a whole heading while its child button still
+    // matches the focus selector. Walk ancestors without relying on layout
+    // rectangles, which are also empty in non-layout DOM environments.
+    for (
+      let ancestor: HTMLElement | null = element;
+      ancestor;
+      ancestor = ancestor.parentElement
+    ) {
+      if (ancestor.hidden || ancestor.getAttribute("aria-hidden") === "true") {
+        return false;
+      }
+      const style = window.getComputedStyle(ancestor);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        style.visibility === "collapse"
+      ) {
+        return false;
+      }
+      if (ancestor === container) break;
+    }
+    return true;
+  });
 
 interface DialogFocusManagementOptions {
   dialogRef: RefObject<HTMLElement | null>;
   focusContainerOnOpen?: boolean;
   initialFocusSelector?: string;
   isOpen: boolean;
+  retainReturnFocusOnSuspend?: boolean;
   restoreFocusOnClose?: boolean;
   returnFocusElement?: HTMLElement | null;
 }
@@ -39,12 +60,23 @@ export function useDialogFocusManagement({
   focusContainerOnOpen = false,
   initialFocusSelector,
   isOpen,
+  retainReturnFocusOnSuspend = false,
   restoreFocusOnClose = true,
   returnFocusElement,
 }: DialogFocusManagementOptions): void {
   const returnFocusRef = useRef<HTMLElement | null>(returnFocusElement ?? null);
   const restoreFocusFrameRef = useRef<number | null>(null);
+  const restoreFocusOnCloseRef = useRef(restoreFocusOnClose);
+  const retainReturnFocusOnSuspendRef = useRef(retainReturnFocusOnSuspend);
+  const suspendedReturnFocusRef = useRef<HTMLElement | null>(null);
+  const openingFocusRef = useRef({
+    focusContainerOnOpen,
+    initialFocusSelector,
+  });
   returnFocusRef.current = returnFocusElement ?? null;
+  restoreFocusOnCloseRef.current = restoreFocusOnClose;
+  retainReturnFocusOnSuspendRef.current = retainReturnFocusOnSuspend;
+  openingFocusRef.current = { focusContainerOnOpen, initialFocusSelector };
 
   useEffect(() => {
     if (!isOpen || typeof document === "undefined") return;
@@ -60,15 +92,26 @@ export function useDialogFocusManagement({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    const focusTarget = returnFocusRef.current ?? activeElement;
+    const retainedTarget =
+      retainReturnFocusOnSuspendRef.current &&
+      suspendedReturnFocusRef.current?.isConnected
+        ? suspendedReturnFocusRef.current
+        : null;
+    const focusTarget =
+      returnFocusRef.current ?? retainedTarget ?? activeElement;
+    suspendedReturnFocusRef.current = null;
+    // These options select the opening focus once per modal session. Changing
+    // search results or responsive policy must not steal focus during typing,
+    // nor recapture an internal control as the original opener.
+    const openingFocus = openingFocusRef.current;
 
     const focusInitialElement = () => {
-      if (focusContainerOnOpen) {
+      if (openingFocus.focusContainerOnOpen) {
         dialog.focus({ preventScroll: true });
         return;
       }
-      const preferred = initialFocusSelector
-        ? dialog.querySelector<HTMLElement>(initialFocusSelector)
+      const preferred = openingFocus.initialFocusSelector
+        ? dialog.querySelector<HTMLElement>(openingFocus.initialFocusSelector)
         : null;
       (preferred ?? getFocusableElements(dialog)[0] ?? dialog).focus({
         preventScroll: true,
@@ -105,21 +148,29 @@ export function useDialogFocusManagement({
     return () => {
       window.cancelAnimationFrame(frame);
       dialog.removeEventListener("keydown", handleKeyDown);
-      if (!restoreFocusOnClose) return;
+      // A photo handoff can disable restoration in the same render that closes
+      // this dialog. Read the current policy rather than the opening render.
+      if (!restoreFocusOnCloseRef.current) {
+        // Search can suspend for a photo viewer and resume after that viewer's
+        // controls disappear. Keep the original external opener for that trip.
+        suspendedReturnFocusRef.current = retainReturnFocusOnSuspendRef.current
+          ? focusTarget
+          : null;
+        return;
+      }
+      suspendedReturnFocusRef.current = null;
       // Ancestor/sibling modal-isolation effects may release inert after this
       // cleanup. Browsers silently ignore focus while the opener is inert.
       restoreFocusFrameRef.current = window.requestAnimationFrame(() => {
         restoreFocusFrameRef.current = null;
-        if (focusTarget?.isConnected && !focusTarget.closest("[inert]")) {
+        if (
+          restoreFocusOnCloseRef.current &&
+          focusTarget?.isConnected &&
+          !focusTarget.closest("[inert]")
+        ) {
           focusTarget.focus({ preventScroll: true });
         }
       });
     };
-  }, [
-    dialogRef,
-    focusContainerOnOpen,
-    initialFocusSelector,
-    isOpen,
-    restoreFocusOnClose,
-  ]);
+  }, [dialogRef, isOpen]);
 }

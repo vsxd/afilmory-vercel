@@ -1,4 +1,48 @@
 @layer components {
+  .af-command-panel {
+    --af-surface-popover: color-mix(
+      in srgb,
+      var(--af-surface-backdrop) 80%,
+      transparent
+    );
+    --af-blur-popover: 36px;
+    height: min(88dvh, 44rem);
+    max-height: 100%;
+  }
+
+  [data-command-heading] {
+    display: flex;
+  }
+
+  /* On short landscape keyboards the input and exit action take precedence;
+     the same match count remains visible in the footer. */
+  .af-command-viewport[data-short-height="true"] {
+    [data-command-heading],
+    [data-command-filter-state] {
+      display: none;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .af-command-panel {
+      height: min(86dvh, 44rem);
+      max-height: calc(100% - 3rem);
+    }
+  }
+
+  /* The visual viewport shrinks independently when a mobile keyboard opens. */
+  .af-command-viewport[data-compact-height="true"] {
+    --af-command-handle-height: 1rem;
+    --af-command-heading-gap: 0.25rem;
+    --af-command-header-padding: 0.5rem;
+    --af-command-state-padding: 0.25rem;
+    --af-command-footer-padding: 0.5rem;
+
+    .af-command-panel {
+      height: 100%;
+    }
+  }
+
   .af-command-option:hover,
   .af-command-option[aria-selected="true"] {
     background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
