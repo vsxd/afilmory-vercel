@@ -51,7 +51,7 @@
     "react-use-measure": "2.1.7",
     "react-zoom-pan-pinch": "4.0.4",
     "sonner": "2.0.8",
-    "supercluster": "8.0.1",
+    "supercluster": "9.1.0",
     "swiper": "14.1.0",
     "tailwind-merge": "3.6.0",
     "tailwind-variants": "catalog:",
