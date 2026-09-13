@@ -39,7 +39,7 @@
     "i18next": "26.4.2",
     "jotai": "2.20.3",
     "maplibre-gl": "6.4.1",
-    "motion": "12.43.0",
+    "motion": "13.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-error-boundary": "6.1.4",
