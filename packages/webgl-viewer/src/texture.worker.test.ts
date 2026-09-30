@@ -127,14 +127,12 @@ describe("texture.worker create-tile guard", () => {
     const oldBitmap = { close: vi.fn() };
     const currentBitmap = { close: vi.fn(), height: 800, width: 1200 };
     const currentBase = { close: vi.fn(), height: 400, width: 600 };
-    vi.stubGlobal(
-      "createImageBitmap",
-      vi
-        .fn()
-        .mockReturnValueOnce(oldBitmapPromise)
-        .mockResolvedValueOnce(currentBitmap)
-        .mockResolvedValueOnce(currentBase),
-    );
+    const decode = vi
+      .fn()
+      .mockReturnValueOnce(oldBitmapPromise)
+      .mockResolvedValueOnce(currentBitmap)
+      .mockResolvedValueOnce(currentBase);
+    vi.stubGlobal("createImageBitmap", decode);
     const worker = bootWorker();
     const load = (sessionId: number): { data: TextureWorkerRequest } => ({
       data: {
@@ -150,6 +148,9 @@ describe("texture.worker create-tile guard", () => {
     });
 
     const staleLoad = worker.onmessage!(load(1));
+    // Header discovery is asynchronous; ensure this really tests a decode
+    // already in flight, rather than a load superseded before decoding starts.
+    await vi.waitFor(() => expect(decode).toHaveBeenCalledTimes(1));
     await worker.onmessage!(load(2));
     resolveOld(oldBitmap);
     await staleLoad;

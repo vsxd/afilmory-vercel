@@ -27,6 +27,8 @@ function createInput(
     isLoading: false,
     tileOutlineEnabled: false,
     baseTextureSize: null,
+    sourceImageSize: null,
+    canvasBackingSize: { width: 100, height: 100 },
     tileCache: new Map<TileKey, TileInfo>(),
     currentVisibleTiles: new Set<TileKey>(),
     loadingTiles: new Map(),
@@ -54,6 +56,24 @@ function tile(
 }
 
 describe("createWebGLDebugInfo", () => {
+  it("separates retained pixels, texture subtotal and canvas backing in a limited preview", () => {
+    const info = createWebGLDebugInfo(
+      createInput({
+        imageWidth: 8000,
+        imageHeight: 6000,
+        sourceImageSize: { width: 2000, height: 1500 },
+        canvasBackingSize: { width: 200, height: 200 },
+        baseTextureSize: { width: 1000, height: 750 },
+      }),
+    );
+    expect(info.previewLimited).toBe(true);
+    expect(info.sourceScale).toBe(0.25);
+    expect(info.sourceImageSize).toEqual({ width: 2000, height: 1500 });
+    expect(info.memory.sourcePixelBytes).toBe(2000 * 1500 * 4);
+    expect(info.memory.canvasBackingBytes).toBe(200 * 200 * 4);
+    expect(info.memory.totalBytes).toBe(1000 * 750 * 4);
+    expect(info.imageSize).toEqual({ width: 8000, height: 6000 });
+  });
   it("sums tile memory from real tile dimensions (RGBA8)", () => {
     // 1024² at LOD 2 → 2×2 grid of exactly 512² tiles → 1 MiB each
     const tileCache = new Map<TileKey, TileInfo>([

@@ -371,6 +371,8 @@
   "photo.error.network.title": "원본 사진에 연결할 수 없습니다",
   "photo.error.not-found.description": "사진이 이동되거나 삭제되었을 수 있습니다. 사이트 운영자에게 알려 주세요.",
   "photo.error.not-found.title": "원본 사진을 찾을 수 없습니다",
+  "photo.error.resource-limit.description": "원본 사진을 다운로드하여 이미지 앱에서 확인하세요.",
+  "photo.error.resource-limit.title": "사진이 너무 커서 미리 볼 수 없습니다",
   "photo.error.retry": "다시 시도",
   "photo.error.server.description": "잠시 후 다시 시도하세요.",
   "photo.error.server.title": "사진 서버에서 원본을 불러오지 못했습니다",

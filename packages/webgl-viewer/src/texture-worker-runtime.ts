@@ -1,3 +1,8 @@
+import { readSourceImageDimensions } from "./source-image-header";
+import {
+  hasImageDimensions,
+  sourceImageDimensions,
+} from "./source-image-policy";
 import { clampDimensionsToFit } from "./texture-dimensions";
 import { getTileGridSize, SIMPLE_LOD_LEVELS, TILE_SIZE } from "./tile-cache";
 import type {
@@ -36,6 +41,7 @@ export function createTextureWorkerHandler(
           blob: sourceBlob,
           maxTextureSize,
           maxTextureBytes,
+          maxSourceBytes,
         } = payload;
         let decodedImage: ImageBitmap | null = null;
         let initialLODBitmap: ImageBitmap | null = null;
@@ -49,12 +55,72 @@ export function createTextureWorkerHandler(
               return await response.blob();
             })());
           if (generation !== currentGeneration) return;
+          const hint = {
+            width: payload.imageWidth,
+            height: payload.imageHeight,
+          };
+          const knownDimensions = hasImageDimensions(hint) ? hint : null;
+          // Manifest dimensions are logical coordinates, not proof of the
+          // encoded bitmap's size (converted media or stale manifests differ).
+          const sourceDimensions = await readSourceImageDimensions(blob);
+          if (generation !== currentGeneration) return;
+          const target = sourceDimensions
+            ? sourceImageDimensions(sourceDimensions, maxSourceBytes)
+            : null;
           decodedImage = await createImageBitmap(blob, {
+            // Manifest dimensions already include EXIF orientation. Decode in
+            // that same display orientation before applying the target size.
+            imageOrientation: "from-image",
             premultiplyAlpha: "none",
+            ...(target &&
+            (target.width !== sourceDimensions!.width ||
+              target.height !== sourceDimensions!.height)
+              ? {
+                  resizeWidth: target.width,
+                  resizeHeight: target.height,
+                  resizeQuality: "high" as const,
+                }
+              : {}),
           });
           if (generation !== currentGeneration) {
             decodedImage.close();
             return;
+          }
+          const logicalDimensions = knownDimensions ??
+            sourceDimensions ?? {
+              width: decodedImage.width,
+              height: decodedImage.height,
+            };
+          // Unknown/ambiguous headers use native dimension discovery, regardless
+          // of manifest hints. Bound what we retain; decode buffers may be larger.
+          const retained = sourceImageDimensions(decodedImage, maxSourceBytes);
+          if (
+            retained.width !== decodedImage.width ||
+            retained.height !== decodedImage.height
+          ) {
+            const oversized = decodedImage;
+            decodedImage = null;
+            try {
+              decodedImage = await createImageBitmap(oversized, {
+                resizeWidth: retained.width,
+                resizeHeight: retained.height,
+                resizeQuality: "high",
+                premultiplyAlpha: "none",
+              });
+            } finally {
+              oversized.close();
+            }
+            if (generation !== currentGeneration) {
+              decodedImage.close();
+              return;
+            }
+          }
+          const checked = sourceImageDimensions(decodedImage, maxSourceBytes);
+          if (
+            checked.width !== decodedImage.width ||
+            checked.height !== decodedImage.height
+          ) {
+            throw new Error("Decoded image exceeds source pixel budget");
           }
           originalImage = decodedImage;
           decodedImage = null;
@@ -67,8 +133,20 @@ export function createTextureWorkerHandler(
           // 回退四边形渲染成黑块。按当前上下文的能力等比钳制到能容纳的最大尺寸。
           const { width: finalWidth, height: finalHeight } =
             clampDimensionsToFit(
-              Math.max(1, Math.round(originalImage.width * lodConfig.scale)),
-              Math.max(1, Math.round(originalImage.height * lodConfig.scale)),
+              Math.max(
+                1,
+                Math.min(
+                  originalImage.width,
+                  Math.round(logicalDimensions.width * lodConfig.scale),
+                ),
+              ),
+              Math.max(
+                1,
+                Math.min(
+                  originalImage.height,
+                  Math.round(logicalDimensions.height * lodConfig.scale),
+                ),
+              ),
               maxTextureSize,
               maxTextureBytes,
             );
@@ -90,8 +168,10 @@ export function createTextureWorkerHandler(
               sessionId,
               payload: {
                 imageBitmap: initialLODBitmap,
-                imageWidth: originalImage.width,
-                imageHeight: originalImage.height,
+                imageWidth: logicalDimensions.width,
+                imageHeight: logicalDimensions.height,
+                sourceWidth: originalImage.width,
+                sourceHeight: originalImage.height,
                 lodLevel,
               },
             },
@@ -139,26 +219,46 @@ export function createTextureWorkerHandler(
             imageHeight,
             lodLevel,
           });
+          if (
+            !Number.isInteger(x) ||
+            !Number.isInteger(y) ||
+            x < 0 ||
+            y < 0 ||
+            x >= cols ||
+            y >= rows
+          ) {
+            throw new Error("Tile coordinates are outside the image");
+          }
 
           // Calculate tile region in the original image
-          const sourceWidth = imageWidth / cols;
-          const sourceHeight = imageHeight / rows; // Assuming square tiles from a square grid on the image
-          const sourceX = x * sourceWidth;
-          const sourceY = y * sourceHeight;
-
-          const actualSourceWidth = Math.min(sourceWidth, imageWidth - sourceX);
-          const actualSourceHeight = Math.min(
-            sourceHeight,
-            imageHeight - sourceY,
-          );
+          // Grid positions remain in original-image coordinates. Crop the
+          // bounded bitmap in its own pixels so downsampling never shifts tiles.
+          // createImageBitmap crop arguments are integers. Shared boundaries
+          // prevent fractional crops from losing a source pixel between tiles.
+          const sourceX = Math.floor((x * originalImage.width) / cols);
+          const sourceY = Math.floor((y * originalImage.height) / rows);
+          const actualSourceWidth =
+            Math.floor(((x + 1) * originalImage.width) / cols) - sourceX;
+          const actualSourceHeight =
+            Math.floor(((y + 1) * originalImage.height) / rows) - sourceY;
 
           const targetWidth = Math.min(
             TILE_SIZE,
-            Math.ceil(actualSourceWidth * lodConfig.scale),
+            Math.ceil(
+              Math.min(
+                actualSourceWidth,
+                (imageWidth / cols) * lodConfig.scale,
+              ),
+            ),
           );
           const targetHeight = Math.min(
             TILE_SIZE,
-            Math.ceil(actualSourceHeight * lodConfig.scale),
+            Math.ceil(
+              Math.min(
+                actualSourceHeight,
+                (imageHeight / rows) * lodConfig.scale,
+              ),
+            ),
           );
 
           if (targetWidth <= 0 || targetHeight <= 0) {

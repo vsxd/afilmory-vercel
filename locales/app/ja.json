@@ -371,6 +371,8 @@
   "photo.error.network.title": "元の写真に接続できません",
   "photo.error.not-found.description": "移動または削除された可能性があります。サイトの管理者にお知らせください。",
   "photo.error.not-found.title": "元の写真が見つかりません",
+  "photo.error.resource-limit.description": "元の写真をダウンロードして、画像アプリで表示してください。",
+  "photo.error.resource-limit.title": "写真が大きすぎるためプレビューできません",
   "photo.error.retry": "再試行",
   "photo.error.server.description": "しばらくしてから再試行してください。",
   "photo.error.server.title": "写真の配信元で読み込みに失敗しました",

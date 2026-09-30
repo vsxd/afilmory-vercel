@@ -348,15 +348,40 @@ const DebugInfoComponent = ({
           {/* 画布和图像信息 */}
           <CollapsibleSection title="Image Info">
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Canvas:</span>
+              <span>Canvas CSS:</span>
               <span>
                 {debugInfo.canvasSize.width}×{debugInfo.canvasSize.height}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Canvas backing:</span>
+              <span>
+                {debugInfo.canvasBackingSize.width}×
+                {debugInfo.canvasBackingSize.height}
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Image:</span>
               <span>
                 {debugInfo.imageSize.width}×{debugInfo.imageSize.height}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Decoded source:</span>
+              <span>
+                {debugInfo.sourceImageSize
+                  ? `${debugInfo.sourceImageSize.width}×${debugInfo.sourceImageSize.height}`
+                  : "Unknown"}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Preview:</span>
+              <span>
+                {!debugInfo.sourceImageSize
+                  ? "Unknown"
+                  : debugInfo.previewLimited
+                    ? `Limited (${(debugInfo.sourceScale * 100).toFixed(1)}%)`
+                    : "Original pixels"}
               </span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -370,7 +395,7 @@ const DebugInfoComponent = ({
           </CollapsibleSection>
 
           {/* 内存信息（按真实纹理尺寸统计） */}
-          <CollapsibleSection title="Memory">
+          <CollapsibleSection title="Pixel allocations (RGBA8)">
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Tile Textures:</span>
               <span>{formatBytesAsMB(debugInfo.memory.tileTextureBytes)}</span>
@@ -380,8 +405,21 @@ const DebugInfoComponent = ({
               <span>{formatBytesAsMB(debugInfo.memory.baseTextureBytes)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Total:</span>
+              <span>Texture total:</span>
               <span>{formatBytesAsMB(debugInfo.memory.totalBytes)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Source pixels:</span>
+              <span>{formatBytesAsMB(debugInfo.memory.sourcePixelBytes)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Canvas backing:</span>
+              <span>
+                {formatBytesAsMB(debugInfo.memory.canvasBackingBytes)}
+              </span>
+            </div>
+            <div style={{ opacity: 0.65, marginTop: "4px" }}>
+              Excludes browser decode buffers and driver copies.
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Active LODs:</span>

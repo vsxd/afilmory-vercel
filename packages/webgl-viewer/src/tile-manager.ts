@@ -566,11 +566,18 @@ export class TileManager {
   /**
    * Context loss: the GPU textures died with the context, so drop bookkeeping
    * only — no per-texture deletes — and stop any queued dispatch work so a
-   * restore starts clean.
+   * restore starts clean. Normal image reloads explicitly release live textures.
    */
-  reset(): void {
+  reset({ releaseTextures = false }: { releaseTextures?: boolean } = {}): void {
     this.cancelScheduledWork();
-    this.cache.clear();
+    if (releaseTextures) {
+      disposeAllTileTextures({
+        deleteTexture: this.host.deleteTexture,
+        tileCache: this.cache,
+      });
+    } else {
+      this.cache.clear();
+    }
     this.requestRuntime.clear();
     this.visibleTiles = new Set();
     this.admittedTiles = new Set();

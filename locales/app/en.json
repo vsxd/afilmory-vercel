@@ -371,6 +371,8 @@
   "photo.error.network.title": "Could not reach the original photo",
   "photo.error.not-found.description": "It may have moved or been removed. Let the site owner know.",
   "photo.error.not-found.title": "Original photo not found",
+  "photo.error.resource-limit.description": "Download the original photo to view it in an image app.",
+  "photo.error.resource-limit.title": "This photo is too large to preview",
   "photo.error.retry": "Try again",
   "photo.error.server.description": "Try again later.",
   "photo.error.server.title": "The photo host could not load this photo",

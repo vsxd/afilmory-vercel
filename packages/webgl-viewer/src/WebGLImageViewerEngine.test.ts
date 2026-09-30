@@ -553,43 +553,53 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(gl.__loseContext).toHaveBeenCalledTimes(1);
   });
 
-  it("sends the decoded image blob and the GPU texture size cap to the texture worker", () => {
-    const canvas = document.createElement("canvas");
-    const gl = createWebGLMock();
-    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
-    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 100,
-      bottom: 100,
-      width: 100,
-      height: 100,
-      toJSON: () => ({}),
-    });
-    const sourceBlob = new Blob(["photo"], { type: "image/jpeg" });
-    const engine = createEngine(canvas);
+  it.each([
+    ["iPhone", 32],
+    ["Windows", 64],
+  ])(
+    "sends logical dimensions and the %s source pixel budget to the texture worker",
+    (userAgent, sourceMiB) => {
+      vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+      const canvas = document.createElement("canvas");
+      const gl = createWebGLMock();
+      vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+      vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+        toJSON: () => ({}),
+      });
+      const sourceBlob = new Blob(["photo"], { type: "image/jpeg" });
+      const engine = createEngine(canvas);
 
-    // destroy 会拒绝仍挂起的 loadImage promise，测试侧需吞掉这个预期内的拒绝
-    engine.loadImage("blob:photo", 100, 100, sourceBlob).catch(() => {});
+      // destroy 会拒绝仍挂起的 loadImage promise，测试侧需吞掉这个预期内的拒绝
+      engine.loadImage("blob:photo", 100, 100, sourceBlob).catch(() => {});
 
-    // maxTextureSize 必须随消息传入（按上下文查询），worker 据此钳制底图，
-    // 否则超大原图的 0.5x 底图超过老设备 MAX_TEXTURE_SIZE 会渲染成黑块。
-    expect(WorkerMock.instances.at(-1)?.postMessage).toHaveBeenCalledWith({
-      type: "load-image",
-      payload: {
-        sessionId: 1,
-        url: "blob:photo",
-        blob: sourceBlob,
-        maxTextureSize: 4096,
-        maxTextureBytes: 64 * 1024 * 1024,
-      },
-    });
-    expect(gl.getParameter).toHaveBeenCalledWith(gl.MAX_TEXTURE_SIZE);
+      // maxTextureSize 必须随消息传入（按上下文查询），worker 据此钳制底图，
+      // 否则超大原图的 0.5x 底图超过老设备 MAX_TEXTURE_SIZE 会渲染成黑块。
+      expect(WorkerMock.instances.at(-1)?.postMessage).toHaveBeenCalledWith({
+        type: "load-image",
+        payload: {
+          sessionId: 1,
+          url: "blob:photo",
+          blob: sourceBlob,
+          maxTextureSize: 4096,
+          maxTextureBytes: 64 * 1024 * 1024,
+          imageWidth: 100,
+          imageHeight: 100,
+          maxSourceBytes: sourceMiB * 1024 * 1024,
+        },
+      });
+      expect(gl.getParameter).toHaveBeenCalledWith(gl.MAX_TEXTURE_SIZE);
 
-    engine.destroy();
-  });
+      engine.destroy();
+    },
+  );
 
   it("reports honest quality: upgrades only when the visible LOD tile set is fully cached", () => {
     const onLoadingStateChange = vi.fn();
@@ -664,6 +674,133 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     });
     expect(onLoadingStateChange).not.toHaveBeenCalled();
 
+    engine.destroy();
+  });
+
+  it.each([
+    [0.1, 0],
+    [0.4, 1],
+    [0.6, 2],
+    [1, 2],
+  ])(
+    "caps zoom detail at source density %s while retaining original coordinates",
+    (density, expectedLod) => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+      const canvas = document.createElement("canvas");
+      const gl = createWebGLMock();
+      vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+      vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 100,
+        width: 100,
+        height: 100,
+        toJSON: () => ({}),
+      });
+      const snapshots: DebugInfo[] = [];
+      const engine = createEngine(
+        canvas,
+        {},
+        { current: (info) => snapshots.push(info) },
+      );
+      const worker = WorkerMock.instances.at(-1)!;
+      const emit = (data: unknown) =>
+        worker.onmessage?.({ data } as MessageEvent);
+      engine.loadImage("blob:photo", 1000, 1000).catch(() => {});
+      emit({
+        type: "image-loaded",
+        payload: {
+          imageBitmap: { width: 50, height: 50, close: vi.fn() },
+          imageWidth: 1000,
+          imageHeight: 1000,
+          sourceWidth: 1000 * density,
+          sourceHeight: 1000 * density,
+          lodLevel: 1,
+        },
+      });
+      emit({ type: "init-done" });
+      vi.runAllTimers();
+      worker.postMessage.mockClear();
+      engine.zoomAt(50, 50, 10);
+      vi.runAllTimers();
+      const snapshot = snapshots.at(-1)!;
+      expect(engine.getScale()).toBeCloseTo(1);
+      expect(snapshot.imageSize).toEqual({ width: 1000, height: 1000 });
+      expect(snapshot.sourceScale).toBe(density);
+      expect(snapshot.previewLimited).toBe(density < 1);
+      expect(snapshot.memory.sourcePixelBytes).toBe((1000 * density) ** 2 * 4);
+      const keys = snapshot.tileSystem!.visibleKeys;
+      expect(keys.length).toBeGreaterThan(0);
+      expect(
+        keys.every((key) => parseTileKey(key).lodLevel === expectedLod),
+      ).toBe(true);
+      const tileRequests = worker.postMessage.mock.calls.filter(
+        ([message]) => message.type === "create-tile",
+      );
+      expect(
+        tileRequests.every(
+          ([message]) => message.payload.lodLevel <= expectedLod,
+        ),
+      ).toBe(true);
+      for (const key of keys)
+        emit({
+          type: "tile-created",
+          payload: {
+            key,
+            imageBitmap: { width: 100, height: 100, close: vi.fn() },
+            lodLevel: expectedLod,
+          },
+        });
+      expect(snapshots.at(-1)!.quality).toBe(density < 1 ? "low" : "medium");
+      engine.destroy();
+    },
+  );
+
+  it("avoids redundant tiles when a source below the smallest LOD is fully covered by the base", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    const engine = createEngine(canvas);
+    const worker = WorkerMock.instances.at(-1)!;
+    engine.loadImage("blob:photo", 10000, 10000).catch(() => {});
+    worker.onmessage?.({
+      data: {
+        type: "image-loaded",
+        payload: {
+          imageBitmap: { width: 1000, height: 1000, close: vi.fn() },
+          imageWidth: 10000,
+          imageHeight: 10000,
+          sourceWidth: 1000,
+          sourceHeight: 1000,
+          lodLevel: 1,
+        },
+      },
+    } as MessageEvent);
+    worker.onmessage?.({ data: { type: "init-done" } } as MessageEvent);
+    engine.zoomAt(50, 50, 100);
+    vi.runAllTimers();
+    expect(
+      worker.postMessage.mock.calls.filter(
+        ([message]) => message.type === "create-tile",
+      ),
+    ).toHaveLength(0);
     engine.destroy();
   });
 
@@ -1029,6 +1166,62 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     engine.destroy();
   });
 
+  it("discovers fresh logical dimensions when the same URL is reloaded without a hint", async () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    const snapshots: DebugInfo[] = [];
+    const engine = createEngine(
+      canvas,
+      {},
+      { current: (info) => snapshots.push(info) },
+    );
+    const worker = WorkerMock.instances.at(-1)!;
+    const loaded = (width: number, height: number) =>
+      worker.onmessage?.({
+        data: {
+          type: "image-loaded",
+          payload: {
+            imageBitmap: { width, height, close: vi.fn() },
+            imageWidth: width,
+            imageHeight: height,
+            sourceWidth: width,
+            sourceHeight: height,
+            lodLevel: 1,
+          },
+        },
+      } as MessageEvent);
+    const first = engine.loadImage("blob:photo", 1000, 500);
+    loaded(1000, 500);
+    await first;
+    const second = engine.loadImage("blob:photo");
+    expect(worker.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "load-image",
+        payload: expect.objectContaining({
+          imageWidth: undefined,
+          imageHeight: undefined,
+        }),
+      }),
+    );
+    loaded(200, 400);
+    await second;
+    expect(snapshots.at(-1)!.imageSize).toEqual({ width: 200, height: 400 });
+    expect(engine.getScale()).toBe(0.25);
+    engine.destroy();
+  });
+
   it("rejects the load and closes the bitmap when base texture allocation fails", async () => {
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
@@ -1201,6 +1394,9 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         blob: sourceBlob,
         maxTextureSize: 4096,
         maxTextureBytes: 64 * 1024 * 1024,
+        imageWidth: 100,
+        imageHeight: 100,
+        maxSourceBytes: 64 * 1024 * 1024,
       },
     });
 
@@ -1268,6 +1464,9 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         blob: null,
         maxTextureSize: 4096,
         maxTextureBytes: 64 * 1024 * 1024,
+        imageWidth: 100,
+        imageHeight: 100,
+        maxSourceBytes: 64 * 1024 * 1024,
       },
     });
 

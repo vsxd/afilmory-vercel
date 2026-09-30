@@ -2,11 +2,15 @@ import { SIMPLE_LOD_LEVELS } from "./tile-cache";
 
 export type TextureQuality = "high" | "medium" | "low" | "unknown";
 
-export function getLodQuality(lodLevel: number): TextureQuality {
+export function getLodQuality(
+  lodLevel: number,
+  availableScale = Infinity,
+): TextureQuality {
   const lodConfig = SIMPLE_LOD_LEVELS[lodLevel];
   if (!lodConfig) return "unknown";
-  if (lodConfig.scale >= 2) return "high";
-  if (lodConfig.scale >= 1) return "medium";
+  const scale = Math.min(lodConfig.scale, availableScale);
+  if (scale >= 2) return "high";
+  if (scale >= 1) return "medium";
   return "low";
 }
 

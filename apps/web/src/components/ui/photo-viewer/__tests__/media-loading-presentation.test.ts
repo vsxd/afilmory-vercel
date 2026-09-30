@@ -23,6 +23,10 @@ describe("photo loading failure presentation", () => {
     ],
     [new MediaTaskError("fetch", "timeout", "stalled"), "timeout"],
     [new MediaTaskError("fetch", "network", "unreachable"), "network"],
+    [
+      new MediaTaskError("decode", "resource-limit", "pixel budget"),
+      "resource-limit",
+    ],
     [new MediaTaskError("detect", "invalid-image", "HTML"), "invalid-image"],
     [
       new MediaTaskError("detect", "detection-failed", "bad format"),

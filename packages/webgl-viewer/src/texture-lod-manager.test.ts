@@ -9,6 +9,8 @@ describe("TextureLodManager", () => {
     expect(getLodQuality(2)).toBe("medium");
     expect(getLodQuality(3)).toBe("high");
     expect(getLodQuality(99)).toBe("unknown");
+    expect(getLodQuality(2, 0.6)).toBe("low");
+    expect(getLodQuality(3, 1)).toBe("medium");
   });
 
   it("replaces and disposes base textures without duplicate deletes", () => {

@@ -34,6 +34,10 @@ const ERROR_TRANSLATIONS = {
     title: "photo.error.unsupported.title",
     description: "photo.error.unsupported.description",
   },
+  "resource-limit": {
+    title: "photo.error.resource-limit.title",
+    description: "photo.error.resource-limit.description",
+  },
   unknown: {
     title: "photo.error.unknown.title",
     description: "photo.error.unknown.description",
@@ -51,6 +55,9 @@ function getFailureReason(error: Error) {
     case "timeout":
     case "network": {
       return error.code;
+    }
+    case "resource-limit": {
+      return "resource-limit";
     }
     case "invalid-image":
     case "detection-failed": {

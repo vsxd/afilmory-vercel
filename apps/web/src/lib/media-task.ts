@@ -6,6 +6,7 @@ export type MediaTaskErrorCode =
   | "invalid-image"
   | "detection-failed"
   | "conversion-failed"
+  | "resource-limit"
   | "decode-failed";
 
 /** Stable machine-readable context; display text belongs to the caller. */

@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { MenuItemSeparator, MenuItemText } from "~/atoms/context-menu";
 import { isMobileDevice } from "~/lib/device-viewport";
 import type { MediaLease } from "~/lib/media-resource";
-import { getMediaTaskDiagnostic } from "~/lib/media-task";
+import { getMediaTaskDiagnostic, MediaTaskError } from "~/lib/media-task";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
@@ -141,7 +141,11 @@ export function useImageLoader({
     const indicator = loadingIndicatorRef?.current;
     indicator?.updateLoadingState({
       ...presentMediaTaskError(image.error, t),
-      onRetry: retry,
+      onRetry:
+        image.error instanceof MediaTaskError &&
+        image.error.code === "resource-limit"
+          ? undefined
+          : retry,
     });
     return () => indicator?.resetLoadingState();
   }, [image, isCurrentImage, loadingIndicatorRef, retry, t]);

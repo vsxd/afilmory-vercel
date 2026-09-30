@@ -102,6 +102,7 @@ export class ImageConverterManager {
         ? { kind: "convert", strategy }
         : { kind: "original", reason: "native" };
     } catch (cause) {
+      if (cause instanceof MediaTaskError) throw cause;
       throw new MediaTaskError(
         "detect",
         "detection-failed",
@@ -157,11 +158,16 @@ export class ImageConverterManager {
                 });
                 throwIfAborted(controller.signal);
                 try {
-                  const converted = await strategy.convert(blob, originalUrl);
+                  const converted = await strategy.convert(
+                    blob,
+                    originalUrl,
+                    controller.signal,
+                  );
                   throwIfAborted(controller.signal);
                   return { kind: "converted", ...converted };
                 } catch (cause) {
                   throwIfAborted(controller.signal);
+                  if (cause instanceof MediaTaskError) throw cause;
                   throw new MediaTaskError(
                     "convert",
                     "conversion-failed",

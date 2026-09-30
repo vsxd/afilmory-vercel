@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "@playwright/test";
+import sharp from "sharp";
 
 // 生产构建冒烟（webServer 见 scripts/e2e-prod-server.ts，经
 // `pnpm test:e2e:prod` 触发）：dev server 永远跑不到的产物形态——外部
@@ -185,6 +186,41 @@ test.describe("production original image loading", () => {
       )
       .toBeGreaterThan(0);
     await expect(canvas).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(viewer).toHaveCount(0);
+  });
+
+  test("converts a small transparent TIFF in the production worker and paints it", async ({
+    page,
+  }) => {
+    const tiff = await sharp(Buffer.from([255, 0, 0, 0, 0, 255, 0, 255]), {
+      raw: { width: 2, height: 1, channels: 4 },
+    })
+      .tiff({ compression: "none" })
+      .toBuffer();
+    const workers: string[] = [];
+    const errors: string[] = [];
+    page.on("request", (request) => {
+      if (/tiff\.worker-[\w-]+\.js/.test(request.url()))
+        workers.push(request.url());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({ contentType: "image/tiff", body: tiff }),
+    );
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(
+      viewer
+        .getByRole("img", { name: "SYNTH0001", exact: true })
+        .locator("canvas"),
+    ).toBeVisible();
+    expect(workers.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(viewer).toHaveCount(0);
   });

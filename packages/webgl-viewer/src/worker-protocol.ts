@@ -13,6 +13,10 @@ export type TextureWorkerRequest =
         /** gl.MAX_TEXTURE_SIZE of the target context; 0 means unknown. */
         maxTextureSize: number;
         maxTextureBytes: number;
+        /** Logical source dimensions from the manifest, before display downsampling. */
+        imageWidth?: number;
+        imageHeight?: number;
+        maxSourceBytes?: number;
       };
     }
   | {
@@ -38,6 +42,8 @@ export type TextureWorkerMessage =
         imageWidth: number;
         imageHeight: number;
         lodLevel: number;
+        sourceWidth?: number;
+        sourceHeight?: number;
       };
     }
   | {

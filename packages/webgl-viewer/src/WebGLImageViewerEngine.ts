@@ -6,6 +6,12 @@ import { LoadingState } from "./enum";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
 import { WebGLViewerRenderer } from "./renderer";
+import {
+  getSourceImageByteBudget,
+  getSourceImageScale,
+  hasImageDimensions,
+  selectSourceLimitedLod,
+} from "./source-image-policy";
 import { BASE_TEXTURE_BYTE_BUDGET } from "./texture-dimensions";
 import { getLodQuality, TextureLodManager } from "./texture-lod-manager";
 import { SIMPLE_LOD_LEVELS } from "./tile-cache";
@@ -96,6 +102,7 @@ export class WebGLImageViewerEngine {
   // 调试用真实数据：帧计数与底图纹理实际尺寸
   private frameCount = 0;
   private baseTextureSize: { width: number; height: number } | null = null;
+  private sourceImageSize: { width: number; height: number } | null = null;
 
   private loadGeneration = 0;
   private currentSessionId = 0;
@@ -332,6 +339,7 @@ export class WebGLImageViewerEngine {
 
     this.hasNotifiedImagePainted = false;
     this.isLoadingTexture = true;
+    this.sourceImageSize = null;
     this.textureWorkerInitialized = false;
     this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING);
     this.tileManager.reset();
@@ -347,6 +355,9 @@ export class WebGLImageViewerEngine {
         blob: this.originalSourceBlob,
         maxTextureSize: this.maxTextureSize,
         maxTextureBytes: BASE_TEXTURE_BYTE_BUDGET,
+        imageWidth: this.imageWidth || undefined,
+        imageHeight: this.imageHeight || undefined,
+        maxSourceBytes: getSourceImageByteBudget(),
       });
     } catch (error) {
       this.rejectActiveLoad(
@@ -449,7 +460,17 @@ export class WebGLImageViewerEngine {
           width: baseBitmapWidth,
           height: baseBitmapHeight,
         };
-        this.currentQuality = getLodQuality(lodLevel);
+        const sourceDimensions = {
+          width: message.payload.sourceWidth,
+          height: message.payload.sourceHeight,
+        };
+        this.sourceImageSize = hasImageDimensions(sourceDimensions)
+          ? sourceDimensions
+          : { width: imageWidth, height: imageHeight };
+        this.currentQuality = getLodQuality(
+          lodLevel,
+          this.getAvailableSourceScale(),
+        );
 
         this.imageLoaded = true;
         this.isLoadingTexture = false;
@@ -518,18 +539,24 @@ export class WebGLImageViewerEngine {
     this.originalImageSrc = url;
     this.originalSourceBlob = sourceBlob ?? null;
     this.isLoadingTexture = true;
+    this.imageLoaded = false;
+    this.sourceImageSize = null;
     this.textureWorkerInitialized = false;
     this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING);
 
-    if (preknownWidth && preknownHeight) {
-      this.imageWidth = preknownWidth;
-      this.imageHeight = preknownHeight;
+    const knownDimensions = { width: preknownWidth, height: preknownHeight };
+    if (hasImageDimensions(knownDimensions)) {
+      this.imageWidth = knownDimensions.width;
+      this.imageHeight = knownDimensions.height;
       this.setupInitialScaling();
+    } else {
+      this.imageWidth = 0;
+      this.imageHeight = 0;
     }
 
     // 若上一次 loadImage 尚未结算就再次调用，先拒绝旧 promise，避免它永远挂起。
     this.rejectActiveLoad(new Error("loadImage superseded by a newer call"));
-    this.tileManager.reset();
+    this.tileManager.reset({ releaseTextures: true });
     const sessionId = ++this.loadGeneration;
     this.currentSessionId = sessionId;
 
@@ -543,6 +570,9 @@ export class WebGLImageViewerEngine {
           blob: sourceBlob ?? null,
           maxTextureSize: this.maxTextureSize,
           maxTextureBytes: BASE_TEXTURE_BYTE_BUDGET,
+          imageWidth: this.imageWidth || undefined,
+          imageHeight: this.imageHeight || undefined,
+          maxSourceBytes: getSourceImageByteBudget(),
         });
       } catch (error) {
         this.rejectActiveLoad(
@@ -594,18 +624,17 @@ export class WebGLImageViewerEngine {
     }
     if (!this.imageLoaded) return 1;
 
-    const requiredScale = this.scale * this.devicePixelRatio;
+    return selectSourceLimitedLod(
+      this.scale * this.devicePixelRatio,
+      this.getAvailableSourceScale(),
+    );
+  }
 
-    // 寻找最佳的 LOD 级别
-    // 我们希望找到一个 LOD 级别，它的缩放比例刚好大于或等于所需的缩放比例
-    for (const [i, SIMPLE_LOD_LEVEL] of SIMPLE_LOD_LEVELS.entries()) {
-      if (SIMPLE_LOD_LEVEL.scale >= requiredScale) {
-        return i;
-      }
-    }
-
-    // 如果没有找到，返回最高质量的 LOD
-    return SIMPLE_LOD_LEVELS.length - 1;
+  private getAvailableSourceScale(): number {
+    return getSourceImageScale(
+      { width: this.imageWidth, height: this.imageHeight },
+      this.sourceImageSize,
+    );
   }
 
   /**
@@ -617,8 +646,16 @@ export class WebGLImageViewerEngine {
    */
   private isLodCoveredByBase(lodLevel: number): boolean {
     if (!this.baseTextureSize || this.imageWidth <= 0) return false;
-    const effectiveBaseScale = this.baseTextureSize.width / this.imageWidth;
-    return SIMPLE_LOD_LEVELS[lodLevel].scale <= effectiveBaseScale;
+    const effectiveBaseScale = Math.min(
+      this.baseTextureSize.width / this.imageWidth,
+      this.baseTextureSize.height / this.imageHeight,
+    );
+    return (
+      Math.min(
+        SIMPLE_LOD_LEVELS[lodLevel].scale,
+        this.getAvailableSourceScale(),
+      ) <= effectiveBaseScale
+    );
   }
 
   private startAnimation(
@@ -776,7 +813,7 @@ export class WebGLImageViewerEngine {
    * 质量，且仅在质量实际变化时触发 onLoadingStateChange。
    */
   private handleVisibleLodReady(lodLevel: number) {
-    const quality = getLodQuality(lodLevel);
+    const quality = getLodQuality(lodLevel, this.getAvailableSourceScale());
     if (quality === this.currentQuality) return;
     this.currentQuality = quality;
     this.notifyLoadingStateChange(this.isLoadingTexture);
@@ -951,6 +988,7 @@ export class WebGLImageViewerEngine {
 
     this.workerBridge?.dispose();
     this.workerBridge = null;
+    this.sourceImageSize = null;
 
     // 最后显式释放 WebGL 上下文本身。删除纹理/缓冲只回收了 GL 对象，上下文的
     // 绘制缓冲与驱动侧内存要等 JS GC 才释放——iOS WebKit 的 GC 在内存压力下才跑、
@@ -1015,6 +1053,11 @@ export class WebGLImageViewerEngine {
         isLoading: this.isLoadingTexture,
         tileOutlineEnabled: this.tileOutlineEnabled,
         baseTextureSize: this.baseTextureSize,
+        sourceImageSize: this.sourceImageSize,
+        canvasBackingSize: {
+          width: this.canvas.width,
+          height: this.canvas.height,
+        },
         tileCache: this.tileManager.tileCache,
         currentVisibleTiles: this.tileManager.currentVisibleTiles,
         loadingTiles: this.tileManager.loadingTiles,

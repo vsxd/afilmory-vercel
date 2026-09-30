@@ -371,6 +371,8 @@
   "photo.error.network.title": "無法連接原圖",
   "photo.error.not-found.description": "照片可能已移動或刪除，請聯絡網站作者。",
   "photo.error.not-found.title": "找不到原圖",
+  "photo.error.resource-limit.description": "請下載原圖，使用圖片應用程式檢視。",
+  "photo.error.resource-limit.title": "相片過大，無法在此預覽",
   "photo.error.retry": "重試",
   "photo.error.server.description": "請稍後重試。",
   "photo.error.server.title": "照片服務暫時無法載入原圖",

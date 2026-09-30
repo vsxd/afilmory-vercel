@@ -57,7 +57,11 @@ export interface DebugInfo {
   currentLOD: number;
   lodLevels: number;
   canvasSize: { width: number; height: number };
+  canvasBackingSize: { width: number; height: number };
   imageSize: { width: number; height: number };
+  sourceImageSize: { width: number; height: number } | null;
+  sourceScale: number;
+  previewLimited: boolean;
   fitToScreenScale: number;
   userMaxScale: number;
   effectiveMaxScale: number;
@@ -71,7 +75,12 @@ export interface DebugInfo {
     tileTextureBytes: number;
     /** 底图回退纹理的真实字节数（按实际上传的位图尺寸）。 */
     baseTextureBytes: number;
+    /** Texture subtotal only; excludes source pixels and canvas backing. */
     totalBytes: number;
+    /** RGBA8-equivalent retained source pixels, not total decoder memory. */
+    sourcePixelBytes: number;
+    /** One RGBA8 canvas backing buffer, excluding driver/browser copies. */
+    canvasBackingBytes: number;
     activeLODs: number;
   };
   tileSystem?: {

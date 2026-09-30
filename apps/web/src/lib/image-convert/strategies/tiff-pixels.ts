@@ -1,7 +1,6 @@
-interface DecodedTiffPixels {
+export interface TiffPixelLayout {
   width: number;
   height: number;
-  data: Uint8Array | Uint16Array | Float32Array | Float64Array;
   bitsPerSample: number;
   components: number;
   alpha: boolean;
@@ -10,12 +9,13 @@ interface DecodedTiffPixels {
   planarConfiguration: number;
 }
 
-/** The decoder has already unpacked 1-bit, inverted WhiteIsZero and unpremultiplied alpha. */
-export function tiffPixelsToRgba(
-  frame: DecodedTiffPixels,
-  target: Uint8ClampedArray,
-): void {
-  const { data, bitsPerSample, components, alpha, type, width, height } = frame;
+interface DecodedTiffPixels extends TiffPixelLayout {
+  data: Uint8Array | Uint16Array | Float32Array | Float64Array;
+}
+
+/** Validate before decoding/allocating pixels, and again at the conversion boundary. */
+export function assertTiffPixelLayout(frame: TiffPixelLayout): void {
+  const { bitsPerSample, components, alpha, type } = frame;
   const grayscale = type === 0 || type === 1;
   const expectedComponents = (grayscale ? 1 : 3) + (alpha ? 1 : 0);
   if (
@@ -31,6 +31,17 @@ export function tiffPixelsToRgba(
     frame.sampleFormat === 1 && [1, 8, 16].includes(bitsPerSample);
   if (!floatingPoint && !integer)
     throw new Error("Unsupported TIFF sample format");
+}
+
+/** The decoder has already unpacked 1-bit, inverted WhiteIsZero and unpremultiplied alpha. */
+export function tiffPixelsToRgba(
+  frame: DecodedTiffPixels,
+  target: Uint8ClampedArray,
+): void {
+  assertTiffPixelLayout(frame);
+  const { data, bitsPerSample, components, alpha, type, width, height } = frame;
+  const grayscale = type === 0 || type === 1;
+  const floatingPoint = frame.sampleFormat === 3;
   if (
     target.length !== width * height * 4 ||
     data.length !== width * height * components

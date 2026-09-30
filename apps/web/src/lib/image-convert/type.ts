@@ -22,7 +22,11 @@ export interface ImageConverterStrategy {
   /**
    * 执行转换
    */
-  convert: (blob: Blob, originalUrl: string) => Promise<ConversionResult>;
+  convert: (
+    blob: Blob,
+    originalUrl: string,
+    signal?: AbortSignal,
+  ) => Promise<ConversionResult>;
 
   /**
    * 策略名称，用于日志和调试

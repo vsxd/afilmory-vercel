@@ -675,6 +675,24 @@ describe("TileManager", () => {
   });
 
   describe("lifecycle", () => {
+    it("releases live textures on reload while leaving the manager reusable", () => {
+      const { host, deleteTexture, requestTileFromWorker } = createHost();
+      const manager = new TileManager(host);
+      manager.updateTileCache();
+      const key = requestedKeys(requestTileFromWorker)[0];
+      manager.handleWorkerMessage({
+        type: "tile-created",
+        payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
+      });
+      const { texture } = manager.tileCache.get(key)!;
+      manager.reset({ releaseTextures: true });
+      expect(deleteTexture).toHaveBeenCalledExactlyOnceWith(texture);
+      expect(manager.tileCache.size).toBe(0);
+      requestTileFromWorker.mockClear();
+      manager.updateTileCache();
+      expect(requestTileFromWorker).toHaveBeenCalled();
+    });
+
     it("reset() drops bookkeeping and pending work without deleting GPU textures", () => {
       // 只伪造 setTimeout/clearTimeout，避免碰掉 beforeEach 里的 rAF spy
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });

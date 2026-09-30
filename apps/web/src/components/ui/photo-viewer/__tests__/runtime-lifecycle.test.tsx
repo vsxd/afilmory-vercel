@@ -13,6 +13,7 @@ import {
 } from "vitest";
 
 import type { ImageLoaderManager } from "~/lib/image-loader-manager";
+import { MediaTaskError } from "~/lib/media-task";
 
 import { useImageLoader, useProgressiveImageState } from "../hooks";
 import type { LivePhotoVideoHandle } from "../LivePhotoVideo";
@@ -95,18 +96,22 @@ vi.mock("motion/react", async () => {
 function ImageLoaderHarness({
   tick,
   src = "https://example.com/photo.jpg",
+  indicator,
 }: {
   tick: number;
   src?: string;
+  indicator?: LoadingIndicatorRef;
 }) {
   const [state, actions] = useProgressiveImageState();
   const blobSrc =
     state.image.status === "loaded" ? state.image.lease.blobSrc : null;
   const highResLoaded = state.image.status === "loaded";
-  const loadingIndicatorRef = useRef({
-    updateLoadingState: vi.fn(),
-    resetLoadingState: vi.fn(),
-  });
+  const loadingIndicatorRef = useRef(
+    indicator ?? {
+      updateLoadingState: vi.fn(),
+      resetLoadingState: vi.fn(),
+    },
+  );
 
   useImageLoader({
     src,
@@ -184,6 +189,35 @@ describe("photo viewer runtime lifecycle", () => {
     vi.useRealTimers();
     cleanup();
   });
+
+  it.each(["resource-limit", "network"] as const)(
+    "offers retry only when a %s failure can recover without changing the source",
+    async (code) => {
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      const indicator = {
+        updateLoadingState: vi.fn(),
+        resetLoadingState: vi.fn(),
+      };
+      loadImageMock.mockRejectedValue(
+        new MediaTaskError("decode", code, "test failure"),
+      );
+      render(<ImageLoaderHarness tick={0} indicator={indicator} />);
+      try {
+        await waitFor(() =>
+          expect(indicator.updateLoadingState).toHaveBeenCalledWith(
+            expect.objectContaining({
+              isError: true,
+              onRetry:
+                code === "resource-limit" ? undefined : expect.any(Function),
+            }),
+          ),
+        );
+        expect(loadImageMock).toHaveBeenCalledOnce();
+      } finally {
+        errorLog.mockRestore();
+      }
+    },
+  );
 
   it("releases the old lease and loads a changed image source in the same component", async () => {
     const first = {
