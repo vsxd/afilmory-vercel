@@ -30,6 +30,15 @@ export interface DeviceMetrics {
   contextLost: number;
   contextRestored: number;
   pageErrors: number;
+  errorCounts?: {
+    runtime: number;
+    img: number;
+    script: number;
+    link: number;
+    video: number;
+    audio: number;
+    other: number;
+  };
   unhandledRejections: number;
   hiddenTransitions: number;
   viewport: { width: number; height: number; dpr: number };
@@ -101,6 +110,15 @@ export function installDeviceProbe() {
       contextLost: 0,
       contextRestored: 0,
       pageErrors: 0,
+      errorCounts: {
+        runtime: 0,
+        img: 0,
+        script: 0,
+        link: 0,
+        video: 0,
+        audio: 0,
+        other: 0,
+      },
       unhandledRejections: 0,
       hiddenTransitions: 0,
       viewport: {
@@ -159,8 +177,34 @@ export function installDeviceProbe() {
   );
   window.addEventListener(
     "error",
-    () => {
-      if (active) metrics.pageErrors++;
+    (event) => {
+      if (!active) return;
+      metrics.pageErrors++;
+      const counts = metrics.errorCounts;
+      if (!counts) return;
+      // Runtime errors target Window; resource errors target their element.
+      // Only inspect the tag, never ErrorEvent details or resource attributes.
+      if (event.target === event.currentTarget) {
+        counts.runtime++;
+        return;
+      }
+      const tag =
+        event.target instanceof Element
+          ? event.target.tagName.toLowerCase()
+          : "";
+      switch (tag) {
+        case "img":
+        case "script":
+        case "link":
+        case "video":
+        case "audio": {
+          counts[tag]++;
+          break;
+        }
+        default: {
+          counts.other++;
+        }
+      }
     },
     true,
   );

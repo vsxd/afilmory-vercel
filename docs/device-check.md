@@ -18,6 +18,8 @@ pnpm exec tsx scripts/device-check-server.ts --host 0.0.0.0 --real-library
 
 真实模式仅读取 `generated/photos-manifest.json` 和 `apps/web/public`；远程原图继续使用 manifest 已有地址。本地原图必须已经在 public 中，工具不会读取或复制其他照片源目录。它使用隔离的站点测试配置，关闭外部统计，不继承私有环境变量。
 
+构建子进程使用与正式构建一致的 `apps/web` 工作目录，确保图标插件能解析应用的图标集合。构建结束还会检查搜索、地图和关闭图标的 CSS 规则；缺少时停止启动，避免把缺图标的页面交给手机测试。
+
 默认只监听 `127.0.0.1`，手机访问需显式 `--host 0.0.0.0`。默认端口 `4176`，可用 `--port 4177` 更改。构建完成后终端打印带随机 token 的入口链接及报告目录；使用其中 Mac 的局域网 IPv4 地址，不能在手机上用 `127.0.0.1`。
 
 ## 手机连接与操作
@@ -32,7 +34,7 @@ pnpm exec tsx scripts/device-check-server.ts --host 0.0.0.0 --real-library
 
 - 记录应用 iframe 内可见页面的 `requestAnimationFrame` 帧间隔，给出样本数、p50/p95/p99、最大值及超过 50/100 ms 的次数。分位数使用 nearest-rank。它反映帧回调节奏，不等于 GPU 绘制耗时，也不把 120 Hz 当作固定基准。
 - 页面切到后台时跳过间隔，单独记录后台切换次数；最多记录 60,000 个间隔后自动结束。记录开始时的 iframe 视口、DPR 和浏览器 UA；机型由用户填写。
-- 浏览器支持时记录 Long Tasks 的次数和时长；不支持时明确标为 `supported: false`，不是零卡顿。记录 WebGL context lost/restored、页面/资源 error 和未处理 Promise rejection 的次数，不保存错误文本或堆栈。
+- 浏览器支持时记录 Long Tasks 的次数和时长；不支持时明确标为 `supported: false`，不是零卡顿。记录 WebGL context lost/restored、页面/资源 error 和未处理 Promise rejection 的次数。新版报告另按事件目标分为 runtime、img、script、link、video、audio、other 七类错误计数，保留总数及旧报告兼容；不保存错误文本、堆栈、文件名或资源 URL。分类只帮助区分错误来源，不能追溯旧报告中的错误。
 - 页面刷新会尽可能结束并保存当前内存统计；系统直接回收页面可能丢失该段数据。报告中的 reloads、缺失 metrics 和用户观察应一起判断。工具不能确认系统为何回收页面。
 - 不声称测量 Safari 未开放的 JS heap、GPU 显存或系统内存。合成样例用于流程与回归检查，不能代表真实大图负载；验证大图请显式使用现有图库。
 - 此入口禁用 Service Worker，确保每次导航都注入本次测量脚本；LAN HTTP 在 iPhone 上本来也不提供完整 PWA 能力。离线、HTTPS、正式 CDN 与安装后的 PWA 需要单独验收。iframe 外的控制面板占用少量屏幕高度，实际视口写入报告。
@@ -41,7 +43,7 @@ pnpm exec tsx scripts/device-check-server.ts --host 0.0.0.0 --real-library
 ## 小型验证
 
 ```sh
-pnpm exec vitest run --project scripts scripts/device-check-server.test.ts scripts/device-check-client.test.ts
+pnpm exec vitest run --project scripts scripts/device-check-build.test.ts scripts/device-check-server.test.ts scripts/device-check-client.test.ts
 ```
 
 这些测试使用很小的临时静态文件，验证路径/符号链接边界、SPA 回退、图片 MIME、视频 Range、报告认证和统计计算；另用模拟 DOM 验证后台间隔排除及错误只记录次数，不执行生产构建或启动浏览器。

@@ -114,6 +114,40 @@ describe("device performance metrics", () => {
       }).success,
     ).toBe(true);
   });
+
+  it("accepts legacy reports and only fixed error counters matching the existing total", () => {
+    const legacy = deviceReportSchema.parse(validReport());
+    expect(legacy.metrics).not.toHaveProperty("errorCounts");
+    const errorCounts = {
+      runtime: 2,
+      img: 1,
+      script: 0,
+      link: 0,
+      video: 0,
+      audio: 0,
+      other: 0,
+    };
+    const report = {
+      ...validReport(),
+      metrics: { ...validReport().metrics, pageErrors: 3, errorCounts },
+    };
+    expect(deviceReportSchema.parse(report).metrics?.errorCounts).toEqual(
+      errorCounts,
+    );
+    for (const invalidCounts of [
+      { ...errorCounts, img: -1 },
+      { ...errorCounts, img: 1.5 },
+      { ...errorCounts, img: 2 },
+      { ...errorCounts, photoUrl: "not-collected" },
+    ]) {
+      expect(
+        deviceReportSchema.safeParse({
+          ...report,
+          metrics: { ...report.metrics, errorCounts: invalidCounts },
+        }).success,
+      ).toBe(false);
+    }
+  });
 });
 
 describe("isolated device build", () => {
@@ -250,7 +284,23 @@ describe("device HTTP server", () => {
     expect(
       (await post(JSON.stringify({ ...validReport(), exif: {} }))).status,
     ).toBe(400);
-    expect((await post(JSON.stringify(validReport()))).status).toBe(201);
+    const report = {
+      ...validReport(),
+      metrics: {
+        ...validReport().metrics,
+        pageErrors: 1,
+        errorCounts: {
+          runtime: 0,
+          img: 1,
+          script: 0,
+          link: 0,
+          video: 0,
+          audio: 0,
+          other: 0,
+        },
+      },
+    };
+    expect((await post(JSON.stringify(report))).status).toBe(201);
     expect(onReport).toHaveBeenCalledTimes(1);
     const reports = await fs.readdir(options.reportDirectory);
     expect(reports).toHaveLength(1);
@@ -259,6 +309,7 @@ describe("device HTTP server", () => {
     );
     expect(saved.library).toBe("synthetic");
     expect(saved.metrics.frames.over50Ms).toBe(2);
+    expect(saved.metrics.errorCounts).toEqual(report.metrics.errorCounts);
     expect(saved).not.toHaveProperty("photoUrl");
     expect(saved).not.toHaveProperty("token");
   });

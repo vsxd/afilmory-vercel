@@ -71,6 +71,18 @@ export const deviceReportSchema = z
         contextLost: count,
         contextRestored: count,
         pageErrors: count,
+        errorCounts: z
+          .object({
+            runtime: count,
+            img: count,
+            script: count,
+            link: count,
+            video: count,
+            audio: count,
+            other: count,
+          })
+          .strict()
+          .optional(),
         unhandledRejections: count,
         hiddenTransitions: count,
         viewport: z
@@ -82,6 +94,14 @@ export const deviceReportSchema = z
           .strict(),
       })
       .strict()
+      .refine(
+        (value) =>
+          !value.errorCounts ||
+          Object.values(value.errorCounts).reduce(
+            (total, errors) => total + errors,
+            0,
+          ) === value.pageErrors,
+      )
       .nullable(),
   })
   .strict();

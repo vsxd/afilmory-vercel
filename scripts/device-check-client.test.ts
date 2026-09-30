@@ -33,6 +33,7 @@ describe("device measurement probe", () => {
         });
         return window.dispatchEvent(event);
       };
+      window.dispatchEvent(new ErrorEvent("error"));
       command("start");
       callback?.(0);
       callback?.(16);
@@ -47,8 +48,23 @@ describe("device measurement probe", () => {
       canvas.dispatchEvent(new Event("webglcontextlost"));
       canvas.dispatchEvent(new Event("webglcontextrestored"));
       window.dispatchEvent(
-        new ErrorEvent("error", { message: "private-photo-url" }),
+        new ErrorEvent("error", {
+          message: "private-photo-url",
+          filename: "private-script-url",
+          error: new Error("private-error-details"),
+        }),
       );
+      for (const tag of ["img", "script", "link", "video", "audio", "object"]) {
+        const resource = document.createElement(tag);
+        resource.setAttribute(
+          tag === "link" ? "href" : "src",
+          "private-resource-url",
+        );
+        document.body.append(resource);
+        // Resource errors do not bubble; the window capture listener still
+        // receives them without inspecting their URLs or error payloads.
+        resource.dispatchEvent(new Event("error"));
+      }
       window.dispatchEvent(new Event("unhandledrejection"));
       command("stop", 0);
       expect(
@@ -69,13 +85,33 @@ describe("device measurement probe", () => {
       expect(result.metrics).toMatchObject({
         contextLost: 1,
         contextRestored: 1,
-        pageErrors: 1,
+        pageErrors: 7,
+        errorCounts: {
+          runtime: 1,
+          img: 1,
+          script: 1,
+          link: 1,
+          video: 1,
+          audio: 1,
+          other: 1,
+        },
         unhandledRejections: 1,
         hiddenTransitions: 1,
         longTasks: { supported: false },
       });
-      expect(JSON.stringify(result)).not.toContain("private-photo-url");
+      expect(JSON.stringify(result)).not.toContain("private-");
       expect(callback).toBeUndefined();
+      window.dispatchEvent(new ErrorEvent("error"));
+      expect(result.metrics.pageErrors).toBe(7);
+      command("start", 2);
+      command("stop", 2);
+      const nextResult = post.mock.calls.find(
+        ([message]) => message.type === "result" && message.runId === 2,
+      )![0];
+      expect(nextResult.metrics.pageErrors).toBe(0);
+      expect(Object.values(nextResult.metrics.errorCounts)).toEqual(
+        Array.from({ length: 7 }, () => 0),
+      );
     } finally {
       document.body.innerHTML = "";
     }
