@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TileRequestRuntime } from "./tile-request-runtime";
 
 describe("TileRequestRuntime", () => {
-  it("dedupes visible tile requests and keeps the better priority", () => {
+  it("dedupes requests and follows current priority even when demoted to prefetch", () => {
     const runtime = new TileRequestRuntime();
 
     expect(
@@ -22,6 +22,12 @@ describe("TileRequestRuntime", () => {
     ).toBe(false);
 
     expect(runtime.pendingTileRequests.get("1-1-0")).toBe(3);
+    runtime.queueVisibleTile({
+      hasCachedTile: false,
+      key: "1-1-0",
+      priority: 20,
+    });
+    expect(runtime.pendingTileRequests.get("1-1-0")).toBe(20);
   });
 
   it("selects pending batches and tracks loading state", () => {

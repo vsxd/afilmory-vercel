@@ -10,10 +10,12 @@ import {
 } from "./tile-cache";
 import type { LoadingTileInfo } from "./tile-request-runtime";
 import { TileRequestRuntime } from "./tile-request-runtime";
-import { calculateVisibleTiles, createViewportHash } from "./tile-scheduler";
+import type { TileBudget } from "./tile-scheduler";
+import { createViewportHash, planTilesWithinBudget } from "./tile-scheduler";
 import {
   cleanupTileTextures,
   disposeAllTileTextures,
+  reserveTileTextureSpace,
 } from "./tile-texture-cleanup";
 import type {
   TextureWorkerMessage,
@@ -78,11 +80,8 @@ export interface TileManagerHost {
    */
   onVisibleLodReady: (lodLevel: number) => void;
   /**
-   * Fired when an update takes the base-coverage skip path: no tiles are (or
-   * will be) drawn, so the screen now shows only the base texture. The engine's
-   * quality signal is otherwise refreshed exclusively by `onVisibleLodReady`,
-   * which never fires here — so zooming back to fit after tiles were active
-   * would leave a stale (too-high) quality. Callers dedupe.
+   * The base is the guaranteed quality while tiles are absent or the current
+   * visible set is incomplete. Prefetch never delays visible readiness.
    */
   onCoveredByBase?: () => void;
 }
@@ -182,6 +181,8 @@ export class TileManager {
   private readonly cache = new Map<TileKey, TileInfo>();
   private readonly requestRuntime = new TileRequestRuntime();
   private visibleTiles = new Set<TileKey>();
+  /** Visible tiles plus the prefetch border admitted by the current budget. */
+  private admittedTiles = new Set<TileKey>();
   /** LOD level the current visible set was computed for. */
   private visibleLodLevel = -1;
   private lastViewportHash = "";
@@ -190,7 +191,13 @@ export class TileManager {
   private lastUpdateTime = 0;
   private disposed = false;
 
-  constructor(private readonly host: TileManagerHost) {}
+  constructor(
+    private readonly host: TileManagerHost,
+    private readonly budget: TileBudget = {
+      maxCacheBytes: TILE_CACHE_BYTE_BUDGET,
+      maxCacheSize: TILE_CACHE_SIZE,
+    },
+  ) {}
 
   // ---- Read-only views for the debug overlay -------------------------------
 
@@ -200,6 +207,15 @@ export class TileManager {
 
   get currentVisibleTiles(): ReadonlySet<TileKey> {
     return this.visibleTiles;
+  }
+
+  /** Effective detail only becomes current once every visible tile is ready. */
+  get currentReadyLodLevel(): number | null {
+    if (this.visibleTiles.size === 0 || this.visibleLodLevel < 0) return null;
+    for (const key of this.visibleTiles) {
+      if (!this.cache.get(key)?.texture) return null;
+    }
+    return this.visibleLodLevel;
   }
 
   get loadingTiles(): ReadonlyMap<TileKey, LoadingTileInfo> {
@@ -249,8 +265,9 @@ export class TileManager {
     const loadingInfo = this.requestRuntime.getLoadingInfo(key);
     const tileInfoInCache = this.cache.get(key);
 
-    // Tile might have been loaded by other means or is no longer needed
-    if (!this.visibleTiles.has(key)) {
+    // A late request is useful only if still admitted. Same-image duplicate
+    // responses reuse the cached texture instead of briefly allocating twice.
+    if (!this.admittedTiles.has(key) || tileInfoInCache?.texture) {
       imageBitmap.close();
       if (loadingInfo) {
         this.requestRuntime.markLoaded(key);
@@ -260,6 +277,20 @@ export class TileManager {
 
     const byteSize =
       imageBitmap.width * imageBitmap.height * TEXTURE_BYTES_PER_PIXEL;
+    if (
+      !reserveTileTextureSpace({
+        byteSize,
+        currentVisibleTiles: this.visibleTiles,
+        admittedTiles: this.admittedTiles,
+        deleteTexture: this.host.deleteTexture,
+        ...this.budget,
+        tileCache: this.cache,
+      })
+    ) {
+      imageBitmap.close();
+      this.requestRuntime.markFailed(key);
+      return;
+    }
     let texture: WebGLTexture;
     try {
       texture = this.host.createTexture(imageBitmap);
@@ -288,12 +319,6 @@ export class TileManager {
           : 0,
       byteSize,
     };
-    // 上下文丢失时 reset() 清空 requestRuntime 但 worker 仍存活，恢复后重发的
-    // 请求可能与迟到的旧响应对同一 key 各产出一张纹理；覆盖前必须删旧纹理，
-    // 否则它脱离缓存后 cleanup/disposeAll 都遍历不到，泄漏到上下文销毁为止。
-    if (tileInfoInCache?.texture) {
-      this.host.deleteTexture(tileInfoInCache.texture);
-    }
     this.cache.set(key, tileInfo);
 
     if (loadingInfo) {
@@ -301,8 +326,8 @@ export class TileManager {
     }
 
     this.cleanupOldTiles();
-    this.host.requestRender();
     this.notifyIfVisibleLodReady();
+    this.host.requestRender();
   }
 
   // ---- Cache update / dispatch ---------------------------------------------
@@ -312,24 +337,39 @@ export class TileManager {
     this.lastUpdateTime = performance.now();
 
     const viewport = this.host.getViewport();
-    const lodLevel = this.host.getSelectedLodLevel();
+    const plan = planTilesWithinBudget(
+      { ...viewport, lodLevel: this.host.getSelectedLodLevel() },
+      this.budget,
+      this.host.isLodCoveredByBase,
+    );
+    const { lodLevel } = plan;
 
-    // 底图分辨率已 ≥ 该 LOD 的输出分辨率（fit 视图是每张照片的默认状态）：
-    // 瓦片只会重复底图内容。清空可见集、丢弃未派发请求，等缩放越过底图
-    // 分辨率后瓦片才重新参与；已缓存纹理留给 cleanup 按容量/年龄回收。
-    if (this.host.isLodCoveredByBase(lodLevel)) {
+    // 底图已覆盖所需分辨率，或者可见瓦片在所有 LOD 下都超出预算：
+    // 清空可见集、丢弃未派发请求；已缓存纹理留给容量/年龄回收。
+    if (lodLevel === null) {
+      const changed = this.visibleTiles.size > 0;
       this.visibleTiles = new Set();
+      this.admittedTiles = new Set();
       this.visibleLodLevel = -1;
       this.lastViewportHash = "";
       this.requestRuntime.pruneInvisiblePending(this.visibleTiles);
       this.cleanupOldTiles();
       // 只画底图了：onVisibleLodReady 不会再触发，需显式让引擎把质量降回底图水平。
-      this.host.onCoveredByBase?.();
+      if (viewport.imageLoaded) this.host.onCoveredByBase?.();
+      if (changed) this.host.requestRender();
       return;
     }
 
-    const visibleTiles = calculateVisibleTiles({ ...viewport, lodLevel });
-    const newVisibleTiles = new Set<TileKey>();
+    const newVisibleTiles = new Set(
+      plan.visibleTiles.map((tile) =>
+        createTileKey(tile.x, tile.y, tile.lodLevel),
+      ),
+    );
+    const planChanged =
+      lodLevel !== this.visibleLodLevel ||
+      newVisibleTiles.size !== this.visibleTiles.size ||
+      [...newVisibleTiles].some((key) => !this.visibleTiles.has(key));
+    const newAdmittedTiles = new Set<TileKey>();
 
     // 创建当前视口的哈希，用于检测视口变化
     const viewportHash = createViewportHash(viewport);
@@ -339,15 +379,19 @@ export class TileManager {
     let addedNewRequest = false;
 
     // 标记需要的瓦片
-    for (const tile of visibleTiles) {
+    // Rank visible tiles ahead of ALL prefetch, including after a quick pan.
+    for (const [priority, tile] of [
+      ...plan.visibleTiles,
+      ...plan.prefetchTiles,
+    ].entries()) {
       const key = createTileKey(tile.x, tile.y, tile.lodLevel);
-      newVisibleTiles.add(key);
+      newAdmittedTiles.add(key);
 
       addedNewRequest =
         this.requestRuntime.queueVisibleTile({
           hasCachedTile: this.cache.has(key),
           key,
-          priority: tile.priority,
+          priority,
         }) || addedNewRequest;
 
       const cachedTile = this.cache.get(key);
@@ -358,9 +402,10 @@ export class TileManager {
     }
 
     this.visibleTiles = newVisibleTiles;
+    this.admittedTiles = newAdmittedTiles;
     this.visibleLodLevel = lodLevel;
     // 丢弃已不可见但尚未派发的瓦片请求，避免把过期瓦片排到可见瓦片之前。
-    this.requestRuntime.pruneInvisiblePending(newVisibleTiles);
+    this.requestRuntime.pruneInvisiblePending(newAdmittedTiles);
     this.cleanupOldTiles();
 
     if (
@@ -372,14 +417,14 @@ export class TileManager {
     }
 
     this.notifyIfVisibleLodReady();
+    if (planChanged) this.host.requestRender();
   }
 
   private cleanupOldTiles(): void {
     cleanupTileTextures({
-      currentVisibleTiles: this.visibleTiles,
+      currentVisibleTiles: this.admittedTiles,
       deleteTexture: (texture) => this.host.deleteTexture(texture),
-      maxCacheBytes: TILE_CACHE_BYTE_BUDGET,
-      maxCacheSize: TILE_CACHE_SIZE,
+      ...this.budget,
       now: performance.now(),
       tileCache: this.cache,
     });
@@ -436,18 +481,22 @@ export class TileManager {
   // ---- Render support --------------------------------------------------------
 
   /**
-   * Textures + matrices for every visible tile cached at `lodLevel`, ready for
-   * the engine's draw loop.
+   * Textures + matrices at the budget-selected LOD, ready for the draw loop.
    */
-  collectVisibleRenderTiles(
-    lodLevel: number,
-  ): Array<{ texture: WebGLTexture; matrix: Float32Array }> {
+  collectVisibleRenderTiles(): Array<{
+    texture: WebGLTexture;
+    matrix: Float32Array;
+  }> {
     const viewport = this.host.getViewport();
     const result: Array<{ texture: WebGLTexture; matrix: Float32Array }> = [];
 
     for (const key of this.visibleTiles) {
       const tileInfo = this.cache.get(key);
-      if (!tileInfo || !tileInfo.texture || tileInfo.lodLevel !== lodLevel) {
+      if (
+        !tileInfo ||
+        !tileInfo.texture ||
+        tileInfo.lodLevel !== this.visibleLodLevel
+      ) {
         continue;
       }
 
@@ -496,14 +545,9 @@ export class TileManager {
   // ---- Quality reporting -----------------------------------------------------
 
   private notifyIfVisibleLodReady(): void {
-    if (this.visibleTiles.size === 0 || this.visibleLodLevel < 0) return;
-
-    for (const key of this.visibleTiles) {
-      const tileInfo = this.cache.get(key);
-      if (!tileInfo || !tileInfo.texture) return;
-    }
-
-    this.host.onVisibleLodReady(this.visibleLodLevel);
+    const readyLodLevel = this.currentReadyLodLevel;
+    if (readyLodLevel === null) this.host.onCoveredByBase?.();
+    else this.host.onVisibleLodReady(readyLodLevel);
   }
 
   // ---- Lifecycle -------------------------------------------------------------
@@ -529,6 +573,7 @@ export class TileManager {
     this.cache.clear();
     this.requestRuntime.clear();
     this.visibleTiles = new Set();
+    this.admittedTiles = new Set();
     this.visibleLodLevel = -1;
     this.lastViewportHash = "";
   }
@@ -548,5 +593,7 @@ export class TileManager {
     });
     this.requestRuntime.clear();
     this.visibleTiles = new Set();
+    this.admittedTiles = new Set();
+    this.visibleLodLevel = -1;
   }
 }

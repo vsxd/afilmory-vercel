@@ -1,6 +1,7 @@
 export const TILE_SIZE = 512;
 export const MAX_TILES_PER_FRAME = 4;
 export const TILE_CACHE_SIZE = 32;
+/** Tile RGBA8 allocations only; base texture and canvas have separate budgets. */
 export const TILE_CACHE_BYTE_BUDGET = 32 * 1024 * 1024;
 export const TEXTURE_BYTES_PER_PIXEL = 4;
 
@@ -55,8 +56,8 @@ export function getTileGridSize(input: {
 }
 
 /**
- * Actual pixel dimensions of one tile's bitmap. Interior tiles are
- * TILE_SIZE × TILE_SIZE; edge tiles are smaller. Mirrors the slicing math in
+ * Actual pixel dimensions of one tile's bitmap. Uniform grid cells are at
+ * most TILE_SIZE on each side, including interior cells. Mirrors the slicing math in
  * texture-worker-runtime.ts so memory accounting matches what the worker produces.
  */
 export function getTilePixelSize(input: {

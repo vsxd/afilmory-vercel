@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WebGLInputControllerHost } from "./input-controller";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
+import { getTilePixelSize, parseTileKey } from "./tile-cache";
 import {
   WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS,
   WebGLImageViewerEngine,
@@ -174,30 +175,35 @@ function createWebGLMock(): WebGLRenderingContext & {
 function createEngine(
   canvas: HTMLCanvasElement,
   overrides: Partial<Required<WebGLImageViewerProps>> = {},
+  debugRef?: React.RefObject<(info: DebugInfo) => void>,
 ): WebGLImageViewerEngine {
-  return new WebGLImageViewerEngine(canvas, {
-    src: "blob:photo",
-    sourceBlob: null,
-    className: "",
-    width: 100,
-    height: 100,
-    initialScale: 1,
-    minScale: 0.1,
-    maxScale: 10,
-    wheel: { step: 0.2 },
-    pinch: {},
-    doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
-    panning: {},
-    limitToBounds: true,
-    centerOnInit: true,
-    smooth: true,
-    onZoomChange: () => {},
-    onLoadingStateChange: () => {},
-    onImagePainted: () => {},
-    onError: () => {},
-    debug: false,
-    ...overrides,
-  });
+  return new WebGLImageViewerEngine(
+    canvas,
+    {
+      src: "blob:photo",
+      sourceBlob: null,
+      className: "",
+      width: 100,
+      height: 100,
+      initialScale: 1,
+      minScale: 0.1,
+      maxScale: 10,
+      wheel: { step: 0.2 },
+      pinch: {},
+      doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
+      panning: {},
+      limitToBounds: true,
+      centerOnInit: true,
+      smooth: true,
+      onZoomChange: () => {},
+      onLoadingStateChange: () => {},
+      onImagePainted: () => {},
+      onError: () => {},
+      debug: false,
+      ...overrides,
+    },
+    debugRef,
+  );
 }
 
 describe("WebGLImageViewerEngine lifecycle", () => {
@@ -819,6 +825,80 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     vi.runAllTimers();
     expect(lastQuality()).toBe("low");
 
+    engine.destroy();
+  });
+
+  it("draws the budget-selected lower LOD over the base and reports only ready detail", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 3000,
+      bottom: 3000,
+      width: 3000,
+      height: 3000,
+      toJSON: () => ({}),
+    });
+    const snapshots: DebugInfo[] = [];
+    const onLoadingStateChange = vi.fn();
+    const engine = createEngine(
+      canvas,
+      { onLoadingStateChange },
+      { current: (info) => snapshots.push(info) },
+    );
+    const worker = WorkerMock.instances.at(-1)!;
+    const emit = (data: unknown) =>
+      worker.onmessage?.({ data } as MessageEvent);
+    engine.loadImage("blob:photo", 6000, 6000).catch(() => {});
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 600, height: 600, close: vi.fn() },
+        imageWidth: 6000,
+        imageHeight: 6000,
+        lodLevel: 1,
+      },
+    });
+    const baseTexture = gl.__createTexture.mock.results.at(-1)!.value;
+    emit({ type: "init-done" });
+    vi.runAllTimers();
+
+    // Desired LOD 1 needs 36 visible tiles; the budget selects 9 at LOD 0.
+    const keys = snapshots.at(-1)!.tileSystem!.visibleKeys!;
+    expect(keys).toHaveLength(9);
+    expect(keys.every((key) => parseTileKey(key).lodLevel === 0)).toBe(true);
+    for (const key of keys) {
+      const size = getTilePixelSize({
+        ...parseTileKey(key),
+        imageWidth: 6000,
+        imageHeight: 6000,
+      });
+      emit({
+        type: "tile-created",
+        payload: { key, imageBitmap: { ...size, close: vi.fn() }, lodLevel: 0 },
+      });
+    }
+    expect(snapshots.at(-1)!.currentLOD).toBe(0);
+    expect(snapshots.at(-1)!.quality).toBe("low");
+    expect(onLoadingStateChange.mock.calls.at(-1)?.[2]).toBe("low");
+
+    vi.mocked(gl.bindTexture).mockClear();
+    engine.setTileOutlineEnabled(false);
+    const textures = vi
+      .mocked(gl.bindTexture)
+      .mock.calls.map(([, texture]) => texture);
+    expect(textures).toHaveLength(10);
+    expect(textures[0]).toBe(baseTexture);
+    expect(textures.slice(1).every((texture) => texture !== baseTexture)).toBe(
+      true,
+    );
+    expect(gl.deleteTexture).not.toHaveBeenCalledWith(baseTexture);
     engine.destroy();
   });
 

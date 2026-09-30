@@ -1,5 +1,10 @@
 import type { TileKey } from "./tile-cache";
-import { getTileGridSize } from "./tile-cache";
+import {
+  createTileKey,
+  getTileGridSize,
+  getTilePixelSize,
+  TEXTURE_BYTES_PER_PIXEL,
+} from "./tile-cache";
 
 export interface VisibleTile {
   lodLevel: number;
@@ -33,8 +38,16 @@ export function createViewportHash(input: {
   return `${input.scale.toFixed(3)}-${input.translateX.toFixed(1)}-${input.translateY.toFixed(1)}`;
 }
 
-export function calculateVisibleTiles(input: VisibleTileInput): VisibleTile[] {
-  if (!input.imageLoaded) return [];
+function getVisibleTileRange(input: VisibleTileInput, margin: number) {
+  if (
+    !input.imageLoaded ||
+    input.scale <= 0 ||
+    input.canvasWidth <= 0 ||
+    input.canvasHeight <= 0 ||
+    input.imageWidth <= 0 ||
+    input.imageHeight <= 0
+  )
+    return null;
 
   const { cols, rows } = getTileGridSize({
     imageWidth: input.imageWidth,
@@ -59,17 +72,17 @@ export function calculateVisibleTiles(input: VisibleTileInput): VisibleTile[] {
     input.imageHeight,
     (input.canvasHeight - imageTopInCanvas) / input.scale,
   );
+  if (viewRight <= viewLeft || viewBottom <= viewTop) return null;
 
   const tileWidthInImage = input.imageWidth / cols;
   const tileHeightInImage = input.imageHeight / rows;
-  const margin = 1;
   const startTileX = Math.max(
     0,
     Math.floor(viewLeft / tileWidthInImage) - margin,
   );
   const endTileX = Math.min(
     cols - 1,
-    Math.ceil(viewRight / tileWidthInImage) + margin,
+    Math.ceil(viewRight / tileWidthInImage) - 1 + margin,
   );
   const startTileY = Math.max(
     0,
@@ -77,12 +90,39 @@ export function calculateVisibleTiles(input: VisibleTileInput): VisibleTile[] {
   );
   const endTileY = Math.min(
     rows - 1,
-    Math.ceil(viewBottom / tileHeightInImage) + margin,
+    Math.ceil(viewBottom / tileHeightInImage) - 1 + margin,
   );
 
+  return {
+    startTileX,
+    endTileX,
+    startTileY,
+    endTileY,
+    tileWidthInImage,
+    tileHeightInImage,
+    viewCenterX: (viewLeft + viewRight) / 2,
+    viewCenterY: (viewTop + viewBottom) / 2,
+  };
+}
+
+export function calculateVisibleTiles(
+  input: VisibleTileInput,
+  margin = 0,
+): VisibleTile[] {
+  const range = getVisibleTileRange(input, margin);
+  if (!range) return [];
+  const {
+    startTileX,
+    endTileX,
+    startTileY,
+    endTileY,
+    tileWidthInImage,
+    tileHeightInImage,
+    viewCenterX,
+    viewCenterY,
+  } = range;
+
   const visibleTiles: VisibleTile[] = [];
-  const viewCenterX = (viewLeft + viewRight) / 2;
-  const viewCenterY = (viewTop + viewBottom) / 2;
 
   for (let y = startTileY; y <= endTileY; y++) {
     for (let x = startTileX; x <= endTileX; x++) {
@@ -103,6 +143,69 @@ export function calculateVisibleTiles(input: VisibleTileInput): VisibleTile[] {
   }
 
   return visibleTiles.sort((a, b) => a.priority - b.priority);
+}
+
+export interface TileBudget {
+  maxCacheBytes: number;
+  maxCacheSize: number;
+}
+
+export interface TilePlan {
+  /** null means that only the always-rendered base texture is needed. */
+  lodLevel: number | null;
+  visibleTiles: VisibleTile[];
+  prefetchTiles: VisibleTile[];
+  byteSize: number;
+}
+
+/** Choose visible detail first; the optional one-tile border uses only spare budget. */
+export function planTilesWithinBudget(
+  input: VisibleTileInput,
+  budget: TileBudget,
+  isLodCoveredByBase: (lodLevel: number) => boolean,
+): TilePlan {
+  const baseOnly: TilePlan = {
+    lodLevel: null,
+    visibleTiles: [],
+    prefetchTiles: [],
+    byteSize: 0,
+  };
+  for (let { lodLevel } = input; lodLevel >= 0; lodLevel--) {
+    if (isLodCoveredByBase(lodLevel)) return baseOnly;
+    const candidate = { ...input, lodLevel };
+    const range = getVisibleTileRange(candidate, 0);
+    if (!range) return baseOnly;
+    const count =
+      (range.endTileX - range.startTileX + 1) *
+      (range.endTileY - range.startTileY + 1);
+    // Bound enumeration even for enormous image metadata at a very small zoom.
+    if (count > budget.maxCacheSize) continue;
+    const bytesFor = (tile: VisibleTile) => {
+      const size = getTilePixelSize({ ...candidate, ...tile });
+      return size.width * size.height * TEXTURE_BYTES_PER_PIXEL;
+    };
+    const visibleTiles = calculateVisibleTiles(candidate);
+    let byteSize = visibleTiles.reduce(
+      (bytes, tile) => bytes + bytesFor(tile),
+      0,
+    );
+    if (byteSize > budget.maxCacheBytes) continue;
+    const visibleKeys = new Set(
+      visibleTiles.map((tile) => createTileKey(tile.x, tile.y, lodLevel)),
+    );
+    const prefetchTiles: VisibleTile[] = [];
+    for (const tile of calculateVisibleTiles(candidate, 1)) {
+      if (visibleKeys.has(createTileKey(tile.x, tile.y, lodLevel))) continue;
+      if (visibleTiles.length + prefetchTiles.length >= budget.maxCacheSize)
+        break;
+      const bytes = bytesFor(tile);
+      if (byteSize + bytes > budget.maxCacheBytes) continue;
+      prefetchTiles.push(tile);
+      byteSize += bytes;
+    }
+    return { lodLevel, visibleTiles, prefetchTiles, byteSize };
+  }
+  return baseOnly;
 }
 
 export function selectPendingTileBatch(

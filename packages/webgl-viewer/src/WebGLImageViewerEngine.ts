@@ -807,7 +807,7 @@ export class WebGLImageViewerEngine {
       for (const {
         texture,
         matrix,
-      } of this.tileManager.collectVisibleRenderTiles(lodLevel)) {
+      } of this.tileManager.collectVisibleRenderTiles()) {
         this.renderer.drawTexturedQuad(texture, matrix);
         if (this.tileOutlineEnabled) {
           outlinedTileMatrices.push(matrix);
@@ -997,7 +997,9 @@ export class WebGLImageViewerEngine {
         scale: this.scale,
         translateX: this.translateX,
         translateY: this.translateY,
-        currentLOD: this.textureManager.currentLOD,
+        currentLOD:
+          this.tileManager.currentReadyLodLevel ??
+          this.textureManager.currentLOD,
         lodLevelCount: SIMPLE_LOD_LEVELS.length,
         canvasWidth: this.canvasWidth,
         canvasHeight: this.canvasHeight,

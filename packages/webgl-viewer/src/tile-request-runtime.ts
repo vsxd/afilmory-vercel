@@ -30,7 +30,9 @@ export class TileRequestRuntime {
     }
 
     if (pendingPriority !== undefined) {
-      this.pendingTileRequests.set(key, Math.min(pendingPriority, priority));
+      // A formerly visible request may now be prefetch: use the current plan's
+      // priority so it cannot keep jumping ahead of newly visible tiles.
+      this.pendingTileRequests.set(key, priority);
     }
 
     return false;

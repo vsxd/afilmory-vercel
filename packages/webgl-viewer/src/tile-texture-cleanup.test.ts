@@ -4,6 +4,7 @@ import type { TileInfo } from "./tile-cache";
 import {
   cleanupTileTextures,
   disposeAllTileTextures,
+  reserveTileTextureSpace,
 } from "./tile-texture-cleanup";
 
 const createTile = (lastUsed: number, texture: WebGLTexture): TileInfo => ({
@@ -15,6 +16,54 @@ const createTile = (lastUsed: number, texture: WebGLTexture): TileInfo => ({
   x: 0,
   y: 0,
   byteSize: 512 * 512 * 4,
+});
+
+describe("reserveTileTextureSpace", () => {
+  it("removes off-plan tiles before admitted prefetch, without evicting visible tiles", () => {
+    const visible = createTile(0, {} as WebGLTexture);
+    const prefetch = createTile(1, {} as WebGLTexture);
+    const stale = createTile(2, {} as WebGLTexture);
+    const tileCache = new Map([
+      ["visible", visible],
+      ["prefetch", prefetch],
+      ["stale", stale],
+    ]);
+    const deleteTexture = vi.fn();
+    const admission = {
+      byteSize: visible.byteSize,
+      currentVisibleTiles: new Set(["visible"]),
+      admittedTiles: new Set(["visible", "prefetch", "incoming"]),
+      deleteTexture,
+      maxCacheBytes: 3 * visible.byteSize,
+      maxCacheSize: 3,
+      tileCache,
+    };
+    expect(reserveTileTextureSpace(admission)).toBe(true);
+    expect(deleteTexture).toHaveBeenCalledExactlyOnceWith(stale.texture);
+    expect([...tileCache.keys()]).toEqual(["visible", "prefetch"]);
+    expect(reserveTileTextureSpace({ ...admission, maxCacheSize: 1 })).toBe(
+      false,
+    );
+    expect([...tileCache.keys()]).toEqual(["visible"]);
+  });
+
+  it("rejects a single oversized allocation without deleting existing textures", () => {
+    const tile = createTile(0, {} as WebGLTexture);
+    const tileCache = new Map([["tile", tile]]);
+    const deleteTexture = vi.fn();
+    expect(
+      reserveTileTextureSpace({
+        byteSize: tile.byteSize + 1,
+        currentVisibleTiles: new Set(),
+        admittedTiles: new Set(),
+        deleteTexture,
+        maxCacheBytes: tile.byteSize,
+        maxCacheSize: 32,
+        tileCache,
+      }),
+    ).toBe(false);
+    expect(deleteTexture).not.toHaveBeenCalled();
+  });
 });
 
 describe("cleanupTileTextures", () => {

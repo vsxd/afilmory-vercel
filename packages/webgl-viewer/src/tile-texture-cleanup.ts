@@ -2,6 +2,58 @@ import type { TileInfo, TileKey } from "./tile-cache";
 
 export const DEFAULT_TILE_MAX_AGE_MS = 30_000;
 
+/**
+ * Make room BEFORE uploading. The budget covers owned RGBA8 tile textures;
+ * base/canvas allocations and driver-delayed physical reclamation are separate.
+ */
+export function reserveTileTextureSpace({
+  byteSize,
+  currentVisibleTiles,
+  admittedTiles,
+  deleteTexture,
+  maxCacheBytes,
+  maxCacheSize,
+  tileCache,
+}: {
+  byteSize: number;
+  currentVisibleTiles: ReadonlySet<TileKey>;
+  admittedTiles: ReadonlySet<TileKey>;
+  deleteTexture: (texture: WebGLTexture) => void;
+  maxCacheBytes: number;
+  maxCacheSize: number;
+  tileCache: Map<TileKey, TileInfo>;
+}): boolean {
+  if (
+    !Number.isFinite(byteSize) ||
+    byteSize <= 0 ||
+    byteSize > maxCacheBytes ||
+    maxCacheSize < 1
+  )
+    return false;
+  let cacheBytes = 0;
+  for (const tile of tileCache.values()) cacheBytes += tile.byteSize;
+  const candidates = Array.from(tileCache.entries())
+    .filter(([key]) => !currentVisibleTiles.has(key))
+    .sort(
+      ([aKey, a], [bKey, b]) =>
+        Number(admittedTiles.has(aKey)) - Number(admittedTiles.has(bKey)) ||
+        a.lastUsed - b.lastUsed,
+    );
+  for (const [key, tile] of candidates) {
+    if (
+      tileCache.size + 1 <= maxCacheSize &&
+      cacheBytes + byteSize <= maxCacheBytes
+    )
+      break;
+    if (tile.texture) deleteTexture(tile.texture);
+    tileCache.delete(key);
+    cacheBytes -= tile.byteSize;
+  }
+  return (
+    tileCache.size + 1 <= maxCacheSize && cacheBytes + byteSize <= maxCacheBytes
+  );
+}
+
 export function cleanupTileTextures({
   currentVisibleTiles,
   deleteTexture,
