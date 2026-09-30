@@ -74,6 +74,9 @@ Configuration:
     cwd: join(fileURLToPath(import.meta.url), "../../../.."),
   });
   configureLoggerObservability(builderConfig.system.observability.logging);
+  // Fail before acquiring ExifTool/Builder resources or hiding the terminal
+  // cursor. Read-only configuration output does not require the build runtime.
+  if (!args.has("--config")) environmentCheck();
   const cliBuilder = new AfilmoryBuilder(builderConfig, {
     exifService: new ExifService({
       exiftoolPath: process.env.EXIFTOOL_PATH,
@@ -193,8 +196,6 @@ Configuration:
   logger.main.info(`⚡ Max concurrency: ${finalConcurrency}`);
   logger.main.info(`🔧 Processing mode: ${processingMode}`);
 
-  environmentCheck();
-
   // 启动构建过程
   let buildResult: import("./types/options.js").BuilderResult | undefined;
   try {
@@ -250,10 +251,8 @@ function environmentCheck() {
   try {
     execSync("perl -v", { stdio: "ignore" });
   } catch {
-    logger.main.error(
+    throw new Error(
       "exiftool requires Perl. Install it (e.g. `brew install perl` / `apt install perl`) and re-run.",
     );
-    // eslint-disable-next-line unicorn/no-process-exit
-    process.exit(1);
   }
 }
