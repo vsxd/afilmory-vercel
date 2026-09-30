@@ -245,27 +245,10 @@ export const MasonryRoot = () => {
 
   return (
     <>
-      {/* 桌面端：左右分布 */}
-      {!isMobile && (
-        <>
-          <DateRangeIndicator
-            dateRange={dateRange.formattedRange}
-            isVisible={showFloatingActions && !!dateRange.formattedRange}
-          />
-        </>
-      )}
-
-      {/* 移动端：垂直堆叠 */}
-      {isMobile && !!dateRange.formattedRange && (
-        <div className="fixed top-0 right-0 left-0 z-50 pt-[env(safe-area-inset-top)]">
-          {/* 移动端顶部指示器只显示时间，不显示照片地点 */}
-          <DateRangeIndicator
-            dateRange={dateRange.formattedRange}
-            isVisible={showFloatingActions && !!dateRange.formattedRange}
-            className="relative top-0 left-0"
-          />
-        </div>
-      )}
+      <DateRangeIndicator
+        dateRange={dateRange.formattedRange}
+        isVisible={showFloatingActions && !!dateRange.formattedRange}
+      />
 
       <GalleryFloatingActions
         isVisible={showFloatingActions}

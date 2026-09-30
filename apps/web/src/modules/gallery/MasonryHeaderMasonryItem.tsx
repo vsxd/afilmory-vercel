@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 
 import { siteConfig } from "~/config";
 import { useContextPhotos } from "~/hooks/usePhotoViewer";
-import { TablerAperture } from "~/icons";
 import { getPhotoGeoData } from "~/lib/geo-regions";
 import { useGallerySettings } from "~/navigation/hooks";
 import { usePhotoRepositorySnapshot } from "~/runtime/app-runtime";
@@ -86,19 +85,16 @@ export const MasonryHeaderMasonryItem = ({
         id: "photos",
         value: photos.length,
         label: t("gallery.library.stats.photos"),
-        icon: "i-mingcute-pic-fill",
       },
       {
         id: "cameras",
         value: cameraSet.size,
         label: t("gallery.library.stats.cameras"),
-        icon: "i-mingcute-camera-fill",
       },
       {
         id: "lenses",
         value: lensSet.size,
         label: t("gallery.library.stats.lenses"),
-        icon: "aperture",
       },
       {
         id: hasCityData ? "cities" : "gps",
@@ -106,9 +102,6 @@ export const MasonryHeaderMasonryItem = ({
         label: hasCityData
           ? t("gallery.library.stats.cities")
           : t("gallery.library.stats.gpsPhotos"),
-        icon: hasCityData
-          ? "i-mingcute-building-5-line"
-          : "i-mingcute-location-fill",
       },
     ];
   }, [photos, t]);
@@ -124,15 +117,15 @@ export const MasonryHeaderMasonryItem = ({
 
   return (
     <div
-      className={clsxm("af-panel overflow-hidden", className)}
+      className={clsxm("af-panel af-gallery-header overflow-hidden", className)}
       style={style}
       data-gallery-header
     >
-      <div className="flex items-center gap-3 px-4 pt-4 pb-3 lg:flex-col lg:gap-3 lg:px-5 lg:pt-6 lg:pb-4 lg:text-center">
+      <div className="flex items-center gap-3.5 px-4 pt-5 pb-2 lg:flex-col lg:gap-3 lg:px-5 lg:pt-6 lg:pb-3 lg:text-center">
         <div className="flex shrink-0 justify-center">
-          <div className="relative inline-flex">
+          <div className="af-gallery-avatar relative inline-flex rounded-full p-1">
             {siteConfig.author.avatar && (
-              <AvatarPrimitive.Root className="inline-flex size-12 items-center justify-center overflow-hidden rounded-full lg:size-16">
+              <AvatarPrimitive.Root className="inline-flex size-12 items-center justify-center overflow-hidden rounded-full lg:size-14">
                 <AvatarPrimitive.Image
                   src={siteConfig.author.avatar}
                   className="size-full object-cover"
@@ -144,7 +137,7 @@ export const MasonryHeaderMasonryItem = ({
               </AvatarPrimitive.Root>
             )}
             {!siteConfig.author.avatar && (
-              <div className="bg-accent text-accent-content inline-flex size-12 items-center justify-center rounded-full lg:size-16">
+              <div className="bg-accent text-accent-content inline-flex size-12 items-center justify-center rounded-full lg:size-14">
                 <i
                   className="i-mingcute-camera-2-line text-2xl"
                   aria-hidden="true"
@@ -155,12 +148,18 @@ export const MasonryHeaderMasonryItem = ({
         </div>
 
         <div className="min-w-0 flex-1 lg:w-full">
-          <h1 className="text-ui text-lg leading-snug font-semibold text-balance wrap-anywhere lg:text-xl">
+          <h1 className="text-ui text-xl leading-snug font-semibold tracking-tight text-balance wrap-anywhere lg:text-[1.375rem]">
             {siteConfig.name}
           </h1>
 
+          {siteConfig.description && (
+            <p className="text-ui-secondary mt-1.5 text-xs leading-relaxed text-pretty wrap-anywhere">
+              {siteConfig.description}
+            </p>
+          )}
+
           {siteConfig.social && (
-            <div className="-ml-2 flex flex-wrap items-center gap-1 lg:ml-0 lg:justify-center">
+            <div className="-ml-3 flex flex-wrap items-center lg:ml-0 lg:justify-center">
               {githubUrl && (
                 <a
                   href={githubUrl}
@@ -215,7 +214,7 @@ export const MasonryHeaderMasonryItem = ({
         <ActionGroup />
       </div>
 
-      <div className="border-ui-border border-t px-4 py-2 sm:px-5 sm:py-2.5">
+      <div className="af-gallery-header-footer px-4 py-3 lg:px-5 lg:py-3.5">
         {hasFilters ? (
           <div className="space-y-2 sm:space-y-2.5">
             <div className="flex items-baseline justify-between gap-3">
@@ -290,33 +289,23 @@ export const MasonryHeaderMasonryItem = ({
             </div>
           </div>
         ) : (
-          <div className="af-gallery-stats divide-ui-border grid grid-cols-4 divide-x">
+          <div className="af-gallery-stats grid grid-cols-4 gap-1">
             {libraryStats.map((stat) => (
               <div
                 key={stat.id}
                 className="af-gallery-stat flex min-w-0 justify-center first:pl-0 last:pr-0"
               >
                 <div
-                  className="inline-flex min-w-max flex-col items-center justify-center gap-0.5 text-center"
+                  className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1.5 text-center"
                   title={`${stat.label}: ${stat.value}`}
                   role="group"
                   aria-label={`${stat.label}: ${stat.value}`}
                 >
-                  <span className="af-gallery-stat-icon-frame text-ui-secondary flex shrink-0 items-center justify-center">
-                    {stat.icon === "aperture" ? (
-                      <TablerAperture
-                        className="af-gallery-stat-icon"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <i
-                        className={clsxm(stat.icon, "af-gallery-stat-icon")}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </span>
-                  <span className="af-gallery-stat-value text-ui block shrink-0 leading-none font-medium whitespace-nowrap tabular-nums">
+                  <span className="af-gallery-stat-value text-ui block leading-none font-medium tabular-nums">
                     {stat.value}
+                  </span>
+                  <span className="text-ui-secondary block w-full truncate text-[10px] leading-tight">
+                    {stat.label}
                   </span>
                 </div>
               </div>

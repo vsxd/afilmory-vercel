@@ -29,14 +29,14 @@ export const GalleryFloatingActions = ({
         }
       }}
       className={clsxm(
-        "af-popover fixed z-40 rounded-2xl p-2 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+        "af-glass fixed z-40 rounded-2xl p-1.5 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
         visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
         isMobile
           ? "bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2"
           : "top-6 right-6",
       )}
     >
-      <ActionGroup onOverlayOpenChange={setOverlayOpen} />
+      <ActionGroup compact onOverlayOpenChange={setOverlayOpen} />
     </div>
   );
 };

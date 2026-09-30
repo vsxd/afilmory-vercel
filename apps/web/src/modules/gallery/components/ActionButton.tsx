@@ -34,7 +34,7 @@ export const ActionButton = ({
     <Button
       variant="surface"
       size="sm"
-      className="af-control relative h-11 w-11 rounded-full"
+      className="af-control relative h-11 w-11 shrink-0 rounded-xl"
       aria-label={title}
       title={title}
       onClick={onClick}

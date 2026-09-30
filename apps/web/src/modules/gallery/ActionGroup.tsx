@@ -1,4 +1,4 @@
-import { Button } from "@afilmory/ui";
+import { Button, clsxm } from "@afilmory/ui";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,8 +14,10 @@ import { ResponsiveActionButton } from "./components/ActionButton";
 import { ViewPanel } from "./panels/ViewPanel";
 
 export const ActionGroup = ({
+  compact = false,
   onOverlayOpenChange,
 }: {
+  compact?: boolean;
   onOverlayOpenChange?: (open: boolean) => void;
 }) => {
   const { t } = useTranslation();
@@ -48,7 +50,12 @@ export const ActionGroup = ({
     gallerySetting.selectedGeoDistricts.length;
 
   return (
-    <div className="flex items-center justify-center gap-2.5">
+    <div
+      className={clsxm(
+        "flex items-center justify-center gap-1.5",
+        !compact && "@container/gallery-actions",
+      )}
+    >
       {/* 搜索和过滤按钮 - 打开命令面板 */}
       <Button
         variant="surface"
@@ -58,12 +65,23 @@ export const ActionGroup = ({
           onOverlayOpenChange?.(true);
           setCommandPaletteOpen(true);
         }}
-        className="af-control relative h-11 min-w-11 rounded-full px-3"
+        className={clsxm(
+          "af-control relative h-11 min-w-11 gap-2 rounded-xl px-3",
+          !compact && "flex-1 @[200px]/gallery-actions:justify-start",
+        )}
         data-gallery-search
         aria-label={t("action.search.unified.title")}
         title={t("action.search.unified.title")}
       >
-        <i className="i-mingcute-search-line text-lg" aria-hidden="true" />
+        <i
+          className="i-mingcute-search-line shrink-0 text-lg"
+          aria-hidden="true"
+        />
+        {!compact && (
+          <span className="text-ui-secondary hidden truncate text-xs font-normal @[200px]/gallery-actions:inline">
+            {t("action.search.unified.title")}
+          </span>
+        )}
         {filterCount > 0 && (
           <span className="bg-accent text-accent-content absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium tabular-nums">
             {filterCount}
@@ -76,7 +94,7 @@ export const ActionGroup = ({
           variant="surface"
           size="sm"
           onClick={() => navigation.showMap()}
-          className="af-control h-11 w-11 rounded-full"
+          className="af-control h-11 w-11 shrink-0 rounded-xl"
           aria-label={t("action.map.explore")}
           title={t("action.map.explore")}
         >

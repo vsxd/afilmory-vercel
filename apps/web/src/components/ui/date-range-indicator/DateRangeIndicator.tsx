@@ -1,5 +1,5 @@
-import { clsxm, Spring } from "@afilmory/ui";
-import { AnimatePresence, m } from "motion/react";
+import { clsxm } from "@afilmory/ui";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -63,21 +63,22 @@ export const DateRangeIndicator = memo(
     };
 
     const isMobile = useMobile();
-    const variants = isMobile
-      ? {
-          initial: {
-            opacity: 0,
-          },
-          animate: { opacity: 1 },
-        }
-      : {
-          initial: {
-            opacity: 0,
-            x: -20,
-            scale: 0.95,
-          },
-          animate: { opacity: 1, x: 0, scale: 1 },
-        };
+    const shouldReduceMotion = useReducedMotion() === true;
+    const variants =
+      isMobile || shouldReduceMotion
+        ? {
+            initial: {
+              opacity: 0,
+            },
+            animate: { opacity: 1 },
+          }
+        : {
+            initial: {
+              opacity: 0,
+              y: -6,
+            },
+            animate: { opacity: 1, y: 0 },
+          };
 
     const formattedDate = parseMainDate(dateRange);
 
@@ -85,21 +86,23 @@ export const DateRangeIndicator = memo(
       <AnimatePresence>
         {isVisible && dateRange && (
           <m.div
-            initial={variants.initial}
+            initial={shouldReduceMotion ? false : variants.initial}
             animate={variants.animate}
             exit={variants.initial}
-            transition={Spring.presets.snappy}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
             className={clsxm(
-              "border-material-opaque lg:rounded-xl border bg-black/60 p-4 shadow-xl backdrop-blur-2xl",
-              `fixed left-4 z-50 top-4 lg:top-6 lg:left-6`,
+              "af-glass pointer-events-none flex w-fit max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl px-4 py-1.5",
+              "fixed top-[calc(env(safe-area-inset-top)+0.75rem)] left-[max(0.75rem,env(safe-area-inset-left))] z-50 lg:top-6 lg:left-6",
               className,
             )}
           >
-            <div className="flex flex-col">
-              <span className="text-lg leading-tight font-bold tracking-tight text-white lg:text-4xl">
-                {formattedDate}
-              </span>
-            </div>
+            <i
+              className="i-mingcute-calendar-line text-ui-secondary size-5 shrink-0"
+              aria-hidden="true"
+            />
+            <span className="text-ui flex min-h-11 min-w-0 items-center text-base leading-snug font-medium tracking-wide break-words tabular-nums lg:text-lg">
+              {formattedDate}
+            </span>
           </m.div>
         )}
       </AnimatePresence>
