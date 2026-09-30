@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Map from "react-map-gl/maplibre";
 
-import { canUseWebGL2 } from "~/lib/feature";
+import { getCanUseWebGL2 } from "~/lib/feature";
 import { maplibre } from "~/lib/map/maplibre";
 import { getMapStyle } from "~/lib/map/style";
 import { isValidGPSCoordinates } from "~/lib/map-utils";
@@ -33,6 +33,8 @@ export const MiniMap = ({ latitude, longitude, photoId }: MiniMapProps) => {
   if (!hasValidCoordinates) {
     return null;
   }
+
+  const canUseWebGL2 = getCanUseWebGL2();
 
   return (
     <div className="border-ui-border bg-ui-subtle relative h-40 w-full overflow-hidden rounded-xl border">

@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
 
@@ -19,6 +20,210 @@ import sharp from "sharp";
 const EXTERNAL_MANIFEST_ASSET = /\/assets\/gallery-index\.[0-9a-f]{10}\.json/;
 const PHOTO_DETAIL_ASSET =
   /\/assets\/photo-details\.(?:root|[01]+(?:-\d+)?)\.[0-9a-f]{10}\.json/;
+const MAP_DETAIL_ASSET = /\/assets\/map-details\.[0-9a-f]{10}\.json/;
+// The map dependency group is named explicitly in plugins/vite/chunks.ts.
+const MAP_VENDOR_ASSET = /\/vendor\/map-[\w-]+\.js$/;
+
+async function searchAndFilter(page: Page) {
+  await page.getByRole("button", { name: "Search & Filter" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Search & Filter" });
+  const input = dialog.getByRole("combobox");
+  await expect(input).toBeFocused();
+  await input.fill("Polaris P1");
+  await dialog
+    .getByRole("option")
+    .filter({ hasText: "Polaris P1" })
+    .first()
+    .click();
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("cameras"))
+    .toBe("Polaris P1");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+}
+
+test.describe("production core feature preloading", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("shows the gallery before map code is ready and warms core features without mounting them", async ({
+    page,
+  }) => {
+    const { stubCartoBasemap } = await import("./helpers");
+    await stubCartoBasemap(page);
+    const scripts: string[] = [];
+    const originalRequests: string[] = [];
+    const basemapRequests: string[] = [];
+    const workers: string[] = [];
+    const pageErrors: string[] = [];
+    let mapRequests = 0;
+    let mapDetailRequests = 0;
+    let mapDetailResponses = 0;
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("worker", (worker) => workers.push(worker.url()));
+    page.on("request", (request) => {
+      const url = request.url();
+      if (/\.js(?:\?|$)/.test(url)) scripts.push(url);
+      if (url.startsWith("https://photos.fixture.test/"))
+        originalRequests.push(url);
+      if (url.startsWith("https://tiles.basemaps.cartocdn.com/"))
+        basemapRequests.push(url);
+      if (MAP_DETAIL_ASSET.test(url)) mapDetailRequests++;
+    });
+    page.on("response", (response) => {
+      if (MAP_DETAIL_ASSET.test(response.url()) && response.ok())
+        mapDetailResponses++;
+    });
+    await page.addInitScript(() => {
+      const { getContext } = HTMLCanvasElement.prototype;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        ...args
+      ) {
+        if (String(args[0]).includes("webgl"))
+          performance.mark("e2e:webgl-context");
+        return Reflect.apply(getContext, this, args);
+      } as typeof getContext;
+    });
+    const mapDownload = Promise.withResolvers<void>();
+    await page.route(MAP_VENDOR_ASSET, async (route) => {
+      mapRequests++;
+      await mapDownload.promise;
+      await route.continue();
+    });
+    const expectNoFeatureInstances = async () => {
+      expect(originalRequests).toEqual([]);
+      expect(basemapRequests).toEqual([]);
+      expect(workers).toEqual([]);
+      await expect(page.locator(".maplibregl-map")).toHaveCount(0);
+      expect(
+        await page.evaluate(
+          () => performance.getEntriesByName("e2e:webgl-context").length,
+        ),
+      ).toBe(0);
+    };
+    try {
+      await page.goto("/");
+      await expect(
+        page.locator("[data-gallery-photo-link]").first(),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Search & Filter" }),
+      ).toBeVisible();
+      // No click/hover/focus triggers preloading. Map data can complete while
+      // its code is still pending, and neither blocks the first gallery paint.
+      await expect.poll(() => mapRequests).toBe(1);
+      await expect.poll(() => mapDetailResponses).toBe(1);
+      await expectNoFeatureInstances();
+      mapDownload.resolve();
+      // This test measures network ownership: settle the automatic module
+      // graph before attributing subsequent requests to the first search.
+      await page.waitForLoadState("networkidle");
+      await expectNoFeatureInstances();
+      const scriptsBeforeSearch = [...scripts];
+      await searchAndFilter(page);
+      expect(scripts).toEqual(scriptsBeforeSearch);
+      await expectNoFeatureInstances();
+
+      await page
+        .getByRole("button", { name: "Map Explore", exact: true })
+        .first()
+        .click();
+      const map = page.locator(".maplibregl-map");
+      await expect(map).toBeVisible();
+      await expect
+        .poll(() => map.locator(".maplibregl-marker").count())
+        .toBeGreaterThan(0);
+      expect(mapDetailRequests).toBe(1);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      mapDownload.resolve();
+    }
+  });
+
+  test("keeps feedback visible during an early map click and a cold map deep link", async ({
+    page,
+  }) => {
+    const { stubCartoBasemap } = await import("./helpers");
+    await stubCartoBasemap(page);
+    let mapDownload = Promise.withResolvers<void>();
+    let mapRequests = 0;
+    await page.route(MAP_VENDOR_ASSET, async (route) => {
+      mapRequests++;
+      await mapDownload.promise;
+      await route.continue();
+    });
+    try {
+      await page.goto("/");
+      const photos = page.locator("[data-gallery-photo-link]");
+      await expect(photos.first()).toBeVisible();
+      await expect.poll(() => mapRequests).toBe(1);
+      await page
+        .getByRole("button", { name: "Map Explore", exact: true })
+        .first()
+        .click();
+      const pending = page.locator("[data-navigation-pending]");
+      await expect(pending).toBeVisible();
+      await expect(photos.first()).toBeVisible();
+      await expect(page.locator(".maplibregl-map")).toHaveCount(0);
+      mapDownload.resolve();
+      await expect(page.locator(".maplibregl-map")).toBeVisible();
+      await expect(pending).toHaveCount(0);
+
+      // Routing disables the HTTP cache; a new document must prepare the map
+      // again while retaining its bootstrap splash, even on a direct entry.
+      mapDownload = Promise.withResolvers<void>();
+      await page.reload({ waitUntil: "commit" });
+      await expect.poll(() => mapRequests).toBe(2);
+      await expect(page.locator("#splash-screen")).toBeVisible();
+      await expect(page.locator(".maplibregl-map")).toHaveCount(0);
+      mapDownload.resolve();
+      await expect(page.locator(".maplibregl-map")).toBeVisible();
+      await expect(page.locator("#splash-screen")).toHaveCount(0);
+    } finally {
+      mapDownload.resolve();
+    }
+  });
+
+  for (const failure of ["map code", "map details"] as const) {
+    test(`keeps gallery and first search usable after background ${failure} preloading fails`, async ({
+      page,
+    }) => {
+      const pageErrors: string[] = [];
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      await page.addInitScript(() => {
+        window.addEventListener("unhandledrejection", () => {
+          performance.mark("e2e:unhandled-rejection");
+        });
+      });
+      let failedResponses = 0;
+      const failedAsset =
+        failure === "map code" ? MAP_VENDOR_ASSET : MAP_DETAIL_ASSET;
+      page.on("response", (response) => {
+        if (failedAsset.test(response.url()) && response.status() === 503)
+          failedResponses++;
+      });
+      await page.route(failedAsset, (route) =>
+        route.fulfill({ status: 503, body: "Temporarily unavailable" }),
+      );
+      await page.goto("/");
+      await expect(
+        page.locator("[data-gallery-photo-link]").first(),
+      ).toBeVisible();
+      await expect.poll(() => failedResponses).toBeGreaterThan(0);
+      await searchAndFilter(page);
+      await expect(
+        page.locator("[data-gallery-photo-link]").first(),
+      ).toBeVisible();
+      await expect(page.getByRole("alert")).toHaveCount(0);
+      expect(pageErrors).toEqual([]);
+      expect(
+        await page.evaluate(
+          () => performance.getEntriesByName("e2e:unhandled-rejection").length,
+        ),
+      ).toBe(0);
+    });
+  }
+});
 
 test.describe("production original image loading", () => {
   // Keep the CDN fixture interceptable; the separate smoke test below covers SW.
@@ -382,39 +587,36 @@ test.describe("production navigation journeys", () => {
     }
   });
 
-  for (const moduleName of ["MapSection", "MapLibre"]) {
-    test(`reloads a failed ${moduleName} module from the map error action`, async ({
-      page,
-    }) => {
-      let failModule = true;
-      let moduleRequests = 0;
-      await page.route(
-        new RegExp(`/assets/${moduleName}-[\\w-]+\\.js$`),
-        async (route) => {
-          moduleRequests++;
-          if (failModule) {
-            await route.fulfill({
-              status: 503,
-              body: "Temporarily unavailable",
-            });
-          } else {
-            await route.continue();
-          }
-        },
-      );
-      await page.goto("/explore?mode=photos");
-      const error = page.getByRole("alert");
-      await expect(
-        error.getByRole("button", { name: "Reload", exact: true }),
-      ).toBeVisible();
-      failModule = false;
-      await error.getByRole("button", { name: "Reload", exact: true }).click();
-      await expect(page.locator(".maplibregl-map")).toBeVisible();
-      await expect(error).toHaveCount(0);
-      await expect(page).toHaveURL(/\/explore(?:\?|$)/);
-      expect(moduleRequests).toBeGreaterThanOrEqual(2);
+  test("reloads a failed map dependency after the automatic stale-runtime recovery is exhausted", async ({
+    page,
+  }) => {
+    let failModule = true;
+    let moduleRequests = 0;
+    await page.route(MAP_VENDOR_ASSET, async (route) => {
+      moduleRequests++;
+      if (failModule) {
+        await route.fulfill({
+          status: 503,
+          body: "Temporarily unavailable",
+        });
+      } else {
+        await route.continue();
+      }
     });
-  }
+    await page.goto("/explore?mode=photos", { waitUntil: "domcontentloaded" });
+    // The complete map route is prepared during deep-link bootstrap. A failed
+    // vendor import first retries once via stale-runtime recovery; the manual
+    // action must still work afterwards.
+    await expect.poll(() => moduleRequests).toBeGreaterThanOrEqual(2);
+    const reload = page.getByRole("button", { name: "Reload", exact: true });
+    await expect(reload).toBeVisible();
+    failModule = false;
+    await reload.click();
+    await expect(page.locator(".maplibregl-map")).toBeVisible();
+    await expect(reload).toHaveCount(0);
+    await expect(page).toHaveURL(/\/explore(?:\?|$)/);
+    expect(moduleRequests).toBeGreaterThanOrEqual(3);
+  });
 
   test("trailing-slash detail opens and standalone close returns to filtered gallery", async ({
     page,
@@ -573,15 +775,59 @@ test.describe("production detail actions", () => {
     context,
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.goto(
-      "/photos/SYNTH0001?sort=asc&returnTo=%2Fexplore%3Fmode%3Dphotos",
-    );
-    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
-    await expect(viewer).toBeVisible();
-    await viewer.getByRole("button", { name: "Share Photo" }).click();
-    await page.getByRole("menuitem", { name: "Copy Link" }).click();
-    await expect
-      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-      .toBe(`${new URL(page.url()).origin}/photos/SYNTH0001`);
+    const galleryDownload = Promise.withResolvers<void>();
+    let galleryRequests = 0;
+    let photoModuleUrl = "";
+    page.on("response", (response) => {
+      if (/\/assets\/_photoId_-[\w-]+\.js$/.test(response.url()))
+        photoModuleUrl = response.url();
+    });
+    await page.route(/\/assets\/layout-[\w-]+\.js$/, async (route) => {
+      galleryRequests++;
+      await galleryDownload.promise;
+      await route.continue();
+    });
+    try {
+      await page.goto(
+        "/photos/SYNTH0001?sort=asc&returnTo=%2Fexplore%3Fmode%3Dphotos",
+        { waitUntil: "commit" },
+      );
+      await expect.poll(() => galleryRequests).toBe(1);
+      await expect.poll(() => photoModuleUrl).not.toBe("");
+
+      // Join the route import already started by bootstrap, while the gallery
+      // is held back. This detects observer -> photo -> observer initialization
+      // cycles without depending on a network delay. Bound the join so a new
+      // photo -> gallery dependency fails clearly instead of deadlocking.
+      const initializationError = await page.evaluate(async (moduleUrl) => {
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          return await Promise.race([
+            import(moduleUrl).then(() => null, String),
+            new Promise<string>((resolve) => {
+              timeout = setTimeout(
+                () => resolve("Photo module did not initialize before gallery"),
+                5000,
+              );
+            }),
+          ]);
+        } finally {
+          clearTimeout(timeout);
+        }
+      }, photoModuleUrl);
+      expect(initializationError).toBeNull();
+      await expect(page.locator("#splash-screen")).toBeVisible();
+      galleryDownload.resolve();
+
+      const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+      await expect(viewer).toBeVisible();
+      await viewer.getByRole("button", { name: "Share Photo" }).click();
+      await page.getByRole("menuitem", { name: "Copy Link" }).click();
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        .toBe(`${new URL(page.url()).origin}/photos/SYNTH0001`);
+    } finally {
+      galleryDownload.resolve();
+    }
   });
 });

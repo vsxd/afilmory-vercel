@@ -10,8 +10,7 @@ export const MapErrorState = () => {
   const reload = async () => {
     setIsReloading(true);
     try {
-      // React.lazy retains a rejected import. Resetting its boundary alone
-      // cannot retry either the MapSection or the nested MapLibre module.
+      // A fresh runtime also resets failed map resources and stale module URLs.
       await recoverStaleRuntime({ force: true });
     } finally {
       setIsReloading(false);

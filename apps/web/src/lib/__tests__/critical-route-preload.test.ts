@@ -34,4 +34,46 @@ describe("critical-route-preload", () => {
       "Missing critical route module: ./pages/(main)/layout.tsx",
     );
   });
+
+  it.each([
+    ["/explore", "./pages/explore/index.tsx"],
+    ["/explore/", "./pages/explore/index.tsx"],
+    ["/photos/example/", "./pages/(main)/photos/[photoId]/index.tsx"],
+  ])(
+    "keeps cold %s startup pending until its destination code is ready",
+    async (pathname, moduleKey) => {
+      let resolveDestination!: () => void;
+      const destination = new Promise<void>((resolve) => {
+        resolveDestination = resolve;
+      });
+      const loadMap = vi.fn(() =>
+        moduleKey.includes("explore") ? destination : Promise.resolve(),
+      );
+      const loadViewer = vi.fn(() =>
+        moduleKey.includes("photoId") ? destination : Promise.resolve(),
+      );
+      let ready = false;
+      const preloaded = installCriticalRoutePreloads(
+        {
+          "./pages/(main)/layout.tsx": async () => {},
+          "./pages/explore/index.tsx": loadMap,
+          "./pages/(main)/photos/[photoId]/index.tsx": loadViewer,
+        },
+        pathname,
+      ).then(() => {
+        ready = true;
+      });
+      await Promise.resolve();
+      expect(ready).toBe(false);
+      expect(
+        moduleKey.includes("explore") ? loadMap : loadViewer,
+      ).toHaveBeenCalledOnce();
+      expect(
+        moduleKey.includes("explore") ? loadViewer : loadMap,
+      ).not.toHaveBeenCalled();
+      resolveDestination();
+      await preloaded;
+      expect(ready).toBe(true);
+    },
+  );
 });

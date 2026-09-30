@@ -18,6 +18,16 @@ function supportsWebGL(contextType: "webgl" | "webgl2"): boolean {
   }
 }
 
-export const canUseWebGL = supportsWebGL("webgl");
+let webGLSupport: boolean | undefined;
+let webGL2Support: boolean | undefined;
+
+// Loading viewer/map code must not allocate GPU contexts. Probe only when a
+// mounted consumer needs the capability, and reuse positive and negative results.
+export function getCanUseWebGL(): boolean {
+  return (webGLSupport ??= supportsWebGL("webgl"));
+}
+
 // MapLibre v6 requires WebGL2 even when the image viewer can use WebGL1.
-export const canUseWebGL2 = supportsWebGL("webgl2");
+export function getCanUseWebGL2(): boolean {
+  return (webGL2Support ??= supportsWebGL("webgl2"));
+}

@@ -203,7 +203,7 @@ vi.mock("~/atoms/context-menu", () => ({
 }));
 
 vi.mock("~/lib/feature", () => ({
-  get canUseWebGL() {
+  getCanUseWebGL() {
     return hoisted.canUseWebGL;
   },
 }));

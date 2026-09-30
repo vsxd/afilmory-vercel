@@ -72,6 +72,11 @@ describe("bootstrap splash", () => {
     const criticalRoutesPromise = new Promise<void>((resolve) => {
       resolveCriticalRoutes = resolve;
     });
+    let resolveSearch!: () => void;
+    const searchReady = new Promise<void>((resolve) => {
+      resolveSearch = resolve;
+    });
+    const loadCommandPalette = vi.fn(() => searchReady);
     const createAppRuntime = vi.fn((options) => ({
       browser: window.__AFILMORY__,
       bodyScrollLock: {
@@ -91,13 +96,6 @@ describe("bootstrap splash", () => {
     const markStartup = vi.fn();
     const flushStartupMetrics = vi.fn();
     const installCriticalRoutePreloads = vi.fn(() => criticalRoutesPromise);
-    const idleCallbacks: IdleRequestCallback[] = [];
-    const requestIdleCallback = vi.fn((callback: IdleRequestCallback) => {
-      idleCallbacks.push(callback);
-      return idleCallbacks.length;
-    });
-    const loadPhotoViewer = vi.fn(() => ({ default: () => null }));
-    vi.stubGlobal("requestIdleCallback", requestIdleCallback);
 
     vi.doMock("react-dom/client", async (importOriginal) => {
       const original =
@@ -111,10 +109,6 @@ describe("bootstrap splash", () => {
         },
       };
     });
-    // The viewer dependency graph is outside this bootstrap/splash contract;
-    // still execute its scheduled import and await its completion explicitly.
-    vi.doMock("../pages/(main)/photos/[photoId]/index.tsx", loadPhotoViewer);
-
     vi.doMock("../data-runtime/manifest-runtime", () => ({
       loadManifestRuntime: vi.fn(() => manifestPromise),
     }));
@@ -123,6 +117,9 @@ describe("bootstrap splash", () => {
     }));
     vi.doMock("../lib/critical-route-preload", () => ({
       installCriticalRoutePreloads,
+    }));
+    vi.doMock("../modules/gallery/command-palette/load", () => ({
+      loadCommandPalette,
     }));
     vi.doMock("../router", () => ({
       createAppRouter,
@@ -145,18 +142,12 @@ describe("bootstrap splash", () => {
       '<div id="splash-screen" role="status" aria-label="Loading">Static splash</div><div id="root"></div>';
 
     let importPromise!: Promise<unknown>;
-    const flushIdlePreloads = async () => {
-      for (const callback of idleCallbacks.splice(0)) {
-        callback({ didTimeout: false, timeRemaining: () => 50 });
-      }
-      await vi.dynamicImportSettled();
-    };
     settleBootstrap = async () => {
       // Also release pending test promises if an earlier assertion fails.
       resolveManifest(manifest);
       resolveCriticalRoutes();
+      resolveSearch();
       await importPromise;
-      await flushIdlePreloads();
     };
     await act(async () => {
       importPromise = import("../main");
@@ -180,6 +171,11 @@ describe("bootstrap splash", () => {
 
     await act(async () => {
       resolveCriticalRoutes();
+    });
+    expect(loadCommandPalette).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("router-app")).toBeNull();
+    await act(async () => {
+      resolveSearch();
       await importPromise;
     });
 
@@ -210,9 +206,5 @@ describe("bootstrap splash", () => {
       via: "timeout",
     });
     expect(flushStartupMetrics).toHaveBeenCalledWith("splash-removed");
-    expect(requestIdleCallback).toHaveBeenCalledOnce();
-    expect(loadPhotoViewer).not.toHaveBeenCalled();
-    await act(flushIdlePreloads);
-    expect(loadPhotoViewer).toHaveBeenCalledOnce();
   });
 });

@@ -5,11 +5,11 @@ import { recoverStaleRuntime } from "~/lib/stale-runtime-recovery";
 
 import { Component as MapRoute } from "../pages/explore/index";
 
-vi.mock("~/modules/map/MapSection", () => {
-  throw new Error(
-    "Failed to fetch dynamically imported module: /assets/map.js",
-  );
-});
+vi.mock("~/modules/map/MapSection", () => ({
+  MapSection: () => {
+    throw new Error("Map rendering failed");
+  },
+}));
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (key: string) => key }),
@@ -24,7 +24,7 @@ describe("map route recovery", () => {
     vi.restoreAllMocks();
   });
 
-  it("really reloads after a rejected lazy import instead of resetting its cached rejection", async () => {
+  it("reloads the runtime once after a map rendering failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(recoverStaleRuntime).mockReturnValue(new Promise(() => {}));
     render(<MapRoute />);

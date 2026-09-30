@@ -41,9 +41,18 @@ export const dependencyChunkGroups: DependencyChunkGroup[] = [
       "react-intersection-observer",
       "react-use-measure",
       "usehooks-ts",
+      // usehooks-ts initializes this CommonJS dependency during evaluation.
+      // It must not land in a lazy viewer chunk that imports these hooks back.
+      "lodash.debounce",
     ],
   },
-  { name: "map", patterns: ["maplibre-gl", "react-map-gl"] },
+  {
+    // react-map-gl/maplibre re-exports this scoped implementation. Splitting
+    // them lets the vendor entry import a shared app chunk which configures
+    // MapLibre before its own config binding has initialized.
+    name: "map",
+    patterns: ["maplibre-gl", "react-map-gl", "@vis.gl/react-maplibre"],
+  },
   { name: "heic", patterns: ["heic-to"] },
   {
     name: "file-type",

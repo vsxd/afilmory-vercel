@@ -3,13 +3,13 @@
 import { describe, expect, it } from "vitest";
 
 import { isMobile } from "../hooks/useMobile";
-import { canUseWebGL, canUseWebGL2 } from "../lib/feature";
+import { getCanUseWebGL, getCanUseWebGL2 } from "../lib/feature";
 import { springScrollTo } from "../lib/scroller";
 
 describe("apps/web SSR utility safety", () => {
   it("reports WebGL as unavailable without document", () => {
-    expect(canUseWebGL).toBe(false);
-    expect(canUseWebGL2).toBe(false);
+    expect(getCanUseWebGL()).toBe(false);
+    expect(getCanUseWebGL2()).toBe(false);
   });
 
   it("reports non-mobile without window", () => {

@@ -1,9 +1,7 @@
-// 仅首屏图库布局属于关键预热——它会阻塞首屏渲染（bootstrap 的 Promise.all）。
-// viewer（照片详情）路由改由 main 在首屏渲染后空闲时预热，避免把它的重依赖
-// （WebGLImageViewer / maplibre / swiper / zoom）拉进首屏关键路径而拖慢 LCP。
-const CRITICAL_GALLERY_ROUTE_MODULE_KEYS = [
-  "./pages/(main)/layout.tsx",
-] as const;
+import { isMapPath, parsePhotoId } from "~/navigation/routes";
+
+// Homepage startup only needs the gallery route. Deep links also prepare their
+// destination so the existing splash stays visible throughout the cold import.
 
 type CriticalRoutePreloadModules = Record<
   string,
@@ -12,17 +10,21 @@ type CriticalRoutePreloadModules = Record<
 
 export function installCriticalRoutePreloads(
   preloadModules: CriticalRoutePreloadModules,
+  pathname = "/",
 ): Promise<void> {
-  const preloadPromises = CRITICAL_GALLERY_ROUTE_MODULE_KEYS.map(
-    (moduleKey) => {
-      const preloadModule = preloadModules[moduleKey];
-      if (!preloadModule) {
-        throw new Error(`Missing critical route module: ${moduleKey}`);
-      }
+  const moduleKeys = ["./pages/(main)/layout.tsx"];
+  if (isMapPath(pathname)) moduleKeys.push("./pages/explore/index.tsx");
+  else if (parsePhotoId(pathname) !== null)
+    moduleKeys.push("./pages/(main)/photos/[photoId]/index.tsx");
 
-      return preloadModule();
-    },
-  );
+  const preloadPromises = moduleKeys.map((moduleKey) => {
+    const preloadModule = preloadModules[moduleKey];
+    if (!preloadModule) {
+      throw new Error(`Missing critical route module: ${moduleKey}`);
+    }
+
+    return preloadModule();
+  });
 
   return Promise.all(preloadPromises).then(() => {});
 }

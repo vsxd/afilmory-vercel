@@ -14,39 +14,66 @@ function createProbeContext(loseContext: () => void): WebGLRenderingContext {
   return context as WebGLRenderingContext;
 }
 
-it("detects WebGL2 separately and releases each capability probe context", async () => {
+it("does not allocate a canvas or probe GPU capabilities when its module is imported", async () => {
+  const createElement = vi.spyOn(document, "createElement");
+  const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
+
+  await import("../feature");
+
+  expect(createElement).not.toHaveBeenCalled();
+  expect(getContext).not.toHaveBeenCalled();
+});
+
+it("probes each capability on demand once and releases its context immediately", async () => {
   const loseContext = vi.fn();
   const context = createProbeContext(loseContext);
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+  const getContext = vi
+    .spyOn(HTMLCanvasElement.prototype, "getContext")
+    .mockReturnValue(context);
 
-  const { canUseWebGL, canUseWebGL2 } = await import("../feature");
+  const { getCanUseWebGL, getCanUseWebGL2 } = await import("../feature");
 
-  expect(canUseWebGL).toBe(true);
-  expect(canUseWebGL2).toBe(true);
+  expect(getCanUseWebGL()).toBe(true);
+  expect(getCanUseWebGL()).toBe(true);
+  expect(getContext).toHaveBeenCalledExactlyOnceWith("webgl");
+  expect(loseContext).toHaveBeenCalledTimes(1);
+
+  expect(getCanUseWebGL2()).toBe(true);
+  expect(getCanUseWebGL2()).toBe(true);
+  expect(getContext).toHaveBeenCalledTimes(2);
+  expect(getContext).toHaveBeenLastCalledWith("webgl2");
   expect(loseContext).toHaveBeenCalledTimes(2);
 });
 
 it("does not treat a WebGL1-only browser as supporting MapLibre", async () => {
   const loseContext = vi.fn();
   const context = createProbeContext(loseContext);
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-    (type) => (type === "webgl" ? context : null),
-  );
+  const getContext = vi
+    .spyOn(HTMLCanvasElement.prototype, "getContext")
+    .mockImplementation((type) => (type === "webgl" ? context : null));
 
-  const { canUseWebGL, canUseWebGL2 } = await import("../feature");
+  const { getCanUseWebGL, getCanUseWebGL2 } = await import("../feature");
 
-  expect(canUseWebGL).toBe(true);
-  expect(canUseWebGL2).toBe(false);
+  expect(getCanUseWebGL2()).toBe(false);
+  expect(getCanUseWebGL2()).toBe(false);
+  expect(getContext).toHaveBeenCalledExactlyOnceWith("webgl2");
+  expect(getCanUseWebGL()).toBe(true);
+  expect(getContext).toHaveBeenCalledTimes(2);
   expect(loseContext).toHaveBeenCalledTimes(1);
 });
 
-it("treats blocked graphics contexts as unavailable", async () => {
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => {
-    throw new Error("Graphics disabled");
-  });
+it("caches blocked graphics contexts as unavailable without retrying every render", async () => {
+  const getContext = vi
+    .spyOn(HTMLCanvasElement.prototype, "getContext")
+    .mockImplementation(() => {
+      throw new Error("Graphics disabled");
+    });
 
-  const { canUseWebGL, canUseWebGL2 } = await import("../feature");
+  const { getCanUseWebGL, getCanUseWebGL2 } = await import("../feature");
 
-  expect(canUseWebGL).toBe(false);
-  expect(canUseWebGL2).toBe(false);
+  expect(getCanUseWebGL()).toBe(false);
+  expect(getCanUseWebGL2()).toBe(false);
+  expect(getCanUseWebGL()).toBe(false);
+  expect(getCanUseWebGL2()).toBe(false);
+  expect(getContext).toHaveBeenCalledTimes(2);
 });

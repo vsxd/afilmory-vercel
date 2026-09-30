@@ -1,16 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
 
 import * as React from "react";
-import { lazy } from "react";
 import type { MapMouseEvent, MapRef } from "react-map-gl/maplibre";
 
+import { Maplibre } from "~/components/ui/map/MapLibre";
 import type { BaseMapProps, GeographicRegion, PhotoMarker } from "~/types/map";
 
 import type { MapAdapter } from "./map-context";
 
-const Maplibre = lazy(() =>
-  import("~/components/ui/map/MapLibre").then((m) => ({ default: m.Maplibre })),
-);
 /**
  * MapLibre map adapter implementation
  * This adapts MapLibre to work with our generic map provider system

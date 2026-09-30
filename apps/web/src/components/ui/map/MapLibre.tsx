@@ -13,7 +13,7 @@ import type {
 import Map from "react-map-gl/maplibre";
 
 import { siteConfig } from "~/config";
-import { canUseWebGL2 } from "~/lib/feature";
+import { getCanUseWebGL2 } from "~/lib/feature";
 import { createRegionMarkers } from "~/lib/geo-regions";
 import { maplibre } from "~/lib/map/maplibre";
 import { getMapStyle } from "~/lib/map/style";
@@ -448,7 +448,7 @@ export const Maplibre = ({
     return () => clearTimeout(timer);
   }, [fitMapToBounds]);
 
-  if (!canUseWebGL2) {
+  if (!getCanUseWebGL2()) {
     return (
       <div className={`afilmory-map ${className}`} style={style}>
         <div role="status" className="flex h-full items-center justify-center">

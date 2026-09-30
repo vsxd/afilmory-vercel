@@ -9,6 +9,11 @@ export type DependencyChunkGroup = {
   patterns: string[];
 };
 
+const CRITICAL_PRE_RENDER_MODULE_PATHS = [
+  "/src/pages/(main)/layout.tsx",
+  "/src/modules/gallery/command-palette/CommandPalette.tsx",
+] as const;
+
 /**
  * Cross-vendor static cycles are unsafe with manual chunks: evaluation may
  * reach an imported binding before the exporting vendor chunk initializes it.
@@ -40,12 +45,18 @@ export function findStaticVendorChunkCycle(
         const vendorChunks = new Set(
           cycle.filter((item) => item.startsWith("vendor/")),
         );
-        // file-type eagerly patches ZipHandler.prototype. Even a cycle through
-        // a single automatic shared chunk can leave that class uninitialized.
+        // file-type patches ZipHandler.prototype, MapLibre configures its worker,
+        // and usehooks-ts calls a CommonJS initializer during evaluation. A cycle
+        // through one automatic shared chunk can reach these bindings too early.
         // Other single-vendor cycles may only reference bindings at call time.
         if (
           vendorChunks.size >= 2 ||
-          cycle.some((item) => item.startsWith("vendor/file-type-"))
+          cycle.some(
+            (item) =>
+              item.startsWith("vendor/file-type-") ||
+              item.startsWith("vendor/map-") ||
+              item.startsWith("vendor/observers-"),
+          )
         )
           return cycle;
       }
@@ -119,10 +130,11 @@ export function createDependencyChunksPlugin(
     renderChunk(_code, chunk) {
       renderedImports.set(chunk.fileName, [...chunk.imports]);
       if (chunk.isEntry) renderedEntries.add(chunk.fileName);
+      const facadeModuleId = chunk.facadeModuleId?.replaceAll("\\", "/");
       if (
-        chunk.facadeModuleId
-          ?.replaceAll("\\", "/")
-          .endsWith("/src/pages/(main)/layout.tsx")
+        CRITICAL_PRE_RENDER_MODULE_PATHS.some((modulePath) =>
+          facadeModuleId?.endsWith(modulePath),
+        )
       ) {
         renderedCriticalRoutes.add(chunk.fileName);
       }
@@ -266,8 +278,8 @@ export function createDependencyChunksPlugin(
       };
       for (const entryFile of entryFiles) visitInitialImport(entryFile);
 
-      // The gallery layout is a route-lazy chunk, but bootstrap explicitly
-      // awaits it before the first React render. Treat it as part of the real
+      // Bootstrap awaits the gallery and search chunks before the first React
+      // render. Treat both as part of the real
       // startup closure for both the gzip budget and the PWA app shell.
       const preRenderFiles = new Set(initialFiles);
       const visitPreRenderImport = (fileName: string) => {
@@ -278,18 +290,17 @@ export function createDependencyChunksPlugin(
           visitPreRenderImport(importedFile);
         }
       };
-      const criticalRouteChunks = chunks.filter((chunk) =>
-        chunk.facadeModuleId
-          ?.replaceAll("\\", "/")
-          .endsWith("/src/pages/(main)/layout.tsx"),
-      );
-      if (criticalRouteChunks.length !== 1) {
-        this.error(
-          `Expected one critical gallery layout chunk, found ${criticalRouteChunks.length}.`,
+      for (const modulePath of CRITICAL_PRE_RENDER_MODULE_PATHS) {
+        const criticalChunks = chunks.filter((chunk) =>
+          chunk.facadeModuleId?.replaceAll("\\", "/").endsWith(modulePath),
         );
-      }
-      for (const chunk of criticalRouteChunks) {
-        visitPreRenderImport(chunk.fileName);
+        if (criticalChunks.length !== 1) {
+          this.error(
+            `Expected one critical chunk for ${modulePath}, found ${criticalChunks.length}.`,
+          );
+        }
+        for (const chunk of criticalChunks)
+          visitPreRenderImport(chunk.fileName);
       }
 
       // Vite records CSS referenced by each chunk outside Rollup's imports

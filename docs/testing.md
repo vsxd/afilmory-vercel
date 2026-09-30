@@ -23,6 +23,27 @@ pnpm exec vitest run --project web apps/web/src/lib/__tests__/color.test.ts
 pnpm exec vitest --project ui            # watch mode
 ```
 
+## Core feature readiness
+
+Search code loads alongside the gallery during bootstrap, before the homepage
+becomes interactive. The real pre-render dependency budget and PWA shell include
+both modules. The palette still mounts on first use, preserving focus and dialog
+state behavior, but renders the prepared component directly rather than starting
+a `React.lazy`/Suspense retry on the first click.
+
+After the gallery commits and initial resources finish loading, a short paint
+window and an idle callback start the photo-viewer route, complete map route and
+repository map details independently. Mobile devices use the same preparation;
+hidden or offline pages resume when visible and online. Imports do not mount
+maps, allocate WebGL contexts, start workers, or fetch originals and basemap
+tiles. Deep links keep the startup splash until their destination code is ready;
+an early navigation from the gallery has a visible loading status.
+
+Production smoke tests use the existing small synthetic fixture and fresh browser
+contexts to check automatic requests before interaction, search without new code
+downloads, map-data reuse, and isolation/recovery of failed background requests.
+They verify readiness rather than imposing timing thresholds tied to CI hardware.
+
 ## Type and architecture gates
 
 `pnpm type-check` checks production sources, `apps/web/tsconfig.test.json`,

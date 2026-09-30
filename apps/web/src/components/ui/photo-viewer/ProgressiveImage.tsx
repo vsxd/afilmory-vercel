@@ -7,7 +7,7 @@ import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { useMediaQuery } from "usehooks-ts";
 
 import { useShowContextMenu } from "~/atoms/context-menu";
-import { canUseWebGL } from "~/lib/feature";
+import { getCanUseWebGL } from "~/lib/feature";
 import {
   getThumbnailLoadCacheKey,
   hasLoadedThumbnail,
@@ -66,6 +66,7 @@ export const ProgressiveImage = ({
 }: ProgressiveImageProps) => {
   const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion() === true;
+  const canUseWebGL = getCanUseWebGL();
 
   const thumbnailCacheKey =
     photoId && thumbnailSrc

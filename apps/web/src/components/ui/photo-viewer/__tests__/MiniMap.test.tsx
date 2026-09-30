@@ -7,7 +7,7 @@ import { MiniMap } from "../MiniMap";
 const capabilities = vi.hoisted(() => ({ webgl2: true }));
 
 vi.mock("~/lib/feature", () => ({
-  get canUseWebGL2() {
+  getCanUseWebGL2() {
     return capabilities.webgl2;
   },
 }));
