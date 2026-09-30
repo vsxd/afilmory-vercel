@@ -161,6 +161,18 @@ through the visible reload action; an actual WebGL context loss reaches the DOM
 image fallback. These are functional recovery tests, not large-library or mobile
 GPU performance measurements.
 
+The production suite also converts a real two-pixel transparent TIFF in its
+bundled module worker and waits for the WebGL canvas to paint. Large-image
+admission, source density, GPU budgets and cancellation are covered with small
+encoded headers, numeric dimensions and bitmap/GL substitutes; they do not
+require large test photographs.
+
+For physical iPhone testing, see [the device-check guide](device-check.md).
+The optional temporary production server can use the existing library without
+running Builder or reading private environment files. It records foreground
+frame intervals and error counts; desktop WebKit/iPhone emulation is not a
+substitute for this physical-device result.
+
 The fixture is **fully synthetic**: invented `SYNTH00…` photos, a fictional
 `Lumina LX-7` camera, and mid-ocean GPS coordinates in made-up countries. It
 must **never** be regenerated from a real photo library — an earlier fixture

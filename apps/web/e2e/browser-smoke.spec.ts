@@ -24,6 +24,9 @@ test("gallery, command palette, and viewer work in WebKit", async ({
       .getByRole("button", { name: "Close", exact: true })
       .click();
   } else {
+    // The lazy dialog can be visible before its effect/next-frame autofocus.
+    // Wait for desktop keyboard readiness while preserving the Escape path.
+    await expect(searchDialog.getByRole("combobox")).toBeFocused();
     await page.keyboard.press("Escape");
   }
   await expect(searchDialog).toBeHidden();
