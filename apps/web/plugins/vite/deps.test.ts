@@ -44,16 +44,54 @@ describe("findStaticVendorChunkCycle", () => {
     ]);
   });
 
-  it("allows acyclic graphs", () => {
+  it.each(["ui", "map", "observers", "file-type"])(
+    "allows acyclic graphs containing %s",
+    (vendor) => {
+      expect(
+        findStaticVendorChunkCycle(
+          new Map([
+            ["assets/entry.js", [`vendor/${vendor}-a.js`]],
+            [`vendor/${vendor}-a.js`, ["external.js"]],
+          ]),
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it("allows an ordinary cycle overlapping a safe single-vendor cycle", () => {
     expect(
       findStaticVendorChunkCycle(
         new Map([
-          ["assets/entry.js", ["vendor/ui.js"]],
-          ["vendor/ui.js", []],
+          ["assets/root.js", ["assets/shared.js", "vendor/ui-a.js"]],
+          ["assets/shared.js", ["assets/root.js"]],
+          ["vendor/ui-a.js", ["assets/shared.js"]],
         ]),
       ),
     ).toBeNull();
   });
+
+  it("does not combine separate safe vendor cycles linked in one direction", () => {
+    expect(
+      findStaticVendorChunkCycle(
+        new Map([
+          ["vendor/ui-a.js", ["assets/a.js", "vendor/ui-b.js"]],
+          ["assets/a.js", ["vendor/ui-a.js"]],
+          ["vendor/ui-b.js", ["assets/b.js"]],
+          ["assets/b.js", ["vendor/ui-b.js"]],
+        ]),
+      ),
+    ).toBeNull();
+  });
+
+  it.each(["file-type", "map", "observers"])(
+    "rejects a sensitive %s self-loop",
+    (vendor) => {
+      const fileName = `vendor/${vendor}-a.js`;
+      expect(
+        findStaticVendorChunkCycle(new Map([[fileName, [fileName]]])),
+      ).toEqual([fileName, fileName]);
+    },
+  );
 
   it("rejects the MapLibre vendor/shared-style initialization cycle", () => {
     expect(
@@ -76,6 +114,47 @@ describe("findStaticVendorChunkCycle", () => {
         ]),
       ),
     ).toEqual(["assets/photo.js", "vendor/observers-a.js", "assets/photo.js"]);
+  });
+
+  it.each(["map", "observers"])(
+    "rejects a %s cycle hidden behind an earlier ordinary cycle",
+    (vendor) => {
+      const imports = new Map([
+        ["assets/root.js", ["assets/shared.js", `vendor/${vendor}-a.js`]],
+        ["assets/shared.js", ["assets/root.js"]],
+        [`vendor/${vendor}-a.js`, ["assets/shared.js"]],
+      ]);
+
+      expect(findStaticVendorChunkCycle(imports)).toEqual([
+        "assets/root.js",
+        `vendor/${vendor}-a.js`,
+        "assets/shared.js",
+        "assets/root.js",
+      ]);
+    },
+  );
+
+  it("returns real closed edges through both vendors when cycles share a junction", () => {
+    const imports = new Map([
+      [
+        "assets/root.js",
+        ["assets/shared.js", "vendor/ui-a.js", "vendor/ui-b.js"],
+      ],
+      ["assets/shared.js", ["assets/root.js"]],
+      ["vendor/ui-a.js", ["assets/shared.js"]],
+      ["vendor/ui-b.js", ["assets/shared.js"]],
+    ]);
+    const cycle = findStaticVendorChunkCycle(imports);
+
+    expect(cycle).not.toBeNull();
+    if (!cycle) throw new Error("Missing vendor cycle");
+    expect(cycle[0]).toBe(cycle.at(-1));
+    expect(cycle).toEqual(
+      expect.arrayContaining(["vendor/ui-a.js", "vendor/ui-b.js"]),
+    );
+    for (let index = 1; index < cycle.length; index++) {
+      expect(imports.get(cycle[index - 1])).toContain(cycle[index]);
+    }
   });
 });
 

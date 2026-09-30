@@ -22,55 +22,104 @@ const CRITICAL_PRE_RENDER_MODULE_PATHS = [
 export function findStaticVendorChunkCycle(
   importsByChunk: ReadonlyMap<string, readonly string[]>,
 ): string[] | null {
-  const states = new Map<string, "visiting" | "visited">();
+  const indices = new Map<string, number>();
   const stack: string[] = [];
+  const onStack = new Set<string>();
+  let dangerousCycle: string[] | null = null;
 
-  const visit = (fileName: string): string[] | null => {
-    states.set(fileName, "visiting");
+  const findPath = (
+    from: string,
+    to: string,
+    members: ReadonlySet<string>,
+  ): string[] => {
+    const visited = new Set<string>();
+    const path: string[] = [];
+    const walk = (fileName: string): boolean => {
+      visited.add(fileName);
+      path.push(fileName);
+      if (fileName === to) return true;
+      for (const importedFile of importsByChunk.get(fileName) ?? []) {
+        if (
+          members.has(importedFile) &&
+          !visited.has(importedFile) &&
+          walk(importedFile)
+        )
+          return true;
+      }
+      path.pop();
+      return false;
+    };
+    // Both ends belong to one strongly connected component, so a path exists.
+    walk(from);
+    return path;
+  };
+
+  // Tarjan's analysis keeps overlapping cycles together. Checking individual
+  // DFS back edges can hide a dangerous cycle behind an earlier allowed one.
+  const visit = (fileName: string): number => {
+    const index = indices.size;
+    indices.set(fileName, index);
+    let lowLink = index;
     stack.push(fileName);
+    onStack.add(fileName);
 
     for (const importedFile of importsByChunk.get(fileName) ?? []) {
       if (!importsByChunk.has(importedFile)) continue;
-
-      const state = states.get(importedFile);
-      if (!state) {
-        const nestedCycle = visit(importedFile);
-        if (nestedCycle) return nestedCycle;
-        continue;
-      }
-
-      if (state === "visiting") {
-        const cycleStart = stack.lastIndexOf(importedFile);
-        const cycle = [...stack.slice(cycleStart), importedFile];
-        const vendorChunks = new Set(
-          cycle.filter((item) => item.startsWith("vendor/")),
-        );
-        // file-type patches ZipHandler.prototype, MapLibre configures its worker,
-        // and usehooks-ts calls a CommonJS initializer during evaluation. A cycle
-        // through one automatic shared chunk can reach these bindings too early.
-        // Other single-vendor cycles may only reference bindings at call time.
-        if (
-          vendorChunks.size >= 2 ||
-          cycle.some(
-            (item) =>
-              item.startsWith("vendor/file-type-") ||
-              item.startsWith("vendor/map-") ||
-              item.startsWith("vendor/observers-"),
-          )
-        )
-          return cycle;
+      const importedIndex = indices.get(importedFile);
+      if (importedIndex === undefined) {
+        lowLink = Math.min(lowLink, visit(importedFile));
+      } else if (onStack.has(importedFile)) {
+        lowLink = Math.min(lowLink, importedIndex);
       }
     }
+    if (lowLink !== index) return lowLink;
 
-    stack.pop();
-    states.set(fileName, "visited");
-    return null;
+    const component: string[] = [];
+    let member = stack.pop();
+    while (member !== undefined) {
+      onStack.delete(member);
+      component.push(member);
+      if (member === fileName) break;
+      member = stack.pop();
+    }
+    component.reverse();
+    if (dangerousCycle) return lowLink;
+
+    const vendors = component.filter((item) => item.startsWith("vendor/"));
+    // These families access imported bindings during evaluation. Other
+    // single-vendor components may reference those bindings only at call time.
+    const sensitiveVendor = vendors.find((item) =>
+      /^vendor\/(?:file-type|map|observers)-/.test(item),
+    );
+    if (!sensitiveVendor && vendors.length < 2) return lowLink;
+
+    const start = sensitiveVendor ? component[0] : vendors[0];
+    if (start === undefined) return lowLink;
+    if (component.length === 1) {
+      if (importsByChunk.get(start)?.includes(start))
+        dangerousCycle = [start, start];
+      return lowLink;
+    }
+    const destination = sensitiveVendor
+      ? sensitiveVendor === start
+        ? component[1]
+        : sensitiveVendor
+      : vendors[1];
+    if (destination === undefined) return lowLink;
+
+    const members = new Set(component);
+    // Return real edges through the offending vendor(s), not the SCC's order.
+    // Shared junctions may repeat when two cycles intersect at a single chunk.
+    dangerousCycle = [
+      ...findPath(start, destination, members),
+      ...findPath(destination, start, members).slice(1),
+    ];
+    return lowLink;
   };
 
   for (const fileName of importsByChunk.keys()) {
-    if (states.has(fileName)) continue;
-    const cycle = visit(fileName);
-    if (cycle) return cycle;
+    if (!indices.has(fileName)) visit(fileName);
+    if (dangerousCycle) return dangerousCycle;
   }
 
   return null;
