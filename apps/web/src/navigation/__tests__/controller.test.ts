@@ -85,6 +85,40 @@ describe("navigation journeys", () => {
     expect(router.state.historyAction).toBe("REPLACE");
   });
 
+  it("recognizes a mixed-case photo prefix without folding IDs while stepping and closing", () => {
+    const {
+      navigation: n,
+      router,
+      href,
+    } = setup("/Photos/CaseSensitiveID?sort=asc");
+    expect(n.isPhotoPresented()).toBe(true);
+    expect(n.getPhotoId()).toBe("CaseSensitiveID");
+    n.stepPhoto("casesensitiveid");
+    expect(n.getPhotoId()).toBe("casesensitiveid");
+    expect(href()).toBe("/photos/casesensitiveid?sort=asc");
+    expect(router.state.historyAction).toBe("REPLACE");
+    n.closePhoto();
+    expect(href()).toBe("/?sort=asc");
+  });
+
+  it("recognizes an uppercase map as the photo sequence origin and returns to its view", () => {
+    const { navigation: n, href } = setup(
+      "/EXPLORE?photoId=CaseSensitiveID&mode=photos&sort=asc",
+    );
+    const camera = { longitude: 120, latitude: 30, zoom: 10 };
+    n.rememberMapView(camera);
+    expect(n.getGallerySearch()).toBe("");
+    n.openPhoto("CaseSensitiveID", { photoIds: ["CaseSensitiveID"] });
+    expect(n.getPhotoSequenceOrigin()).toBe("map");
+    n.closePhoto();
+    expect(href()).toBe(
+      "/EXPLORE?photoId=CaseSensitiveID&mode=photos&sort=asc",
+    );
+    expect(n.getMapView()).toEqual(camera);
+    n.updateMapSearch("?photoId=CaseSensitiveID&mode=photos&sort=asc");
+    expect(href()).toBe("/explore?photoId=CaseSensitiveID&mode=photos");
+  });
+
   it("restored history state without a verified predecessor uses a safe fallback", async () => {
     const { navigation: n, router, href } = setup();
     await router.navigate("/photos/a", {

@@ -8,7 +8,8 @@ import { buildPhotoDetailPathname } from "~/lib/photo-detail-route";
 export type AppDestination = { pathname: string; search: string };
 
 export function parsePhotoId(pathname: string): string | null {
-  const match = /^\/photos\/([^/]+)\/?$/.exec(pathname);
+  // Match Router's case-insensitive static prefix without changing the ID.
+  const match = /^\/photos\/([^/]+)\/?$/i.exec(pathname);
   if (!match) return null;
   try {
     return decodeURIComponent(match[1]);
@@ -17,7 +18,7 @@ export function parsePhotoId(pathname: string): string | null {
   }
 }
 
-export const isMapPath = (pathname: string) => /^\/explore\/?$/.test(pathname);
+export const isMapPath = (pathname: string) => /^\/explore\/?$/i.test(pathname);
 export const gallerySearch = (search: string) =>
   buildGalleryFilterSearch("", getGalleryFiltersFromSearch(search));
 export const galleryDestination = (

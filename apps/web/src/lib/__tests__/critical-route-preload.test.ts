@@ -38,7 +38,10 @@ describe("critical-route-preload", () => {
   it.each([
     ["/explore", "./pages/explore/index.tsx"],
     ["/explore/", "./pages/explore/index.tsx"],
+    ["/EXPLORE", "./pages/explore/index.tsx"],
+    ["/Explore/", "./pages/explore/index.tsx"],
     ["/photos/example/", "./pages/(main)/photos/[photoId]/index.tsx"],
+    ["/Photos/CaseSensitiveID", "./pages/(main)/photos/[photoId]/index.tsx"],
   ])(
     "keeps cold %s startup pending until its destination code is ready",
     async (pathname, moduleKey) => {
