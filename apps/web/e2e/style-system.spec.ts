@@ -189,13 +189,28 @@ test.describe("mobile surface composition", () => {
       )
       .toBe("hidden");
     const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Input.synthesizeScrollGesture", {
-      x: 195,
-      y: 700,
-      yDistance: -900,
-      gestureSourceType: "touch",
-    });
-    await cdp.detach();
+    try {
+      // Use the touch sequence exercised by dismiss-gesture.spec.ts. The
+      // synthetic scroll shortcut can leave body stationary in CI Chromium.
+      // Keep every touch point inside the viewport and let native scrolling
+      // move body; the assertions below still verify the actual scroll owner.
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: 195, y: 700 }],
+      });
+      for (let step = 1; step <= 12; step++) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: 195, y: 700 - step * 50 }],
+        });
+      }
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    } finally {
+      await cdp.detach();
+    }
     await expect
       .poll(() => page.evaluate(() => document.body.scrollTop))
       .toBeGreaterThan(500);

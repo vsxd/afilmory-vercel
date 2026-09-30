@@ -11,7 +11,9 @@ const rootDir = path.resolve(
 );
 
 describe("workspace contracts", () => {
+  // This integration check parses the entire workspace. Coverage instrumentation
+  // and shared CI runners can exceed the default unit-test timeout.
   it("keeps package metadata, direct imports, and type-check discovery aligned", async () => {
     await expect(validateWorkspaceContracts(rootDir)).resolves.toEqual([]);
-  });
+  }, 30_000);
 });
