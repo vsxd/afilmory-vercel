@@ -28,6 +28,8 @@ import {
   createClusterZoomViewState,
   createFallbackBoundsViewState,
 } from "./map-view-state";
+import type { MapClusterViewport } from "./map-viewport";
+import { updateMapClusterViewport } from "./map-viewport";
 import {
   ClusterMarker,
   createMarkerClusterIndex,
@@ -145,8 +147,9 @@ export const Maplibre = ({
   const shouldReduceMotion = useReducedMotion() === true;
   const internalMapRef = useRef<MapRef | null>(null);
   const resolvedMapRef = mapRef ?? internalMapRef;
-  const [currentZoom, setCurrentZoom] = useState(initialViewState.zoom);
   const [viewState, setViewState] = useState(initialViewState);
+  const [clusterViewport, setClusterViewport] =
+    useState<MapClusterViewport | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasInitialFitCompleted, setHasInitialFitCompleted] = useState(false);
   const fitMarkers = useMemo(
@@ -199,12 +202,39 @@ export const Maplibre = ({
     }
 
     setViewState(initialViewState);
-    setCurrentZoom(initialViewState.zoom);
   }, [initialViewState, autoFitBounds, syncViewStateOnInitialViewStateChange]);
 
-  // Clustered markers: build the Supercluster index only when the data
-  // changes, and re-query only when the integer zoom level changes — onMove
-  // updates currentZoom fractionally on every frame during a pinch/scroll.
+  const updateViewport = useCallback(
+    (force = false) => {
+      const map = resolvedMapRef.current?.getMap();
+      if (!map) return;
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+      setClusterViewport((previous) =>
+        updateMapClusterViewport(
+          force ? null : previous,
+          [
+            bounds.getWest(),
+            bounds.getSouth(),
+            bounds.getEast(),
+            bounds.getNorth(),
+          ],
+          zoom,
+        ),
+      );
+    },
+    [resolvedMapRef],
+  );
+
+  // Read after react-map-gl applies controlled camera props in its layout
+  // effect. This also covers URL selection, restored views and single-photo
+  // auto-fit, whose programmatic camera changes do not emit onMove callbacks.
+  useEffect(() => {
+    if (isMapLoaded) updateViewport();
+  }, [isMapLoaded, viewState, updateViewport]);
+
+  // Rebuild only for data changes. Small pans inside the buffered viewport and
+  // fractional zoom changes reuse the same query result.
   const clusterIndex = useMemo(
     () =>
       displayMode === "regions"
@@ -212,11 +242,63 @@ export const Maplibre = ({
         : createMarkerClusterIndex(markers),
     [displayMode, regions, markers],
   );
-  const flooredZoom = Math.floor(currentZoom);
   const clusteredMarkers = useMemo(
-    () => getClusterPoints(clusterIndex, flooredZoom),
-    [clusterIndex, flooredZoom],
+    () =>
+      clusterViewport
+        ? getClusterPoints(
+            clusterIndex,
+            clusterViewport.zoom,
+            clusterViewport.bounds,
+          )
+        : [],
+    [clusterIndex, clusterViewport],
   );
+  const selectedRegion = useMemo(
+    () =>
+      displayMode === "regions" && selectedRegionId
+        ? regions.find((item) => item.id === selectedRegionId)
+        : undefined,
+    [displayMode, regions, selectedRegionId],
+  );
+  const selectedMarker = useMemo(
+    () =>
+      displayMode === "photos" && selectedMarkerId
+        ? markers.find((item) => item.id === selectedMarkerId)
+        : selectedRegion?.representativeMarker,
+    [displayMode, markers, selectedMarkerId, selectedRegion],
+  );
+  const visibleMarkers = useMemo(() => {
+    // Keep an explicitly selected pin available even if it was clustered or
+    // panned just outside the query. Only retain selections in the current
+    // data set, so changing filters cannot resurrect a removed photo/region.
+    const region = selectedRegion;
+    const marker = selectedMarker;
+    if (
+      !marker ||
+      clusteredMarkers.some(
+        (point) =>
+          !point.properties.cluster &&
+          (region
+            ? point.properties.region?.id === region.id
+            : point.properties.marker?.id === marker.id),
+      )
+    )
+      return clusteredMarkers;
+    return [
+      ...clusteredMarkers,
+      {
+        type: "Feature" as const,
+        properties: { marker, region },
+        geometry: {
+          type: "Point" as const,
+          coordinates: [
+            region?.longitude ?? marker.longitude,
+            region?.latitude ?? marker.latitude,
+          ] as [number, number],
+        },
+      },
+    ];
+  }, [clusteredMarkers, selectedMarker, selectedRegion]);
 
   useEffect(() => {
     setHasInitialFitCompleted(false);
@@ -246,7 +328,6 @@ export const Maplibre = ({
       }
 
       setViewState(nextViewState);
-      setCurrentZoom(nextViewState.zoom);
     },
     [resolvedMapRef, onClusterClick, shouldReduceMotion, viewState],
   );
@@ -275,7 +356,6 @@ export const Maplibre = ({
         zoom: 13, // 单点时的合理缩放级别
       };
       setViewState(newViewState);
-      setCurrentZoom(newViewState.zoom);
       return;
     }
 
@@ -329,7 +409,6 @@ export const Maplibre = ({
       const newViewState = createFallbackBoundsViewState(bounds);
 
       setViewState(newViewState);
-      setCurrentZoom(newViewState.zoom);
     }
   }, [
     fitMarkers,
@@ -393,8 +472,8 @@ export const Maplibre = ({
         onClick={onGeoJsonClick}
         onError={handleMapError}
         onLoad={handleMapLoad}
+        onResize={() => updateViewport(true)}
         onMove={(evt) => {
-          setCurrentZoom(evt.viewState.zoom);
           setViewState(evt.viewState);
           onViewStateChange?.(evt.viewState);
           onZoomChange?.(evt.viewState.zoom);
@@ -405,19 +484,22 @@ export const Maplibre = ({
         <MapAttribution geocodingLabel={t("explore.attribution.geocoding")} />
 
         {/* Photo Markers */}
-        {clusteredMarkers.map((clusterPoint) => {
-          if (clusterPoint.properties.cluster) {
+        {visibleMarkers.map((clusterPoint) => {
+          if (
+            clusterPoint.properties.cluster &&
+            clusterPoint.properties.cluster_id !== undefined
+          ) {
             // Render cluster marker
             return (
               <ClusterMarker
-                key={`cluster-${clusterPoint.geometry.coordinates[0]}-${clusterPoint.geometry.coordinates[1]}`}
+                key={`cluster-${displayMode}-${clusterPoint.properties.cluster_id}`}
                 longitude={clusterPoint.geometry.coordinates[0]}
                 latitude={clusterPoint.geometry.coordinates[1]}
                 pointCount={clusterPoint.properties.point_count || 0}
                 displayMode={displayMode}
-                representativeMarker={clusterPoint.properties.marker}
-                clusteredPhotos={clusterPoint.properties.clusteredPhotos}
-                clusteredRegions={clusterPoint.properties.clusteredRegions}
+                clusterIndex={clusterIndex}
+                clusterId={clusterPoint.properties.cluster_id}
+                previewPhotos={clusterPoint.properties.previewPhotos}
                 onClusterClick={handleClusterClick}
               />
             );

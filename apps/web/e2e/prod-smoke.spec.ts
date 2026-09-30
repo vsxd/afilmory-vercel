@@ -325,6 +325,27 @@ test.describe("production navigation journeys", () => {
     expect(detailRequests).toBe(2);
   });
 
+  test("queries only the selected photo's map viewport after loading and navigation", async ({
+    page,
+  }) => {
+    for (const photoId of ["SYNTH0001", "SYNTH0013"]) {
+      await page.goto(`/explore?mode=photos&photoId=${photoId}`);
+      const map = page.locator(".maplibregl-map");
+      await expect(map).toBeVisible();
+      await expect(
+        map.getByRole("button", { name: photoId, exact: true }),
+      ).toBeVisible();
+      // The 18-photo fixture spans several distant groups. A high-zoom view
+      // must not mount all worldwide pins, even when a selected pin is kept.
+      await expect
+        .poll(() => map.locator(".maplibregl-marker").count())
+        .toBeGreaterThan(0);
+      await expect
+        .poll(() => map.locator(".maplibregl-marker").count())
+        .toBeLessThan(6);
+    }
+  });
+
   for (const moduleName of ["MapSection", "MapLibre"]) {
     test(`reloads a failed ${moduleName} module from the map error action`, async ({
       page,

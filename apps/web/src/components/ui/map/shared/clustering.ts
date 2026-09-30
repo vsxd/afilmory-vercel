@@ -2,11 +2,12 @@ import Supercluster from "supercluster";
 
 import type { GeographicRegion, PhotoMarker } from "~/types/map";
 
+import type { MapQueryBounds } from "../map-viewport";
 import type { ClusterPoint } from "./types";
 
-const CLUSTER_BBOX: [number, number, number, number] = [-180, -90, 180, 90];
 const CLUSTER_RADIUS = 48;
 const CLUSTER_MAX_ZOOM = 16;
+const CLUSTER_PREVIEW_SIZE = 4;
 
 type PhotoPointProperties = {
   kind: "photo";
@@ -20,7 +21,7 @@ type RegionPointProperties = {
 };
 
 type PointProperties = PhotoPointProperties | RegionPointProperties;
-type ClusterProperties = Record<string, never>;
+type ClusterProperties = { previewPhotos: PhotoMarker[] };
 type PointFeature = Supercluster.PointFeature<PointProperties>;
 type ClusterFeature = Supercluster.ClusterFeature<ClusterProperties>;
 type IndexedFeature = ClusterFeature | PointFeature;
@@ -72,6 +73,19 @@ const createIndex = (features: PointFeature[]) =>
   new Supercluster<PointProperties, ClusterProperties>({
     radius: CLUSTER_RADIUS,
     maxZoom: CLUSTER_MAX_ZOOM,
+    map: (properties) => ({
+      previewPhotos:
+        properties.kind === "region"
+          ? properties.region.markers.slice(0, CLUSTER_PREVIEW_SIZE)
+          : [properties.marker],
+    }),
+    reduce: (accumulated, properties) => {
+      // Keep only bounded references in the index; never expand every leaf
+      // just to render the four-photo marker mosaic.
+      accumulated.previewPhotos = accumulated.previewPhotos
+        .concat(properties.previewPhotos)
+        .slice(0, CLUSTER_PREVIEW_SIZE);
+    },
   }).load(features);
 
 const createSinglePoint = (feature: PointFeature): ClusterPoint => {
@@ -95,21 +109,7 @@ const createSinglePoint = (feature: PointFeature): ClusterPoint => {
   };
 };
 
-const createClusterPoint = (
-  feature: ClusterFeature,
-  index: Supercluster<PointProperties, ClusterProperties>,
-): ClusterPoint => {
-  const leaves = index.getLeaves(
-    feature.properties.cluster_id,
-    Number.POSITIVE_INFINITY,
-  );
-  const markers = leaves.map((leaf) => leaf.properties.marker);
-  const regions = leaves
-    .map((leaf) =>
-      leaf.properties.kind === "region" ? leaf.properties.region : null,
-    )
-    .filter((region): region is GeographicRegion => region !== null);
-
+const createClusterPoint = (feature: ClusterFeature): ClusterPoint => {
   return {
     type: "Feature",
     properties: {
@@ -119,12 +119,7 @@ const createClusterPoint = (
       point_count_abbreviated: String(
         feature.properties.point_count_abbreviated,
       ),
-      marker: markers[0],
-      clusteredPhotos:
-        regions.length > 0
-          ? regions.flatMap((region) => region.markers)
-          : markers,
-      clusteredRegions: regions.length > 0 ? regions : undefined,
+      previewPhotos: feature.properties.previewPhotos,
     },
     geometry: getClusterPointGeometry(feature),
   };
@@ -132,7 +127,7 @@ const createClusterPoint = (
 
 // Supercluster is built to be loaded once and queried per zoom: index
 // construction is O(n log n) while a query is cheap. Callers should build the
-// index when the underlying markers/regions change and re-query on zoom.
+// index when the underlying markers/regions change and query the viewport.
 export type ClusterIndex = Supercluster<
   PointProperties,
   ClusterProperties
@@ -153,6 +148,7 @@ export function createRegionClusterIndex(
 export function getClusterPoints(
   index: ClusterIndex,
   zoom: number,
+  bounds: MapQueryBounds,
 ): ClusterPoint[] {
   if (!index) return [];
 
@@ -161,11 +157,27 @@ export function getClusterPoints(
     Math.min(CLUSTER_MAX_ZOOM + 1, Math.floor(zoom)),
   );
 
-  return index.getClusters(CLUSTER_BBOX, clusterZoom).map((feature) => {
+  return index.getClusters(bounds, clusterZoom).map((feature) => {
     if (isClusterFeature(feature)) {
-      return createClusterPoint(feature, index);
+      return createClusterPoint(feature);
     }
 
     return createSinglePoint(feature);
   });
+}
+
+// Only an opened cluster needs its complete photo sequence. Region leaves
+// contain multiple photos; preserve that full sequence for the grid's links.
+export function getClusterPhotos(
+  index: ClusterIndex,
+  clusterId: number,
+): PhotoMarker[] {
+  if (!index) return [];
+  return index
+    .getLeaves(clusterId, Number.POSITIVE_INFINITY)
+    .flatMap((leaf) =>
+      leaf.properties.kind === "region"
+        ? leaf.properties.region.markers
+        : [leaf.properties.marker],
+    );
 }

@@ -29,6 +29,8 @@ let flyToMock: Mock<(...args: unknown[]) => void>;
 let createMarkerClusterIndexMock: Mock<(...args: unknown[]) => unknown>;
 let createRegionClusterIndexMock: Mock<(...args: unknown[]) => unknown>;
 let getClusterPointsMock: Mock<(...args: unknown[]) => unknown[]>;
+let mapBounds: [number, number, number, number];
+let capturedOnResize: (() => void) | undefined;
 let capturedOnMove:
   | ((evt: {
       viewState: { longitude: number; latitude: number; zoom: number };
@@ -55,12 +57,14 @@ vi.mock("react-map-gl/maplibre", async () => {
     onLoad,
     onError,
     onMove,
+    onResize,
     children,
   }: React.PropsWithChildren & {
     longitude: number;
     latitude: number;
     zoom: number;
     onLoad?: () => void;
+    onResize?: () => void;
     onError?: (event: { error: Error }) => void;
     onMove?: (evt: {
       viewState: { longitude: number; latitude: number; zoom: number };
@@ -75,8 +79,11 @@ vi.mock("react-map-gl/maplibre", async () => {
     } | null>;
   }) => {
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const zoomRef = React.useRef(zoom);
+    zoomRef.current = zoom;
 
     capturedOnMove = onMove;
+    capturedOnResize = onResize;
     capturedOnError = onError;
 
     React.useEffect(() => {
@@ -86,6 +93,13 @@ vi.mock("react-map-gl/maplibre", async () => {
             setProjection: (...args: unknown[]) => setProjectionMock(...args),
             fitBounds: (...args: unknown[]) => fitBoundsMock(...args),
             flyTo: (...args: unknown[]) => flyToMock(...args),
+            getZoom: () => zoomRef.current,
+            getBounds: () => ({
+              getWest: () => mapBounds[0],
+              getSouth: () => mapBounds[1],
+              getEast: () => mapBounds[2],
+              getNorth: () => mapBounds[3],
+            }),
           }),
           getContainer: () => containerRef.current as HTMLDivElement,
         };
@@ -155,18 +169,35 @@ vi.mock("../shared", () => ({
   RegionMarkerPin: ({
     region,
     onClick,
+    isSelected,
   }: {
     region: GeographicRegion;
+    isSelected?: boolean;
     onClick?: (region: GeographicRegion) => void;
   }) => (
     <button
       type="button"
       data-testid="region-marker"
+      data-id={region.id}
+      data-selected={isSelected}
       onClick={() => onClick?.(region)}
     />
   ),
   MapControls: () => null,
-  PhotoMarkerPin: () => null,
+  PhotoMarkerPin: ({
+    marker,
+    isSelected,
+  }: {
+    marker: PhotoMarker;
+    isSelected?: boolean;
+  }) => (
+    <button
+      type="button"
+      data-testid="photo-marker"
+      data-id={marker.id}
+      data-selected={isSelected}
+    />
+  ),
 }));
 
 const createMarker = (
@@ -224,6 +255,8 @@ describe("Maplibre", () => {
     createMarkerClusterIndexMock = vi.fn(() => null);
     createRegionClusterIndexMock = vi.fn(() => null);
     getClusterPointsMock = vi.fn(() => []);
+    mapBounds = [119, 29, 121, 31];
+    capturedOnResize = undefined;
     capturedOnMove = undefined;
     capturedOnError = undefined;
   });
@@ -371,9 +404,10 @@ describe("Maplibre", () => {
         type: "Feature",
         properties: {
           cluster: true,
+          cluster_id: 1,
           point_count: 3,
           marker: undefined,
-          clusteredPhotos: [],
+          previewPhotos: [],
         },
         geometry: {
           type: "Point",
@@ -409,9 +443,10 @@ describe("Maplibre", () => {
         type: "Feature",
         properties: {
           cluster: true,
+          cluster_id: 1,
           point_count: 3,
           marker: undefined,
-          clusteredPhotos: [],
+          previewPhotos: [],
         },
         geometry: {
           type: "Point",
@@ -473,7 +508,11 @@ describe("Maplibre", () => {
     fireEvent.click(screen.getByTestId("region-marker"));
 
     expect(createRegionClusterIndexMock).toHaveBeenCalledWith([region]);
-    expect(getClusterPointsMock).toHaveBeenCalledWith(regionIndex, 8);
+    expect(getClusterPointsMock).toHaveBeenCalledWith(
+      regionIndex,
+      8,
+      [118.5, 28.5, 121.5, 31.5],
+    );
     expect(onRegionClick).toHaveBeenCalledWith(region);
   });
 
@@ -494,7 +533,11 @@ describe("Maplibre", () => {
     expect(createMarkerClusterIndexMock).toHaveBeenCalledTimes(1);
     expect(createMarkerClusterIndexMock).toHaveBeenCalledWith(markers);
     expect(getClusterPointsMock).toHaveBeenCalledTimes(1);
-    expect(getClusterPointsMock).toHaveBeenLastCalledWith(markerIndex, 5);
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      markerIndex,
+      5,
+      [118.5, 28.5, 121.5, 31.5],
+    );
 
     // Fractional zoom within the same integer level: no rebuild, no re-query.
     act(() => {
@@ -513,6 +556,168 @@ describe("Maplibre", () => {
     });
     expect(createMarkerClusterIndexMock).toHaveBeenCalledTimes(1);
     expect(getClusterPointsMock).toHaveBeenCalledTimes(2);
-    expect(getClusterPointsMock).toHaveBeenLastCalledWith(markerIndex, 6);
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      markerIndex,
+      6,
+      [118.5, 28.5, 121.5, 31.5],
+    );
+  });
+  it("re-queries after panning outside the buffer or resizing, without rebuilding the index", () => {
+    const markers = [createMarker("a", 30, 120)];
+    const index = { kind: "marker-index" };
+    createMarkerClusterIndexMock.mockReturnValue(index);
+    render(
+      <Maplibre
+        initialViewState={{ longitude: 120, latitude: 30, zoom: 8 }}
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={markers}
+      />,
+    );
+    expect(getClusterPointsMock).toHaveBeenCalledTimes(1);
+    act(() => {
+      mapBounds = [119.1, 29, 121.1, 31];
+      capturedOnMove?.({
+        viewState: { longitude: 120.1, latitude: 30, zoom: 8 },
+      });
+    });
+    expect(getClusterPointsMock).toHaveBeenCalledTimes(1);
+    act(() => {
+      mapBounds = [121, 29, 123, 31];
+      capturedOnMove?.({
+        viewState: { longitude: 122, latitude: 30, zoom: 8 },
+      });
+    });
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      index,
+      8,
+      [120.5, 28.5, 123.5, 31.5],
+    );
+    act(() => {
+      mapBounds = [121.5, 29.5, 122.5, 30.5];
+      capturedOnResize?.();
+    });
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      index,
+      8,
+      [121.25, 29.25, 122.75, 30.75],
+    );
+    expect(createMarkerClusterIndexMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("queries the new controlled camera and reuses it when the photo data is filtered", () => {
+    const markers = [createMarker("a", 30, 120), createMarker("b", 10, -179)];
+    const index = { kind: "marker-index" };
+    createMarkerClusterIndexMock.mockReturnValue(index);
+    const { rerender } = render(
+      <Maplibre
+        initialViewState={{ longitude: 120, latitude: 30, zoom: 8 }}
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={markers}
+      />,
+    );
+    mapBounds = [170, 0, 190, 20];
+    const nextView = { longitude: 180, latitude: 10, zoom: 9 };
+    rerender(
+      <Maplibre
+        initialViewState={nextView}
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={markers}
+      />,
+    );
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      index,
+      9,
+      [165, -5, 195, 25],
+    );
+    const filtered = markers.slice(1);
+    rerender(
+      <Maplibre
+        initialViewState={nextView}
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={filtered}
+      />,
+    );
+    expect(createMarkerClusterIndexMock).toHaveBeenLastCalledWith(filtered);
+    expect(getClusterPointsMock).toHaveBeenLastCalledWith(
+      index,
+      9,
+      [165, -5, 195, 25],
+    );
+  });
+
+  it("keeps only one selected photo pin when clipped or clustered, and removes filtered selections", () => {
+    const marker = createMarker("a", 30, 120);
+    const markers = [marker];
+    createMarkerClusterIndexMock.mockReturnValue({ kind: "marker-index" });
+    const { rerender } = render(
+      <Maplibre
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={markers}
+        selectedMarkerId="a"
+      />,
+    );
+    expect(screen.getAllByTestId("photo-marker")).toHaveLength(1);
+    expect(screen.getByTestId("photo-marker").dataset.selected).toBe("true");
+    getClusterPointsMock.mockReturnValue([
+      {
+        type: "Feature",
+        properties: { cluster: true, cluster_id: 1, point_count: 2 },
+        geometry: { type: "Point", coordinates: [120, 30] },
+      },
+    ]);
+    act(() => {
+      capturedOnResize?.();
+    });
+    expect(screen.getAllByTestId("photo-marker")).toHaveLength(1);
+    expect(screen.getByTestId("cluster-marker")).toBeTruthy();
+    getClusterPointsMock.mockReturnValue([
+      {
+        type: "Feature",
+        properties: { marker },
+        geometry: { type: "Point", coordinates: [120, 30] },
+      },
+    ]);
+    act(() => {
+      capturedOnResize?.();
+    });
+    expect(screen.getAllByTestId("photo-marker")).toHaveLength(1);
+    getClusterPointsMock.mockReturnValue([]);
+    createMarkerClusterIndexMock.mockReturnValue(null);
+    rerender(
+      <Maplibre
+        autoFitBounds={false}
+        displayMode="photos"
+        markers={[]}
+        selectedMarkerId="a"
+      />,
+    );
+    expect(screen.queryByTestId("photo-marker")).toBeNull();
+  });
+
+  it("retains a selected region outside the viewport without reviving a filtered region", () => {
+    const region = createRegion(createMarker("a", 30, 120));
+    const { rerender } = render(
+      <Maplibre
+        autoFitBounds={false}
+        displayMode="regions"
+        regions={[region]}
+        selectedRegionId={region.id}
+      />,
+    );
+    expect(screen.getByTestId("region-marker").dataset.selected).toBe("true");
+    rerender(
+      <Maplibre
+        autoFitBounds={false}
+        displayMode="regions"
+        regions={[]}
+        selectedRegionId={region.id}
+      />,
+    );
+    expect(screen.queryByTestId("region-marker")).toBeNull();
   });
 });

@@ -6,6 +6,8 @@ import type {
   PhotoMarker,
 } from "~/types/map";
 
+import type { ClusterIndex } from "./clustering";
+
 // LayerProps type definition for compatibility
 export type LayerProps = MapLibreLayerProps;
 
@@ -18,9 +20,8 @@ export interface ClusterPoint {
     point_count?: number;
     point_count_abbreviated?: string;
     marker?: PhotoMarker;
-    clusteredPhotos?: PhotoMarker[];
+    previewPhotos?: PhotoMarker[];
     region?: GeographicRegion;
-    clusteredRegions?: GeographicRegion[];
   };
   geometry: {
     type: "Point";
@@ -50,9 +51,9 @@ export interface ClusterMarkerProps {
   latitude: number;
   pointCount: number;
   displayMode?: MapDisplayMode;
-  representativeMarker?: PhotoMarker;
-  clusteredPhotos?: PhotoMarker[];
-  clusteredRegions?: GeographicRegion[];
+  clusterIndex: ClusterIndex;
+  clusterId: number;
+  previewPhotos?: PhotoMarker[];
   onClusterClick?: (longitude: number, latitude: number) => void;
 }
 

@@ -1,24 +1,40 @@
 import "./MapMarker.css";
 
 import { m } from "motion/react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
 
 import { ThumbnailImage } from "~/components/ui/ThumbnailImage";
 
 import { ClusterPhotoGrid } from "../ClusterPhotoGrid";
+import { getClusterPhotos } from "./clustering";
 import { MapPopover, MapPopoverContent, MapPopoverTrigger } from "./MapPopover";
 import type { ClusterMarkerProps } from "./types";
 
-const DEFAULT_CLUSTERED_PHOTOS: ClusterMarkerProps["clusteredPhotos"] = [];
+const DEFAULT_PREVIEW_PHOTOS: ClusterMarkerProps["previewPhotos"] = [];
+
+// MapPopoverContent mounts its children only while open. Memoize by index and
+// cluster ID so panning within this cluster does not traverse its leaves again.
+const ClusterContents = ({
+  clusterIndex,
+  clusterId,
+}: Pick<ClusterMarkerProps, "clusterIndex" | "clusterId">) => {
+  const photos = useMemo(
+    () => getClusterPhotos(clusterIndex, clusterId),
+    [clusterIndex, clusterId],
+  );
+  return <ClusterPhotoGrid photos={photos} />;
+};
 
 export const ClusterMarker = ({
   longitude,
   latitude,
   pointCount,
   displayMode = "photos",
-  representativeMarker: _representativeMarker,
-  clusteredPhotos = DEFAULT_CLUSTERED_PHOTOS,
+  clusterIndex,
+  clusterId,
+  previewPhotos = DEFAULT_PREVIEW_PHOTOS,
   onClusterClick,
 }: ClusterMarkerProps) => {
   const { t } = useTranslation();
@@ -67,10 +83,10 @@ export const ClusterMarker = ({
               }}
             >
               {/* Background mosaic of photos */}
-              {clusteredPhotos.length > 0 && (
+              {previewPhotos.length > 0 && (
                 <div className="absolute inset-1 overflow-hidden rounded-full">
                   {/* Show up to 4 photos in a mosaic pattern */}
-                  {clusteredPhotos.slice(0, 4).map((photoMarker, index) => {
+                  {previewPhotos.map((photoMarker, index) => {
                     const positions = [
                       { left: "0%", top: "0%", width: "50%", height: "50%" },
                       { left: "50%", top: "0%", width: "50%", height: "50%" },
@@ -127,12 +143,9 @@ export const ClusterMarker = ({
           )}
         >
           <div className="p-4">
-            <ClusterPhotoGrid
-              photos={clusteredPhotos}
-              onPhotoClick={(_photo) => {
-                // Optional: handle individual photo clicks
-                // Photo click handling can be implemented here if needed
-              }}
+            <ClusterContents
+              clusterIndex={clusterIndex}
+              clusterId={clusterId}
             />
           </div>
         </MapPopoverContent>
