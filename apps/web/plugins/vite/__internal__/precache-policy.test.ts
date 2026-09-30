@@ -41,7 +41,7 @@ describe("critical PWA precache policy", () => {
     ).toThrow("Critical precache graph was not registered");
   });
 
-  it("enforces a raw transfer budget", () => {
+  it("enforces the raw shell budget even when gallery data uses runtime caching", () => {
     setCriticalPrecacheFiles(["assets/index.js"]);
     expect(() =>
       filterCriticalPrecacheManifest(
@@ -49,6 +49,45 @@ describe("critical PWA precache policy", () => {
         100,
       ),
     ).toThrow("PWA critical precache");
+  });
+
+  it("uses runtime caching for an oversized index without allocating a large fixture", () => {
+    setCriticalPrecacheFiles(["assets/index.js"]);
+    const shell = { url: "assets/index.js", revision: null, size: 80 };
+    // Workbox provides byte counts; the policy needs no actual JSON payload.
+    const index = {
+      url: "assets/gallery-index.1234abcd.json",
+      revision: null,
+      size: 20 * 1024 * 1024,
+    };
+
+    const result = filterCriticalPrecacheManifest([shell, index], 100);
+
+    expect(result.manifest).toEqual([shell]);
+    expect(result.warnings).toEqual([
+      expect.stringContaining(
+        "cached when requested under service-worker control",
+      ),
+    ]);
+    expect(() =>
+      filterCriticalPrecacheManifest([{ ...shell, size: 101 }, index], 100),
+    ).toThrow("PWA critical precache");
+  });
+
+  it("retains a small index exactly within the remaining shell budget", () => {
+    setCriticalPrecacheFiles(["assets/index.js"]);
+    const entries = [
+      { url: "assets/index.js", revision: null, size: 80 },
+      { url: "/assets/gallery-index.1234abcd.json", revision: null, size: 20 },
+    ];
+
+    expect(filterCriticalPrecacheManifest(entries, 100)).toEqual({
+      manifest: entries,
+      warnings: [],
+    });
+    expect(filterCriticalPrecacheManifest(entries, 99).manifest).toEqual([
+      entries[0],
+    ]);
   });
 
   it("allows the Rolldown app shell within the default raw byte budget", () => {

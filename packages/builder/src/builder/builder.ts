@@ -24,6 +24,7 @@ import type { BuilderConfig, UserBuilderSettings } from "../types/config.js";
 import type { ManifestSource } from "../types/manifest.js";
 import type { BuilderOptions, BuilderResult } from "../types/options.js";
 import type { PhotoManifestItem, ProcessPhotoResult } from "../types/photo.js";
+import { clone } from "../utils/clone.js";
 import { ArtifactWriter } from "./workflow/artifact-writer.js";
 import { DiffPlanner } from "./workflow/diff-planner.js";
 import { ManifestAssembler } from "./workflow/manifest-assembler.js";
@@ -31,6 +32,7 @@ import type { ProcessingStats } from "./workflow/photo-task-processor.js";
 import { PhotoTaskProcessor } from "./workflow/photo-task-processor.js";
 import { BuildSession } from "./workflow/session.js";
 import { SourceScanner } from "./workflow/source-scanner.js";
+import { refreshCachedSourceUrls } from "./workflow/source-urls.js";
 
 export type {
   BuilderOptions,
@@ -260,7 +262,16 @@ export class AfilmoryBuilder {
         repairedPhotoKeys,
         requiresRewrite: existingManifestRequiresRewrite,
       } = await loadExistingManifestWithDiagnostics(this.config.output);
+      // Cache entries are mutable work objects. Retain an independent commit
+      // baseline so URL changes/retry markers remain visible to saveManifest.
+      const previousManifest = clone(existingManifest);
       const existingManifestItems = existingManifest.photos;
+      await refreshCachedSourceUrls(
+        existingManifestItems,
+        previousManifest.source,
+        this.getStorageConfig(),
+        this.getStorageManager(),
+      );
       const existingManifestMap = new Map(
         existingManifestItems.map((item) => [item.s3Key, item]),
       );
@@ -348,9 +359,13 @@ export class AfilmoryBuilder {
           taskResult.results,
         );
         const reprocessedKeys = new Set<string>();
-        for (const task of executedTasks) {
+        const failedStages = new Map<string, string>();
+        for (const [index, task] of executedTasks.entries()) {
           if (task.key) {
             reprocessedKeys.add(task.key);
+            const result = taskResult.results[index];
+            if (result?.type === "failed" && result.failure)
+              failedStages.set(task.key, result.failure.stage);
           }
         }
         processingStats.skippedCount +=
@@ -360,26 +375,8 @@ export class AfilmoryBuilder {
             existingManifestMap,
             s3ImageKeys,
             reprocessedKeys,
+            failedStages,
           );
-      }
-
-      // 本地 provider 的 originalUrl/videoUrl 是「当前 baseUrl + s3Key」的
-      // 确定性函数，而增量跳过路径会原样复用旧 manifest 条目。baseUrl 变更时
-      //（如 /photos → /originals 的命名空间迁移，/photos 已改为照片页 HTML）
-      // 必须在这里统一重推导，否则旧条目的 URL 指向 HTML，查看器整库报
-      // 「Failed to load image」且永远不会被增量构建修复。
-      if (this.getStorageConfig().provider === "local") {
-        const urlStorageManager = this.getStorageManager();
-        for (const item of manifest) {
-          item.originalUrl = await urlStorageManager.generatePublicUrl(
-            item.s3Key,
-          );
-          if (item.video?.type === "live-photo") {
-            item.video.videoUrl = await urlStorageManager.generatePublicUrl(
-              item.video.s3Key,
-            );
-          }
-        }
       }
 
       const locationMode =
@@ -421,7 +418,7 @@ export class AfilmoryBuilder {
         await new ArtifactWriter().write(session, manifest, {
           forceManifestRewrite: existingManifestRequiresRewrite,
           keepPhotoIds,
-          previousManifest: existingManifest,
+          previousManifest,
         });
 
       if (this.config.system.observability.showDetailedStats) {

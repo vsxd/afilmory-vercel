@@ -36,6 +36,7 @@ vi.mock("@afilmory/ui", () => ({
     },
   },
   Thumbhash: () => <div data-testid="thumbhash" />,
+  Button: ({ children }: PropsWithChildren) => <button>{children}</button>,
 }));
 
 vi.mock("motion/react", () => {
@@ -183,9 +184,14 @@ describe("PhotoViewer lazy shell", () => {
   });
 
   it("mounts the real ExifPanel and GalleryThumbnail through the lazy Suspense boundaries", async () => {
-    render(
+    const { rerender } = render(
       <PhotoViewer
         photos={[photo]}
+        detailHydration={{
+          status: "pending",
+          reloadRequired: false,
+          retry: vi.fn(),
+        }}
         currentIndex={0}
         isOpen
         onClose={vi.fn()}
@@ -200,6 +206,28 @@ describe("PhotoViewer lazy shell", () => {
     expect(
       await screen.findByRole("button", { name: "photo.thumbnail.open" }),
     ).toBeTruthy();
+    expect(screen.getByTestId("basic-exif-section")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe(
+      "photo.details.loading",
+    );
+    rerender(
+      <PhotoViewer
+        photos={[photo]}
+        detailHydration={{
+          status: "error",
+          reloadRequired: false,
+          retry: vi.fn(),
+        }}
+        currentIndex={0}
+        isOpen
+        onClose={vi.fn()}
+        onIndexChange={vi.fn()}
+        triggerElement={null}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+      "photo.details.error",
+    );
     expect(screen.getByTestId("basic-exif-section")).toBeTruthy();
   });
 });

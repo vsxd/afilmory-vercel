@@ -32,7 +32,7 @@ import { extractPhotoInfo } from "./info-extractor.js";
 import { processLivePhoto } from "./live-photo-handler.js";
 import {
   applyExifLocationPrivacy,
-  rebuildLocationForPrivacyTransition,
+  reconcilePhotoLocation,
 } from "./location-privacy.js";
 import { detectMotionPhoto } from "./motion-photo-detector.js";
 import {
@@ -340,11 +340,12 @@ async function executePhotoProcessingPipeline(
       etag: obj.etag,
       exif: exifData,
       toneAnalysis,
-      location: rebuildLocationForPrivacyTransition(
-        existingItem?.location ?? null,
+      location: reconcilePhotoLocation(
+        existingItem,
         exifData,
         locationMode,
         privacyModeChanged,
+        Boolean(contentChanged),
       ),
       // Video source (Motion Photo or Live Photo)
       video:

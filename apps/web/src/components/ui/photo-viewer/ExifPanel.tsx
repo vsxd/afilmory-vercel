@@ -7,21 +7,31 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useMobile } from "~/hooks/useMobile";
+import type { PhotoDetailHydration } from "~/hooks/usePhotoDetailHydration";
 import { translateDynamicKey } from "~/lib/i18n-dynamic";
 import type { PhotoExif, PhotoManifest } from "~/types/photo";
 
 import { createExifPanelViewModel } from "./exif-panel-view-model";
 import { ExifPanelSections } from "./ExifPanelSections";
 import type { ExifTranslationAdapter } from "./formatExifData";
+import { PhotoDetailStatus } from "./PhotoDetailStatus";
 import { RawExifViewer } from "./RawExifViewer";
 
 export const ExifPanel: FC<{
   currentPhoto: PhotoManifest;
+  detailHydration?: PhotoDetailHydration;
   exifData: PhotoExif | null;
   onClose?: () => void;
   visible?: boolean;
   mobileControls?: ReactNode;
-}> = ({ currentPhoto, exifData, onClose, visible = true, mobileControls }) => {
+}> = ({
+  currentPhoto,
+  detailHydration,
+  exifData,
+  onClose,
+  visible = true,
+  mobileControls,
+}) => {
   const { t, i18n } = useTranslation();
   const isMobile = useMobile();
   const sectionT = useCallback(
@@ -104,6 +114,12 @@ export const ExifPanel: FC<{
         }
       >
         <div className="space-y-5">
+          {detailHydration && (
+            <PhotoDetailStatus
+              key={currentPhoto.id}
+              details={detailHydration}
+            />
+          )}
           <ExifPanelSections
             currentPhoto={currentPhoto}
             t={sectionT}

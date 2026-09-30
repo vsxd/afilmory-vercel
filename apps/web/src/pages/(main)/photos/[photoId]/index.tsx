@@ -7,6 +7,7 @@ import { useParams } from "react-router";
 
 import { NotFound } from "~/components/common/NotFound";
 import { PhotoViewer } from "~/components/ui/photo-viewer";
+import { usePhotoDetailHydration } from "~/hooks/usePhotoDetailHydration";
 import { usePhotoViewer, useViewerSequence } from "~/hooks/usePhotoViewer";
 import { useTitle } from "~/hooks/useTitle";
 import { deriveAccentFromSources } from "~/lib/color";
@@ -39,51 +40,12 @@ export const Component = () => {
     return photo;
   }, [photos, photoIndex]);
 
-  useEffect(() => {
-    if (!photoId || photoIndex < 0) return;
-    let cancelled = false;
-    let idleCallbackId: number | undefined;
-    let prefetchTimeoutId: ReturnType<typeof setTimeout> | undefined;
-    const neighborIds = [
-      photos[photoIndex - 1]?.id,
-      photos[photoIndex + 1]?.id,
-    ].flatMap((id) => (id ? [id] : []));
-
-    void photoRepository
-      .ensurePhotoDetails(photoId)
-      .then(() => {
-        if (cancelled || neighborIds.length === 0) return;
-        const prefetch = () => {
-          void photoRepository.prefetchPhotoDetails(neighborIds).catch(() => {
-            // Adjacent-photo prefetch is opportunistic; navigation still has
-            // its own foreground hydration path.
-          });
-        };
-        if (typeof requestIdleCallback === "function") {
-          idleCallbackId = requestIdleCallback(prefetch, { timeout: 1_500 });
-        } else {
-          prefetchTimeoutId = setTimeout(prefetch, 200);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn(
-            `Failed to hydrate photo details for ${photoId}:`,
-            error,
-          );
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      if (idleCallbackId !== undefined) {
-        cancelIdleCallback(idleCallbackId);
-      }
-      if (prefetchTimeoutId !== undefined) {
-        clearTimeout(prefetchTimeoutId);
-      }
-    };
-  }, [photoId, photoIndex, photoRepository, photos]);
+  const detailHydration = usePhotoDetailHydration(
+    photoRepository,
+    currentPhoto?.id,
+    photos[photoIndex - 1]?.id,
+    photos[photoIndex + 1]?.id,
+  );
   const isPhotoRouteUnavailable = !currentPhoto || photoIndex === -1;
   usePhotoRouteUnavailable(isPhotoRouteUnavailable);
 
@@ -160,6 +122,7 @@ export const Component = () => {
         >
           <PhotoViewer
             photos={photos}
+            detailHydration={detailHydration}
             sequenceSource={sequenceSource}
             currentIndex={photoIndex}
             isOpen={photoViewer.isOpen}

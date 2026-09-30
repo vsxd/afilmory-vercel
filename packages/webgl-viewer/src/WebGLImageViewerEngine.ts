@@ -31,6 +31,8 @@ interface ActiveImageLoad {
   reject: (error: Error) => void;
 }
 
+export const WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS = 5_000;
+
 // 简化的 WebGL 图像查看器引擎
 export class WebGLImageViewerEngine {
   private canvas: HTMLCanvasElement;
@@ -54,6 +56,8 @@ export class WebGLImageViewerEngine {
   // 动画状态
   private isDestroyed = false;
   private isContextLost = false;
+  private contextRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+  private contextRecoveryTimeoutError: Error | null = null;
   private boundContextLost: (event: Event) => void = () => {};
   private boundContextRestored: () => void = () => {};
   private animationFrameId: number | null = null;
@@ -248,11 +252,33 @@ export class WebGLImageViewerEngine {
     this.tileManager.reset();
     this.baseTextureSize = null;
 
+    // Restoration is best-effort. Keep the existing DOM fallback reachable
+    // when the browser never restores this context after memory pressure.
+    this.contextRecoveryTimer ??= setTimeout(() => {
+      this.contextRecoveryTimer = null;
+      if (this.isDestroyed || !this.isContextLost) return;
+      const error = new Error("WebGL context restoration timed out");
+      this.contextRecoveryTimeoutError = error;
+      const hadPendingLoad = this.activeLoad !== null;
+      this.rejectActiveLoad(error);
+      this.notifyLoadingStateChange(false);
+      this.destroy();
+      // The pending promise's caller owns its error notification.
+      if (!hadPendingLoad) this.config.onError(error);
+    }, WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+
     console.warn("WebGL context lost; pausing rendering until restored.");
+  }
+
+  private clearContextRecoveryTimer(): void {
+    if (this.contextRecoveryTimer === null) return;
+    clearTimeout(this.contextRecoveryTimer);
+    this.contextRecoveryTimer = null;
   }
 
   private handleContextRestored() {
     if (this.isDestroyed) return;
+    this.clearContextRecoveryTimer();
     this.isContextLost = false;
 
     try {
@@ -287,7 +313,11 @@ export class WebGLImageViewerEngine {
         this.imageHeight || undefined,
         this.originalSourceBlob,
       ).catch((error) => {
-        if (!this.isDestroyed) {
+        // This promise belongs to the engine, rather than the React wrapper.
+        // A recovery timeout destroys resources before rejecting it; that
+        // terminal error still needs to reach fallback. Explicit teardown and
+        // unrelated late failures remain silent.
+        if (!this.isDestroyed || error === this.contextRecoveryTimeoutError) {
           console.error("Failed to reload image after context restore:", error);
           this.config.onError(error);
         }
@@ -887,6 +917,7 @@ export class WebGLImageViewerEngine {
   public destroy() {
     if (this.isDestroyed) return;
 
+    this.clearContextRecoveryTimer();
     this.isDestroyed = true;
     this.animationController.cancel();
 
@@ -929,6 +960,7 @@ export class WebGLImageViewerEngine {
   }
 
   private rollbackFailedConstruction(): void {
+    this.clearContextRecoveryTimer();
     this.isDestroyed = true;
     this.animationController.cancel();
     if (this.animationFrameId !== null) {

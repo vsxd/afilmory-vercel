@@ -73,6 +73,11 @@ export class VideoBlobCache {
     }
   }
 
+  /** Evict failed bytes without revoking players' leases or a newer result. */
+  invalidate(url: string, failedBlob: Blob): void {
+    if (this.cache.get(url) === failedBlob) this.cache.delete(url);
+  }
+
   dispose(): void {
     this.disposed = true;
     for (const task of this.pending.values()) task.controller.abort();

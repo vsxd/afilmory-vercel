@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WebGLInputControllerHost } from "./input-controller";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
-import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
+import {
+  WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS,
+  WebGLImageViewerEngine,
+} from "./WebGLImageViewerEngine";
 
 function firePointer(
   target: EventTarget,
@@ -1202,6 +1205,142 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     } as MessageEvent);
     await expect(pending).resolves.toBeUndefined();
     engine.destroy();
+  });
+
+  describe("bounded context recovery", () => {
+    function setup() {
+      vi.useFakeTimers();
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const canvas = document.createElement("canvas");
+      vi.spyOn(canvas, "getContext").mockReturnValue(createWebGLMock());
+      vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+        new DOMRect(0, 0, 100, 100),
+      );
+      const onError = vi.fn();
+      const engine = createEngine(canvas, { onError });
+      const worker = WorkerMock.instances.at(-1)!;
+      const paint = () => {
+        const bitmap = { width: 50, height: 50, close: vi.fn() };
+        worker.onmessage?.({
+          data: {
+            type: "image-loaded",
+            payload: {
+              imageBitmap: bitmap,
+              imageWidth: 100,
+              imageHeight: 100,
+              lodLevel: 1,
+            },
+          },
+        } as MessageEvent);
+        return bitmap;
+      };
+      const lose = () =>
+        canvas.dispatchEvent(
+          new Event("webglcontextlost", { cancelable: true }),
+        );
+      return { canvas, engine, worker, onError, paint, lose };
+    }
+
+    it("reports one fallback error after the deadline and ignores late restoration", async () => {
+      const { canvas, engine, worker, onError, paint, lose } = setup();
+      const loaded = engine.loadImage("blob:photo", 100, 100);
+      paint();
+      await loaded;
+      lose();
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS - 1);
+      expect(onError).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(onError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          message: "WebGL context restoration timed out",
+        }),
+      );
+      expect(worker.terminate).toHaveBeenCalledOnce();
+      const requestCount = worker.postMessage.mock.calls.length;
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      expect(worker.postMessage).toHaveBeenCalledTimes(requestCount);
+      expect(paint().close).toHaveBeenCalledOnce();
+      engine.destroy();
+      expect(onError).toHaveBeenCalledOnce();
+    });
+
+    it("rejects a pending load without separately notifying onError", async () => {
+      const { engine, onError, lose } = setup();
+      const pending = engine.loadImage("blob:photo", 100, 100);
+      const rejected = expect(pending).rejects.toThrow("restoration timed out");
+      lose();
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+      await rejected;
+      expect(onError).not.toHaveBeenCalled();
+      engine.destroy();
+    });
+
+    it("reports fallback when another context loss interrupts an internal restoration load", async () => {
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { canvas, engine, worker, onError, paint, lose } = setup();
+      const initialLoad = engine.loadImage("blob:photo", 100, 100);
+      paint();
+      await initialLoad;
+      lose();
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      expect(worker.postMessage).toHaveBeenCalledTimes(2);
+      // The initial caller has finished. This pending load is owned by the
+      // engine's restoration catch, which must still report a terminal timeout.
+      lose();
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+      expect(onError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          message: "WebGL context restoration timed out",
+        }),
+      );
+      expect(errorLog).toHaveBeenCalledOnce();
+      expect(worker.terminate).toHaveBeenCalledOnce();
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      expect(worker.postMessage).toHaveBeenCalledTimes(2);
+      expect(paint().close).toHaveBeenCalledOnce();
+      engine.destroy();
+      expect(onError).toHaveBeenCalledOnce();
+    });
+
+    it("cancels the deadline when the context restores", async () => {
+      const { canvas, engine, worker, onError, paint, lose } = setup();
+      const pending = engine.loadImage("blob:photo", 100, 100);
+      lose();
+      await vi.advanceTimersByTimeAsync(100);
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      paint();
+      await pending;
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+      expect(onError).not.toHaveBeenCalled();
+      expect(worker.terminate).not.toHaveBeenCalled();
+      engine.destroy();
+    });
+
+    it("does not report an internal restoration load cancelled by explicit destroy", async () => {
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { canvas, engine, onError, paint, lose } = setup();
+      const initialLoad = engine.loadImage("blob:photo", 100, 100);
+      paint();
+      await initialLoad;
+      lose();
+      canvas.dispatchEvent(new Event("webglcontextrestored"));
+      lose();
+      engine.destroy();
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+      expect(onError).not.toHaveBeenCalled();
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("cancels the deadline on destroy without an obsolete fallback callback", async () => {
+      const { engine, worker, onError, lose } = setup();
+      lose();
+      engine.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(WEBGL_CONTEXT_RECOVERY_TIMEOUT_MS);
+      expect(onError).not.toHaveBeenCalled();
+      expect(worker.terminate).toHaveBeenCalledOnce();
+    });
   });
 
   it("derives double-click toggle state from scale and honors zero animation time", () => {

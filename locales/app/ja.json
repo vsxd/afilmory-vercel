@@ -358,6 +358,9 @@
   "photo.copy.image": "画像をコピー",
   "photo.copy.success": "画像がクリップボードにコピーされました。",
   "photo.copying": "画像をコピーしています…",
+  "photo.details.error": "写真の詳細を読み込めませんでした。基本情報は引き続き表示できます。",
+  "photo.details.loading": "写真の詳細を読み込み中…",
+  "photo.details.unavailable": "写真の詳細が更新された可能性があります。ページを再読み込みしてください。",
   "photo.download": "画像をダウンロード",
   "photo.error.forbidden.description": "しばらくしてから再試行してください。問題が続く場合は、サイトの管理者にお知らせください。",
   "photo.error.forbidden.title": "元の写真へのアクセスが拒否されました",
@@ -420,5 +423,7 @@
   "photo.zoom.reset": "ズームをリセット",
   "slider.auto": "自動",
   "slider.columns": "{{count}} 列",
+  "video.error.description": "もう一度お試しください。問題が続く場合は、サイトの作成者にお問い合わせください。",
+  "video.error.loading": "動画を読み込めませんでした",
   "video.motion-photo.extracting": "埋め込み動画を抽出しています…"
 }

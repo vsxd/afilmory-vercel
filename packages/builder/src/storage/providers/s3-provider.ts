@@ -38,6 +38,26 @@ export interface S3SendOptions {
   requestTimeout?: number;
 }
 
+/** Pure URL derivation, also used to recognize provider-owned cached URLs. */
+export function generateS3PublicUrl(
+  config: Pick<
+    S3Config,
+    "bucket" | "region" | "endpoint" | "customDomain" | "forcePathStyle"
+  >,
+  key: string,
+): string {
+  if (config.customDomain) return joinPublicUrl(config.customDomain, key);
+  const endpoint =
+    config.endpoint ||
+    `https://s3.${config.region ?? "us-east-1"}.amazonaws.com`;
+  if (resolveForcePathStyle(config)) {
+    return joinPublicUrl(joinPublicUrl(endpoint, config.bucket), key);
+  }
+  const publicEndpoint = new URL(endpoint);
+  publicEndpoint.hostname = `${config.bucket}.${publicEndpoint.hostname}`;
+  return joinPublicUrl(publicEndpoint.toString(), key);
+}
+
 export type S3GetObjectOutput = Omit<GetObjectCommandOutput, "Body"> & {
   Body?: Buffer | GetObjectCommandOutput["Body"];
 };
@@ -641,22 +661,7 @@ export class S3StorageProvider implements StorageProvider {
     // s3/client.ts 的 resolveForcePathStyle 推导保持一致——客户端取数和
     // 对外公布的 URL 用同一种寻址风格，改动任一侧时同步另一侧及其测试。
     // 如果设置了自定义域名，直接使用自定义域名
-    if (this.config.customDomain) {
-      return joinPublicUrl(this.config.customDomain, key);
-    }
-
-    const forcePathStyle = resolveForcePathStyle(this.config);
-    const endpoint =
-      this.config.endpoint ??
-      `https://s3.${this.config.region ?? "us-east-1"}.amazonaws.com`;
-
-    if (forcePathStyle) {
-      return joinPublicUrl(joinPublicUrl(endpoint, this.config.bucket), key);
-    }
-
-    const publicEndpoint = new URL(endpoint);
-    publicEndpoint.hostname = `${this.config.bucket}.${publicEndpoint.hostname}`;
-    return joinPublicUrl(publicEndpoint.toString(), key);
+    return generateS3PublicUrl(this.config, key);
   }
 
   detectLivePhotos(allObjects: StorageObject[]): Map<string, StorageObject> {

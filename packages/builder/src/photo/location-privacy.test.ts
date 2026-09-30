@@ -6,6 +6,7 @@ import {
   applyExifLocationPrivacy,
   applyManifestLocationPrivacy,
   enforcePhotoLocationPrivacy,
+  reconcilePhotoLocation,
 } from "./location-privacy.js";
 
 const exactExif: PickedExif = {
@@ -19,6 +20,19 @@ const exactExif: PickedExif = {
 };
 
 describe("location privacy policy", () => {
+  it("preserves manually supplied locations when the source never had GPS", () => {
+    const item = {
+      exif: { Make: "Leica" },
+      location: { latitude: 31.23, longitude: 121.474, city: "Shanghai" },
+    };
+    expect(
+      reconcilePhotoLocation(item, { Make: "Leica" }, "coarse", false, false),
+    ).toEqual(item.location);
+    expect(
+      reconcilePhotoLocation(item, { Make: "Leica" }, "strip", true, false),
+    ).toBeNull();
+  });
+
   it("strips every GPS field while preserving unrelated EXIF", () => {
     expect(applyExifLocationPrivacy(exactExif, "strip")).toEqual({
       Make: "Leica",

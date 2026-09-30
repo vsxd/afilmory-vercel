@@ -27,6 +27,16 @@ export interface PhotoRepositoryOptions {
   fetcher?: typeof fetch;
 }
 
+export class ManifestShardRequestError extends Error {
+  constructor(
+    readonly status: number,
+    statusText: string,
+  ) {
+    super(`Manifest shard request failed: ${status} ${statusText}`.trim());
+    this.name = "ManifestShardRequestError";
+  }
+}
+
 export class PhotoRepository {
   private photos: readonly PhotoManifest[];
   private readonly photoMap: Map<string, PhotoManifest>;
@@ -300,8 +310,9 @@ export class PhotoRepository {
       );
       throwIfAborted(controller.signal);
       if (!response.ok) {
-        throw new Error(
-          `Manifest shard request failed: ${response.status} ${response.statusText}`.trim(),
+        throw new ManifestShardRequestError(
+          response.status,
+          response.statusText,
         );
       }
       const value: unknown = await abortable(

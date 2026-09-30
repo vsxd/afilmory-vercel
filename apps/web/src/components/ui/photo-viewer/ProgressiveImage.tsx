@@ -171,11 +171,15 @@ export const ProgressiveImage = ({
 
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {
+    // Returning to an already painted Live Photo remounts both DOM media
+    // elements. The video may already own the shared progress/error indicator
+    // before the new img fires load; only its first still-image paint may hide it.
+    if (hasVideo && isHighResImageRendered) return;
     setState.markImageRendered();
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: false,
     });
-  }, [loadingIndicatorRef, setState]);
+  }, [hasVideo, isHighResImageRendered, loadingIndicatorRef, setState]);
 
   const showContextMenu = useShowContextMenu();
 
@@ -361,7 +365,7 @@ export const ProgressiveImage = ({
               onError={reportImageFailure}
             >
               {/* LivePhoto/Motion Photo 视频组件作为 children，跟随图片的变换 */}
-              {hasVideo && videoSource && (
+              {hasVideo && videoSource && isHighResImageRendered && (
                 <LivePhotoVideo
                   ref={livePhotoRef}
                   videoSource={videoSource}

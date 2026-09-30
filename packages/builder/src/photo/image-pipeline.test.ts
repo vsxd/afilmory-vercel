@@ -9,7 +9,10 @@ import { createDefaultBuilderConfig } from "../config/defaults.js";
 import type { EmitPluginEventFn } from "../core/contracts/execution-context.js";
 import type { PhotoProcessingContext } from "../core/contracts/photo-processing.js";
 import type { BuilderServices } from "../core/contracts/services.js";
+import type { ExifReaderService } from "../image/exif.js";
 import { logger } from "../logger/index.js";
+import { createGeocodingCacheState } from "../plugins/geocoding-cache.js";
+import { resolveLocationForItem } from "../plugins/geocoding-location-resolver.js";
 import type { ThumbnailPluginData } from "../plugins/thumbnail-storage/shared.js";
 import { THUMBNAIL_PLUGIN_DATA_KEY } from "../plugins/thumbnail-storage/shared.js";
 import { StorageManager } from "../storage/index.js";
@@ -115,7 +118,7 @@ function createHarness() {
 
   const storageConfig = config.user!.storage!;
   const storageManager = new StorageManager(storageConfig);
-  const exifRead = vi.fn(async () => ({
+  const exifRead = vi.fn<ExifReaderService["read"]>(async () => ({
     SourceFile: "fixture.jpg",
     Make: "Leica",
     GPSAltitude: 12,
@@ -324,4 +327,72 @@ describe("processPhotoWithPipeline thumbnail buffer lifetime", () => {
     });
     expect(harness.exifRead).toHaveBeenCalledTimes(4);
   });
+
+  it.each(["coarse", "exact"] as const)(
+    "invalidates changed/removed GPS labels in %s mode, including offline geocoding",
+    async (locationMode) => {
+      const harness = createHarness();
+      const initial = await runPipeline(
+        harness,
+        createProcessingContext("sunset.jpg", { locationMode }),
+      );
+      const existing = initial.item!;
+      existing.location = {
+        latitude: Number(existing.exif!.GPSLatitude),
+        longitude: Number(existing.exif!.GPSLongitude),
+        adminKey: { country: "China", city: "Shanghai" },
+        adminI18n: { en: { country: "China", city: "Shanghai" } },
+        locationName: "Shanghai",
+      };
+      harness.exifRead.mockResolvedValueOnce({
+        SourceFile: "photo.jpg",
+        GPSLatitude: 48.8566,
+        GPSLongitude: 2.3522,
+      });
+      const changed = createProcessingContext("sunset.jpg", {
+        existingItem: existing,
+        locationMode,
+      });
+      changed.obj.etag = "updated-gps";
+      const moved = (await runPipeline(harness, changed)).item!;
+      const expectedCoordinates =
+        locationMode === "coarse"
+          ? { latitude: 48.857, longitude: 2.352 }
+          : { latitude: 48.8566, longitude: 2.3522 };
+      expect(moved.location).toEqual(expectedCoordinates);
+      const reverseGeocode = vi.fn(async () => {
+        throw new Error("offline");
+      });
+      await resolveLocationForItem({
+        item: moved,
+        exif: moved.exif,
+        state: createGeocodingCacheState(),
+        settings: {
+          provider: "nominatim",
+          locales: ["en"],
+          cachePrecision: 4,
+          requestTimeoutMs: 1000,
+          negativeCacheTtlMs: 1000,
+        },
+        shouldOverwriteExisting: false,
+        logger: { info: vi.fn(), warn: vi.fn() },
+        getProvider: () => ({ reverseGeocode }),
+      });
+      expect(reverseGeocode).toHaveBeenCalledTimes(1);
+      expect(moved.location).toEqual(expectedCoordinates);
+
+      harness.exifRead.mockResolvedValueOnce({
+        SourceFile: "photo.jpg",
+        Make: "Leica",
+      });
+      const removed = createProcessingContext("sunset.jpg", {
+        existingItem: moved,
+        locationMode,
+      });
+      // Force metadata refresh also has to reconcile GPS without an mtime change.
+      removed.obj = changed.obj;
+      removed.options.isForceManifest = true;
+      expect((await runPipeline(harness, removed)).item?.location).toBeNull();
+    },
+  );
 });

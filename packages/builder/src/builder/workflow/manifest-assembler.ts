@@ -51,6 +51,7 @@ export class ManifestAssembler {
     existingManifestMap: Map<string, PhotoManifestItem>,
     s3ImageKeys: ReadonlySet<string>,
     reprocessedKeys = new Set<string>(),
+    failedStages: ReadonlyMap<string, string> = new Map(),
   ): Promise<number> {
     let skippedCount = 0;
     const manifestKeys = new Set(manifest.map((item) => item.s3Key));
@@ -66,6 +67,12 @@ export class ManifestAssembler {
       // 计入 failedCount，不应再当作干净的 skip 统计。
       const isFailedReprocess = reprocessedKeys.has(key);
       if (isFailedReprocess) {
+        // A forced EXIF refresh can fail even when source metadata is unchanged.
+        // Keep its previous data but remove the successful stamp so the next
+        // ordinary build retries. This merge is shared by both worker modes.
+        if (failedStages.get(key) === "exif" && item.processing) {
+          delete item.processing.exif;
+        }
         session.logger.main.warn(
           `⚠️ Reprocess failed; keeping the previous manifest entry (may be stale): ${key}`,
         );

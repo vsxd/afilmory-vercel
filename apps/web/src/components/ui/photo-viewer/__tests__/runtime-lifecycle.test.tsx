@@ -17,6 +17,7 @@ import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 import { useImageLoader, useProgressiveImageState } from "../hooks";
 import type { LivePhotoVideoHandle } from "../LivePhotoVideo";
 import { LivePhotoVideo } from "../LivePhotoVideo";
+import type { LoadingIndicatorRef } from "../LoadingIndicator";
 
 let loadImageMock: Mock<ImageLoaderManager["loadImage"]>;
 let processVideoMock: Mock<ImageLoaderManager["processVideo"]>;
@@ -78,15 +79,16 @@ vi.mock("motion/react", async () => {
   }) => <video ref={ref} {...props} />;
 
   MotionVideo.displayName = "MotionVideo";
+  const controls = {
+    start: (...args: unknown[]) => animationStartMock(...args),
+    set: (...args: unknown[]) => animationSetMock(...args),
+  };
 
   return {
     m: { video: MotionVideo },
     useReducedMotion: () => false,
 
-    useAnimationControls: () => ({
-      start: (...args: unknown[]) => animationStartMock(...args),
-      set: (...args: unknown[]) => animationSetMock(...args),
-    }),
+    useAnimationControls: () => controls,
   };
 });
 
@@ -217,11 +219,12 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("keeps the live photo video source after the initial load settles", async () => {
-    const loadingIndicatorRef = {
+    const loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null> = {
       current: {
         updateLoadingState: vi.fn(),
+        resetLoadingState: vi.fn(),
       },
-    } as never;
+    };
 
     const { container, rerender } = render(
       <LivePhotoVideo
@@ -268,11 +271,12 @@ describe("photo viewer runtime lifecycle", () => {
       >();
     processVideoMock.mockReturnValue(videoLoad.promise);
 
-    const loadingIndicatorRef = {
+    const loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null> = {
       current: {
         updateLoadingState: vi.fn(),
+        resetLoadingState: vi.fn(),
       },
-    } as never;
+    };
 
     const { rerender } = render(
       <LivePhotoVideo
@@ -306,11 +310,12 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cleans up the live photo manager on unmount", async () => {
-    const loadingIndicatorRef = {
+    const loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null> = {
       current: {
         updateLoadingState: vi.fn(),
+        resetLoadingState: vi.fn(),
       },
-    } as never;
+    };
 
     const { unmount } = render(
       <LivePhotoVideo
@@ -333,11 +338,12 @@ describe("photo viewer runtime lifecycle", () => {
   });
 
   it("cancels a scheduled live photo play when the component unmounts before the timer fires", async () => {
-    const loadingIndicatorRef = {
+    const loadingIndicatorRef: React.RefObject<LoadingIndicatorRef | null> = {
       current: {
         updateLoadingState: vi.fn(),
+        resetLoadingState: vi.fn(),
       },
-    } as never;
+    };
     const livePhotoRef = {
       current: null,
     } as React.RefObject<LivePhotoVideoHandle | null>;

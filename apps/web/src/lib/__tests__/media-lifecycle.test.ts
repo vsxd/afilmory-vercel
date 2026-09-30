@@ -67,6 +67,7 @@ beforeEach(() => {
   mocks.extract.mockReset();
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -186,6 +187,69 @@ describe("image ownership", () => {
 });
 
 describe("shared video data", () => {
+  it("invalidates only the failed blob while preserving another player's lease and newer bytes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respond());
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const cache = new VideoBlobCache();
+    const oldBlob = await cache.get(
+      source.videoUrl,
+      new AbortController().signal,
+    );
+    const playing = new VideoLoadService(1000, cache);
+    const player = video();
+    await playing.processVideo(source, player);
+    const playingUrl = player.src;
+    const failed = new VideoLoadService(1000, cache);
+    const broken = video();
+    vi.mocked(broken.load).mockImplementation(() =>
+      broken.dispatchEvent(new Event("error")),
+    );
+    await expect(failed.processVideo(source, broken)).rejects.toMatchObject({
+      code: "decode-failed",
+    });
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(playingUrl);
+    expect(player.src).toBe(playingUrl);
+    const newBlob = await cache.get(
+      source.videoUrl,
+      new AbortController().signal,
+    );
+    expect(newBlob).not.toBe(oldBlob);
+    cache.invalidate(source.videoUrl, oldBlob);
+    expect(await cache.get(source.videoUrl, new AbortController().signal)).toBe(
+      newBlob,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    playing.cleanup();
+    cache.dispose();
+  });
+
+  it("a player's acquisition timeout leaves another shared downloader alive", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const request = deferred<Response>();
+    const fetchMock = vi.fn().mockReturnValue(request.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const cache = new VideoBlobCache();
+    const fast = new VideoLoadService(1000, cache, undefined, 250);
+    const slow = new VideoLoadService(1000, cache, undefined, 1000);
+    const first = fast.processVideo(source, video());
+    const second = slow.processVideo(source, video());
+    const rejected = expect(first).rejects.toMatchObject({
+      stage: "fetch",
+      code: "timeout",
+    });
+    await vi.advanceTimersByTimeAsync(250);
+    await rejected;
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false);
+    request.resolve(respond());
+    await second;
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    slow.cleanup();
+    cache.dispose();
+  });
+
   it("downloads once but gives concurrent players independent URLs", async () => {
     const fetchMock = vi.fn().mockResolvedValue(respond());
     vi.stubGlobal("fetch", fetchMock);
@@ -272,6 +336,60 @@ describe("shared video data", () => {
 });
 
 describe("video task cancellation", () => {
+  it("bounds Motion Photo acquisition and discards a late extraction that ignores abort", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const extraction = deferred<Blob>();
+    mocks.extract.mockReturnValue(extraction.promise);
+    const service = new VideoLoadService(1000, undefined, undefined, 250);
+    const element = video();
+    const pending = service.processVideo(
+      { type: "motion-photo", imageUrl: "stalled", offset: 10 },
+      element,
+    );
+    const rejected = expect(pending).rejects.toMatchObject({
+      stage: "fetch",
+      code: "timeout",
+    });
+    await vi.advanceTimersByTimeAsync(250);
+    await rejected;
+    expect(mocks.extract.mock.calls[0][2].aborted).toBe(true);
+    extraction.resolve(videoBlob());
+    await Promise.resolve();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(element.getAttribute("src")).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("clears acquisition deadlines on success and on cleanup", async () => {
+    vi.useFakeTimers();
+    mocks.extract.mockResolvedValue(videoBlob());
+    const service = new VideoLoadService(1000, undefined, undefined, 250);
+    const element = video();
+    vi.mocked(element.load).mockImplementation(() => {});
+    const motion = {
+      type: "motion-photo" as const,
+      imageUrl: "motion",
+      offset: 10,
+    };
+    const pending = service.processVideo(motion, element);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(element.src).toContain("blob:");
+    element.dispatchEvent(new Event("canplay"));
+    await pending;
+    expect(vi.getTimerCount()).toBe(0);
+    service.cleanup();
+
+    mocks.extract.mockReturnValue(new Promise(() => {}));
+    const cancelled = service.processVideo(motion, element);
+    const rejected = expect(cancelled).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    service.cleanup();
+    await rejected;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("cancels a cache hit before it can attach src or emit stale state", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respond()));
     const cache = new VideoBlobCache();

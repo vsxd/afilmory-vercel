@@ -4,6 +4,7 @@ import type { SiteConfig } from "../../../../site.config";
 import {
   createAfilmoryPwaPlugin,
   createNavigateFallbackDenylist,
+  matchGalleryIndexRequest,
   matchImageRequest,
   matchManifestShardRequest,
   matchThumbnailRequest,
@@ -55,6 +56,48 @@ describe("PWA runtime caching", () => {
         ),
       }),
     ).toBe(true);
+  });
+
+  it("runtime-caches only same-origin content-addressed gallery indexes", () => {
+    for (const [url, expected] of [
+      ["/assets/gallery-index.1234abcd.json", true],
+      ["/assets/gallery-index.1234abcd.json?version=1", true],
+      ["/assets/gallery-index.json", false],
+      ["/assets/photo-details.root.1234abcd.json", false],
+      ["https://other.example/assets/gallery-index.1234abcd.json", false],
+    ] as const) {
+      expect(
+        matchGalleryIndexRequest({ url: new URL(url, window.location.origin) }),
+      ).toBe(expected);
+    }
+  });
+
+  it("bounds gallery cache separately from details and delegates precache sizing to the transform", () => {
+    createAfilmoryPwaPlugin(siteConfig);
+    const options = vitePwa.mock.calls[0]?.[0] as {
+      workbox: {
+        maximumFileSizeToCacheInBytes: number;
+        runtimeCaching: Array<{
+          urlPattern: unknown;
+          options: {
+            cacheName: string;
+            expiration: { maxEntries: number; purgeOnQuotaError: boolean };
+            cacheableResponse: { statuses: number[] };
+          };
+        }>;
+      };
+    };
+    const galleryRoute = options.workbox.runtimeCaching.find(
+      (route) => route.urlPattern === matchGalleryIndexRequest,
+    );
+    expect(galleryRoute?.options).toMatchObject({
+      cacheName: AFILMORY_RUNTIME_CACHE_NAMES.galleryIndexes,
+      expiration: { maxEntries: 2, purgeOnQuotaError: true },
+      cacheableResponse: { statuses: [200] },
+    });
+    expect(options.workbox.maximumFileSizeToCacheInBytes).toBe(
+      Number.MAX_SAFE_INTEGER,
+    );
   });
 
   it("does not claim an unfillable video cache and excludes photo shells from precache", () => {

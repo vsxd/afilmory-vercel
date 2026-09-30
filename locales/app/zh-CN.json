@@ -358,6 +358,9 @@
   "photo.copy.image": "复制图像",
   "photo.copy.success": "图像已复制到剪贴板",
   "photo.copying": "正在复制图像…",
+  "photo.details.error": "照片信息加载失败，已保留基本信息。",
+  "photo.details.loading": "正在加载照片信息…",
+  "photo.details.unavailable": "照片信息可能已更新，请刷新页面重试。",
   "photo.download": "下载图像",
   "photo.error.forbidden.description": "请稍后重试。如果持续失败，请联系站点作者。",
   "photo.error.forbidden.title": "原图访问被拒绝",
@@ -420,5 +423,7 @@
   "photo.zoom.reset": "重置缩放",
   "slider.auto": "自动",
   "slider.columns": "{{count}} 列",
+  "video.error.description": "请重试。如果持续失败，请联系站点作者。",
+  "video.error.loading": "动态视频加载失败",
   "video.motion-photo.extracting": "正在提取嵌入的视频…"
 }

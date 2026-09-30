@@ -358,6 +358,9 @@
   "photo.copy.image": "複製圖像",
   "photo.copy.success": "圖像已複製到剪貼簿",
   "photo.copying": "正在複製圖像…",
+  "photo.details.error": "照片資訊載入失敗，已保留基本資訊。",
+  "photo.details.loading": "正在載入照片資訊…",
+  "photo.details.unavailable": "照片資訊可能已更新，請重新整理頁面後再試。",
   "photo.download": "下載圖像",
   "photo.error.forbidden.description": "請稍後重試。如果持續失敗，請聯絡網站作者。",
   "photo.error.forbidden.title": "原圖存取遭拒",
@@ -420,5 +423,7 @@
   "photo.zoom.reset": "重設縮放",
   "slider.auto": "自動",
   "slider.columns": "{{count}} 列",
+  "video.error.description": "請重試。如果持續失敗，請聯絡網站作者。",
+  "video.error.loading": "動態影片載入失敗",
   "video.motion-photo.extracting": "正在提取嵌入的影片…"
 }

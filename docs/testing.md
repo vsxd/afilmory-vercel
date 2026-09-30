@@ -143,6 +143,24 @@ A separate prod-smoke mode (`pnpm test:e2e:prod`) runs a real production build
 only the `prod-smoke` project. Run the two modes as separate invocations — CI
 does — so dev-server runs never pay for a production build.
 
+The PWA's 1,800 KiB precache budget always protects the application shell.
+A gallery index is precached only when it fits in the remaining budget;
+larger indexes use a separate runtime cache retaining at most two versions.
+An oversized index therefore does not prevent publication. Its offline use
+requires an earlier successful request for the current shell's exact index URL
+under service-worker control; the first uncontrolled visit alone does not
+guarantee it. After an update, a cached older index cannot replace the new hash.
+Detail shards keep their own cache, so browsing many photos cannot evict the
+runtime-cached gallery index.
+Budget boundary tests use a few asset byte-count records, without generating
+large photo libraries or committing large fixtures.
+
+Production recovery cases reuse the same small fixture: a detail shard returns
+503 once before an in-place retry; failed MapSection and MapLibre imports recover
+through the visible reload action; an actual WebGL context loss reaches the DOM
+image fallback. These are functional recovery tests, not large-library or mobile
+GPU performance measurements.
+
 The fixture is **fully synthetic**: invented `SYNTH00…` photos, a fictional
 `Lumina LX-7` camera, and mid-ocean GPS coordinates in made-up countries. It
 must **never** be regenerated from a real photo library — an earlier fixture

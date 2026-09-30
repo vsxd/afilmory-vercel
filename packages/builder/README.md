@@ -188,6 +188,19 @@ Plugins are loaded from explicit `plugins` entries:
 - S3 downloads use an internal semaphore and network timeout/retry settings.
 - Thumbnail, EXIF, and tone-analysis data are reused from the existing manifest where possible.
 
+Incremental builds distinguish an EXIF read failure from a valid photo without
+EXIF. A failed refresh preserves the previous photo and invalidates its EXIF
+processing stamp, so the next ordinary build retries. Historical `exif: null`
+entries already stamped as successful are not automatically rebuilt: use
+`--force-manifest` if recovering a library affected by an earlier read failure.
+
+Public URL changes refresh provider-derived original and Live Photo URLs without
+downloading or decoding the source again. Recognizable S3 URLs are updated before
+plugins run; custom plugin URLs and unrecognizable historical source descriptors
+are preserved. Changed or removed source GPS invalidates derived coordinates and
+place names, while plugin locations that never had source GPS remain intact when
+the privacy policy is unchanged.
+
 ## Related Docs
 
 - [Photo pipeline](src/photo/README.md)

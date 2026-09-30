@@ -52,6 +52,13 @@ export function matchManifestShardRequest({ url }: RuntimeUrlContext): boolean {
   );
 }
 
+export function matchGalleryIndexRequest({ url }: RuntimeUrlContext): boolean {
+  return (
+    url.origin === self.location.origin &&
+    /^\/assets\/gallery-index\.[\da-f]+\.json$/.test(url.pathname)
+  );
+}
+
 function escapeRegExp(value: string): string {
   return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -136,8 +143,24 @@ export function createAfilmoryPwaPlugin(
       manifestTransforms: [
         (entries) => filterCriticalPrecacheManifest(entries),
       ],
-      maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+      // The transform above enforces the actual total byte budget. Let it see
+      // even oversized indexes so they can use runtime caching, rather than
+      // failing Workbox's per-file check before the transform can decide.
+      maximumFileSizeToCacheInBytes: Number.MAX_SAFE_INTEGER,
       runtimeCaching: [
+        {
+          urlPattern: matchGalleryIndexRequest,
+          handler: "CacheFirst",
+          options: {
+            cacheName: AFILMORY_RUNTIME_CACHE_NAMES.galleryIndexes,
+            expiration: {
+              maxEntries: 2,
+              maxAgeSeconds: 60 * 60 * 24 * 365,
+              purgeOnQuotaError: true,
+            },
+            cacheableResponse: { statuses: [200] },
+          },
+        },
         {
           urlPattern: matchStaticAssetRequest,
           handler: "CacheFirst",

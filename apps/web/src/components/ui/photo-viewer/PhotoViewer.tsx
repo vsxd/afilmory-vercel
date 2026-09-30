@@ -20,6 +20,7 @@ import type { Swiper as SwiperType } from "swiper";
 import { useDialogFocusManagement } from "~/hooks/useDialogFocusManagement";
 import { useExifPanel } from "~/hooks/useExifPanel";
 import { useMobile } from "~/hooks/useMobile";
+import type { PhotoDetailHydration } from "~/hooks/usePhotoDetailHydration";
 import { usePhotoNavigation } from "~/hooks/usePhotoNavigation";
 import type { ViewerSequenceSource } from "~/hooks/usePhotoViewer";
 import type { PhotoManifest } from "~/types/photo";
@@ -56,6 +57,7 @@ const GalleryThumbnail = lazy(() =>
 
 interface PhotoViewerProps {
   photos: readonly PhotoManifest[];
+  detailHydration?: PhotoDetailHydration;
   currentIndex: number;
   sequenceSource?: ViewerSequenceSource;
   isOpen: boolean;
@@ -67,6 +69,7 @@ interface PhotoViewerProps {
 
 export const PhotoViewer = ({
   photos,
+  detailHydration,
   currentIndex,
   sequenceSource = "all",
   isOpen,
@@ -393,6 +396,7 @@ export const PhotoViewer = ({
                   >
                     <ExifPanel
                       currentPhoto={currentPhoto}
+                      detailHydration={detailHydration}
                       exifData={currentPhoto.exif}
                       visible={isViewerContentVisible}
                       onClose={isMobile ? handleCloseInfo : undefined}

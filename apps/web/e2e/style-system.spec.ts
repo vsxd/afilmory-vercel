@@ -72,6 +72,7 @@ async function readPaint(control: Locator) {
       border: pixel(style.borderTopColor),
       foreground: pixel(style.color),
       controlBackground: pixel(style.getPropertyValue("--af-surface-control")),
+      glassBackground: pixel(style.getPropertyValue("--af-surface-glass")),
       controlBorder: pixel(style.getPropertyValue("--af-border")),
       accent: pixel(style.getPropertyValue("--color-accent")),
       accentContent: pixel(style.getPropertyValue("--color-accent-content")),
@@ -203,7 +204,10 @@ test.describe("mobile surface composition", () => {
     await expect(floating).toBeInViewport({ ratio: 1 });
     const overlayPaint = await readPaint(floating);
     expect(Math.max(...overlayPaint.background.slice(0, 3))).toBeLessThan(64);
-    expect(overlayPaint.background[3]).toBeGreaterThanOrEqual(192);
+    expect(overlayPaint.background).toEqual(overlayPaint.glassBackground);
+    expect(overlayPaint.background[3]).toBeGreaterThanOrEqual(
+      Math.round(255 * 0.7),
+    );
     const search = floating.getByRole("button", { name: "Search & Filter" });
     await expect
       .poll(async () => (await readPaint(search)).background)
@@ -260,12 +264,12 @@ test("author statistics respond to their own container width without overflowing
   const header = await openGallery(page);
   const photoStat = header.getByRole("group", { name: /^Photos:/ });
   const statistics = photoStat.locator("../..");
-  const value = photoStat.locator(":scope > span").last();
+  const value = photoStat.locator(".af-gallery-stat-value");
   for (const [width, fontSize] of [
-    [209, 13],
-    [210, 14],
-    [279, 14],
-    [280, 15],
+    [209, 14],
+    [210, 16],
+    [279, 16],
+    [280, 18],
   ]) {
     await statistics.evaluate((element, size) => {
       (element as HTMLElement).style.width = `${size}px`;

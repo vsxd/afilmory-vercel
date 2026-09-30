@@ -358,6 +358,9 @@
   "photo.copy.image": "이미지 복사",
   "photo.copy.success": "이미지를 클립보드에 복사했습니다.",
   "photo.copying": "이미지 복사 중…",
+  "photo.details.error": "사진 상세 정보를 불러오지 못했습니다. 기본 정보는 계속 확인할 수 있습니다.",
+  "photo.details.loading": "사진 상세 정보를 불러오는 중…",
+  "photo.details.unavailable": "사진 상세 정보가 변경되었을 수 있습니다. 페이지를 새로고침해 주세요.",
   "photo.download": "이미지 다운로드",
   "photo.error.forbidden.description": "잠시 후 다시 시도하세요. 문제가 계속되면 사이트 운영자에게 알려 주세요.",
   "photo.error.forbidden.title": "원본 사진에 대한 접근이 거부되었습니다",
@@ -420,5 +423,7 @@
   "photo.zoom.reset": "확대/축소 초기화",
   "slider.auto": "자동",
   "slider.columns": "{{count}} 열",
+  "video.error.description": "다시 시도해 주세요. 문제가 계속되면 사이트 작성자에게 문의해 주세요.",
+  "video.error.loading": "동영상을 불러오지 못했습니다",
   "video.motion-photo.extracting": "내장된 비디오 추출 중…"
 }

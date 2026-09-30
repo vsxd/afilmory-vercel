@@ -1,4 +1,5 @@
 export const AFILMORY_RUNTIME_CACHE_NAMES = {
+  galleryIndexes: "afilmory-gallery-indexes-v1",
   manifestShards: "afilmory-manifest-shards-v1",
   originalImages: "afilmory-original-images-v2",
   staticAssets: "afilmory-static-assets-v1",

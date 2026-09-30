@@ -19,28 +19,43 @@ export {
 } from "@afilmory/schema";
 
 /**
- * A privacy transition must not carry coordinates produced under the previous
- * policy. The caller supplies EXIF freshly extracted from source bytes; use it
- * to rebuild coordinates while retaining reusable administrative labels.
- * Missing coordinates become null instead of silently publishing stale
- * precision.
+ * Reconcile derived locations with the current privacy-filtered EXIF. Labels
+ * belong to coordinates, so a changed or removed GPS fix cannot keep the old
+ * administrative names, including when reverse geocoding is disabled/offline.
  */
-export function rebuildLocationForPrivacyTransition(
-  existingLocation: LocationInfo | null,
+export function reconcilePhotoLocation(
+  existingItem: Pick<PhotoManifestItem, "location" | "exif"> | undefined,
   exif: PickedExif | null,
   mode: LocationMode,
   privacyModeChanged: boolean,
+  contentChanged: boolean,
 ): LocationInfo | null {
-  if (!privacyModeChanged) {
-    return applyLocationPrivacy(existingLocation, mode);
-  }
-  if (mode === "strip" || !exif) return null;
+  if (mode === "strip") return null;
+  const existingLocation = existingItem?.location ?? null;
 
-  const { latitude, longitude } = parseGPSCoordinates(exif);
-  if (latitude === undefined || longitude === undefined) return null;
+  const { latitude, longitude } = parseGPSCoordinates(exif ?? {});
+  if (latitude === undefined || longitude === undefined) {
+    const previousGPS = parseGPSCoordinates(existingItem?.exif ?? {});
+    // A location supplied by a plugin may never have had source GPS. Preserve
+    // that value unless GPS was actually removed or the privacy policy changed.
+    return privacyModeChanged ||
+      (previousGPS.latitude !== undefined &&
+        previousGPS.longitude !== undefined)
+      ? null
+      : applyLocationPrivacy(existingLocation, mode);
+  }
+  // Initial coordinates still follow the existing geocoding publication path.
+  if (!existingLocation && !privacyModeChanged) return null;
   const reusableLocation = applyLocationPrivacy(existingLocation, mode);
+  const sameCoordinates =
+    reusableLocation?.latitude === latitude &&
+    reusableLocation.longitude === longitude;
+  // A policy-only change may restore precision from the same source. Its
+  // labels remain reusable; a simultaneous source change must compare GPS.
+  const reuseLabels =
+    sameCoordinates || (privacyModeChanged && !contentChanged);
   return {
-    ...reusableLocation,
+    ...(reuseLabels ? reusableLocation : {}),
     latitude,
     longitude,
   };

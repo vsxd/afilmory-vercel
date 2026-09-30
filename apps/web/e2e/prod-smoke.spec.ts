@@ -143,6 +143,51 @@ test.describe("production original image loading", () => {
     ).toBe(true);
     expect(errors).toEqual([]);
   });
+
+  test("falls back to a DOM image when a lost WebGL context does not recover", async ({
+    page,
+  }) => {
+    await page.route("https://photos.fixture.test/**", (route) =>
+      route.fulfill({
+        contentType: "image/jpeg",
+        path: fileURLToPath(
+          new URL("fixtures/thumbnails/SYNTH0001.jpg", import.meta.url),
+        ),
+      }),
+    );
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    const photo = viewer.getByRole("group", { name: "SYNTH0001", exact: true });
+    const canvas = photo
+      .getByRole("img", { name: "SYNTH0001", exact: true })
+      .locator("canvas");
+    await expect(canvas).toBeVisible();
+
+    expect(
+      await canvas.evaluate((element) => {
+        const canvas = element as HTMLCanvasElement;
+        const context =
+          canvas.getContext("webgl") ?? canvas.getContext("webgl2");
+        const extension = context?.getExtension("WEBGL_lose_context");
+        extension?.loseContext();
+        return Boolean(extension);
+      }),
+    ).toBe(true);
+
+    const fallback = photo.locator('img[src^="blob:"]');
+    await expect(fallback).toBeVisible({ timeout: 15_000 });
+    await expect
+      .poll(() =>
+        fallback.evaluate(
+          (element) => (element as HTMLImageElement).naturalWidth,
+        ),
+      )
+      .toBeGreaterThan(0);
+    await expect(canvas).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(viewer).toHaveCount(0);
+  });
 });
 
 test("production bundle serves gallery, viewer route, and service worker", async ({
@@ -241,6 +286,78 @@ test.describe("production navigation journeys", () => {
       }),
     );
   });
+
+  test("retries a failed detail shard without closing the photo or losing its summary", async ({
+    page,
+  }) => {
+    let failDetails = true;
+    let detailRequests = 0;
+    await page.route(PHOTO_DETAIL_ASSET, async (route) => {
+      detailRequests++;
+      if (failDetails) {
+        await route.fulfill({ status: 503, body: "Temporarily unavailable" });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.goto("/photos/SYNTH0001?sort=asc");
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(viewer).toBeVisible();
+    await expect(
+      viewer.getByRole("heading", { name: "Photo Inspector" }),
+    ).toBeVisible();
+    const error = viewer
+      .getByRole("alert")
+      .filter({ hasText: "Photo details could not be loaded" });
+    await expect(error).toBeVisible();
+    await expect(
+      viewer.getByRole("link", { name: "View location in map", exact: true }),
+    ).toHaveCount(0);
+    expect(detailRequests).toBe(1);
+
+    failDetails = false;
+    await error.getByRole("button", { name: "Try again" }).click();
+    await expect(error).toHaveCount(0);
+    await expect(
+      viewer.getByRole("link", { name: "View location in map", exact: true }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/photos\/SYNTH0001\?sort=asc$/);
+    expect(detailRequests).toBe(2);
+  });
+
+  for (const moduleName of ["MapSection", "MapLibre"]) {
+    test(`reloads a failed ${moduleName} module from the map error action`, async ({
+      page,
+    }) => {
+      let failModule = true;
+      let moduleRequests = 0;
+      await page.route(
+        new RegExp(`/assets/${moduleName}-[\\w-]+\\.js$`),
+        async (route) => {
+          moduleRequests++;
+          if (failModule) {
+            await route.fulfill({
+              status: 503,
+              body: "Temporarily unavailable",
+            });
+          } else {
+            await route.continue();
+          }
+        },
+      );
+      await page.goto("/explore?mode=photos");
+      const error = page.getByRole("alert");
+      await expect(
+        error.getByRole("button", { name: "Reload", exact: true }),
+      ).toBeVisible();
+      failModule = false;
+      await error.getByRole("button", { name: "Reload", exact: true }).click();
+      await expect(page.locator(".maplibregl-map")).toBeVisible();
+      await expect(error).toHaveCount(0);
+      await expect(page).toHaveURL(/\/explore(?:\?|$)/);
+      expect(moduleRequests).toBeGreaterThanOrEqual(2);
+    });
+  }
 
   test("trailing-slash detail opens and standalone close returns to filtered gallery", async ({
     page,

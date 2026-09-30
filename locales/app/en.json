@@ -358,6 +358,9 @@
   "photo.copy.image": "Copy Image",
   "photo.copy.success": "Image copied to clipboard",
   "photo.copying": "Copying image…",
+  "photo.details.error": "Photo details could not be loaded. Basic information is still available.",
+  "photo.details.loading": "Loading photo details…",
+  "photo.details.unavailable": "Photo details may have changed. Reload the page to try again.",
   "photo.download": "Download Image",
   "photo.error.forbidden.description": "Try again later. If this continues, let the site owner know.",
   "photo.error.forbidden.title": "Access to the original photo was denied",
@@ -420,5 +423,7 @@
   "photo.zoom.reset": "Reset zoom",
   "slider.auto": "Auto",
   "slider.columns": "{{count}} column",
+  "video.error.description": "Try again. If the problem continues, contact the site author.",
+  "video.error.loading": "Failed to load the video",
   "video.motion-photo.extracting": "Extracting embedded video…"
 }

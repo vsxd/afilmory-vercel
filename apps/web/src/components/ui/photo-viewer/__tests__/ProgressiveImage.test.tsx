@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -27,6 +28,8 @@ const hoisted = vi.hoisted(() => ({
   supportsHDR: false,
   playLivePhoto: vi.fn(),
   stopLivePhoto: vi.fn(),
+  failVideo: false,
+  retryVideo: vi.fn(),
   failWebGL: false,
   zoomIn: vi.fn(),
   zoomOut: vi.fn(),
@@ -157,15 +160,28 @@ vi.mock("react-zoom-pan-pinch", () => {
 });
 
 vi.mock("../LivePhotoVideo", async () => {
-  const { useImperativeHandle } = await import("react");
+  const { useEffect, useImperativeHandle } = await import("react");
   return {
     LivePhotoVideo: ({
       ref,
       onPlayingChange,
+      loadingIndicatorRef,
     }: {
       ref?: RefObject<LivePhotoVideoHandle | null>;
       onPlayingChange?: (playing: boolean) => void;
+      loadingIndicatorRef: RefObject<LoadingIndicatorRef | null>;
     }) => {
+      useEffect(() => {
+        if (!hoisted.failVideo) return;
+        const indicator = loadingIndicatorRef.current;
+        indicator?.updateLoadingState({
+          isVisible: true,
+          isError: true,
+          errorMessage: "video.error.loading",
+          onRetry: hoisted.retryVideo,
+        });
+        return () => indicator?.resetLoadingState();
+      }, [loadingIndicatorRef]);
       useImperativeHandle(ref, () => ({
         getIsVideoLoaded: () => true,
         play: () => {
@@ -213,6 +229,11 @@ describe("ProgressiveImage", () => {
     expect(badges?.contains(screen.getByText("HDR"))).toBe(true);
     expect(live.getAttribute("aria-pressed")).toBe("false");
 
+    // Video work starts only after the still image paints, so its later load
+    // callback cannot dismiss a video failure/retry indicator.
+    fireEvent.click(live);
+    expect(hoisted.playLivePhoto).not.toHaveBeenCalled();
+    fireEvent.load(screen.getByRole("img", { name: "HDR Live Photo" }));
     fireEvent.click(live);
     expect(hoisted.playLivePhoto).toHaveBeenCalledOnce();
     expect(live.getAttribute("aria-pressed")).toBe("true");
@@ -226,6 +247,53 @@ describe("ProgressiveImage", () => {
     expect(hoisted.stopLivePhoto).toHaveBeenCalledOnce();
     expect(live.getAttribute("aria-pressed")).toBe("false");
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("keeps video retry visible when a previously painted photo remounts before its new img load", async () => {
+    const Harness = ({ active }: { active: boolean }) => {
+      const indicator = useRef<LoadingIndicatorRef | null>(null);
+      return (
+        <>
+          <ProgressiveImage
+            src="live-photo.jpg"
+            alt="Returning Live Photo"
+            isCurrentImage={active}
+            loadingIndicatorRef={indicator}
+            videoSource={{ type: "live-photo", videoUrl: "live.mov" }}
+          />
+          <LoadingIndicator ref={indicator} />
+        </>
+      );
+    };
+    const { rerender } = render(<Harness active />);
+    const firstImage = await screen.findByRole("img", {
+      name: "Returning Live Photo",
+    });
+    fireEvent.load(firstImage);
+    rerender(<Harness active={false} />);
+    expect(
+      screen.queryByRole("img", { name: "Returning Live Photo" }),
+    ).toBeNull();
+
+    vi.useFakeTimers();
+    hoisted.failVideo = true;
+    rerender(<Harness active />);
+    expect(screen.getByRole("alert").textContent).toContain(
+      "video.error.loading",
+    );
+    const remountedImage = screen.getByRole("img", {
+      name: "Returning Live Photo",
+    });
+    expect(remountedImage).not.toBe(firstImage);
+    fireEvent.load(remountedImage);
+    // LoadingIndicator defers hiding for 300ms. Wait beyond that window so a
+    // still-image callback cannot silently erase a newer video failure.
+    act(() => vi.advanceTimersByTime(301));
+    expect(screen.getByRole("alert").textContent).toContain(
+      "video.error.loading",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "photo.error.retry" }));
+    expect(hoisted.retryVideo).toHaveBeenCalledOnce();
   });
 
   it.each([false, true])(
@@ -278,6 +346,8 @@ describe("ProgressiveImage", () => {
     hoisted.supportsHDR = false;
     hoisted.playLivePhoto.mockClear();
     hoisted.stopLivePhoto.mockClear();
+    hoisted.failVideo = false;
+    hoisted.retryVideo.mockClear();
     hoisted.failWebGL = false;
     hoisted.zoomIn.mockReset();
     hoisted.zoomOut.mockReset();
@@ -287,6 +357,7 @@ describe("ProgressiveImage", () => {
     resetThumbnailLoadCache();
     vi.restoreAllMocks();
     cleanup();
+    vi.useRealTimers();
   });
 
   it("retries repeated image failures and clears the alert when loading succeeds", async () => {

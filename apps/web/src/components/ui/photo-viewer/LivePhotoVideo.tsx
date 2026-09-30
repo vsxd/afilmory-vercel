@@ -7,9 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useStableVideoSource } from "~/hooks/useStableVideoSource";
 import type { VideoSource } from "~/lib/image-loading-types";
+import { getMediaTaskDiagnostic } from "~/lib/media-task";
 import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
@@ -57,9 +59,14 @@ export const LivePhotoVideo = ({
   ref?: React.RefObject<LivePhotoVideoHandle | null>;
 }) => {
   const runtime = useAfilmoryRuntime();
+  const { t } = useTranslation();
   const [isPlayingLivePhoto, setIsPlayingLivePhoto] = useState(false);
   const [livePhotoVideoLoaded, setLivePhotoVideoLoaded] = useState(false);
   const [isConvertingVideo, setIsConvertingVideo] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [videoError, setVideoError] = useState<{
+    sourceKey: string;
+  } | null>(null);
   const shouldReduceMotion = useReducedMotion() === true;
   const hasAutoPlayedRef = useRef(false);
   const isConvertingVideoRef = useRef(false);
@@ -88,6 +95,34 @@ export const LivePhotoVideo = ({
     playTimerRef.current = null;
   }, []);
 
+  const retry = useCallback(() => {
+    loadedVideoSourceKeyRef.current = null;
+    setVideoError(null);
+    loadingIndicatorRef.current?.resetLoadingState();
+    setRetryAttempt((attempt) => attempt + 1);
+  }, [loadingIndicatorRef]);
+
+  useEffect(() => {
+    if (!isCurrentImage || videoError?.sourceKey !== videoSourceKey) return;
+    const indicator = loadingIndicatorRef.current;
+    indicator?.updateLoadingState({
+      isVisible: true,
+      isError: true,
+      isConverting: false,
+      errorMessage: t("video.error.loading"),
+      errorDescription: t("video.error.description"),
+      onRetry: retry,
+    });
+    return () => indicator?.resetLoadingState();
+  }, [
+    isCurrentImage,
+    videoError,
+    videoSourceKey,
+    loadingIndicatorRef,
+    retry,
+    t,
+  ]);
+
   useEffect(() => {
     if (!isCurrentImage || isConvertingVideoRef.current || !videoRef.current) {
       return;
@@ -105,6 +140,11 @@ export const LivePhotoVideo = ({
     loadedVideoSourceKeyRef.current = null;
     hasAutoPlayedRef.current = false;
     isConvertingVideoRef.current = true;
+    clearPlayTimer();
+    videoAnimateController.set({ opacity: 0 });
+    setIsPlayingLivePhoto(false);
+    setVideoError(null);
+    loadingIndicatorRef.current?.resetLoadingState();
     setLivePhotoVideoLoaded(false);
     setIsConvertingVideo(true);
 
@@ -127,7 +167,15 @@ export const LivePhotoVideo = ({
         }
       } catch (videoError) {
         if (!cancelled && !isAbortLikeError(videoError)) {
-          console.error("Failed to process video:", videoError);
+          const error =
+            videoError instanceof Error
+              ? videoError
+              : new Error("Video load failed", { cause: videoError });
+          setVideoError({ sourceKey: videoSourceKey });
+          console.error(
+            "Failed to process video:",
+            getMediaTaskDiagnostic(error),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -150,6 +198,9 @@ export const LivePhotoVideo = ({
     stableVideoSource,
     runtime.imageLoading,
     loadingIndicatorRef,
+    retryAttempt,
+    clearPlayTimer,
+    videoAnimateController,
   ]);
 
   useEffect(() => {

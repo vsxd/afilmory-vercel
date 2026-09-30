@@ -12,6 +12,7 @@ import {
   MediaResourceScope,
   throwIfAborted,
 } from "./media-resource";
+import { getMediaTaskDiagnostic, MediaTaskError } from "./media-task";
 import { extractMotionPhotoVideo } from "./motion-photo-extractor";
 import { VideoBlobCache } from "./video-blob-cache";
 import { needsVideoConversion } from "./video-converter";
@@ -21,7 +22,11 @@ interface VideoTask {
   element: HTMLVideoElement;
   lease?: MediaLease;
   attached: boolean;
+  acquisitionDeadline?: ReturnType<typeof setTimeout>;
+  cachedVideo?: { url: string; blob: Blob };
 }
+
+export const VIDEO_ACQUISITION_TIMEOUT_MS = 60_000;
 
 export class VideoLoadService {
   private current: VideoTask | null = null;
@@ -30,6 +35,7 @@ export class VideoLoadService {
     private readonly readyTimeoutMs = 15_000,
     private readonly cache = new VideoBlobCache(),
     private readonly resources = new MediaResourceScope(),
+    private readonly acquisitionTimeoutMs = VIDEO_ACQUISITION_TIMEOUT_MS,
   ) {}
 
   async processVideo(
@@ -59,7 +65,8 @@ export class VideoLoadService {
           isVisible: true,
           conversionMessage: getI18n().t("video.motion-photo.extracting"),
         });
-        const blob = await abortable(
+        const blob = await this.acquireWithinDeadline(
+          task,
           extractMotionPhotoVideo(
             source.imageUrl,
             {
@@ -69,10 +76,14 @@ export class VideoLoadService {
             },
             signal,
           ),
-          signal,
         );
         throwIfAborted(signal);
-        if (!blob) throw new Error("Failed to extract Motion Photo video");
+        if (!blob)
+          throw new MediaTaskError(
+            "decode",
+            "decode-failed",
+            "Failed to extract Motion Photo video",
+          );
         task.lease = this.resources.acquire(blob);
         src = task.lease.blobSrc;
         result = {
@@ -82,11 +93,12 @@ export class VideoLoadService {
       } else if (source.type === "live-photo") {
         if (needsVideoConversion(source.videoUrl)) {
           update({ isVisible: true, isConverting: true, loadingProgress: 0 });
-          const blob = await abortable(
+          const blob = await this.acquireWithinDeadline(
+            task,
             this.cache.get(source.videoUrl, signal),
-            signal,
           );
           throwIfAborted(signal);
+          task.cachedVideo = { url: source.videoUrl, blob };
           task.lease = this.resources.acquire(blob);
           src = task.lease.blobSrc;
           result = { convertedVideoUrl: src };
@@ -104,7 +116,13 @@ export class VideoLoadService {
       return result;
     } catch (error) {
       if (!signal.aborted && this.current === task) {
-        console.error("Failed to process video:", error);
+        if (task.attached && task.cachedVideo) {
+          this.cache.invalidate(task.cachedVideo.url, task.cachedVideo.blob);
+        }
+        console.error(
+          "Failed to process video:",
+          getMediaTaskDiagnostic(error),
+        );
         update({ isVisible: false, isConverting: false });
         this.cleanup();
       }
@@ -116,6 +134,7 @@ export class VideoLoadService {
     const task = this.current;
     if (!task) return;
     this.current = null;
+    clearTimeout(task.acquisitionDeadline);
     task.controller.abort();
     if (task.attached) {
       task.element.pause();
@@ -123,6 +142,34 @@ export class VideoLoadService {
       task.element.load();
     }
     task.lease?.release();
+  }
+
+  /** Bound acquisition separately from the element's existing readiness wait. */
+  private async acquireWithinDeadline<T>(
+    task: VideoTask,
+    work: Promise<T>,
+  ): Promise<T> {
+    try {
+      return await Promise.race([
+        abortable(work, task.controller.signal),
+        new Promise<never>((_, reject) => {
+          task.acquisitionDeadline = setTimeout(
+            () =>
+              reject(
+                new MediaTaskError(
+                  "fetch",
+                  "timeout",
+                  `Video acquisition did not finish within ${this.acquisitionTimeoutMs}ms`,
+                ),
+              ),
+            this.acquisitionTimeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(task.acquisitionDeadline);
+      task.acquisitionDeadline = undefined;
+    }
   }
 
   private waitUntilReady(task: VideoTask, src: string): Promise<void> {
@@ -144,7 +191,9 @@ export class VideoLoadService {
       };
       const failed = () => {
         cleanup();
-        reject(new Error("Video failed to load"));
+        reject(
+          new MediaTaskError("decode", "decode-failed", "Video failed to load"),
+        );
       };
       const aborted = () => {
         cleanup();
@@ -157,7 +206,9 @@ export class VideoLoadService {
       const timeout = setTimeout(() => {
         cleanup();
         reject(
-          new Error(
+          new MediaTaskError(
+            "decode",
+            "timeout",
             `Video did not become ready within ${this.readyTimeoutMs}ms`,
           ),
         );

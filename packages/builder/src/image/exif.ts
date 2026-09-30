@@ -68,12 +68,11 @@ export async function extractExifData(
     log.info(`Extracting EXIF data, file path: ${tempImagePath}`);
     const exifData = await exifService.read(tempImagePath);
 
-    const result = handleExifData(exifData);
-
     if (!exifData) {
-      log.warn("Failed to parse EXIF data");
-      return null;
+      throw new Error("ExifTool returned no result");
     }
+
+    const result = handleExifData(exifData);
 
     // 清理 EXIF 数据中的空字符和无用数据
 
@@ -84,7 +83,10 @@ export async function extractExifData(
     return result;
   } catch (error) {
     log.error("Failed to extract EXIF data:", error);
-    return null;
+    // An empty Tags object is a successful photo without EXIF. A failed read
+    // is different: let the photo failure path retain the previous item and
+    // retry, rather than publishing null with a successful stage fingerprint.
+    throw error;
   } finally {
     await rm(tempDir, { recursive: true, force: true }).catch(noop);
   }

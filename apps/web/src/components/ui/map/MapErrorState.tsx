@@ -1,8 +1,22 @@
 import { Button } from "@afilmory/ui";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export const MapErrorState = ({ onRetry }: { onRetry?: () => void }) => {
+import { recoverStaleRuntime } from "~/lib/stale-runtime-recovery";
+
+export const MapErrorState = () => {
   const { t } = useTranslation();
+  const [isReloading, setIsReloading] = useState(false);
+  const reload = async () => {
+    setIsReloading(true);
+    try {
+      // React.lazy retains a rejected import. Resetting its boundary alone
+      // cannot retry either the MapSection or the nested MapLibre module.
+      await recoverStaleRuntime({ force: true });
+    } finally {
+      setIsReloading(false);
+    }
+  };
 
   return (
     <div
@@ -24,10 +38,8 @@ export const MapErrorState = ({ onRetry }: { onRetry?: () => void }) => {
           <Button
             size="lg"
             className="rounded-xl"
-            onClick={() => {
-              if (onRetry) onRetry();
-              else window.location.reload();
-            }}
+            disabled={isReloading}
+            onClick={() => void reload()}
           >
             {t("error.reload")}
           </Button>
