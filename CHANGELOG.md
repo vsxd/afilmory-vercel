@@ -35,6 +35,8 @@ All notable Project Code changes are recorded here. The format follows
 - Check routine Dependabot updates monthly with one npm group and one GitHub
   Actions group; keep advisory-triggered security update groups and existing
   audit thresholds.
+- Pin the local/CI Node.js 22 toolchain to 22.22.2 for compatibility with jsdom
+  and patched Undici; retain the separate Node.js 20 contracts/type check.
 - Reduce Vercel's primary Deploy Button to five storage settings with region
   and endpoint defaults; offer a separate public-image-domain deployment link.
 - Derive canonical site URLs from Vercel's stable production domain when

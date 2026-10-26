@@ -27,6 +27,13 @@ the supported Node.js runtime contract is reviewed. Jotai 3 requires Node.js
 types should not be adopted independently of the runtime. These are
 `update-types` ignores only, so security updates remain eligible. This policy
 does not certify the existing dependency tree's Node.js 20 compatibility.
+The pinned local/CI toolchain uses Node.js 22.22.2 so jsdom and the patched
+Undici can start browser-environment tests. The Node.js 20 CI job only checks
+contracts and types, not the full runtime or test suite.
+
+React Scan remains on 0.5.6: 0.5.7 adds React Doctor and dependencies rejected by
+the existing license policy. Revisit that update when its dependency licenses
+can satisfy the policy; do not bypass the review by broadening the allowlist.
 
 `pnpm-workspace.yaml` permits install scripts only for dependencies with a known
 native/build requirement. Each allowlist addition must name the direct or
