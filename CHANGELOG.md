@@ -29,6 +29,12 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Changed
 
+- Consolidate dependency updates, including Motion 13, Supercluster 9 with its
+  bundled types, react-intersection-observer 11, and ExifTool 38. Defer Jotai 3
+  and Node.js 26 types pending a runtime support decision.
+- Check routine Dependabot updates monthly with one npm group and one GitHub
+  Actions group; keep advisory-triggered security update groups and existing
+  audit thresholds.
 - Reduce Vercel's primary Deploy Button to five storage settings with region
   and endpoint defaults; offer a separate public-image-domain deployment link.
 - Derive canonical site URLs from Vercel's stable production domain when
@@ -61,6 +67,10 @@ All notable Project Code changes are recorded here. The format follows
 
 ### Fixed
 
+- Update Vite, Vitest, Sharp, Zod and vulnerable transitive dependencies to
+  patched releases, including the selector parser pinned by Typography.
+- Keep React and ReactDOM versions aligned across the web, viewer and shared
+  UI packages to avoid duplicate React and Motion contexts after upgrades.
 - Explain original-image HTTP, network, timeout and decode failures in the
   viewer and allow retries to discard failed cached image data.
 - Preserve TIFF grayscale and transparent alpha channels, report DOM image

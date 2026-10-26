@@ -4,35 +4,44 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "05:17"
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 8
+    open-pull-requests-limit: 1
     versioning-strategy: increase-if-necessary
+    # These major upgrades need an explicit Node.js support decision.
+    # update-types ignores apply to version updates, not security updates.
+    ignore:
+      - dependency-name: jotai
+        # Jotai 3 requires Node.js 22; this project still declares Node.js 20.
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/node"
+        # Keep types aligned with the supported Node.js runtime versions.
+        update-types:
+          - version-update:semver-major
     groups:
-      production-minor-and-patch:
-        dependency-type: production
-        update-types:
-          - minor
-          - patch
-      development-minor-and-patch:
-        dependency-type: development
-        update-types:
-          - minor
-          - patch
+      npm-monthly:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "05:47"
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 1
     groups:
-      actions-minor-and-patch:
+      actions-monthly:
+        applies-to: version-updates
         patterns:
           - "*"
-        update-types:
-          - minor
-          - patch
+      actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
