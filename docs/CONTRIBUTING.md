@@ -6,7 +6,7 @@ This repository is a pnpm workspace. The main app is `apps/web`; photo processin
 
 Prerequisites:
 
-- Node.js `^20.19.0 || >=22.12.0`
+- Node.js `^20.19.0 || >=22.22.2`
 - pnpm 10.19.0
 
 Install dependencies:

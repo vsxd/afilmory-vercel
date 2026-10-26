@@ -1,3 +1,7 @@
+import type {
+  ClusterFeature as SuperclusterClusterFeature,
+  PointFeature as SuperclusterPointFeature,
+} from "supercluster";
 import Supercluster from "supercluster";
 
 import type { GeographicRegion, PhotoMarker } from "~/types/map";
@@ -22,8 +26,8 @@ type RegionPointProperties = {
 
 type PointProperties = PhotoPointProperties | RegionPointProperties;
 type ClusterProperties = { previewPhotos: PhotoMarker[] };
-type PointFeature = Supercluster.PointFeature<PointProperties>;
-type ClusterFeature = Supercluster.ClusterFeature<ClusterProperties>;
+type PointFeature = SuperclusterPointFeature<PointProperties>;
+type ClusterFeature = SuperclusterClusterFeature<ClusterProperties>;
 type IndexedFeature = ClusterFeature | PointFeature;
 
 const getClusterPointGeometry = (

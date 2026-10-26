@@ -100,7 +100,7 @@
 
 ## 🚀 快速开始
 
-先安装 Node.js `^20.19.0 || >=22.12.0` 和 pnpm 10.19.0，再运行以下命令，无需凭据或个人照片即可体验完整界面：
+先安装 Node.js `^20.19.0 || >=22.22.2` 和 pnpm 10.19.0，再运行以下命令，无需凭据或个人照片即可体验完整界面：
 
 ```bash
 git clone https://github.com/vsxd/afilmory-vercel.git
@@ -280,7 +280,7 @@ SOCIAL_RSS=true
 
 ### 前置要求
 
-- Node.js `^20.19.0 || >=22.12.0`（以 `package.json` 为准）
+- Node.js `^20.19.0 || >=22.22.2`（以 `package.json` 为准）
 - pnpm 10.19.0
 - S3 兼容对象存储或一个本地照片目录
 

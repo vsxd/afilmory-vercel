@@ -100,7 +100,7 @@ Huge thanks to [Innei](https://innei.in) and the Afilmory team for creating this
 
 ## 🚀 Quick Start
 
-Install Node.js `^20.19.0 || >=22.12.0` and pnpm 10.19.0 first. Then explore
+Install Node.js `^20.19.0 || >=22.22.2` and pnpm 10.19.0 first. Then explore
 the complete UI without credentials or personal photos:
 
 ```bash
@@ -328,7 +328,7 @@ variables shown under [Photo source selection](#photo-source-selection).
 
 ### Prerequisites
 
-- Node.js `^20.19.0 || >=22.12.0` (see `package.json`)
+- Node.js `^20.19.0 || >=22.22.2` (see `package.json`)
 - pnpm 10.19.0
 - Either S3-compatible object storage or a local photo directory
 

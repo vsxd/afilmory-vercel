@@ -11,7 +11,7 @@ inputs:
   node-version:
     description: Node.js version used by this job.
     required: false
-    default: "22.12.0"
+    default: "22.22.2"
 
 runs:
   using: composite
