@@ -17,6 +17,8 @@ export type TextureWorkerRequest =
         imageWidth?: number;
         imageHeight?: number;
         maxSourceBytes?: number;
+        /** A cached base is already painted; prepare lazy tile decoding only. */
+        skipBaseTexture?: boolean;
       };
     }
   | {
@@ -34,6 +36,11 @@ export type TextureWorkerRequest =
 
 export type TextureWorkerMessage =
   | { type: "init-done"; sessionId: TextureWorkerSessionId }
+  | {
+      type: "source-ready";
+      sessionId: TextureWorkerSessionId;
+      payload: { sourceWidth: number; sourceHeight: number };
+    }
   | {
       type: "image-loaded";
       sessionId: TextureWorkerSessionId;

@@ -45,7 +45,6 @@ interface PhotoViewerMediaCarouselProps {
 
 export const PhotoViewerMediaCarousel = ({
   photos,
-  currentPhoto,
   currentIndex,
   isOpen,
   isMobile,
@@ -127,8 +126,8 @@ export const PhotoViewerMediaCarousel = ({
                     thumbnailSrc={photo.thumbnailUrl}
                     thumbHash={photo.thumbHash}
                     alt={getPhotoAccessibleLabel(photo, t, i18n.language)}
-                    width={isCurrentImage ? currentPhoto.width : undefined}
-                    height={isCurrentImage ? currentPhoto.height : undefined}
+                    width={photo.width}
+                    height={photo.height}
                     className="h-full w-full object-contain"
                     shouldRenderHighRes={isViewerContentVisible && isOpen}
                     fitOnViewportResize={isMobile}

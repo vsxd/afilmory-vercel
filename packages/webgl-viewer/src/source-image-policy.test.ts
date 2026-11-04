@@ -155,10 +155,7 @@ describe("bounded worker source", () => {
       });
       expect(decode.mock.calls[0][1]).not.toHaveProperty("resizeWidth");
       expect(decode.mock.calls[0][1]).not.toHaveProperty("resizeHeight");
-      expect(decode.mock.calls[1][1]).toMatchObject({
-        resizeWidth: 2,
-        resizeHeight: 1,
-      });
+      expect(decode).toHaveBeenCalledTimes(1);
       expect(post).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "image-loaded",
@@ -213,8 +210,8 @@ describe("bounded worker source", () => {
     const tile = makeBitmap(100, 100);
     const decode = vi
       .fn()
-      .mockResolvedValueOnce(source)
       .mockResolvedValueOnce(base)
+      .mockResolvedValueOnce(source)
       .mockResolvedValueOnce(tile);
     vi.stubGlobal("createImageBitmap", decode);
     const post = vi.fn();
@@ -386,7 +383,7 @@ describe("bounded worker source", () => {
     expect(post).toHaveBeenCalledExactlyOnceWith({
       type: "load-error",
       sessionId: 1,
-      payload: { error: "Decoded image exceeds source pixel budget" },
+      payload: { error: "Decoded image exceeds base texture budget" },
     });
   });
 
@@ -394,13 +391,14 @@ describe("bounded worker source", () => {
     const large = makeBitmap(8000, 6000);
     const late = makeBitmap(4000, 3000);
     const current = makeBitmap(1000, 750);
+    const currentBase = makeBitmap(500, 375);
     const deferred = Promise.withResolvers<typeof late>();
     const decode = vi
       .fn()
       .mockResolvedValueOnce(large)
       .mockReturnValueOnce(deferred.promise)
       .mockResolvedValueOnce(current)
-      .mockResolvedValueOnce(makeBitmap(500, 375));
+      .mockResolvedValueOnce(currentBase);
     vi.stubGlobal("createImageBitmap", decode);
     const post = vi.fn();
     const handle = createTextureWorkerHandler(post);
@@ -422,7 +420,8 @@ describe("bounded worker source", () => {
     await old;
     expect(large.close).toHaveBeenCalledOnce();
     expect(late.close).toHaveBeenCalledOnce();
-    expect(current.close).not.toHaveBeenCalled();
+    expect(current.close).toHaveBeenCalledOnce();
+    expect(currentBase.close).not.toHaveBeenCalled();
     expect(post.mock.calls.every(([message]) => message.sessionId === 2)).toBe(
       true,
     );
@@ -457,8 +456,10 @@ describe("bounded worker source", () => {
         payload: expect.objectContaining({
           imageWidth: 8000,
           imageHeight: 6000,
-          sourceWidth: 4000,
-          sourceHeight: 3000,
+          sourceWidth: sourceImageDimensions({ width: 8000, height: 6000 })
+            .width,
+          sourceHeight: sourceImageDimensions({ width: 8000, height: 6000 })
+            .height,
         }),
       }),
       expect.any(Array),

@@ -188,6 +188,14 @@ admission, source density, GPU budgets and cancellation are covered with small
 encoded headers, numeric dimensions and bitmap/GL substitutes; they do not
 require large test photographs.
 
+`pnpm test:e2e --project=chromium apps/web/e2e/viewer-cache.spec.ts` covers
+desktop navigation and phone-size touch swipes through real WebGL workers.
+Returning to a JPEG must reuse its decoded preview without another base-bitmap
+response or original download, preserve the rendered pixels, and still produce
+detail tiles on zoom. Worker tests separately verify lazy source decoding,
+concurrent tile requests, cache ownership, byte limits, and stale-session cleanup.
+These assertions verify avoided work, not a device-specific latency target.
+
 For physical iPhone testing, see [the device-check guide](device-check.md).
 The optional temporary production server can use the existing library without
 running Builder or reading private environment files. It records foreground

@@ -5,7 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LoadingIndicatorRef } from "../LoadingIndicator";
 import { LoadingIndicator } from "../LoadingIndicator";
@@ -24,9 +24,12 @@ const renderIndicator = () => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("LoadingIndicator", () => {
+  beforeEach(() => vi.useFakeTimers());
+
   it("renders nothing until a visible state arrives", () => {
     renderIndicator();
 
@@ -38,6 +41,7 @@ describe("LoadingIndicator", () => {
 
     act(() => {
       ref.current!.updateLoadingState({ isVisible: true, loadingProgress: 42 });
+      vi.advanceTimersByTime(180);
     });
 
     const region = screen.getByRole("status");
@@ -60,6 +64,7 @@ describe("LoadingIndicator", () => {
           isWebGLLoading: true,
           webglQuality: quality,
         });
+        vi.advanceTimersByTime(180);
       });
 
       const badge = screen.getByText(labelKey);
@@ -78,6 +83,7 @@ describe("LoadingIndicator", () => {
         isWebGLLoading: true,
         webglQuality: "unknown",
       });
+      vi.advanceTimersByTime(180);
     });
 
     expect(screen.getByRole("status").textContent).not.toContain("unknown");
@@ -99,6 +105,56 @@ describe("LoadingIndicator", () => {
     expect(alert.getAttribute("aria-atomic")).toBe("true");
     expect(alert.textContent).toContain("photo.error.loading");
     expect(alert.textContent).not.toContain("loading.default");
+  });
+
+  it("never displays loading when a cached image paints before the delay", () => {
+    const ref = renderIndicator();
+    act(() => {
+      ref.current!.updateLoadingState({ isVisible: true });
+      vi.advanceTimersByTime(179);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+    act(() => {
+      ref.current!.updateLoadingState({ isVisible: false });
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("shows the latest pending progress and hides immediately after completion", () => {
+    const ref = renderIndicator();
+    act(() => {
+      ref.current!.updateLoadingState({ isVisible: true, loadingProgress: 0 });
+      vi.advanceTimersByTime(100);
+      ref.current!.updateLoadingState({ loadingProgress: 70 });
+      vi.advanceTimersByTime(80);
+    });
+    expect(screen.getByRole("status").textContent).toContain("70%");
+    act(() => ref.current!.updateLoadingState({ isVisible: false }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("cancels pending loading on reset and gives the next photo its own delay", () => {
+    const ref = renderIndicator();
+    act(() => {
+      ref.current!.updateLoadingState({ isVisible: true });
+      vi.advanceTimersByTime(150);
+      ref.current!.resetLoadingState();
+      ref.current!.updateLoadingState({ isVisible: true, loadingProgress: 20 });
+      vi.advanceTimersByTime(30);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+    act(() => vi.advanceTimersByTime(150));
+    expect(screen.getByRole("status").textContent).toContain("20%");
+  });
+
+  it("cancels the pending display timer when unmounted", () => {
+    const ref: { current: LoadingIndicatorRef | null } = { current: null };
+    const { unmount } = render(<LoadingIndicator ref={ref} />);
+    act(() => ref.current!.updateLoadingState({ isVisible: true }));
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("shows an actionable failure and a retry button outside the dismiss gesture", () => {

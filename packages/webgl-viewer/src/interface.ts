@@ -1,4 +1,5 @@
 import type { LoadingState } from "./enum";
+import type { ImagePreviewCache } from "./image-preview-cache";
 
 export interface WheelConfig {
   step: number;
@@ -19,6 +20,8 @@ export interface PanningConfig {
 export interface WebGLImageViewerProps {
   src: string;
   sourceBlob?: Blob | null;
+  /** Optional runtime-owned cache; the viewer never disposes it. */
+  previewCache?: ImagePreviewCache | null;
   className?: string;
   width?: number; // 可选的预知图片宽度，用于优化加载
   height?: number; // 可选的预知图片高度，用于优化加载

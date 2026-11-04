@@ -34,7 +34,13 @@ const hoisted = vi.hoisted(() => ({
   zoomIn: vi.fn(),
   zoomOut: vi.fn(),
   resetView: vi.fn(),
+  webglCallbacks: {} as {
+    onImagePainted?: () => void;
+    onLoadingStateChange?: (loading: boolean, state?: number) => void;
+    previewCache?: unknown;
+  },
   runtime: {
+    imagePreviewCache: { cache: "runtime-preview-cache" },
     imageCache: { delete: vi.fn() },
     imageLoading: {
       createLoader: vi.fn(() => ({
@@ -75,11 +81,18 @@ vi.mock("@afilmory/webgl-viewer", async () => {
   const React = await import("react");
 
   return {
+    LoadingState: { CREATE_TEXTURE: 0, IMAGE_LOADING: 1 },
     WebGLImageViewer: ({
       onError,
+      onImagePainted,
+      onLoadingStateChange,
+      previewCache,
       ref,
     }: {
       onError?: (error: unknown) => void;
+      onImagePainted?: () => void;
+      onLoadingStateChange?: (loading: boolean, state?: number) => void;
+      previewCache?: unknown;
       ref?: React.RefObject<{
         zoomIn: () => void;
         zoomOut: () => void;
@@ -87,6 +100,11 @@ vi.mock("@afilmory/webgl-viewer", async () => {
         getScale: () => number;
       } | null>;
     }) => {
+      hoisted.webglCallbacks = {
+        onImagePainted,
+        onLoadingStateChange,
+        previewCache,
+      };
       React.useImperativeHandle(ref, () => ({
         zoomIn: hoisted.zoomIn,
         zoomOut: hoisted.zoomOut,
@@ -249,7 +267,7 @@ describe("ProgressiveImage", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("keeps video retry visible when a previously painted photo remounts before its new img load", async () => {
+  it("waits for a returning still image to paint before mounting video and preserves video retry", async () => {
     const Harness = ({ active }: { active: boolean }) => {
       const indicator = useRef<LoadingIndicatorRef | null>(null);
       return (
@@ -278,22 +296,84 @@ describe("ProgressiveImage", () => {
     vi.useFakeTimers();
     hoisted.failVideo = true;
     rerender(<Harness active />);
-    expect(screen.getByRole("alert").textContent).toContain(
-      "video.error.loading",
-    );
+    expect(screen.queryByRole("alert")).toBeNull();
     const remountedImage = screen.getByRole("img", {
       name: "Returning Live Photo",
     });
     expect(remountedImage).not.toBe(firstImage);
     fireEvent.load(remountedImage);
-    // LoadingIndicator defers hiding for 300ms. Wait beyond that window so a
-    // still-image callback cannot silently erase a newer video failure.
-    act(() => vi.advanceTimersByTime(301));
+    expect(screen.getByRole("alert").textContent).toContain(
+      "video.error.loading",
+    );
+    fireEvent.load(remountedImage);
     expect(screen.getByRole("alert").textContent).toContain(
       "video.error.loading",
     );
     fireEvent.click(screen.getByRole("button", { name: "photo.error.retry" }));
     expect(hoisted.retryVideo).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a thumbnail through inactive and returning canvas states and restores the retained Blob source", async () => {
+    hoisted.canUseWebGL = true;
+    const onBlobSrcChange = vi.fn();
+    const indicator = {
+      updateLoadingState: vi.fn(),
+      resetLoadingState: vi.fn(),
+    };
+    const loadingIndicatorRef = { current: indicator };
+    const props = {
+      photoId: "returning-photo",
+      src: "returning-photo.jpg",
+      thumbnailSrc: "returning-thumbnail.jpg",
+      alt: "Returning photo",
+      onBlobSrcChange,
+      loadingIndicatorRef,
+    };
+    const { rerender, unmount } = render(
+      <ProgressiveImage {...props} isCurrentImage />,
+    );
+    const firstCanvas = await screen.findByTestId("webgl-viewer");
+    expect(hoisted.webglCallbacks.previewCache).toBe(
+      hoisted.runtime.imagePreviewCache,
+    );
+    act(() => hoisted.webglCallbacks.onImagePainted?.());
+    expect(screen.queryByAltText("Returning photo")).toBeNull();
+    const inactiveCallbacks = hoisted.webglCallbacks;
+    rerender(<ProgressiveImage {...props} isCurrentImage={false} />);
+    expect(screen.queryByTestId("webgl-viewer")).toBeNull();
+    expect(screen.getByAltText("Returning photo").getAttribute("src")).toBe(
+      "returning-thumbnail.jpg",
+    );
+    indicator.updateLoadingState.mockClear();
+    act(() => {
+      inactiveCallbacks.onLoadingStateChange?.(true, 0);
+      inactiveCallbacks.onImagePainted?.();
+    });
+    expect(indicator.updateLoadingState).not.toHaveBeenCalled();
+
+    onBlobSrcChange.mockClear();
+    rerender(<ProgressiveImage {...props} isCurrentImage />);
+    expect(screen.getByTestId("webgl-viewer")).not.toBe(firstCanvas);
+    expect(screen.getByAltText("Returning photo")).toBeTruthy();
+    expect(onBlobSrcChange).toHaveBeenLastCalledWith("blob:mock-image");
+    expect(hoisted.runtime.imageLoading.createLoader).toHaveBeenCalledOnce();
+    indicator.updateLoadingState.mockClear();
+    act(() => {
+      inactiveCallbacks.onLoadingStateChange?.(false);
+      inactiveCallbacks.onImagePainted?.();
+    });
+    expect(indicator.updateLoadingState).not.toHaveBeenCalled();
+    expect(screen.getByAltText("Returning photo")).toBeTruthy();
+    act(() => hoisted.webglCallbacks.onImagePainted?.());
+    expect(screen.queryByAltText("Returning photo")).toBeNull();
+    const unmountedCallbacks = hoisted.webglCallbacks;
+    unmount();
+    indicator.updateLoadingState.mockClear();
+    act(() => {
+      unmountedCallbacks.onLoadingStateChange?.(false);
+      unmountedCallbacks.onImagePainted?.();
+    });
+    expect(indicator.updateLoadingState).not.toHaveBeenCalled();
   });
 
   it.each([false, true])(

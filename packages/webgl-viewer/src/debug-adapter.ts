@@ -29,6 +29,8 @@ export interface WebGLDebugAdapterInput {
   /** Actual pixel dimensions of the uploaded base texture, if any. */
   baseTextureSize: { width: number; height: number } | null;
   sourceImageSize: { width: number; height: number } | null;
+  /** Available source dimensions can be known before its pixels are decoded. */
+  sourcePixelBytes?: number;
   canvasBackingSize: { width: number; height: number };
   tileCache: ReadonlyMap<TileKey, TileInfo>;
   currentVisibleTiles: ReadonlySet<TileKey>;
@@ -81,11 +83,13 @@ export function createWebGLDebugInfo(input: WebGLDebugAdapterInput): DebugInfo {
       tileTextureBytes,
       baseTextureBytes,
       totalBytes: tileTextureBytes + baseTextureBytes,
-      sourcePixelBytes: input.sourceImageSize
-        ? input.sourceImageSize.width *
-          input.sourceImageSize.height *
-          BYTES_PER_PIXEL
-        : 0,
+      sourcePixelBytes:
+        input.sourcePixelBytes ??
+        (input.sourceImageSize
+          ? input.sourceImageSize.width *
+            input.sourceImageSize.height *
+            BYTES_PER_PIXEL
+          : 0),
       canvasBackingBytes:
         input.canvasBackingSize.width *
         input.canvasBackingSize.height *

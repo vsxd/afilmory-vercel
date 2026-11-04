@@ -10,6 +10,15 @@ import type {
   TextureWorkerRequest,
 } from "./worker-protocol";
 
+interface WorkerImageSession {
+  generation: number;
+  blob: Blob;
+  sourceDimensions: { width: number; height: number } | null;
+  maxSourceBytes?: number;
+  originalImage: ImageBitmap | null;
+  sourcePromise: Promise<ImageBitmap | null> | null;
+}
+
 /** One handler owns one worker's source bitmap. Transferred outputs belong to the engine. */
 export function createTextureWorkerHandler(
   postMessage: (
@@ -17,25 +26,92 @@ export function createTextureWorkerHandler(
     transfer?: Transferable[],
   ) => void,
 ): (message: TextureWorkerRequest) => Promise<void> {
-  let originalImage: ImageBitmap | null = null;
+  let session: WorkerImageSession | null = null;
   let activeSessionId = 0;
   let generation = 0;
+
+  // Most visits only need the base texture. Keep compressed bytes until zoom
+  // requests a tile, and share that one source decode across concurrent tiles.
+  const getSourceImage = (current: WorkerImageSession) => {
+    if (current.originalImage) return Promise.resolve(current.originalImage);
+    current.sourcePromise ??= (async () => {
+      let decoded: ImageBitmap | null = null;
+      try {
+        const target = current.sourceDimensions
+          ? sourceImageDimensions(
+              current.sourceDimensions,
+              current.maxSourceBytes,
+            )
+          : null;
+        decoded = await createImageBitmap(current.blob, {
+          imageOrientation: "from-image",
+          premultiplyAlpha: "none",
+          ...(target && !sameDimensions(target, current.sourceDimensions!)
+            ? {
+                resizeWidth: target.width,
+                resizeHeight: target.height,
+                resizeQuality: "high" as const,
+              }
+            : {}),
+        });
+        if (generation !== current.generation) return null;
+        current.sourceDimensions ??= {
+          width: decoded.width,
+          height: decoded.height,
+        };
+        const retained = sourceImageDimensions(decoded, current.maxSourceBytes);
+        if (!sameDimensions(retained, decoded)) {
+          const oversized = decoded;
+          decoded = null;
+          try {
+            decoded = await createImageBitmap(oversized, {
+              resizeWidth: retained.width,
+              resizeHeight: retained.height,
+              resizeQuality: "high",
+              premultiplyAlpha: "none",
+            });
+          } finally {
+            oversized.close();
+          }
+          if (generation !== current.generation) return null;
+        }
+        if (
+          !sameDimensions(
+            sourceImageDimensions(decoded, current.maxSourceBytes),
+            decoded,
+          )
+        ) {
+          throw new Error("Decoded image exceeds source pixel budget");
+        }
+        current.originalImage = decoded;
+        decoded = null;
+        postMessage({
+          type: "source-ready",
+          sessionId: activeSessionId,
+          payload: {
+            sourceWidth: current.originalImage.width,
+            sourceHeight: current.originalImage.height,
+          },
+        });
+        return current.originalImage;
+      } finally {
+        decoded?.close();
+        current.sourcePromise = null;
+      }
+    })();
+    return current.sourcePromise;
+  };
 
   return async (message: TextureWorkerRequest): Promise<void> => {
     const { type, payload } = message;
 
     switch (type) {
       case "load-image": {
-        // 上下文恢复会通过同一个存活 worker 重新 loadImage：旧的全尺寸 bitmap
-        // （48MP 约 190MB）若等 GC 释放，恰好撞上引发上下文丢失的内存压力窗口。
-        // 先置 null 再解码，解码期间到达的 create-tile 会走 !originalImage 守卫安全失败。
         const { sessionId } = payload;
         activeSessionId = sessionId;
         const currentGeneration = ++generation;
-        if (originalImage) {
-          originalImage.close();
-          originalImage = null;
-        }
+        session?.originalImage?.close();
+        session = null;
         const {
           url,
           blob: sourceBlob,
@@ -43,8 +119,7 @@ export function createTextureWorkerHandler(
           maxTextureBytes,
           maxSourceBytes,
         } = payload;
-        let decodedImage: ImageBitmap | null = null;
-        let initialLODBitmap: ImageBitmap | null = null;
+        let baseBitmap: ImageBitmap | null = null;
         try {
           const blob =
             sourceBlob ??
@@ -52,7 +127,7 @@ export function createTextureWorkerHandler(
               const response = await fetch(url, { mode: "cors" });
               if (!response.ok)
                 throw new Error(`Image request failed: ${response.status}`);
-              return await response.blob();
+              return response.blob();
             })());
           if (generation !== currentGeneration) return;
           const hint = {
@@ -60,143 +135,141 @@ export function createTextureWorkerHandler(
             height: payload.imageHeight,
           };
           const knownDimensions = hasImageDimensions(hint) ? hint : null;
-          // Manifest dimensions are logical coordinates, not proof of the
-          // encoded bitmap's size (converted media or stale manifests differ).
-          const sourceDimensions = await readSourceImageDimensions(blob);
+          // Header dimensions are oriented encoded pixels; manifest hints only
+          // define logical coordinates and must never force a source upscale.
+          let sourceDimensions = await readSourceImageDimensions(blob);
           if (generation !== currentGeneration) return;
-          const target = sourceDimensions
-            ? sourceImageDimensions(sourceDimensions, maxSourceBytes)
-            : null;
-          decodedImage = await createImageBitmap(blob, {
-            // Manifest dimensions already include EXIF orientation. Decode in
-            // that same display orientation before applying the target size.
-            imageOrientation: "from-image",
-            premultiplyAlpha: "none",
-            ...(target &&
-            (target.width !== sourceDimensions!.width ||
-              target.height !== sourceDimensions!.height)
-              ? {
-                  resizeWidth: target.width,
-                  resizeHeight: target.height,
-                  resizeQuality: "high" as const,
-                }
-              : {}),
-          });
-          if (generation !== currentGeneration) {
-            decodedImage.close();
+          const current: WorkerImageSession = {
+            generation: currentGeneration,
+            blob,
+            sourceDimensions,
+            maxSourceBytes,
+            originalImage: null,
+            sourcePromise: null,
+          };
+          if (payload.skipBaseTexture) {
+            session = current;
+            postMessage({ type: "init-done", sessionId });
             return;
           }
-          const logicalDimensions = knownDimensions ??
-            sourceDimensions ?? {
-              width: decodedImage.width,
-              height: decodedImage.height,
-            };
-          // Unknown/ambiguous headers use native dimension discovery, regardless
-          // of manifest hints. Bound what we retain; decode buffers may be larger.
-          const retained = sourceImageDimensions(decodedImage, maxSourceBytes);
-          if (
-            retained.width !== decodedImage.width ||
-            retained.height !== decodedImage.height
-          ) {
-            const oversized = decodedImage;
-            decodedImage = null;
-            try {
-              decodedImage = await createImageBitmap(oversized, {
-                resizeWidth: retained.width,
-                resizeHeight: retained.height,
-                resizeQuality: "high",
-                premultiplyAlpha: "none",
-              });
-            } finally {
-              oversized.close();
-            }
-            if (generation !== currentGeneration) {
-              decodedImage.close();
-              return;
-            }
-          }
-          const checked = sourceImageDimensions(decodedImage, maxSourceBytes);
-          if (
-            checked.width !== decodedImage.width ||
-            checked.height !== decodedImage.height
-          ) {
-            throw new Error("Decoded image exceeds source pixel budget");
-          }
-          originalImage = decodedImage;
-          decodedImage = null;
-
-          // Create initial LOD texture
-          const lodLevel = 1; // Initial LOD level
-          const lodConfig = SIMPLE_LOD_LEVELS[lodLevel];
-          // 底图按 0.5x 生成：超大原图（如 10000px 宽 → 5000px 底图）会超过老
-          // iOS/Android GPU 的 MAX_TEXTURE_SIZE（常见 4096），texImage2D 静默失败、
-          // 回退四边形渲染成黑块。按当前上下文的能力等比钳制到能容纳的最大尺寸。
-          const { width: finalWidth, height: finalHeight } =
-            clampDimensionsToFit(
+          let logicalDimensions = knownDimensions ?? sourceDimensions;
+          const lodLevel = 1;
+          const getBaseDimensions = () => {
+            const retained = sourceImageDimensions(
+              sourceDimensions!,
+              maxSourceBytes,
+            );
+            return clampDimensionsToFit(
               Math.max(
                 1,
                 Math.min(
-                  originalImage.width,
-                  Math.round(logicalDimensions.width * lodConfig.scale),
+                  retained.width,
+                  Math.round(
+                    logicalDimensions!.width *
+                      SIMPLE_LOD_LEVELS[lodLevel].scale,
+                  ),
                 ),
               ),
               Math.max(
                 1,
                 Math.min(
-                  originalImage.height,
-                  Math.round(logicalDimensions.height * lodConfig.scale),
+                  retained.height,
+                  Math.round(
+                    logicalDimensions!.height *
+                      SIMPLE_LOD_LEVELS[lodLevel].scale,
+                  ),
                 ),
               ),
               maxTextureSize,
               maxTextureBytes,
             );
-
-          initialLODBitmap = await createImageBitmap(originalImage, {
-            resizeWidth: finalWidth,
-            resizeHeight: finalHeight,
-            resizeQuality: "medium",
+          };
+          const target = sourceDimensions ? getBaseDimensions() : null;
+          baseBitmap = await createImageBitmap(blob, {
+            imageOrientation: "from-image",
             premultiplyAlpha: "none",
+            ...(target && !sameDimensions(target, sourceDimensions!)
+              ? {
+                  resizeWidth: target.width,
+                  resizeHeight: target.height,
+                  resizeQuality: "medium" as const,
+                }
+              : {}),
           });
-          if (generation !== currentGeneration) {
-            initialLODBitmap.close();
-            return;
+          if (generation !== currentGeneration) return;
+          sourceDimensions ??= {
+            width: baseBitmap.width,
+            height: baseBitmap.height,
+          };
+          logicalDimensions ??= sourceDimensions;
+          current.sourceDimensions = sourceDimensions;
+          const baseTarget = getBaseDimensions();
+          // Unknown headers need native discovery. Also defend against decoders
+          // ignoring resize options, without retaining that oversized allocation.
+          if (
+            baseBitmap.width > baseTarget.width ||
+            baseBitmap.height > baseTarget.height
+          ) {
+            const oversized = baseBitmap;
+            baseBitmap = null;
+            try {
+              baseBitmap = await createImageBitmap(oversized, {
+                resizeWidth: Math.min(oversized.width, baseTarget.width),
+                resizeHeight: Math.min(oversized.height, baseTarget.height),
+                resizeQuality: "medium",
+                premultiplyAlpha: "none",
+              });
+            } finally {
+              oversized.close();
+            }
+            if (generation !== currentGeneration) return;
           }
-
+          if (
+            baseBitmap.width > baseTarget.width ||
+            baseBitmap.height > baseTarget.height
+          ) {
+            throw new Error("Decoded image exceeds base texture budget");
+          }
+          const sourceTarget = sourceImageDimensions(
+            sourceDimensions,
+            maxSourceBytes,
+          );
           postMessage(
             {
               type: "image-loaded",
               sessionId,
               payload: {
-                imageBitmap: initialLODBitmap,
+                imageBitmap: baseBitmap,
                 imageWidth: logicalDimensions.width,
                 imageHeight: logicalDimensions.height,
-                sourceWidth: originalImage.width,
-                sourceHeight: originalImage.height,
+                sourceWidth: sourceTarget.width,
+                sourceHeight: sourceTarget.height,
                 lodLevel,
               },
             },
-            [initialLODBitmap],
+            [baseBitmap],
           );
-          initialLODBitmap = null;
+          baseBitmap = null;
+          session = current;
           postMessage({ type: "init-done", sessionId });
         } catch (error) {
-          decodedImage?.close();
-          initialLODBitmap?.close();
           if (generation === currentGeneration) {
-            originalImage?.close();
-            originalImage = null;
+            session?.originalImage?.close();
+            session = null;
             postMessage({
               type: "load-error",
               sessionId,
               payload: { error: toErrorMessage(error) },
             });
           }
+        } finally {
+          baseBitmap?.close();
         }
         break;
       }
       case "create-tile": {
         const { sessionId } = payload;
-        if (sessionId !== activeSessionId || !originalImage) {
+        if (sessionId !== activeSessionId || !session) {
           // 必须回 tile-error（引擎靠它把 key 移出 loadingTiles 重新排队）：
           // 静默丢弃会让上下文恢复窗口期到达的瓦片永远不再被请求。
           postMessage({
@@ -209,6 +282,7 @@ export function createTextureWorkerHandler(
 
         const { x, y, lodLevel, imageWidth, imageHeight, key } = payload;
         const lodConfig = SIMPLE_LOD_LEVELS[lodLevel];
+        const current = session;
         const currentGeneration = generation;
         let tileBitmap: ImageBitmap | null = null;
 
@@ -229,6 +303,9 @@ export function createTextureWorkerHandler(
           ) {
             throw new Error("Tile coordinates are outside the image");
           }
+
+          const originalImage = await getSourceImage(current);
+          if (!originalImage || generation !== currentGeneration) return;
 
           // Calculate tile region in the original image
           // Grid positions remain in original-image coordinates. Crop the
@@ -317,4 +394,11 @@ export function createTextureWorkerHandler(
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function sameDimensions(
+  first: { width: number; height: number },
+  second: { width: number; height: number },
+): boolean {
+  return first.width === second.width && first.height === second.height;
 }

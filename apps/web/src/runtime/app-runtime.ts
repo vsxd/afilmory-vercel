@@ -1,8 +1,10 @@
 import type { AfilmoryManifest } from "@afilmory/schema";
+import { ImagePreviewCache } from "@afilmory/webgl-viewer";
 import { createStore } from "jotai";
 import { createContext, use, useSyncExternalStore } from "react";
 
 import { PhotoRepository } from "~/data-runtime/photo-repository";
+import { isMobileDevice } from "~/lib/device-viewport";
 import type { RegularImageCache } from "~/lib/image-cache-service";
 import { createRegularImageCache } from "~/lib/image-cache-service";
 import { ImageConversionService } from "~/lib/image-conversion-service";
@@ -114,6 +116,7 @@ export type AppRuntime = {
   bodyScrollLock: BodyScrollLockManager;
   browser: AfilmoryBrowserRuntime;
   imageCache: RegularImageCache;
+  imagePreviewCache: ImagePreviewCache;
   imageConverter: ImageConverterManager;
   imageLoading: ImageLoadingService;
   photoRepository: PhotoRepository;
@@ -131,6 +134,11 @@ export function createAppRuntime({
   const navigation = new NavigationController();
   const bodyScrollLock = new BodyScrollLockManager();
   const imageCache = createRegularImageCache();
+  const imagePreviewCache = new ImagePreviewCache(
+    // Mobile keeps eight maximum-size (8 MiB) previews, or more smaller ones.
+    (isMobileDevice ? 64 : 48) * 1024 * 1024,
+    isMobileDevice ? 16 : 6,
+  );
   const imageConverter = new ImageConverterManager();
   const imageLoading = new RuntimeImageLoadingService(
     imageCache,
@@ -145,6 +153,7 @@ export function createAppRuntime({
     bodyScrollLock,
     browser: browserRuntime,
     imageCache,
+    imagePreviewCache,
     imageConverter,
     imageLoading,
     photoRepository,
@@ -153,6 +162,7 @@ export function createAppRuntime({
       navigation.dispose();
       imageLoading.dispose();
       this.imageCache.clear();
+      imagePreviewCache.dispose();
       photoRepository.dispose();
       bodyScrollLock.reset();
       return imageConverter.dispose();

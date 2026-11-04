@@ -1,4 +1,5 @@
 export { LoadingState } from "./enum";
+export { ImagePreviewCache } from "./image-preview-cache";
 export type {
   DebugInfo,
   DoubleClickConfig,

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ImagePreviewCache } from "./image-preview-cache";
 import type { WebGLInputControllerHost } from "./input-controller";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
@@ -182,6 +183,7 @@ function createEngine(
     {
       src: "blob:photo",
       sourceBlob: null,
+      previewCache: null,
       className: "",
       width: 100,
       height: 100,
@@ -589,7 +591,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
           url: "blob:photo",
           blob: sourceBlob,
           maxTextureSize: 4096,
-          maxTextureBytes: 64 * 1024 * 1024,
+          maxTextureBytes: (sourceMiB / 4) * 1024 * 1024,
           imageWidth: 100,
           imageHeight: 100,
           maxSourceBytes: sourceMiB * 1024 * 1024,
@@ -720,6 +722,14 @@ describe("WebGLImageViewerEngine lifecycle", () => {
           sourceWidth: 1000 * density,
           sourceHeight: 1000 * density,
           lodLevel: 1,
+        },
+      });
+      expect(snapshots.at(-1)!.memory.sourcePixelBytes).toBe(0);
+      emit({
+        type: "source-ready",
+        payload: {
+          sourceWidth: 1000 * density,
+          sourceHeight: 1000 * density,
         },
       });
       emit({ type: "init-done" });
@@ -897,6 +907,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
       {
         src: "blob:photo",
         sourceBlob: null,
+        previewCache: null,
         className: "",
         width: 100,
         height: 100,
@@ -1222,6 +1233,119 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     engine.destroy();
   });
 
+  it("paints a revisited Blob from the preview cache before the worker replies", async () => {
+    const cache = new ImagePreviewCache();
+    const source = new Blob(["same compressed photo"]);
+    const bitmap = { width: 1000, height: 750, close: vi.fn() };
+    const make = () => {
+      const canvas = document.createElement("canvas");
+      const gl = createWebGLMock();
+      vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+      vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+        width: 400,
+        height: 300,
+      } as DOMRect);
+      const onImagePainted = vi.fn();
+      const onLoadingStateChange = vi.fn();
+      const engine = createEngine(canvas, {
+        previewCache: cache,
+        onImagePainted,
+        onLoadingStateChange,
+      });
+      return {
+        engine,
+        gl,
+        onImagePainted,
+        onLoadingStateChange,
+        worker: WorkerMock.instances.at(-1)!,
+      };
+    };
+    const first = make();
+    const pending = first.engine.loadImage(
+      "blob:first-lease",
+      2000,
+      1500,
+      source,
+    );
+    first.worker.onmessage?.({
+      data: {
+        type: "image-loaded",
+        sessionId: 1,
+        payload: {
+          imageBitmap: bitmap,
+          imageWidth: 2000,
+          imageHeight: 1500,
+          lodLevel: 1,
+        },
+      },
+    } as MessageEvent);
+    await pending;
+    expect(first.onImagePainted).toHaveBeenCalledOnce();
+    first.engine.destroy();
+    expect(bitmap.close).not.toHaveBeenCalled();
+
+    const returned = make();
+    await returned.engine.loadImage("blob:new-lease", 2000, 1500, source);
+    expect(returned.onImagePainted).toHaveBeenCalledOnce();
+    expect(returned.gl.texImage2D).toHaveBeenCalledWith(
+      returned.gl.TEXTURE_2D,
+      0,
+      returned.gl.RGBA,
+      returned.gl.RGBA,
+      returned.gl.UNSIGNED_BYTE,
+      bitmap,
+    );
+    expect(
+      returned.onLoadingStateChange.mock.calls.every(([loading]) => !loading),
+    ).toBe(true);
+    expect(returned.worker.postMessage).toHaveBeenCalledWith({
+      type: "load-image",
+      payload: expect.objectContaining({ blob: source, skipBaseTexture: true }),
+    });
+    returned.worker.onmessage?.({
+      data: { type: "init-done", sessionId: 1 },
+    } as MessageEvent);
+    expect(returned.worker.postMessage).toHaveBeenCalledTimes(1);
+    for (let step = 0; step < 6; step++) returned.engine.zoomIn(false);
+    await vi.waitFor(() =>
+      expect(returned.worker.postMessage).toHaveBeenCalledWith({
+        type: "create-tile",
+        payload: expect.anything(),
+      }),
+    );
+    returned.engine.destroy();
+    expect(bitmap.close).not.toHaveBeenCalled();
+    cache.dispose();
+    expect(bitmap.close).toHaveBeenCalledOnce();
+  });
+
+  it("does not reuse a preview with incompatible logical dimensions", () => {
+    const cache = new ImagePreviewCache();
+    const source = new Blob(["photo"]);
+    const bitmap = {
+      width: 50,
+      height: 50,
+      close: vi.fn(),
+    } satisfies ImageBitmap;
+    cache.set(source, {
+      imageBitmap: bitmap,
+      imageWidth: 100,
+      imageHeight: 100,
+      lodLevel: 1,
+    });
+    const canvas = document.createElement("canvas");
+    vi.spyOn(canvas, "getContext").mockReturnValue(createWebGLMock());
+    const engine = createEngine(canvas, { previewCache: cache });
+    void engine.loadImage("blob:photo", 200, 100, source).catch(() => {});
+    expect(
+      WorkerMock.instances.at(-1)!.postMessage.mock.calls[0][0].payload
+        .skipBaseTexture,
+    ).toBeUndefined();
+    engine.destroy();
+    expect(bitmap.close).not.toHaveBeenCalled();
+    cache.dispose();
+  });
+
   it("rejects the load and closes the bitmap when base texture allocation fails", async () => {
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
@@ -1393,7 +1517,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         url: "blob:photo",
         blob: sourceBlob,
         maxTextureSize: 4096,
-        maxTextureBytes: 64 * 1024 * 1024,
+        maxTextureBytes: 16 * 1024 * 1024,
         imageWidth: 100,
         imageHeight: 100,
         maxSourceBytes: 64 * 1024 * 1024,
@@ -1463,7 +1587,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         url: "blob:photo",
         blob: null,
         maxTextureSize: 4096,
-        maxTextureBytes: 64 * 1024 * 1024,
+        maxTextureBytes: 16 * 1024 * 1024,
         imageWidth: 100,
         imageHeight: 100,
         maxSourceBytes: 64 * 1024 * 1024,

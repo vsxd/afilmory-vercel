@@ -1,7 +1,14 @@
 import { clsxm, Thumbhash } from "@afilmory/ui";
 import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { useMediaQuery } from "usehooks-ts";
@@ -13,6 +20,7 @@ import {
   hasLoadedThumbnail,
   markThumbnailLoaded,
 } from "~/lib/thumbnail-load-cache";
+import { useAfilmoryRuntime } from "~/runtime/app-runtime";
 
 import { SlidingNumber } from "../number/SlidingNumber";
 import { PHOTO_VIEWER_FIT_SCALE } from "./animations/utils";
@@ -28,6 +36,7 @@ import {
 } from "./hooks";
 import { LivePhotoBadge, LivePhotoFeedback } from "./LivePhotoBadge";
 import { LivePhotoVideo } from "./LivePhotoVideo";
+import type { LoadingIndicatorRef } from "./LoadingIndicator";
 import type { ProgressiveImageProps, WebGLImageViewerRef } from "./types";
 import { useMediaViewportRefit } from "./useMediaViewportRefit";
 
@@ -62,9 +71,10 @@ export const ProgressiveImage = ({
   videoSource,
   shouldAutoPlayVideoOnce = false,
   isHDR = false,
-  loadingIndicatorRef,
+  loadingIndicatorRef: sharedLoadingIndicatorRef,
 }: ProgressiveImageProps) => {
   const { t } = useTranslation();
+  const runtime = useAfilmoryRuntime();
   const shouldReduceMotion = useReducedMotion() === true;
   const canUseWebGL = getCanUseWebGL();
 
@@ -90,8 +100,45 @@ export const ProgressiveImage = ({
   const blobSrc = image.status === "loaded" ? image.lease.blobSrc : null;
   const imageBlob = image.status === "loaded" ? image.lease.blob : null;
   const error = image.status === "failed";
-  const isHighResImageRendered = image.status === "loaded" && image.rendered;
   const isActiveImage = Boolean(isCurrentImage && shouldRenderHighRes);
+  const isHighResImageRendered =
+    isActiveImage && image.status === "loaded" && image.rendered;
+  // Callbacks belong to one activation of this slide. Late work from a previous
+  // canvas must not paint or clear the shared indicator after navigation.
+  const imageSession = useMemo(
+    () => ({ src, isCurrentImage }),
+    [src, isCurrentImage],
+  );
+  const imageSessionRef = useRef<typeof imageSession | null>(imageSession);
+  imageSessionRef.current = imageSession;
+  useLayoutEffect(() => {
+    imageSessionRef.current = imageSession;
+    return () => {
+      if (imageSessionRef.current === imageSession)
+        imageSessionRef.current = null;
+    };
+  }, [imageSession]);
+  const loadingIndicatorRef = useMemo(
+    () => ({
+      current: {
+        updateLoadingState: (...args) => {
+          if (
+            imageSession.isCurrentImage &&
+            imageSessionRef.current === imageSession
+          )
+            sharedLoadingIndicatorRef.current?.updateLoadingState(...args);
+        },
+        resetLoadingState: () => {
+          if (
+            imageSession.isCurrentImage &&
+            imageSessionRef.current === imageSession
+          )
+            sharedLoadingIndicatorRef.current?.resetLoadingState();
+        },
+      } satisfies LoadingIndicatorRef,
+    }),
+    [imageSession, sharedLoadingIndicatorRef],
+  );
   const webGLMinZoom = Math.min(minZoom, PHOTO_VIEWER_FIT_SCALE);
   const shouldShowLowResPlaceholder = Boolean(
     (thumbnailSrc || thumbHash) &&
@@ -112,6 +159,12 @@ export const ProgressiveImage = ({
   const fallbackSourceRef = useRef(src);
   const useDomFallbackRef = useRef(useDomFallback);
   useDomFallbackRef.current = useDomFallback;
+
+  useEffect(() => {
+    // The active-only canvas/DOM image has been destroyed. A retained Blob
+    // lease does not mean the next canvas has painted yet.
+    if (!isActiveImage) setState.resetImageRendered();
+  }, [isActiveImage, setState]);
 
   // Hooks
   const reportImageFailure = useImageLoader({
@@ -172,15 +225,25 @@ export const ProgressiveImage = ({
 
   // 高清图已渲染到DOM（WebGL onImagePainted 或 DOM img onLoad）
   const handleHighResRendered = useCallback(() => {
-    // Returning to an already painted Live Photo remounts both DOM media
-    // elements. The video may already own the shared progress/error indicator
-    // before the new img fires load; only its first still-image paint may hide it.
+    if (
+      !imageSession.isCurrentImage ||
+      imageSessionRef.current !== imageSession
+    )
+      return;
+    // Once video owns the shared progress/error indicator, repeated still-image
+    // load events must not dismiss its failure or retry action.
     if (hasVideo && isHighResImageRendered) return;
     setState.markImageRendered();
     loadingIndicatorRef.current?.updateLoadingState({
       isVisible: false,
     });
-  }, [hasVideo, isHighResImageRendered, loadingIndicatorRef, setState]);
+  }, [
+    hasVideo,
+    imageSession,
+    isHighResImageRendered,
+    loadingIndicatorRef,
+    setState,
+  ]);
 
   const showContextMenu = useShowContextMenu();
 
@@ -385,6 +448,7 @@ export const ProgressiveImage = ({
               aria-hidden={!isHighResImageRendered}
               src={blobSrc}
               sourceBlob={imageBlob}
+              previewCache={runtime.imagePreviewCache}
               className="absolute inset-0 h-full w-full"
               width={width}
               height={height}

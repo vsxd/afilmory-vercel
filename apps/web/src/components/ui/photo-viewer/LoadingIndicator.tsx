@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-const MIN_VISIBLE_DURATION_MS = 300;
+const SHOW_DELAY_MS = 180;
 
 // WebGL 纹理质量徽标：文案走 i18n，颜色用调色板工具类
 // （与旧内联 hex 等值：#4ade80→green-400、#fbbf24→amber-400、#f87171→red-400）。
@@ -81,22 +81,24 @@ export const LoadingIndicator = ({
   const { t } = useTranslation();
   const [loadingState, setLoadingState] =
     useState<LoadingState>(initialLoadingState);
-  const visibleSinceRef = useRef<number | null>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingStateRef = useRef<LoadingState>(initialLoadingState);
+  const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isVisibleRef = useRef(false);
 
-  const clearHideTimer = useCallback(() => {
-    if (!hideTimerRef.current) return;
-    clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = null;
+  const clearShowTimer = useCallback(() => {
+    if (showTimerRef.current === null) return;
+    clearTimeout(showTimerRef.current);
+    showTimerRef.current = null;
   }, []);
 
   const hideImmediately = useCallback(() => {
-    clearHideTimer();
-    visibleSinceRef.current = null;
+    clearShowTimer();
+    pendingStateRef.current = initialLoadingState;
+    isVisibleRef.current = false;
     setLoadingState(initialLoadingState);
-  }, [clearHideTimer]);
+  }, [clearShowTimer]);
 
-  useEffect(() => hideImmediately, [hideImmediately]);
+  useEffect(() => clearShowTimer, [clearShowTimer]);
 
   useImperativeHandle(
     ref,
@@ -104,39 +106,34 @@ export const LoadingIndicator = ({
       () => ({
         updateLoadingState: (partialState: Partial<LoadingState>) => {
           if (partialState.isVisible === false) {
-            const visibleSince = visibleSinceRef.current;
-            if (visibleSince === null) {
-              hideImmediately();
-              return;
-            }
-
-            const elapsed = Date.now() - visibleSince;
-            const remaining = MIN_VISIBLE_DURATION_MS - elapsed;
-            if (remaining <= 0) {
-              hideImmediately();
-              return;
-            }
-
-            clearHideTimer();
-            hideTimerRef.current = setTimeout(() => {
-              hideImmediately();
-            }, remaining);
+            hideImmediately();
             return;
           }
 
-          clearHideTimer();
-          setLoadingState((prev) => {
-            if (!prev.isVisible) {
-              visibleSinceRef.current = Date.now();
-            }
-            return { ...prev, ...partialState, isVisible: true };
-          });
+          pendingStateRef.current = {
+            ...pendingStateRef.current,
+            ...partialState,
+            isVisible: true,
+          };
+          if (pendingStateRef.current.isError || isVisibleRef.current) {
+            clearShowTimer();
+            isVisibleRef.current = true;
+            setLoadingState(pendingStateRef.current);
+          } else if (showTimerRef.current === null) {
+            // Cached images usually paint before this deadline. Avoid turning
+            // their brief decode/upload work into a visible loading sequence.
+            showTimerRef.current = setTimeout(() => {
+              showTimerRef.current = null;
+              isVisibleRef.current = true;
+              setLoadingState(pendingStateRef.current);
+            }, SHOW_DELAY_MS);
+          }
         },
         resetLoadingState: () => {
           hideImmediately();
         },
       }),
-      [clearHideTimer, hideImmediately],
+      [clearShowTimer, hideImmediately],
     ),
   );
 

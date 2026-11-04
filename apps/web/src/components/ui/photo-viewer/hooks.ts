@@ -4,6 +4,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -56,6 +57,12 @@ export function useProgressiveImageState(initialThumbnailLoaded = false) {
             ? { ...previous, rendered: true }
             : previous,
         ),
+      resetImageRendered: () =>
+        setImage((previous) =>
+          previous.status === "loaded" && previous.rendered
+            ? { ...previous, rendered: false }
+            : previous,
+        ),
       setCurrentScale,
       setShowScaleIndicator,
       setIsThumbnailLoaded,
@@ -103,6 +110,17 @@ export function useImageLoader({
   const reportedFailureRef = useRef(false);
   const { resetImage, setImageLease, setImageError } = actions;
   const { status } = image;
+  const blobSrc = image.status === "loaded" ? image.lease.blobSrc : null;
+
+  useLayoutEffect(() => {
+    if (isCurrentImage) loadingIndicatorRef?.current?.resetLoadingState();
+  }, [src, isCurrentImage, loadingIndicatorRef]);
+
+  useEffect(() => {
+    // A virtual slide can keep its Blob lease while its canvas is unmounted.
+    // Returning to it must publish that source again, even without a new load.
+    if (isCurrentImage) onBlobSrcChange?.(blobSrc);
+  }, [blobSrc, isCurrentImage, onBlobSrcChange]);
 
   useEffect(() => {
     resetImage();
@@ -120,11 +138,10 @@ export function useImageLoader({
       imageLeaseRef.current?.release();
       imageLeaseRef.current = null;
       setImageError(failure);
-      onBlobSrcChange?.(null);
       console.error("Failed to load image:", getMediaTaskDiagnostic(failure));
       onError?.(failure);
     },
-    [setImageError, onBlobSrcChange, onError],
+    [setImageError, onError],
   );
 
   const retry = useCallback(() => {
@@ -154,7 +171,6 @@ export function useImageLoader({
     if (status !== "empty" || !isCurrentImage) return;
     const loader = runtime.imageLoading.createLoader();
     let cancelled = false;
-    onBlobSrcChange?.(null);
     loadingIndicatorRef?.current?.resetLoadingState();
     const load = async () => {
       try {
@@ -177,7 +193,6 @@ export function useImageLoader({
         imageLeaseRef.current?.release();
         imageLeaseRef.current = result;
         setImageLease(result);
-        onBlobSrcChange?.(result.blobSrc);
       } catch (cause) {
         if (cancelled || isAbortLikeError(cause)) return;
         reportFailure(
@@ -197,7 +212,6 @@ export function useImageLoader({
     isCurrentImage,
     runtime.imageLoading,
     src,
-    onBlobSrcChange,
     loadingIndicatorRef,
     onProgress,
     t,

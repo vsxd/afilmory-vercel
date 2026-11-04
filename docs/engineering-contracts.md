@@ -39,7 +39,13 @@ React 读取照片列表使用 `usePhotoRepositorySnapshot()`，它通过 `useSy
 
 `texture.worker.ts` 是标准模块 Worker 入口，由 Vite 生成资产 URL。主线程与 Worker 使用 `worker-protocol.ts` 的请求/响应联合；尺寸预算和 LOD/grid 数学通过普通 import 共享，不再序列化函数或拼接 raw 脚本。
 
-Worker 持有全尺寸源 bitmap，成功 postMessage 后底图/瓦片所有权转交 engine。旧 generation 的解码结果和 transfer 失败的产物必须 close；重复 session ID 也不会接纳旧解码。terminate 后已在途的 bitmap 仍由 engine 接收并释放。
+Worker 首帧直接解码预算内底图；只有首次请求高清瓦片时才解码并持有预算内的源 bitmap，并发瓦片共享这次解码。`image-loaded` 上报预计可用源尺寸，`source-ready` 上报实际保留的源尺寸；首帧不把尚未解码的源记为已分配内存。成功 postMessage 后底图/瓦片所有权转交 engine。旧 generation 的解码结果和 transfer 失败的产物必须 close；重复 session ID 也不会接纳旧解码。terminate 后已在途的 bitmap 仍由 engine 接收并释放。
+
+`AppRuntime.imagePreviewCache` 按 Blob 身份复用已解码底图，手机/桌面的总预算分别为 64/48 MiB，张数上限分别为 16/6；单张底图预算分别为 8/16 MiB。手机预算可容纳约 8 张达到单张上限的底图，小图最多 16 张，字节与张数限制同时生效。engine 同步借用缓存 bitmap 上传纹理，缓存接管后只由缓存淘汰或 runtime dispose 时 close。缓存不持有原始 Blob 的强引用，也不保留邻图的 WebGL context、Worker 或高清瓦片。命中时先绘制底图，再以 `skipBaseTexture` 初始化 Worker，放大才解码源图；缓存不命中或尺寸/GPU限制不兼容时正常解码。原图 Blob 缓存淘汰后重新下载会产生新身份，因此底图容量不保证任意大小原图都能命中。
+
+64 MiB 是项目的复用预算，不是浏览器的内存承诺：[MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#budget_vram_conservatively) 指出 WebGL 无法查询最大显存；[WebKit 开发者说明](https://bugs.webkit.org/show_bug.cgi?id=277848#c1) 指出 iPhone 网页进程还受整机内存压力影响。这个预算仅计算缓存底图的 RGBA8 像素，原图 Blob、当前源 bitmap、GPU 纹理、canvas 及解码临时内存另计。
+
+滑动切走仍销毁高清查看器，邻图恢复缩略图，回切后等新查看器的 `onImagePainted` 再移除。图片激活周期隔离共享加载提示的回调；提示延迟 180ms 出现，完成立即隐藏，错误立即显示。
 
 `tsconfig.worker.json` 只启用 WebWorker globals；主包使用 DOM 环境，两者各自检查。生产回归必须确认加载真实 Worker 资产并绘制 canvas，不能把静默 DOM fallback 当作成功。
 

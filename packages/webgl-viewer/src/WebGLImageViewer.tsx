@@ -35,6 +35,7 @@ export const WebGLImageViewer = ({
   ref,
   src,
   sourceBlob,
+  previewCache,
   className = "",
   width,
   height,
@@ -119,6 +120,7 @@ export const WebGLImageViewer = ({
     () => ({
       src,
       sourceBlob: sourceBlob ?? null,
+      previewCache: previewCache ?? null,
       // 引擎不读 className（真实值直接应用在 canvas 上），给常量以免样式变化重建引擎
       className: "",
       width: width || 0,
@@ -148,6 +150,7 @@ export const WebGLImageViewer = ({
     [
       src,
       sourceBlob,
+      previewCache,
       width,
       height,
       initialScale,

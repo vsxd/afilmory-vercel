@@ -3,6 +3,7 @@ import { resolveCanvasBackingStore } from "./canvas-memory";
 import { createWebGLDebugInfo } from "./debug-adapter";
 import { resolveDoubleClickToggle } from "./double-click-zoom-policy";
 import { LoadingState } from "./enum";
+import type { ImagePreview } from "./image-preview-cache";
 import { WebGLInputController } from "./input-controller";
 import type { DebugInfo, WebGLImageViewerProps } from "./interface";
 import { WebGLViewerRenderer } from "./renderer";
@@ -103,6 +104,14 @@ export class WebGLImageViewerEngine {
   private frameCount = 0;
   private baseTextureSize: { width: number; height: number } | null = null;
   private sourceImageSize: { width: number; height: number } | null = null;
+  private retainedSourcePixelBytes = 0;
+
+  // Leave room for several decoded previews without retaining several full
+  // sources or GPU contexts. Zoom detail has its own source/tile budgets.
+  private readonly baseTextureByteBudget = Math.min(
+    BASE_TEXTURE_BYTE_BUDGET,
+    getSourceImageByteBudget() / 4,
+  );
 
   private loadGeneration = 0;
   private currentSessionId = 0;
@@ -340,6 +349,7 @@ export class WebGLImageViewerEngine {
     this.hasNotifiedImagePainted = false;
     this.isLoadingTexture = true;
     this.sourceImageSize = null;
+    this.retainedSourcePixelBytes = 0;
     this.textureWorkerInitialized = false;
     this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING);
     this.tileManager.reset();
@@ -354,7 +364,7 @@ export class WebGLImageViewerEngine {
         url: this.originalImageSrc,
         blob: this.originalSourceBlob,
         maxTextureSize: this.maxTextureSize,
-        maxTextureBytes: BASE_TEXTURE_BYTE_BUDGET,
+        maxTextureBytes: this.baseTextureByteBudget,
         imageWidth: this.imageWidth || undefined,
         imageHeight: this.imageHeight || undefined,
         maxSourceBytes: getSourceImageByteBudget(),
@@ -441,42 +451,17 @@ export class WebGLImageViewerEngine {
     }
 
     if (message.type === "image-loaded") {
-      const { imageBitmap, imageWidth, imageHeight, lodLevel } =
-        message.payload;
+      const { imageBitmap } = message.payload;
+      let retained = false;
       try {
-        if (!this.imageWidth || !this.imageHeight) {
-          this.imageWidth = imageWidth;
-          this.imageHeight = imageHeight;
-          this.setupInitialScaling();
+        this.uploadPreview(message.payload);
+        if (this.originalSourceBlob) {
+          retained =
+            this.config.previewCache?.set(
+              this.originalSourceBlob,
+              message.payload,
+            ) ?? false;
         }
-
-        this.notifyLoadingStateChange(true, LoadingState.CREATE_TEXTURE);
-
-        const baseBitmapWidth = imageBitmap.width;
-        const baseBitmapHeight = imageBitmap.height;
-        const texture = this.createWebGLTexture(imageBitmap);
-        this.textureManager.setBaseTexture(texture, lodLevel);
-        this.baseTextureSize = {
-          width: baseBitmapWidth,
-          height: baseBitmapHeight,
-        };
-        const sourceDimensions = {
-          width: message.payload.sourceWidth,
-          height: message.payload.sourceHeight,
-        };
-        this.sourceImageSize = hasImageDimensions(sourceDimensions)
-          ? sourceDimensions
-          : { width: imageWidth, height: imageHeight };
-        this.currentQuality = getLodQuality(
-          lodLevel,
-          this.getAvailableSourceScale(),
-        );
-
-        this.imageLoaded = true;
-        this.isLoadingTexture = false;
-        this.notifyLoadingStateChange(false);
-        this.render();
-        this.notifyZoomChange();
         this.resolveActiveLoad(message.sessionId);
       } catch (error) {
         this.imageLoaded = false;
@@ -487,7 +472,7 @@ export class WebGLImageViewerEngine {
         );
         this.notifyLoadingStateChange(false);
       } finally {
-        imageBitmap.close();
+        if (!retained) imageBitmap.close();
       }
       return;
     }
@@ -499,6 +484,18 @@ export class WebGLImageViewerEngine {
         message.sessionId,
       );
       this.notifyLoadingStateChange(false);
+      return;
+    }
+
+    if (message.type === "source-ready") {
+      const size = {
+        width: message.payload.sourceWidth,
+        height: message.payload.sourceHeight,
+      };
+      if (hasImageDimensions(size)) {
+        this.sourceImageSize = size;
+        this.retainedSourcePixelBytes = size.width * size.height * 4;
+      }
       return;
     }
 
@@ -541,8 +538,8 @@ export class WebGLImageViewerEngine {
     this.isLoadingTexture = true;
     this.imageLoaded = false;
     this.sourceImageSize = null;
+    this.retainedSourcePixelBytes = 0;
     this.textureWorkerInitialized = false;
-    this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING);
 
     const knownDimensions = { width: preknownWidth, height: preknownHeight };
     if (hasImageDimensions(knownDimensions)) {
@@ -554,6 +551,10 @@ export class WebGLImageViewerEngine {
       this.imageHeight = 0;
     }
 
+    const preview = this.getCachedPreview(sourceBlob);
+    if (!preview)
+      this.notifyLoadingStateChange(true, LoadingState.IMAGE_LOADING);
+
     // 若上一次 loadImage 尚未结算就再次调用，先拒绝旧 promise，避免它永远挂起。
     this.rejectActiveLoad(new Error("loadImage superseded by a newer call"));
     this.tileManager.reset({ releaseTextures: true });
@@ -564,16 +565,19 @@ export class WebGLImageViewerEngine {
       this.activeLoad = { sessionId, resolve, reject };
 
       try {
+        if (preview) this.uploadPreview(preview, true);
         this.workerBridge!.loadImage({
           sessionId,
           url,
           blob: sourceBlob ?? null,
           maxTextureSize: this.maxTextureSize,
-          maxTextureBytes: BASE_TEXTURE_BYTE_BUDGET,
+          maxTextureBytes: this.baseTextureByteBudget,
+          ...(preview ? { skipBaseTexture: true } : {}),
           imageWidth: this.imageWidth || undefined,
           imageHeight: this.imageHeight || undefined,
           maxSourceBytes: getSourceImageByteBudget(),
         });
+        if (preview) this.resolveActiveLoad(sessionId);
       } catch (error) {
         this.rejectActiveLoad(
           toError(error, "Failed to send the image to the texture worker"),
@@ -607,6 +611,62 @@ export class WebGLImageViewerEngine {
       const fitToScreenScale = this.getFitToScreenScale();
       this.scale = fitToScreenScale * this.config.initialScale;
     }
+  }
+
+  /** Uploads borrow the bitmap only for this synchronous call. */
+  private uploadPreview(preview: ImagePreview, cached = false): void {
+    const { imageBitmap, imageWidth, imageHeight, lodLevel } = preview;
+    if (!this.imageWidth || !this.imageHeight) {
+      this.imageWidth = imageWidth;
+      this.imageHeight = imageHeight;
+      this.setupInitialScaling();
+    }
+    if (!cached)
+      this.notifyLoadingStateChange(true, LoadingState.CREATE_TEXTURE);
+    const texture = this.createWebGLTexture(imageBitmap);
+    this.textureManager.setBaseTexture(texture, lodLevel);
+    this.baseTextureSize = {
+      width: imageBitmap.width,
+      height: imageBitmap.height,
+    };
+    const sourceDimensions = {
+      width: preview.sourceWidth,
+      height: preview.sourceHeight,
+    };
+    this.sourceImageSize = hasImageDimensions(sourceDimensions)
+      ? sourceDimensions
+      : { width: imageWidth, height: imageHeight };
+    this.currentQuality = getLodQuality(
+      lodLevel,
+      this.getAvailableSourceScale(),
+    );
+    this.imageLoaded = true;
+    this.isLoadingTexture = false;
+    this.render();
+    this.notifyLoadingStateChange(false);
+    this.notifyZoomChange();
+  }
+
+  private getCachedPreview(
+    source: Blob | null | undefined,
+  ): ImagePreview | undefined {
+    const preview = source ? this.config.previewCache?.get(source) : undefined;
+    if (!preview) return;
+    const { imageBitmap } = preview;
+    // A source can be reused with new manifest dimensions or on a context with
+    // smaller limits. Those entries need a new bounded decode.
+    if (
+      (this.imageWidth > 0 && this.imageWidth !== preview.imageWidth) ||
+      (this.imageHeight > 0 && this.imageHeight !== preview.imageHeight) ||
+      imageBitmap.width <= 0 ||
+      imageBitmap.height <= 0 ||
+      (this.maxTextureSize > 0 &&
+        Math.max(imageBitmap.width, imageBitmap.height) >
+          this.maxTextureSize) ||
+      imageBitmap.width * imageBitmap.height * 4 > this.baseTextureByteBudget
+    )
+      return;
+    return preview;
   }
 
   private createWebGLTexture(
@@ -654,6 +714,7 @@ export class WebGLImageViewerEngine {
       Math.min(
         SIMPLE_LOD_LEVELS[lodLevel].scale,
         this.getAvailableSourceScale(),
+        this.scale * this.devicePixelRatio,
       ) <= effectiveBaseScale
     );
   }
@@ -989,6 +1050,7 @@ export class WebGLImageViewerEngine {
     this.workerBridge?.dispose();
     this.workerBridge = null;
     this.sourceImageSize = null;
+    this.retainedSourcePixelBytes = 0;
 
     // 最后显式释放 WebGL 上下文本身。删除纹理/缓冲只回收了 GL 对象，上下文的
     // 绘制缓冲与驱动侧内存要等 JS GC 才释放——iOS WebKit 的 GC 在内存压力下才跑、
@@ -1054,6 +1116,7 @@ export class WebGLImageViewerEngine {
         tileOutlineEnabled: this.tileOutlineEnabled,
         baseTextureSize: this.baseTextureSize,
         sourceImageSize: this.sourceImageSize,
+        sourcePixelBytes: this.retainedSourcePixelBytes,
         canvasBackingSize: {
           width: this.canvas.width,
           height: this.canvas.height,
