@@ -41,10 +41,7 @@ export async function writeFileAtomic(
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
 
-  const tmpPath = path.join(
-    dir,
-    `.${path.basename(filePath)}.${crypto.randomUUID()}.tmp`,
-  );
+  const tmpPath = path.join(dir, `.afilmory-${crypto.randomUUID()}.tmp`);
 
   let handle: fs.FileHandle | undefined;
   try {

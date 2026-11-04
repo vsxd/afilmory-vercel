@@ -1,4 +1,11 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { useRef } from "react";
 import type { Mock } from "vitest";
 import {
@@ -15,7 +22,11 @@ import {
 import type { ImageLoaderManager } from "~/lib/image-loader-manager";
 import { MediaTaskError } from "~/lib/media-task";
 
-import { useImageLoader, useProgressiveImageState } from "../hooks";
+import {
+  useImageLoader,
+  useProgressiveImageState,
+  useScaleIndicator,
+} from "../hooks";
 import type { LivePhotoVideoHandle } from "../LivePhotoVideo";
 import { LivePhotoVideo } from "../LivePhotoVideo";
 import type { LoadingIndicatorRef } from "../LoadingIndicator";
@@ -132,6 +143,26 @@ function ImageLoaderHarness({
 }
 
 describe("photo viewer runtime lifecycle", () => {
+  it("publishes scale UI only when visible precision or zoom lock changes", () => {
+    vi.useFakeTimers();
+    const onZoom = vi.fn();
+    const onScale = vi.fn();
+    const onVisible = vi.fn();
+    const { result } = renderHook(() =>
+      useScaleIndicator(onZoom, onScale, onVisible),
+    );
+    act(() => {
+      for (let i = 1; i < 50; i++)
+        result.current.onTransformed(1 + i / 1000, 1 + i / 1000);
+    });
+    expect(onScale).toHaveBeenCalledExactlyOnceWith(1);
+    expect(onZoom.mock.calls).toEqual([[false], [true]]);
+    act(() => result.current.onTransformed(1.06, 1.06));
+    expect(onScale).toHaveBeenLastCalledWith(1.1);
+    expect(onScale).toHaveBeenCalledTimes(2);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(onVisible).toHaveBeenLastCalledWith(false);
+  });
   let loadSpy: ReturnType<typeof vi.spyOn>;
   let pauseSpy: ReturnType<typeof vi.spyOn>;
   let playSpy: ReturnType<typeof vi.spyOn>;

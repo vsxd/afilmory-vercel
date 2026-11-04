@@ -8,6 +8,10 @@ import {
 } from "@afilmory/schema";
 
 import {
+  getDisplayImageFileName,
+  getDisplayImagePhotoId,
+} from "../image/display-images.js";
+import {
   getThumbnailFileNameFromUrl,
   getThumbnailPhotoIdFromFileName,
   isThumbnailFileNameForPhoto,
@@ -246,14 +250,16 @@ export async function handleDeletedPhotos(
       if (!entry.isFile() && !entry.isSymbolicLink()) continue;
       const isThumbnail = entry.name.endsWith(".jpg");
       const photoId = isThumbnail
-        ? getThumbnailPhotoIdFromFileName(entry.name)
+        ? (getDisplayImagePhotoId(entry.name) ??
+          getThumbnailPhotoIdFromFileName(entry.name))
         : null;
       const isOwnedThumbnail = Boolean(photoId && ownedPhotoIds.has(photoId));
       const isOwnedMarker =
         entry.name === ".encoding" && ownedPhotoIds.size > 0;
       if (!isOwnedThumbnail && !isOwnedMarker) continue;
       await fs.unlink(path.join(thumbnailsDir, entry.name));
-      if (isOwnedThumbnail) deletedCount++;
+      if (isOwnedThumbnail && !getDisplayImagePhotoId(entry.name))
+        deletedCount++;
     }
     await fs.rmdir(thumbnailsDir).catch((error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT" && error.code !== "ENOTEMPTY") throw error;
@@ -279,6 +285,10 @@ export async function handleDeletedPhotos(
   const manifestExpectedFileNames = new Set<string>();
   const manifestIdsWithExpectedFile = new Set<string>();
   for (const item of items) {
+    for (const image of item.displayImages ?? []) {
+      const displayName = getDisplayImageFileName(image.url, item.id);
+      if (displayName) manifestExpectedFileNames.add(displayName);
+    }
     const fileName = getThumbnailFileNameFromUrl(item.thumbnailUrl);
     if (fileName && isThumbnailFileNameForPhoto(fileName, item.id)) {
       manifestExpectedFileNames.add(fileName);
@@ -290,7 +300,9 @@ export async function handleDeletedPhotos(
     // 只清理 *.jpg 缩略图：目录里还住着 .encoding 编码签名标记（见 image/thumbnail.ts），
     // 误删它会在构建中途崩溃后触发下一次全量重生成缩略图，废掉 artifact-cache 增量路径。
     if (!thumbnail.endsWith(".jpg")) continue;
-    const photoId = getThumbnailPhotoIdFromFileName(thumbnail);
+    const displayPhotoId = getDisplayImagePhotoId(thumbnail);
+    const photoId =
+      displayPhotoId ?? getThumbnailPhotoIdFromFileName(thumbnail);
     // Cleanup is allowed to remove only artifacts tied to the current or
     // previously published manifest. This makes a mispointed shared directory
     // fail safe: unrelated JPEGs are never inferred to be builder-owned merely
@@ -304,13 +316,14 @@ export async function handleDeletedPhotos(
     // live local artifact reliably; keep that photo's files rather than risk
     // deleting the currently published thumbnail.
     const hasAmbiguousPublishedUrl = Boolean(
+      !displayPhotoId &&
       photoId &&
       manifestIdSet.has(photoId) &&
       !manifestIdsWithExpectedFile.has(photoId),
     );
     if (!isExpected && !isFailedButStillStored && !hasAmbiguousPublishedUrl) {
       await fs.unlink(path.join(thumbnailsDir, thumbnail));
-      deletedCount++;
+      if (!displayPhotoId) deletedCount++;
     }
   }
 

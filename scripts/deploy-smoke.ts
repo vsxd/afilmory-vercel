@@ -267,9 +267,12 @@ export async function verifyDeployOutput(
     throw new Error("deploy output is missing its hashed delivery manifest");
   }
   for (const photo of manifest.photos) {
+    if (!photo.displayImages?.length)
+      throw new Error(`deploy output is missing display variants: ${photo.id}`);
     for (const [url, prefix] of [
       [photo.originalUrl, "/originals/"],
       [photo.thumbnailUrl, "/thumbnails/"],
+      ...photo.displayImages.map((image) => [image.url, "/thumbnails/"]),
     ]) {
       if (!url.startsWith(prefix))
         throw new Error(`unexpected smoke media URL: ${url}`);
@@ -280,6 +283,14 @@ export async function verifyDeployOutput(
       const metadata = await sharp(file).metadata();
       if (!metadata.width || !metadata.height)
         throw new Error(`invalid deployed image: ${url}`);
+      const variant = photo.displayImages.find((image) => image.url === url);
+      if (
+        variant &&
+        (variant.width !== metadata.width || variant.height !== metadata.height)
+      )
+        throw new Error(
+          `display variant dimensions differ from deployed image: ${url}`,
+        );
     }
     const original = await fs.readFile(
       path.join(dist, "originals", photo.s3Key),

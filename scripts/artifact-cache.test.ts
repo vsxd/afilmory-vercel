@@ -284,6 +284,18 @@ describe("saveArtifacts", () => {
     ]);
   });
 
+  it("stores content-addressed display JPEGs with the thumbnail artifact set", async () => {
+    const name = `photo.${"a".repeat(64)}.${"b".repeat(12)}.display-1600.jpg`;
+    await fs.writeFile(
+      path.join(rootDir, "apps/web/public/thumbnails", name),
+      JPEG_BYTES,
+    );
+    await saveArtifacts(config);
+    await expect(
+      fs.readFile(path.join(config.cacheDir, "thumbnails", name)),
+    ).resolves.toEqual(JPEG_BYTES);
+  });
+
   it("compacts history only with opt-in and a precise force-with-lease", async () => {
     config.allowHistoryRewrite = true;
     setRespond({
@@ -568,6 +580,24 @@ describe("restoreArtifacts", () => {
     ).resolves.toBe("{}");
     await expect(
       fs.readFile(path.join(rootDir, "apps/web/public/thumbnails/a.jpg")),
+    ).resolves.toEqual(JPEG_BYTES);
+    expect(warnings()).toEqual([]);
+  });
+
+  it("restores display variants alongside thumbnails without weakening directory validation", async () => {
+    const name = `photo.${"a".repeat(64)}.${"b".repeat(12)}.display-2560.jpg`;
+    setCloneFixtures((cacheDir) => {
+      writeFileSync(
+        path.join(cacheDir, "photos-manifest.json"),
+        JSON.stringify(createEmptyManifest()),
+      );
+      writeFileSync(path.join(cacheDir, "geocoding-cache.json"), "{}");
+      mkdirSync(path.join(cacheDir, "thumbnails"));
+      writeFileSync(path.join(cacheDir, "thumbnails", name), JPEG_BYTES);
+    });
+    await restoreArtifacts(config);
+    await expect(
+      fs.readFile(path.join(rootDir, "apps/web/public/thumbnails", name)),
     ).resolves.toEqual(JPEG_BYTES);
     expect(warnings()).toEqual([]);
   });

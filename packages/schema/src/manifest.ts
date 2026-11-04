@@ -6,6 +6,7 @@ import type {
   LocationInfo,
   ManifestIndexes,
   ManifestSource,
+  PhotoDisplayImage,
   PhotoManifestItem,
   PhotoProcessingFingerprints,
   PickedExif,
@@ -551,6 +552,21 @@ function normalizeExif(value: unknown): PickedExif | null {
   return sanitized as PickedExif;
 }
 
+function isDisplayImageUrl(value: unknown): value is string {
+  if (typeof value !== "string" || !/^(?:\/(?!\/)|https?:\/\/)/.test(value))
+    return false;
+  try {
+    const url = new URL(value, "https://afilmory.invalid");
+    return (
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+}
+
 // —— photo ——
 // 键顺序即历史上 item 字面量的构造顺序，保证归一化输出的 JSON 键序不变。
 
@@ -558,6 +574,45 @@ const photoShape: Shape = {
   id: requiredField(isSafePhotoId, "must be a non-empty safe identifier"),
   originalUrl: nonEmptyStr(),
   thumbnailUrl: nonEmptyStr(),
+  displayImages: {
+    check: (value) => {
+      if (value === undefined) return [];
+      if (!Array.isArray(value) || value.length > 3)
+        return [" must be an array of at most three display images"];
+      return value.flatMap((image, index) => {
+        if (!isRecord(image)) return [`[${index}] must be an object`];
+        return [
+          ...(!isDisplayImageUrl(image.url)
+            ? [`[${index}].url must be an HTTP(S) or root-relative image URL`]
+            : []),
+          ...(!isPositiveInteger(image.width)
+            ? [`[${index}].width must be a positive integer`]
+            : []),
+          ...(!isPositiveInteger(image.height)
+            ? [`[${index}].height must be a positive integer`]
+            : []),
+        ];
+      });
+    },
+    normalize: (value) =>
+      Array.isArray(value)
+        ? (value
+            .filter(isRecord)
+            .filter(
+              (image) =>
+                isDisplayImageUrl(image.url) &&
+                isPositiveInteger(image.width) &&
+                isPositiveInteger(image.height),
+            )
+            .slice(0, 3)
+            .map((image) => ({
+              url: image.url,
+              width: image.width,
+              height: image.height,
+            })) as PhotoDisplayImage[])
+        : undefined,
+    omitUndefined: true,
+  },
   thumbHash: field(
     (value): value is string | null =>
       value === null ||
@@ -610,6 +665,7 @@ const photoShape: Shape = {
       if (!isRecord(value)) return [" must be an object when present"];
       const allowed = [
         "thumbnail",
+        "displayImages",
         "exif",
         "tone",
         "media",
@@ -627,6 +683,7 @@ const photoShape: Shape = {
       const result: PhotoProcessingFingerprints = {};
       for (const key of [
         "thumbnail",
+        "displayImages",
         "exif",
         "tone",
         "media",

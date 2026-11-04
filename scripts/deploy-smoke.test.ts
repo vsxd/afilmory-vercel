@@ -241,6 +241,9 @@ const prepareOutput = async () => {
         ? "/originals/deploy/amber.jpg"
         : "/originals/deploy/blue%20sky.png",
     video: undefined,
+    displayImages: [
+      { url: `/thumbnails/${photo.id}.display.jpg`, width: 2, height: 2 },
+    ],
   }));
   await write(
     workspace,
@@ -265,6 +268,11 @@ const prepareOutput = async () => {
     await write(workspace, `photos/${photo.s3Key}`, image);
     await write(workspace, `apps/web/dist/originals/${photo.s3Key}`, image);
     await write(workspace, `apps/web/dist${photo.thumbnailUrl}`, image);
+    await write(
+      workspace,
+      `apps/web/dist${photo.displayImages![0].url}`,
+      image,
+    );
     await write(
       workspace,
       `apps/web/dist/photos/${photo.id}/index.html`,
@@ -308,5 +316,19 @@ describe("clean deployment output verification", () => {
     await expect(verifyDeployOutput(workspace, builderOutput)).rejects.toThrow(
       /differs from its source/,
     );
+  });
+
+  it("rejects a missing display variant instead of shipping a broken viewing URL", async () => {
+    const { workspace, manifest } = await prepareOutput();
+    await fs.rm(
+      path.join(
+        workspace,
+        "apps/web/dist",
+        manifest.photos[0].displayImages![0].url,
+      ),
+    );
+    await expect(
+      verifyDeployOutput(workspace, builderOutput),
+    ).rejects.toThrow();
   });
 });

@@ -44,6 +44,39 @@ describe("SharePanel keyboard actions", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("shares original bytes rather than the fitted display Blob", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "navigator",
+      Object.assign(Object.create(navigator), { share, canShare: () => true }),
+    );
+    const fetchImage = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(["original"], { type: "image/jpeg" }),
+    });
+    vi.stubGlobal("fetch", fetchImage);
+    render(
+      <SharePanel
+        photo={{
+          ...photo,
+          displayImages: [{ url: "/display.jpg", width: 960, height: 720 }],
+        }}
+        blobSrc="blob:display"
+        trigger={<button type="button">Share</button>}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "Share" }), {
+      key: "ArrowDown",
+    });
+    const action = await screen.findByRole("menuitem", {
+      name: "photo.share.system",
+    });
+    fireEvent.click(action);
+    await waitFor(() => expect(share).toHaveBeenCalled());
+    expect(fetchImage).toHaveBeenCalledExactlyOnceWith(photo.originalUrl);
   });
 
   it("opens and navigates the share menu with the keyboard, then copies the photo link", async () => {

@@ -1,6 +1,8 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { WebGLViewerSession } from "./viewer-session";
 import { WebGLImageViewer } from "./WebGLImageViewer";
 import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
 
@@ -9,6 +11,7 @@ const engineMocks = vi.hoisted(() => ({
   isTileOutlineEnabled: vi.fn(() => false),
   loadImage: vi.fn(() => Promise.resolve()),
   setSmooth: vi.fn(),
+  upgradeSource: vi.fn(() => Promise.resolve()),
   throwOnConstruct: false,
 }));
 
@@ -19,6 +22,11 @@ vi.mock("./WebGLImageViewerEngine", () => ({
       isTileOutlineEnabled = engineMocks.isTileOutlineEnabled;
       loadImage = engineMocks.loadImage;
       setSmooth = engineMocks.setSmooth;
+      upgradeSource = engineMocks.upgradeSource;
+      isReusable = () => true;
+      updateConfig = vi.fn();
+      resume = vi.fn();
+      suspend = vi.fn();
       resetView = vi.fn();
       zoomIn = vi.fn();
       zoomOut = vi.fn();
@@ -41,6 +49,7 @@ describe("WebGLImageViewer", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("initializes reduced motion correctly without destroying or reloading the canvas", () => {
@@ -204,21 +213,122 @@ describe("WebGLImageViewer", () => {
     expect(secondOnZoomChange).toHaveBeenCalledWith(2, 0.5);
   });
 
-  it("destroys and recreates the engine when src changes", () => {
+  it("reuses the context and worker when src changes", () => {
     const { rerender } = render(
       <WebGLImageViewer src="blob:a" width={100} height={80} />,
     );
 
     rerender(<WebGLImageViewer src="blob:b" width={100} height={80} />);
 
-    expect(engineMocks.destroy).toHaveBeenCalledTimes(1);
-    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(2);
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
+    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
     expect(engineMocks.loadImage).toHaveBeenLastCalledWith(
       "blob:b",
       100,
       80,
       null,
     );
+  });
+
+  it("moves one runtime canvas between active slides and frees it after closing", () => {
+    vi.useFakeTimers();
+    const session = new WebGLViewerSession();
+    const first = render(
+      <WebGLImageViewer src="blob:a" viewerSession={session} />,
+    );
+    const canvas = first.container.querySelector("canvas");
+    first.unmount();
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
+
+    const second = render(
+      <WebGLImageViewer src="blob:b" viewerSession={session} />,
+    );
+    expect(second.container.querySelector("canvas")).toBe(canvas);
+    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
+    second.unmount();
+    act(() => vi.advanceTimersByTime(750));
+    expect(engineMocks.destroy).toHaveBeenCalledTimes(1);
+    session.dispose();
+    expect(engineMocks.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("upgrades original pixels without reloading the preview or rebuilding the engine", async () => {
+    const blob = new Blob(["original"]);
+    const { rerender } = render(
+      <WebGLImageViewer
+        src="blob:preview"
+        detailSrc="https://photos.test/original.jpg"
+      />,
+    );
+    rerender(
+      <WebGLImageViewer
+        src="blob:preview"
+        detailSrc="https://photos.test/original.jpg"
+        detailSourceBlob={blob}
+      />,
+    );
+    expect(WebGLImageViewerEngine).toHaveBeenCalledTimes(1);
+    expect(engineMocks.loadImage).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(engineMocks.upgradeSource).toHaveBeenCalledWith(
+        "https://photos.test/original.jpg",
+        blob,
+      ),
+    );
+  });
+
+  it("waits for the fallback before applying an original already available at mount", async () => {
+    let loaded!: () => void;
+    engineMocks.loadImage.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        loaded = resolve;
+      }),
+    );
+    render(
+      <WebGLImageViewer
+        src="preview.jpg"
+        detailSrc="original.jpg"
+        detailSourceBlob={new Blob()}
+      />,
+    );
+    expect(engineMocks.upgradeSource).not.toHaveBeenCalled();
+    await act(async () => {
+      loaded();
+    });
+    expect(engineMocks.upgradeSource).toHaveBeenCalledOnce();
+  });
+
+  it("survives StrictMode effect replay without retaining a disposed session", () => {
+    const onError = vi.fn();
+    const { container } = render(
+      <StrictMode>
+        <WebGLImageViewer src="blob:photo" onError={onError} />
+      </StrictMode>,
+    );
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(onError).not.toHaveBeenCalled();
+    expect(engineMocks.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports failed detail upgrades separately from a fatal base image error", async () => {
+    const onError = vi.fn();
+    const onDetailError = vi.fn();
+    const failure = new Error("Original decode failed");
+    engineMocks.upgradeSource.mockRejectedValueOnce(failure);
+    render(
+      <WebGLImageViewer
+        src="blob:preview"
+        detailSrc="original.jpg"
+        detailSourceBlob={new Blob()}
+        onError={onError}
+        onDetailError={onDetailError}
+      />,
+    );
+    await waitFor(() => expect(onDetailError).toHaveBeenCalledWith(failure));
+    expect(onError).not.toHaveBeenCalled();
+    expect(engineMocks.destroy).not.toHaveBeenCalled();
   });
 
   it("reports image loading failures through the error callback", async () => {

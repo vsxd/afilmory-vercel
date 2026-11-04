@@ -1,4 +1,5 @@
 import type { PhotoProcessorOptions } from "../core/contracts/photo-processing.js";
+import { displayImagesExist } from "../image/display-images.js";
 import { thumbnailExists } from "../image/thumbnail.js";
 import { needsUpdate } from "../manifest/manager.js";
 import type { StorageObject } from "../storage/interfaces.js";
@@ -27,6 +28,7 @@ export async function decidePhotoWork(
   obj: StorageObject,
   options: PhotoProcessorOptions,
   hasThumbnail: () => boolean | Promise<boolean>,
+  hasDisplayImages: () => boolean | Promise<boolean> = () => true,
 ): Promise<PhotoWorkDecision> {
   // 强制模式下总是处理
   if (options.isForceMode) {
@@ -83,6 +85,10 @@ export async function decidePhotoWork(
     };
   }
 
+  if (!(await hasDisplayImages())) {
+    return { shouldProcess: true, reason: "display image missing" };
+  }
+
   return { shouldProcess: false, reason: "no processing needed" };
 }
 
@@ -97,11 +103,21 @@ export async function shouldProcessPhoto(
   obj: StorageObject,
   options: PhotoProcessorOptions,
 ): Promise<PhotoWorkDecision> {
-  return decidePhotoWork(existingItem, obj, options, () =>
-    thumbnailExists(
-      photoId,
-      getPhotoExecutionContext().output.thumbnailsDir,
-      existingItem?.thumbnailUrl,
-    ),
+  return decidePhotoWork(
+    existingItem,
+    obj,
+    options,
+    () =>
+      thumbnailExists(
+        photoId,
+        getPhotoExecutionContext().output.thumbnailsDir,
+        existingItem?.thumbnailUrl,
+      ),
+    () =>
+      displayImagesExist(
+        photoId,
+        existingItem?.displayImages,
+        getPhotoExecutionContext().output.thumbnailsDir,
+      ),
   );
 }

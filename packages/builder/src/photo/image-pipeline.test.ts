@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import heicConvert from "heic-convert";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +25,8 @@ import {
   runWithPhotoExecutionContext,
 } from "./execution-context.js";
 import { processPhotoWithPipeline } from "./image-pipeline.js";
+
+vi.mock("heic-convert", () => ({ default: vi.fn() }));
 
 /**
  * 缩略图 buffer 的生命周期契约（见 THUMBNAIL_PLUGIN_DATA_KEY 的文档）：
@@ -198,6 +201,31 @@ async function runPipeline(
 }
 
 describe("processPhotoWithPipeline thumbnail buffer lifetime", () => {
+  it.each(["HEIC", "heif"])(
+    "keeps %s on the original viewer path after JPEG preprocessing",
+    async (extension) => {
+      const photoKey = `protected-${extension}.${extension}`;
+      await writeFile(path.join(sourceDir, photoKey), jpegBuffer);
+      // The converter seam supplies a decoded SDR JPEG: downstream metadata
+      // cannot reveal whether the original HEIC had alpha or high-bit-depth HDR.
+      vi.mocked(heicConvert).mockResolvedValueOnce(jpegBuffer);
+      const harness = createHarness();
+      const result = await runPipeline(
+        harness,
+        createProcessingContext(photoKey),
+      );
+      expect(heicConvert).toHaveBeenCalledWith(
+        expect.objectContaining({ format: "JPEG", buffer: jpegBuffer }),
+      );
+      expect(result.type).toBe("new");
+      expect(result.item?.displayImages).toEqual([]);
+      expect(result.item?.originalUrl).toBe(`/photos/${photoKey}`);
+      expect(result.item?.thumbnailUrl).toMatch(/^\/thumbnails\//);
+      expect(result.item?.width).toBe(64);
+      expect(result.item?.height).toBe(48);
+    },
+  );
+
   it("hands the real buffer to afterPhotoProcess, then releases it before returning", async () => {
     const harness = createHarness();
     const context = createProcessingContext("sunset.jpg");

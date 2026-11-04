@@ -26,7 +26,8 @@ import type {
   WebGLImageViewerProps,
   WebGLImageViewerRef,
 } from "./interface";
-import { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
+import { WebGLViewerSession } from "./viewer-session";
+import type { WebGLImageViewerEngine } from "./WebGLImageViewerEngine";
 
 /**
  * WebGL图像查看器组件
@@ -36,6 +37,11 @@ export const WebGLImageViewer = ({
   src,
   sourceBlob,
   previewCache,
+  viewerSession,
+  detailSrc = "",
+  detailSourceBlob,
+  onDetailRequested,
+  onDetailError,
   className = "",
   width,
   height,
@@ -59,8 +65,11 @@ export const WebGLImageViewer = ({
   Omit<React.HTMLAttributes<HTMLDivElement>, "className"> & {
     ref?: React.RefObject<WebGLImageViewerRef | null>;
   }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasHostRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<WebGLImageViewerEngine | null>(null);
+  const initialLoadRef = useRef<Promise<void> | null>(null);
+  const localSession = useMemo(() => new WebGLViewerSession(), []);
+  const session = viewerSession ?? localSession;
   const [tileOutlineEnabled, setTileOutlineEnabled] = useState(false);
   const [shouldReduceMotion, setShouldReduceMotion] = useState(
     () =>
@@ -90,6 +99,8 @@ export const WebGLImageViewer = ({
     onLoadingStateChange,
     onImagePainted,
     onError,
+    onDetailRequested,
+    onDetailError,
   });
   useEffect(() => {
     callbacksRef.current = {
@@ -97,6 +108,8 @@ export const WebGLImageViewer = ({
       onLoadingStateChange,
       onImagePainted,
       onError,
+      onDetailRequested,
+      onDetailError,
     };
   });
 
@@ -114,13 +127,18 @@ export const WebGLImageViewer = ({
   } = { ...defaultDoubleClickConfig, ...doubleClick };
   const { disabled: panningDisabled } = { ...defaultPanningConfig, ...panning };
 
-  // config 的引用变化会销毁并重建引擎（重新拉取、解码、上传整张原图），
-  // 因此依赖只列真正需要重建的值；回调与 className 被刻意排除在外。
+  // Only image/config changes start a new lease; callbacks and styles stay live.
   const config: Omit<Required<WebGLImageViewerProps>, "smooth"> = useMemo(
     () => ({
       src,
       sourceBlob: sourceBlob ?? null,
       previewCache: previewCache ?? null,
+      viewerSession: null,
+      detailSrc,
+      // Source upgrades have their own effect and must not reset the view.
+      detailSourceBlob: null,
+      onDetailRequested: () => callbacksRef.current.onDetailRequested?.(),
+      onDetailError: (error) => callbacksRef.current.onDetailError?.(error),
       // 引擎不读 className（真实值直接应用在 canvas 上），给常量以免样式变化重建引擎
       className: "",
       width: width || 0,
@@ -151,6 +169,7 @@ export const WebGLImageViewer = ({
       src,
       sourceBlob,
       previewCache,
+      detailSrc,
       width,
       height,
       initialScale,
@@ -173,32 +192,40 @@ export const WebGLImageViewer = ({
   useImperativeHandle(ref, () => ({
     zoomIn: (animated?: boolean) => viewerRef.current?.zoomIn(animated),
     zoomOut: (animated?: boolean) => viewerRef.current?.zoomOut(animated),
-    resetView: () => viewerRef.current?.resetView(),
+    resetView: (animated?: boolean) => viewerRef.current?.resetView(animated),
     getScale: () => viewerRef.current?.getScale() || 1,
   }));
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasHostRef.current) return;
 
     let webGLImageViewerEngine: WebGLImageViewerEngine | null = null;
+    let release: (() => void) | undefined;
     let cancelled = false;
 
     try {
-      webGLImageViewerEngine = new WebGLImageViewerEngine(
-        canvasRef.current,
+      const lease = session.attach(
+        canvasHostRef.current,
         { ...config, smooth: smoothRef.current },
         debug ? setDebugInfo : undefined,
       );
+      webGLImageViewerEngine = lease.engine;
+      release = lease.release;
       // 如果提供了尺寸，传递给loadImage进行优化
       const preknownWidth = config.width > 0 ? config.width : undefined;
       const preknownHeight = config.height > 0 ? config.height : undefined;
-      webGLImageViewerEngine
-        .loadImage(config.src, preknownWidth, preknownHeight, config.sourceBlob)
-        .catch((error) => {
-          if (cancelled) return;
-          console.error("Failed to load WebGL image:", error);
-          config.onError(error);
-        });
+      const initialLoad = webGLImageViewerEngine.loadImage(
+        config.src,
+        preknownWidth,
+        preknownHeight,
+        config.sourceBlob,
+      );
+      initialLoadRef.current = initialLoad;
+      initialLoad.catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load WebGL image:", error);
+        config.onError(error);
+      });
       viewerRef.current = webGLImageViewerEngine;
       setTileOutlineEnabled(webGLImageViewerEngine.isTileOutlineEnabled());
     } catch (error) {
@@ -208,10 +235,40 @@ export const WebGLImageViewer = ({
 
     return () => {
       cancelled = true;
-      webGLImageViewerEngine?.destroy();
+      release?.();
       viewerRef.current = null;
+      initialLoadRef.current = null;
     };
-  }, [config, debug]);
+  }, [config, debug, session]);
+
+  useEffect(() => () => localSession.reset(), [localSession]);
+
+  useEffect(() => {
+    const canvas = canvasHostRef.current?.querySelector("canvas");
+    if (canvas) canvas.className = className;
+  }, [className, config, session]);
+
+  useEffect(() => {
+    if (!detailSourceBlob || !detailSrc) return;
+    let cancelled = false;
+    const engine = viewerRef.current;
+    // An already-cached original can be supplied on mount. Always establish
+    // the fallback first, so an upgrade cannot supersede the initial load.
+    void initialLoadRef.current?.then(
+      () => {
+        if (cancelled) return;
+        return engine
+          ?.upgradeSource(detailSrc, detailSourceBlob)
+          .catch((error) => {
+            if (!cancelled) callbacksRef.current.onDetailError?.(error);
+          });
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [detailSrc, detailSourceBlob, config, session]);
 
   // Animation preferences are live state, not GPU resource configuration.
   // Rebuilding here would lose the canvas context and decode the image again.
@@ -237,23 +294,7 @@ export const WebGLImageViewer = ({
         ...divProps.style,
       }}
     >
-      <canvas
-        ref={canvasRef}
-        aria-hidden="true"
-        className={className}
-        style={{
-          display: "block",
-          width: "100%",
-          height: "100%",
-          touchAction: "none",
-          border: "none",
-          outline: "none",
-          margin: 0,
-          padding: 0,
-          // 对于像素艺术和小图片保持锐利，使用最新的标准属性
-          imageRendering: "pixelated",
-        }}
-      />
+      <div ref={canvasHostRef} style={{ width: "100%", height: "100%" }} />
       {debug && (
         <DebugInfoComponent
           outlineEnabled={tileOutlineEnabled}

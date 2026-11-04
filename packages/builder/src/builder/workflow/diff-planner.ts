@@ -77,6 +77,15 @@ export class DiffPlanner {
             existingItem?.thumbnailUrl,
           );
         },
+        async () => {
+          inventoryPromise ??= createThumbnailInventory(
+            session.config.output.thumbnailsDir,
+          );
+          return (await inventoryPromise).hasDisplayImages(
+            session.getPhotoIdForKey(object.key, existingItem),
+            existingItem?.displayImages,
+          );
+        },
       );
       const currentVideo = livePhotoMap.get(object.key);
       const previousVideo =

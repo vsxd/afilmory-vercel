@@ -91,6 +91,19 @@ function createGlMock(): WebGLRenderingContext & {
 }
 
 describe("WebGLViewerRenderer", () => {
+  it("checks upload errors once per texture and preserves context-loss failure", () => {
+    const gl = createGlMock();
+    const renderer = new WebGLViewerRenderer(gl);
+    renderer.createTexture({} as ImageBitmap);
+    expect(gl.getError).toHaveBeenCalledTimes(1);
+    vi.mocked(gl.getError).mockReturnValueOnce(gl.CONTEXT_LOST_WEBGL);
+    expect(() => renderer.createTexture({} as ImageBitmap)).toThrow(
+      /CONTEXT_LOST/,
+    );
+    expect(gl.getError).toHaveBeenCalledTimes(2);
+    expect(gl.deleteTexture).toHaveBeenCalledTimes(1);
+  });
+
   it("throws and deletes a texture when allocation returns null", () => {
     const gl = createGlMock();
     const renderer = new WebGLViewerRenderer(gl);
@@ -104,9 +117,7 @@ describe("WebGLViewerRenderer", () => {
   it("turns a texImage2D GL error into a failure and frees the texture", () => {
     const gl = createGlMock();
     const renderer = new WebGLViewerRenderer(gl);
-    vi.mocked(gl.getError)
-      .mockReturnValueOnce(gl.NO_ERROR)
-      .mockReturnValueOnce(gl.OUT_OF_MEMORY);
+    vi.mocked(gl.getError).mockReturnValueOnce(gl.OUT_OF_MEMORY);
     const texture = {} as WebGLTexture;
     gl.__createTexture.mockReturnValueOnce(texture);
 

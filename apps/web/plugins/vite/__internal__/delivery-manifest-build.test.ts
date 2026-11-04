@@ -49,6 +49,21 @@ const createPhoto = (id: string) => ({
 });
 
 describe("createWebDeliveryArtifacts", () => {
+  it("publishes display variants in the initial gallery index without a detail fetch", () => {
+    const displayImages = [
+      { url: "/thumbnails/a.display.jpg", width: 960, height: 640 },
+    ];
+    const result = createWebDeliveryArtifacts(
+      createManifest({ photos: [{ ...createPhoto("a"), displayImages }] }),
+    );
+    const index = result.assets.find(
+      (asset) => asset.fileName === result.indexFileName,
+    )!;
+    expect(
+      parseWebDeliveryManifest(JSON.parse(index.source))?.manifest.photos[0]
+        .displayImages,
+    ).toEqual(displayImages);
+  });
   it("emits a lightweight valid gallery index and bounded detail shards", () => {
     const manifest = createManifest({
       photos: [createPhoto("a"), createPhoto("b"), createPhoto("c")],

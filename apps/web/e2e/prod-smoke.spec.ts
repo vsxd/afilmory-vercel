@@ -42,6 +42,349 @@ async function searchAndFilter(page: Page) {
   await expect(dialog).toBeHidden();
 }
 
+async function installDisplayImageFixtures(
+  page: Page,
+  options: {
+    failFirstDisplay?: boolean;
+    holdOriginal?: boolean;
+    failFirstOriginalDecode?: boolean;
+  } = {},
+) {
+  const displayRequests: string[] = [];
+  const originalRequests: string[] = [];
+  const originalReady = Promise.withResolvers<void>();
+  if (!options.holdOriginal) originalReady.resolve();
+  const displayImages = new Map([
+    [
+      "SYNTH0001",
+      { url: "/e2e-display/SYNTH0001.jpg", width: 960, height: 640 },
+    ],
+    [
+      "SYNTH0002",
+      { url: "/e2e-display/SYNTH0002.jpg", width: 640, height: 960 },
+    ],
+  ]);
+  // Only these tests inject derivatives; the legacy manifest fixtures continue
+  // exercising the original-only path in the rest of the production suite.
+  await page.route(EXTERNAL_MANIFEST_ASSET, async (route) => {
+    const response = await route.fetch();
+    const index = await response.json();
+    for (const photo of index.manifest.photos) {
+      const display = displayImages.get(photo.id);
+      if (display) photo.displayImages = [display];
+    }
+    await route.fulfill({ response, json: index });
+  });
+  for (const [id, display] of displayImages) {
+    const body = await sharp({
+      create: {
+        width: display.width,
+        height: display.height,
+        channels: 3,
+        background: "#846c5b",
+      },
+    })
+      .jpeg()
+      .toBuffer();
+    await page.route(`**${display.url}`, async (route) => {
+      displayRequests.push(id);
+      await route.fulfill(
+        options.failFirstDisplay && id === "SYNTH0001"
+          ? { status: 404, body: "Missing display image" }
+          : { contentType: "image/jpeg", body },
+      );
+    });
+  }
+  const original = await sharp({
+    create: { width: 6000, height: 4000, channels: 3, background: "#c9a480" },
+  })
+    .jpeg()
+    .toBuffer();
+  await page.route("https://photos.fixture.test/**", async (route) => {
+    originalRequests.push(route.request().url());
+    await originalReady.promise;
+    // Keep a valid JPEG signature and SOF dimensions but no entropy data:
+    // fetch/type detection succeeds, while the worker's decoder must fail.
+    const invalidJpeg = Buffer.from([
+      0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x0f, 0xa0, 0x17, 0x70, 0x03,
+      0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
+    ]);
+    await route.fulfill({
+      contentType: "image/jpeg",
+      body:
+        options.failFirstOriginalDecode && originalRequests.length === 1
+          ? invalidJpeg
+          : original,
+    });
+  });
+  return {
+    displayRequests,
+    originalRequests,
+    releaseOriginal: originalReady.resolve,
+  };
+}
+
+async function instrumentViewerGPU(page: Page) {
+  await page.addInitScript(() => {
+    const { getContext } = HTMLCanvasElement.prototype;
+    const instrumented = new WeakSet<object>();
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      ...args
+    ) {
+      const context = Reflect.apply(getContext, this, args);
+      const options = args[1] as WebGLContextAttributes | undefined;
+      // The capability probe uses default attributes and the inspector's map
+      // requires depth/stencil and premultiplied alpha. Count viewer engines
+      // only, and wrap each context once across canvas moves.
+      if (
+        !String(args[0]).includes("webgl") ||
+        options?.antialias !== false ||
+        options.depth !== false ||
+        options.stencil !== false ||
+        options.premultipliedAlpha !== false ||
+        !context ||
+        instrumented.has(context)
+      )
+        return context;
+      instrumented.add(context);
+      performance.mark("e2e:viewer-context");
+      const gl = context as WebGLRenderingContext;
+      const { texImage2D, clear, uniformMatrix3fv } = gl;
+      let firstMatrix = false;
+      gl.texImage2D = function (this: WebGLRenderingContext, ...parameters) {
+        performance.mark("e2e:viewer-upload");
+        return Reflect.apply(texImage2D, this, parameters);
+      } as typeof texImage2D;
+      gl.clear = function (mask) {
+        firstMatrix = true;
+        return clear.call(this, mask);
+      };
+      gl.uniformMatrix3fv = function (location, transpose, value) {
+        // The first draw after clear is the complete base image. Tile matrices
+        // vary by crop and cannot be used to measure the viewing transform.
+        if (firstMatrix) {
+          firstMatrix = false;
+          performance.clearMarks("e2e:viewer-matrix");
+          performance.mark("e2e:viewer-matrix", { detail: Array.from(value) });
+        }
+        return uniformMatrix3fv.call(this, location, transpose, value);
+      };
+      return context;
+    } as typeof getContext;
+  });
+}
+
+const readViewerGPU = (page: Page) =>
+  page.evaluate(() => ({
+    contexts: performance.getEntriesByName("e2e:viewer-context").length,
+    uploads: performance.getEntriesByName("e2e:viewer-upload").length,
+    matrix: (
+      performance.getEntriesByName("e2e:viewer-matrix").at(-1) as
+        PerformanceMark | undefined
+    )?.detail as number[] | undefined,
+  }));
+
+async function waitForViewerTransformToSettle(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const startedAt = performance.now();
+        let previous: string | undefined;
+        let stableFrames = 0;
+        const check = () => {
+          const matrix = (
+            performance.getEntriesByName("e2e:viewer-matrix").at(-1) as
+              PerformanceMark | undefined
+          )?.detail;
+          const current = JSON.stringify(matrix);
+          stableFrames = current && current === previous ? stableFrames + 1 : 0;
+          previous = current;
+          // Allow the 300ms zoom animation to finish before measuring the upgrade.
+          if (performance.now() - startedAt > 350 && stableFrames >= 6)
+            resolve();
+          else if (performance.now() - startedAt > 3000)
+            reject(new Error("Viewer transform did not settle"));
+          else requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      }),
+  );
+}
+
+test.describe("production display image loading", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("reuses one context, worker, and cached GPU textures when returning to a fitted photo on mobile", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await instrumentViewerGPU(page);
+    const workers: string[] = [];
+    page.on("worker", (worker) => {
+      if (/\/texture\.worker-[\w-]+\.js$/.test(worker.url()))
+        workers.push(worker.url());
+    });
+    const fixture = await installDisplayImageFixtures(page);
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    const first = viewer
+      .getByRole("group", { name: "SYNTH0001", exact: true })
+      .getByRole("img", { name: "SYNTH0001", exact: true })
+      .locator("canvas");
+    await expect(first).toBeVisible();
+    await expect
+      .poll(() => fixture.displayRequests.includes("SYNTH0002"))
+      .toBe(true);
+    expect(fixture.originalRequests).toEqual([]);
+    await page.keyboard.press("ArrowLeft");
+    await expect(page).toHaveURL(/\/photos\/SYNTH0002(?:\?|$)/);
+    await expect(
+      viewer
+        .getByRole("group", { name: "SYNTH0002", exact: true })
+        .getByRole("img", { name: "SYNTH0002", exact: true })
+        .locator("canvas"),
+    ).toBeVisible();
+    await waitForViewerTransformToSettle(page);
+    const beforeReturn = await readViewerGPU(page);
+    await page.keyboard.press("ArrowRight");
+    await expect(page).toHaveURL(/\/photos\/SYNTH0001(?:\?|$)/);
+    await expect(first).toBeVisible();
+    await waitForViewerTransformToSettle(page);
+    const afterReturn = await readViewerGPU(page);
+    expect(afterReturn.contexts).toBe(1);
+    expect(workers).toHaveLength(1);
+    expect(afterReturn.uploads).toBe(beforeReturn.uploads);
+    expect(fixture.originalRequests).toEqual([]);
+    expect(
+      fixture.displayRequests.filter((id) => id === "SYNTH0001"),
+    ).toHaveLength(1);
+    await expect(viewer.getByRole("alert")).toHaveCount(0);
+  });
+
+  test("requests original pixels only after zoom and upgrades without resetting the transform", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("pageerror", (error) => errors.push(error.message));
+    await instrumentViewerGPU(page);
+    const fixture = await installDisplayImageFixtures(page, {
+      holdOriginal: true,
+    });
+    try {
+      await page.goto("/");
+      await page.locator('[data-photo-id="SYNTH0001"]').click();
+      const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+      const canvas = viewer
+        .getByRole("group", { name: "SYNTH0001", exact: true })
+        .getByRole("img", { name: "SYNTH0001", exact: true })
+        .locator("canvas");
+      await expect(canvas).toBeVisible();
+      await expect
+        .poll(() => fixture.displayRequests.includes("SYNTH0002"))
+        .toBe(true);
+      expect(fixture.originalRequests).toEqual([]);
+      await canvas.dblclick();
+      await expect.poll(() => fixture.originalRequests.length).toBe(1);
+      await waitForViewerTransformToSettle(page);
+      const beforeUpgrade = await readViewerGPU(page);
+      expect(beforeUpgrade.matrix).toHaveLength(9);
+      fixture.releaseOriginal();
+      await expect
+        .poll(async () => (await readViewerGPU(page)).uploads)
+        .toBeGreaterThan(beforeUpgrade.uploads);
+      await waitForViewerTransformToSettle(page);
+      const afterUpgrade = await readViewerGPU(page);
+      await test.info().attach("viewer-source-upgrade", {
+        body: JSON.stringify({
+          beforeUpgrade,
+          afterUpgrade,
+          originalRequests: fixture.originalRequests,
+          errors,
+        }),
+        contentType: "application/json",
+      });
+      expect(afterUpgrade.contexts).toBe(1);
+      expect(afterUpgrade.matrix).toEqual(beforeUpgrade.matrix);
+      expect(fixture.originalRequests).toHaveLength(1);
+      await expect(canvas).toBeVisible();
+      await expect(viewer.getByRole("alert")).toHaveCount(0);
+    } finally {
+      fixture.releaseOriginal();
+    }
+  });
+
+  test("automatically paints the original when a display derivative is missing", async ({
+    page,
+  }) => {
+    const fixture = await installDisplayImageFixtures(page, {
+      failFirstDisplay: true,
+    });
+    await page.goto("/");
+    await page.locator('[data-photo-id="SYNTH0001"]').click();
+    const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+    await expect(
+      viewer
+        .getByRole("group", { name: "SYNTH0001", exact: true })
+        .getByRole("img", { name: "SYNTH0001", exact: true })
+        .locator("canvas"),
+    ).toBeVisible();
+    expect(fixture.displayRequests).toContain("SYNTH0001");
+    expect(fixture.originalRequests).toHaveLength(1);
+    expect(fixture.originalRequests[0]).toContain("SYNTH0001");
+    await expect(viewer.getByRole("alert")).toHaveCount(0);
+  });
+
+  test("retains the display and zoom after original decoding fails and retries fresh original bytes", async ({
+    page,
+  }) => {
+    await instrumentViewerGPU(page);
+    const fixture = await installDisplayImageFixtures(page, {
+      holdOriginal: true,
+      failFirstOriginalDecode: true,
+    });
+    try {
+      await page.goto("/");
+      await page.locator('[data-photo-id="SYNTH0001"]').click();
+      const viewer = page.getByRole("dialog", { name: "Photo viewer" });
+      const canvas = viewer
+        .getByRole("group", { name: "SYNTH0001", exact: true })
+        .getByRole("img", { name: "SYNTH0001", exact: true })
+        .locator("canvas");
+      await expect(canvas).toBeVisible();
+      await canvas.dblclick();
+      await expect.poll(() => fixture.originalRequests.length).toBe(1);
+      await waitForViewerTransformToSettle(page);
+      const beforeFailure = await readViewerGPU(page);
+      fixture.releaseOriginal();
+      const alert = viewer.getByRole("alert");
+      await expect(alert).toBeVisible();
+      await expect(canvas).toBeVisible();
+      const afterFailure = await readViewerGPU(page);
+      expect(afterFailure).toEqual(beforeFailure);
+      await alert
+        .getByRole("button", { name: "Try again", exact: true })
+        .click();
+      await expect.poll(() => fixture.originalRequests.length).toBe(2);
+      await expect
+        .poll(async () => (await readViewerGPU(page)).uploads)
+        .toBeGreaterThan(beforeFailure.uploads);
+      await expect(alert).toHaveCount(0);
+      await waitForViewerTransformToSettle(page);
+      const afterRetry = await readViewerGPU(page);
+      expect(afterRetry.contexts).toBe(1);
+      expect(afterRetry.matrix).toEqual(beforeFailure.matrix);
+      await expect(canvas).toBeVisible();
+    } finally {
+      fixture.releaseOriginal();
+    }
+  });
+});
+
 test.describe("production core feature preloading", () => {
   test.use({ serviceWorkers: "block" });
 

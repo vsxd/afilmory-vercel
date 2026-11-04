@@ -112,6 +112,10 @@ import { WebGLImageViewer } from "@afilmory/webgl-viewer";
 
 前端包装层位于 `apps/web/src/components/ui/photo-viewer/ProgressiveImage.tsx`，会处理渐进加载、WebGL fallback、Live Photo/Motion Photo 视频和 HDR 标记。
 
+普通照片按适屏尺寸与 DPR 选择 `photo.displayImages`，邻图预取也使用展示图；放大超过已有像素后才请求原图。`width/height` 始终是原图逻辑坐标，`detailSrc/detailSourceBlob` 升级像素时保留缩放和平移。可恢复的原图升级失败通过 `onDetailError` 独立报告，不能走展示图失败分支撤掉已画好的底图。下载和分享始终使用原图。
+
+runtime 的 `webGLViewerSession` 在活动轮播项之间移动同一 canvas，复用 context/worker 和有界底图纹理；组件不应自行销毁这个共享 session。runtime 退出时统一 dispose，查看器关闭后的闲置资源由 session 释放。
+
 ### 地图视图
 
 - 页面入口：`/explore`，文件为 `apps/web/src/pages/explore/index.tsx`。

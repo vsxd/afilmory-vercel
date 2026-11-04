@@ -180,32 +180,43 @@ function createEngine(
 ): WebGLImageViewerEngine {
   return new WebGLImageViewerEngine(
     canvas,
-    {
-      src: "blob:photo",
-      sourceBlob: null,
-      previewCache: null,
-      className: "",
-      width: 100,
-      height: 100,
-      initialScale: 1,
-      minScale: 0.1,
-      maxScale: 10,
-      wheel: { step: 0.2 },
-      pinch: {},
-      doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
-      panning: {},
-      limitToBounds: true,
-      centerOnInit: true,
-      smooth: true,
-      onZoomChange: () => {},
-      onLoadingStateChange: () => {},
-      onImagePainted: () => {},
-      onError: () => {},
-      debug: false,
-      ...overrides,
-    },
+    createEngineConfig(overrides),
     debugRef,
   );
+}
+
+function createEngineConfig(
+  overrides: Partial<Required<WebGLImageViewerProps>> = {},
+): Required<WebGLImageViewerProps> {
+  return {
+    src: "blob:photo",
+    sourceBlob: null,
+    previewCache: null,
+    viewerSession: null,
+    detailSrc: "",
+    detailSourceBlob: null,
+    className: "",
+    width: 100,
+    height: 100,
+    initialScale: 1,
+    minScale: 0.1,
+    maxScale: 10,
+    wheel: { step: 0.2 },
+    pinch: {},
+    doubleClick: { step: 0.7, mode: "toggle", animationTime: 200 },
+    panning: {},
+    limitToBounds: true,
+    centerOnInit: true,
+    smooth: true,
+    onZoomChange: () => {},
+    onLoadingStateChange: () => {},
+    onImagePainted: () => {},
+    onDetailRequested: () => {},
+    onDetailError: () => {},
+    onError: () => {},
+    debug: false,
+    ...overrides,
+  };
 }
 
 describe("WebGLImageViewerEngine lifecycle", () => {
@@ -214,7 +225,75 @@ describe("WebGLImageViewerEngine lifecycle", () => {
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
 
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrameId: number;
+  const flushFrame = (time = performance.now()) => {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) callback(time);
+  };
+  const flushQueuedFrames = () => {
+    for (let i = 0; frames.size > 0 && i < 30; i++)
+      flushFrame(performance.now() + i * 16);
+  };
+  const completeRequestedTiles = (
+    worker: WorkerMock,
+    width: number,
+    height: number,
+  ) => {
+    const completed = new Set<string>();
+    for (let round = 0; round < 100; round++) {
+      const requests = worker.postMessage.mock.calls.filter(
+        ([message]) =>
+          message.type === "create-tile" &&
+          !completed.has(`${message.payload.sessionId}:${message.payload.key}`),
+      );
+      if (requests.length === 0 && frames.size === 0) break;
+      for (const [message] of requests) {
+        const { sessionId, key, lodLevel } = message.payload;
+        completed.add(`${sessionId}:${key}`);
+        const size = getTilePixelSize({
+          ...parseTileKey(key),
+          imageWidth: width,
+          imageHeight: height,
+        });
+        worker.onmessage?.({
+          data: {
+            type: "tile-created",
+            sessionId,
+            payload: {
+              key,
+              lodLevel,
+              imageBitmap: { ...size, close: vi.fn() },
+            },
+          },
+        } as MessageEvent);
+      }
+      flushQueuedFrames();
+      vi.runOnlyPendingTimers();
+    }
+  };
+
   beforeEach(() => {
+    frames = new Map();
+    nextFrameId = 0;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.set(++nextFrameId, callback);
+      return nextFrameId;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      frames.delete(id);
+    });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
+      function (this: HTMLElement) {
+        return this.getBoundingClientRect().width;
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(
+      function (this: HTMLElement) {
+        return this.getBoundingClientRect().height;
+      },
+    );
     WorkerMock.instances = [];
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     vi.stubGlobal("Worker", WorkerMock);
@@ -229,8 +308,8 @@ describe("WebGLImageViewerEngine lifecycle", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     vi.useRealTimers();
+    vi.restoreAllMocks();
     globalThis.ResizeObserver = originalResizeObserver;
     globalThis.Worker = originalWorker;
     Object.defineProperty(URL, "createObjectURL", {
@@ -270,7 +349,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     const engine = createEngine(canvas);
     // destroy 会拒绝仍挂起的 loadImage promise，测试侧需吞掉这个预期内的拒绝
     engine.loadImage("blob:photo", 100, 100).catch(() => {});
-    engine.resetView();
+    engine.zoomIn(true);
     engine.destroy();
 
     expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1);
@@ -280,6 +359,79 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     }
     pendingFrame(16);
     expect(gl.drawArrays).not.toHaveBeenCalled();
+  });
+
+  it("paints the first base immediately, skips fitted gestures and coalesces input updates", () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, 100, 100),
+    );
+    const onZoomChange = vi.fn();
+    const engine = createEngine(canvas, { onZoomChange });
+    void engine.loadImage("blob:photo", 100, 100);
+    WorkerMock.instances.at(-1)!.onmessage?.({
+      data: {
+        type: "image-loaded",
+        payload: {
+          imageBitmap: { width: 100, height: 100, close: vi.fn() },
+          imageWidth: 100,
+          imageHeight: 100,
+          lodLevel: 1,
+        },
+      },
+    } as MessageEvent);
+    expect(gl.clear).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(0);
+    vi.mocked(gl.clear).mockClear();
+    onZoomChange.mockClear();
+    engine.resetView();
+    firePointer(canvas, "pointerdown", 50, 50);
+    firePointer(canvas, "pointermove", 62, 58);
+    firePointer(canvas, "pointerup", 62, 58);
+    expect(frames.size).toBe(0);
+    expect(gl.clear).not.toHaveBeenCalled();
+
+    engine.zoomAt(50, 50, 1.1);
+    engine.zoomAt(50, 50, 1.1);
+    engine.zoomAt(50, 50, 1.1);
+    expect(frames.size).toBe(1);
+    expect(gl.clear).not.toHaveBeenCalled();
+    flushFrame();
+    expect(gl.clear).toHaveBeenCalledTimes(1);
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+    expect(engine.getScale()).toBeCloseTo(1.331);
+    engine.resetView(false);
+    expect(engine.getScale()).toBe(1);
+    flushFrame();
+    expect(frames.size).toBe(0);
+    engine.destroy();
+  });
+
+  it("uses layout size and leaves unchanged backing dimensions intact", () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, 150, 75),
+    );
+    vi.spyOn(canvas, "clientWidth", "get").mockReturnValue(300);
+    vi.spyOn(canvas, "clientHeight", "get").mockReturnValue(150);
+    vi.spyOn(window, "devicePixelRatio", "get").mockReturnValue(1);
+    const widthSetter = vi.spyOn(canvas, "width", "set");
+    const heightSetter = vi.spyOn(canvas, "height", "set");
+    const engine = createEngine(canvas);
+    expect(canvas.width).toBe(300);
+    expect(canvas.height).toBe(150);
+    widthSetter.mockClear();
+    heightSetter.mockClear();
+    vi.mocked(gl.viewport).mockClear();
+    window.dispatchEvent(new Event("resize"));
+    expect(widthSetter).not.toHaveBeenCalled();
+    expect(heightSetter).not.toHaveBeenCalled();
+    expect(gl.viewport).not.toHaveBeenCalled();
+    engine.destroy();
   });
 
   it("stops an active zoom when smooth motion is disabled without disposing image resources", () => {
@@ -329,7 +481,9 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(engine.getScale()).toBeCloseTo(0.1);
     doubleTap(canvas, 50, 50);
     expect(engine.getScale()).toBeCloseTo(0.2);
-    expect(scheduleFrame).not.toHaveBeenCalled();
+    expect(scheduleFrame).toHaveBeenCalledTimes(1);
+    pendingFrame?.(500);
+    scheduleFrame.mockClear();
 
     engine.setSmooth(true);
     engine.resetView();
@@ -367,6 +521,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     engine.zoomAt(50, 50, 1.1);
 
     expect(engine.getScale()).toBeCloseTo(0.99);
+    flushFrame();
     const lastZoomChange = onZoomChange.mock.calls.at(-1);
     expect(lastZoomChange?.[0]).toBeCloseTo(0.99);
     expect(lastZoomChange?.[1]).toBeCloseTo(1.1);
@@ -661,6 +816,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
       type: "tile-created",
       payload: { key, imageBitmap: makeBitmap(), lodLevel },
     });
+    flushQueuedFrames();
     expect(onLoadingStateChange).toHaveBeenCalledTimes(1);
     expect(onLoadingStateChange).toHaveBeenCalledWith(
       false,
@@ -688,7 +844,6 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     "caps zoom detail at source density %s while retaining original coordinates",
     (density, expectedLod) => {
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-      vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
       const canvas = document.createElement("canvas");
       const gl = createWebGLMock();
       vi.spyOn(canvas, "getContext").mockReturnValue(gl);
@@ -733,10 +888,13 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         },
       });
       emit({ type: "init-done" });
+      flushFrame();
       vi.runAllTimers();
-      worker.postMessage.mockClear();
+      flushFrame();
       engine.zoomAt(50, 50, 10);
+      flushFrame();
       vi.runAllTimers();
+      flushFrame();
       const snapshot = snapshots.at(-1)!;
       expect(engine.getScale()).toBeCloseTo(1);
       expect(snapshot.imageSize).toEqual({ width: 1000, height: 1000 });
@@ -756,15 +914,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
           ([message]) => message.payload.lodLevel <= expectedLod,
         ),
       ).toBe(true);
-      for (const key of keys)
-        emit({
-          type: "tile-created",
-          payload: {
-            key,
-            imageBitmap: { width: 100, height: 100, close: vi.fn() },
-            lodLevel: expectedLod,
-          },
-        });
+      completeRequestedTiles(worker, 1000, 1000);
       expect(snapshots.at(-1)!.quality).toBe(density < 1 ? "low" : "medium");
       engine.destroy();
     },
@@ -772,7 +922,6 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
   it("avoids redundant tiles when a source below the smallest LOD is fully covered by the base", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
     vi.spyOn(canvas, "getContext").mockReturnValue(gl);
@@ -805,7 +954,9 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     } as MessageEvent);
     worker.onmessage?.({ data: { type: "init-done" } } as MessageEvent);
     engine.zoomAt(50, 50, 100);
+    flushFrame();
     vi.runAllTimers();
+    flushFrame();
     expect(
       worker.postMessage.mock.calls.filter(
         ([message]) => message.type === "create-tile",
@@ -817,7 +968,6 @@ describe("WebGLImageViewerEngine lifecycle", () => {
   it("keeps the tile subsystem idle at fit view and engages it past base resolution", () => {
     // 只伪造 setTimeout/clearTimeout（渲染循环防抖用），rAF 吞掉即可
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
     vi.spyOn(canvas, "getContext").mockReturnValue(gl);
@@ -857,12 +1007,16 @@ describe("WebGLImageViewerEngine lifecycle", () => {
       },
     });
     emit({ type: "init-done" });
-    vi.runAllTimers(); // 渲染循环的防抖更新也要跑完
+    flushFrame();
+    vi.runAllTimers();
+    flushFrame(); // 渲染循环的防抖更新也要跑完
     expect(createTileCalls()).toHaveLength(0);
 
     // 放大越过底图分辨率（0.1 → 0.6 > 0.5）→ 选中 LOD 2，瓦片开始请求
     engine.zoomAt(50, 50, 6);
+    flushFrame();
     vi.runAllTimers();
+    flushFrame();
     const calls = createTileCalls();
     expect(calls.length).toBeGreaterThan(0);
     for (const [message] of calls) {
@@ -876,7 +1030,6 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     // 回归：底图覆盖跳过路径不再触发 onVisibleLodReady，缩回 fit 后质量会滞留在
     // 瓦片态的偏高值——需要显式 onCoveredByBase 把 currentQuality 降回底图水平。
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const onLoadingStateChange = vi.fn();
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
@@ -908,6 +1061,11 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         src: "blob:photo",
         sourceBlob: null,
         previewCache: null,
+        viewerSession: null,
+        detailSrc: "",
+        detailSourceBlob: null,
+        onDetailRequested: () => {},
+        onDetailError: () => {},
         className: "",
         width: 100,
         height: 100,
@@ -951,14 +1109,19 @@ describe("WebGLImageViewerEngine lifecycle", () => {
       },
     });
     emit({ type: "init-done" });
+    flushFrame();
     vi.runAllTimers();
+    flushFrame();
     expect(lastQuality()).toBe("low");
 
     // 放大越过底图分辨率（0.1 → 0.6 > 0.5）→ 选中 LOD 2（scale 1 → medium）。
     // 把整段可见集喂成就绪 → onVisibleLodReady 触发，质量升级为 medium。
     engine.zoomAt(50, 50, 6);
+    flushFrame();
     vi.runAllTimers();
-    engine.setTileOutlineEnabled(engine.isTileOutlineEnabled()); // 触发一次 render 刷新 debug 快照
+    flushFrame();
+    engine.setTileOutlineEnabled(engine.isTileOutlineEnabled());
+    flushFrame(); // 触发一次 render 刷新 debug 快照
     expect(visibleTiles.length).toBeGreaterThan(0);
     for (const key of visibleTiles) {
       emit({
@@ -966,11 +1129,14 @@ describe("WebGLImageViewerEngine lifecycle", () => {
         payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
       });
     }
+    flushQueuedFrames();
     expect(lastQuality()).toBe("medium");
 
     // 缩回 fit：底图重新覆盖选中 LOD → 质量必须降回底图的 low，而不是滞留在 medium
     engine.zoomAt(50, 50, 1 / 6);
+    flushFrame();
     vi.runAllTimers();
+    flushFrame();
     expect(lastQuality()).toBe("low");
 
     engine.destroy();
@@ -978,7 +1144,6 @@ describe("WebGLImageViewerEngine lifecycle", () => {
 
   it("draws the budget-selected lower LOD over the base and reports only ready detail", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
     vi.spyOn(canvas, "getContext").mockReturnValue(gl);
@@ -1015,29 +1180,22 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     });
     const baseTexture = gl.__createTexture.mock.results.at(-1)!.value;
     emit({ type: "init-done" });
+    flushFrame();
     vi.runAllTimers();
+    flushFrame();
 
     // Desired LOD 1 needs 36 visible tiles; the budget selects 9 at LOD 0.
     const keys = snapshots.at(-1)!.tileSystem!.visibleKeys!;
     expect(keys).toHaveLength(9);
     expect(keys.every((key) => parseTileKey(key).lodLevel === 0)).toBe(true);
-    for (const key of keys) {
-      const size = getTilePixelSize({
-        ...parseTileKey(key),
-        imageWidth: 6000,
-        imageHeight: 6000,
-      });
-      emit({
-        type: "tile-created",
-        payload: { key, imageBitmap: { ...size, close: vi.fn() }, lodLevel: 0 },
-      });
-    }
+    completeRequestedTiles(worker, 6000, 6000);
     expect(snapshots.at(-1)!.currentLOD).toBe(0);
     expect(snapshots.at(-1)!.quality).toBe("low");
     expect(onLoadingStateChange.mock.calls.at(-1)?.[2]).toBe("low");
 
     vi.mocked(gl.bindTexture).mockClear();
     engine.setTileOutlineEnabled(false);
+    flushFrame();
     const textures = vi
       .mocked(gl.bindTexture)
       .mock.calls.map(([, texture]) => texture);
@@ -1097,7 +1255,7 @@ describe("WebGLImageViewerEngine lifecycle", () => {
     expect(() => emit({ type: "init-done" })).not.toThrow();
   });
 
-  it("rejects a second loadImage with a different URL — one engine serves one image", async () => {
+  it("switches images in one worker session namespace and discards late pixels", async () => {
     const canvas = document.createElement("canvas");
     const gl = createWebGLMock();
     vi.spyOn(canvas, "getContext").mockReturnValue(gl);
@@ -1119,22 +1277,276 @@ describe("WebGLImageViewerEngine lifecycle", () => {
       worker.onmessage?.({ data } as MessageEvent);
 
     const first = engine.loadImage("blob:photo", 100, 100);
-    await expect(engine.loadImage("blob:other", 100, 100)).rejects.toThrow(
-      /renders a single image/,
-    );
-
-    // 首图加载不受影响，仍被 image-loaded 正常结算
+    const second = engine.loadImage("blob:other", 200, 100);
+    await expect(first).rejects.toThrow(/superseded/);
+    const obsolete = { width: 50, height: 50, close: vi.fn() };
     emit({
       type: "image-loaded",
+      sessionId: 1,
       payload: {
-        imageBitmap: { width: 50, height: 50, close: vi.fn() },
+        imageBitmap: obsolete,
         imageWidth: 100,
         imageHeight: 100,
         lodLevel: 1,
       },
     });
-    await expect(first).resolves.toBeUndefined();
+    expect(obsolete.close).toHaveBeenCalledOnce();
+    expect(gl.texImage2D).not.toHaveBeenCalled();
 
+    // Only the current image completes its load and uploads a texture.
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 50, height: 50, close: vi.fn() },
+        imageWidth: 200,
+        imageHeight: 100,
+        lodLevel: 1,
+      },
+    });
+    await expect(second).resolves.toBeUndefined();
+    expect(WorkerMock.instances).toHaveLength(1);
+    expect(gl.texImage2D).toHaveBeenCalledOnce();
+
+    engine.destroy();
+  });
+
+  it("reuses GPU bases when returning to a Blob and releases all textures on teardown", async () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 300,
+    } as DOMRect);
+    const engine = createEngine(canvas);
+    const worker = WorkerMock.instances.at(-1)!;
+    const loaded = (width: number, height: number) =>
+      worker.onmessage?.({
+        data: {
+          type: "image-loaded",
+          payload: {
+            imageBitmap: {
+              width: width / 2,
+              height: height / 2,
+              close: vi.fn(),
+            },
+            imageWidth: width,
+            imageHeight: height,
+            sourceWidth: width,
+            sourceHeight: height,
+            lodLevel: 1,
+          },
+        },
+      } as MessageEvent);
+    const a = new Blob(["landscape"]);
+    const b = new Blob(["portrait"]);
+    const first = engine.loadImage("blob:a", 1000, 500, a);
+    loaded(1000, 500);
+    await first;
+    const second = engine.loadImage("blob:b", 500, 1000, b);
+    loaded(500, 1000);
+    await second;
+    expect(gl.texImage2D).toHaveBeenCalledTimes(2);
+    await engine.loadImage("blob:a-new-object-url", 1000, 500, a);
+    expect(gl.texImage2D).toHaveBeenCalledTimes(2);
+    expect(engine.getScale()).toBe(0.4);
+    expect(worker.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "load-image",
+        payload: expect.objectContaining({
+          skipBaseTexture: true,
+          imageWidth: 1000,
+          imageHeight: 500,
+        }),
+      }),
+    );
+    expect(WorkerMock.instances).toHaveLength(1);
+    engine.destroy();
+    expect(gl.deleteTexture).toHaveBeenCalledTimes(2);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
+  it("requests original pixels only on detail zoom and upgrades without changing the view", async () => {
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 200,
+    } as DOMRect);
+    const onDetailRequested = vi.fn();
+    const engine = createEngine(canvas, {
+      detailSrc: "https://photo.test/original.jpg",
+      onDetailRequested,
+    });
+    const worker = WorkerMock.instances.at(-1)!;
+    const emit = (data: unknown) =>
+      worker.onmessage?.({ data } as MessageEvent);
+    const load = engine.loadImage(
+      "blob:preview",
+      4000,
+      2000,
+      new Blob(["preview"]),
+    );
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 1000, height: 500, close: vi.fn() },
+        imageWidth: 4000,
+        imageHeight: 2000,
+        sourceWidth: 1000,
+        sourceHeight: 500,
+        lodLevel: 1,
+      },
+    });
+    await load;
+    expect(onDetailRequested).not.toHaveBeenCalled();
+    for (let i = 0; i < 8; i++) engine.zoomIn(false);
+    flushQueuedFrames();
+    expect(onDetailRequested).toHaveBeenCalledOnce();
+    const zoom = engine.getScale();
+    const upgrade = engine.upgradeSource(
+      "https://photo.test/original.jpg",
+      new Blob(["original"]),
+    );
+    expect(gl.deleteTexture).not.toHaveBeenCalled();
+    expect(engine.getScale()).toBe(zoom);
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 1772, height: 886, close: vi.fn() },
+        imageWidth: 4000,
+        imageHeight: 2000,
+        sourceWidth: 3000,
+        sourceHeight: 1500,
+        lodLevel: 1,
+      },
+    });
+    await upgrade;
+    expect(engine.getScale()).toBe(zoom);
+    expect(onDetailRequested).toHaveBeenCalledOnce();
+    expect(gl.texImage2D).toHaveBeenCalledTimes(2);
+    expect(WorkerMock.instances).toHaveLength(1);
+    engine.destroy();
+  });
+
+  it("continues an in-flight zoom animation when original pixels arrive", async () => {
+    let now = 1000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 200,
+    } as DOMRect);
+    const engine = createEngine(canvas);
+    const worker = WorkerMock.instances.at(-1)!;
+    const emitBase = (width: number) =>
+      worker.onmessage?.({
+        data: {
+          type: "image-loaded",
+          payload: {
+            imageBitmap: { width, height: width / 2, close: vi.fn() },
+            imageWidth: 4000,
+            imageHeight: 2000,
+            sourceWidth: width,
+            sourceHeight: width / 2,
+            lodLevel: 1,
+          },
+        },
+      } as MessageEvent);
+    const load = engine.loadImage(
+      "preview.jpg",
+      4000,
+      2000,
+      new Blob(["preview"]),
+    );
+    emitBase(1000);
+    await load;
+    engine.zoomAt(200, 100, 3, true);
+    now += 50;
+    flushFrame(now);
+    const midScale = engine.getScale();
+    const upgrade = engine.upgradeSource(
+      "original.jpg",
+      new Blob(["original"]),
+    );
+    emitBase(2000);
+    await upgrade;
+    expect(engine.getScale()).toBe(midScale);
+    now += 300;
+    flushFrame(now);
+    expect(engine.getScale()).toBeCloseTo(0.3);
+    expect(engine.getScale()).toBeGreaterThan(midScale);
+    engine.destroy();
+  });
+
+  it("keeps a failed detail upgrade's base and restores that successful source after context loss", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const canvas = document.createElement("canvas");
+    const gl = createWebGLMock();
+    vi.spyOn(canvas, "getContext").mockReturnValue(gl);
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      width: 400,
+      height: 200,
+    } as DOMRect);
+    const onError = vi.fn();
+    const engine = createEngine(canvas, { onError });
+    const worker = WorkerMock.instances.at(-1)!;
+    const emit = (data: unknown) =>
+      worker.onmessage?.({ data } as MessageEvent);
+    const preview = new Blob(["valid display"]);
+    const load = engine.loadImage("blob:preview", 4000, 2000, preview);
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 1000, height: 500, close: vi.fn() },
+        imageWidth: 4000,
+        imageHeight: 2000,
+        sourceWidth: 1000,
+        sourceHeight: 500,
+        lodLevel: 1,
+      },
+    });
+    await load;
+    engine.zoomIn(false);
+    const zoom = engine.getScale();
+    const upgrade = engine.upgradeSource("bad-original.jpg", new Blob(["bad"]));
+    emit({ type: "load-error", payload: { error: "Cannot decode original" } });
+    await expect(upgrade).rejects.toThrow("Cannot decode original");
+    expect(engine.getScale()).toBe(zoom);
+    expect(gl.deleteTexture).not.toHaveBeenCalled();
+    canvas.dispatchEvent(new Event("webglcontextlost", { cancelable: true }));
+    canvas.dispatchEvent(new Event("webglcontextrestored"));
+    expect(worker.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "load-image",
+        payload: expect.objectContaining({
+          url: "blob:preview",
+          blob: preview,
+        }),
+      }),
+    );
+    // Releasing the recovery load must not send its stale failure to a new lease.
+    engine.suspend();
+    const nextOnError = vi.fn();
+    engine.updateConfig(createEngineConfig({ onError: nextOnError }));
+    engine.resume();
+    const next = engine.loadImage("blob:next", 100, 100, new Blob(["next"]));
+    emit({
+      type: "image-loaded",
+      payload: {
+        imageBitmap: { width: 100, height: 100, close: vi.fn() },
+        imageWidth: 100,
+        imageHeight: 100,
+        lodLevel: 1,
+      },
+    });
+    await next;
+    await Promise.resolve();
+    expect(onError).not.toHaveBeenCalled();
+    expect(nextOnError).not.toHaveBeenCalled();
     engine.destroy();
   });
 

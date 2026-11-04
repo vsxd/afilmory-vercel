@@ -2,11 +2,14 @@ import type { TileInfo, TileKey } from "./tile-cache";
 import {
   createTileKey,
   getTileGridSize,
+  MAX_TILES_IN_FLIGHT,
   MAX_TILES_PER_FRAME,
   parseTileKey,
   TEXTURE_BYTES_PER_PIXEL,
   TILE_CACHE_BYTE_BUDGET,
   TILE_CACHE_SIZE,
+  TILE_UPLOAD_BYTE_BUDGET,
+  TILE_UPLOAD_TIME_BUDGET_MS,
 } from "./tile-cache";
 import type { LoadingTileInfo } from "./tile-request-runtime";
 import { TileRequestRuntime } from "./tile-request-runtime";
@@ -30,6 +33,13 @@ type SessionlessWorkerMessage = TextureWorkerMessage extends infer Message
 
 /** 渲染循环里瓦片更新的防抖间隔（毫秒）。 */
 const TILE_UPDATE_DEBOUNCE_MS = 100;
+
+interface PendingTileUpload {
+  key: TileKey;
+  imageBitmap: ImageBitmap;
+  lodLevel: number;
+  byteSize: number;
+}
 
 /** Snapshot of the viewport/transform the tile subsystem needs for one update. */
 export interface TileViewportState {
@@ -180,6 +190,7 @@ export function createTileMatrix(input: {
 export class TileManager {
   private readonly cache = new Map<TileKey, TileInfo>();
   private readonly requestRuntime = new TileRequestRuntime();
+  private readonly pendingUploads = new Map<TileKey, PendingTileUpload>();
   private visibleTiles = new Set<TileKey>();
   /** Visible tiles plus the prefetch border admitted by the current budget. */
   private admittedTiles = new Set<TileKey>();
@@ -187,6 +198,7 @@ export class TileManager {
   private visibleLodLevel = -1;
   private lastViewportHash = "";
   private processingFrameId: number | null = null;
+  private processingGeneration = 0;
   private updateTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastUpdateTime = 0;
   private disposed = false;
@@ -243,7 +255,8 @@ export class TileManager {
     if (message.type === "tile-error") {
       const { key, error } = message.payload;
       console.warn(`Worker failed to create tile: ${key}`, error);
-      this.requestRuntime.markFailed(key);
+      if (!this.pendingUploads.has(key)) this.requestRuntime.markFailed(key);
+      this.scheduleProcessingFrame();
       return true;
     }
 
@@ -255,7 +268,7 @@ export class TileManager {
     imageBitmap: ImageBitmap;
     lodLevel: number;
   }): void {
-    const { key, imageBitmap, lodLevel } = payload;
+    const { key, imageBitmap } = payload;
 
     if (this.disposed) {
       imageBitmap.close();
@@ -263,20 +276,43 @@ export class TileManager {
     }
 
     const loadingInfo = this.requestRuntime.getLoadingInfo(key);
-    const tileInfoInCache = this.cache.get(key);
-
-    // A late request is useful only if still admitted. Same-image duplicate
-    // responses reuse the cached texture instead of briefly allocating twice.
-    if (!this.admittedTiles.has(key) || tileInfoInCache?.texture) {
+    // A queued reply still owns its dispatch slot. Duplicate replies must not
+    // release it while the first bitmap is waiting to reach the GPU.
+    if (!loadingInfo || this.pendingUploads.has(key)) {
       imageBitmap.close();
-      if (loadingInfo) {
-        this.requestRuntime.markLoaded(key);
-      }
+      return;
+    }
+    if (!this.admittedTiles.has(key) || this.cache.has(key)) {
+      imageBitmap.close();
+      this.requestRuntime.markLoaded(key);
+      this.scheduleProcessingFrame();
       return;
     }
 
     const byteSize =
       imageBitmap.width * imageBitmap.height * TEXTURE_BYTES_PER_PIXEL;
+    if (
+      !Number.isFinite(byteSize) ||
+      byteSize <= 0 ||
+      byteSize > Math.min(this.budget.maxCacheBytes, TILE_UPLOAD_BYTE_BUDGET)
+    ) {
+      imageBitmap.close();
+      this.requestRuntime.markFailed(key);
+      this.scheduleProcessingFrame();
+      return;
+    }
+    this.pendingUploads.set(key, { ...payload, byteSize });
+    this.scheduleProcessingFrame();
+  }
+
+  /** Called only at a frame boundary, never for each arriving worker message. */
+  private uploadTile({
+    key,
+    imageBitmap,
+    lodLevel,
+    byteSize,
+  }: PendingTileUpload): boolean {
+    const loadingInfo = this.requestRuntime.getLoadingInfo(key);
     if (
       !reserveTileTextureSpace({
         byteSize,
@@ -289,17 +325,15 @@ export class TileManager {
     ) {
       imageBitmap.close();
       this.requestRuntime.markFailed(key);
-      return;
+      return false;
     }
     let texture: WebGLTexture;
     try {
       texture = this.host.createTexture(imageBitmap);
     } catch (error) {
       console.warn(`Failed to upload tile texture: ${key}`, error);
-      if (loadingInfo) {
-        this.requestRuntime.markFailed(key);
-      }
-      return;
+      this.requestRuntime.markFailed(key);
+      return false;
     } finally {
       imageBitmap.close();
     }
@@ -312,22 +346,13 @@ export class TileManager {
       texture,
       lastUsed: performance.now(),
       isLoading: false,
-      priority: loadingInfo
-        ? loadingInfo.priority
-        : tileInfoInCache
-          ? tileInfoInCache.priority
-          : 0,
+      priority: loadingInfo?.priority ?? 0,
       byteSize,
     };
     this.cache.set(key, tileInfo);
 
-    if (loadingInfo) {
-      this.requestRuntime.markLoaded(key);
-    }
-
-    this.cleanupOldTiles();
-    this.notifyIfVisibleLodReady();
-    this.host.requestRender();
+    this.requestRuntime.markLoaded(key);
+    return this.visibleTiles.has(key);
   }
 
   // ---- Cache update / dispatch ---------------------------------------------
@@ -353,6 +378,7 @@ export class TileManager {
       this.visibleLodLevel = -1;
       this.lastViewportHash = "";
       this.requestRuntime.pruneInvisiblePending(this.visibleTiles);
+      this.prunePendingUploads();
       this.cleanupOldTiles();
       // 只画底图了：onVisibleLodReady 不会再触发，需显式让引擎把质量降回底图水平。
       if (viewport.imageLoaded) this.host.onCoveredByBase?.();
@@ -406,14 +432,17 @@ export class TileManager {
     this.visibleLodLevel = lodLevel;
     // 丢弃已不可见但尚未派发的瓦片请求，避免把过期瓦片排到可见瓦片之前。
     this.requestRuntime.pruneInvisiblePending(newAdmittedTiles);
+    this.prunePendingUploads();
     this.cleanupOldTiles();
 
     if (
       viewportChanged ||
       addedNewRequest ||
-      this.requestRuntime.hasPendingWork
+      this.requestRuntime.hasPendingWork ||
+      this.pendingUploads.size > 0
     ) {
-      this.processPendingTileRequests();
+      if (this.processingFrameId === null) this.dispatchPendingTileRequests();
+      this.scheduleProcessingFrame();
     }
 
     this.notifyIfVisibleLodReady();
@@ -430,19 +459,16 @@ export class TileManager {
     });
   }
 
-  private processPendingTileRequests(): void {
+  private dispatchPendingTileRequests(): void {
     if (this.disposed || !this.host.canDispatchTiles()) return;
-
-    if (!this.requestRuntime.hasPendingWork) {
-      if (this.processingFrameId !== null) {
-        cancelAnimationFrame(this.processingFrameId);
-        this.processingFrameId = null;
-      }
-      return;
-    }
+    const availableSlots =
+      MAX_TILES_IN_FLIGHT - this.requestRuntime.loadingTiles.size;
+    if (!this.requestRuntime.hasPendingWork || availableSlots <= 0) return;
 
     const { imageWidth, imageHeight } = this.host.getViewport();
-    const batch = this.requestRuntime.selectBatch(MAX_TILES_PER_FRAME);
+    const batch = this.requestRuntime.selectBatch(
+      Math.min(MAX_TILES_PER_FRAME, availableSlots),
+    );
 
     for (const request of batch) {
       const { key } = request;
@@ -469,12 +495,68 @@ export class TileManager {
         this.requestRuntime.markFailed(key);
       }
     }
+  }
 
-    if (this.requestRuntime.hasPendingWork && this.processingFrameId === null) {
-      this.processingFrameId = requestAnimationFrame(() => {
-        this.processingFrameId = null;
-        this.processPendingTileRequests();
-      });
+  private prunePendingUploads(): void {
+    for (const [key, pending] of this.pendingUploads) {
+      if (this.admittedTiles.has(key)) continue;
+      pending.imageBitmap.close();
+      this.pendingUploads.delete(key);
+      this.requestRuntime.markLoaded(key);
+    }
+  }
+
+  private scheduleProcessingFrame(): void {
+    if (
+      this.disposed ||
+      !this.host.canDispatchTiles() ||
+      this.processingFrameId !== null
+    )
+      return;
+    const canDispatch =
+      this.requestRuntime.hasPendingWork &&
+      this.requestRuntime.loadingTiles.size < MAX_TILES_IN_FLIGHT;
+    if (this.pendingUploads.size === 0 && !canDispatch) return;
+    const { processingGeneration: generation } = this;
+    this.processingFrameId = requestAnimationFrame(() => {
+      if (generation !== this.processingGeneration) return;
+      this.processingFrameId = null;
+      if (this.disposed || !this.host.canDispatchTiles()) return;
+      this.uploadPendingTiles();
+      this.dispatchPendingTileRequests();
+      this.scheduleProcessingFrame();
+    });
+  }
+
+  private uploadPendingTiles(): void {
+    // Newly visible tiles outrank an old viewport's prefetch replies.
+    const pending = [...this.pendingUploads.values()].sort(
+      (a, b) =>
+        Number(this.visibleTiles.has(b.key)) -
+        Number(this.visibleTiles.has(a.key)),
+    );
+    const startedAt = performance.now();
+    let uploadedCount = 0;
+    let uploadedBytes = 0;
+    let visibleChanged = false;
+    for (const tile of pending) {
+      if (this.disposed || !this.host.canDispatchTiles()) break;
+      if (!this.pendingUploads.has(tile.key)) continue;
+      if (
+        uploadedCount >= MAX_TILES_PER_FRAME ||
+        uploadedBytes + tile.byteSize > TILE_UPLOAD_BYTE_BUDGET ||
+        (uploadedCount > 0 &&
+          performance.now() - startedAt >= TILE_UPLOAD_TIME_BUDGET_MS)
+      )
+        break;
+      this.pendingUploads.delete(tile.key);
+      visibleChanged = this.uploadTile(tile) || visibleChanged;
+      uploadedCount++;
+      uploadedBytes += tile.byteSize;
+    }
+    if (visibleChanged) {
+      this.notifyIfVisibleLodReady();
+      this.host.requestRender();
     }
   }
 
@@ -553,6 +635,7 @@ export class TileManager {
   // ---- Lifecycle -------------------------------------------------------------
 
   private cancelScheduledWork(): void {
+    this.processingGeneration++;
     if (this.processingFrameId !== null) {
       cancelAnimationFrame(this.processingFrameId);
       this.processingFrameId = null;
@@ -561,6 +644,9 @@ export class TileManager {
       clearTimeout(this.updateTimeoutId);
       this.updateTimeoutId = null;
     }
+    for (const pending of this.pendingUploads.values())
+      pending.imageBitmap.close();
+    this.pendingUploads.clear();
   }
 
   /**

@@ -103,7 +103,11 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
 
     try {
       if (canShareImageFiles()) {
-        const imageUrl = blobSrc || photo.originalUrl;
+        // The viewer Blob may now be a fitted display derivative. Explicit
+        // sharing always resolves original bytes when derivatives are available.
+        const imageUrl = photo.displayImages?.length
+          ? photo.originalUrl
+          : blobSrc || photo.originalUrl;
         const response = await fetch(imageUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch shared image: ${response.status}`);
@@ -139,7 +143,14 @@ export const SharePanel = ({ photo, trigger, blobSrc }: SharePanelProps) => {
 
       toast.error(t("photo.share.copy.failed"));
     }
-  }, [photo.id, photo.title, blobSrc, photo.originalUrl, t]);
+  }, [
+    photo.id,
+    photo.title,
+    photo.displayImages,
+    blobSrc,
+    photo.originalUrl,
+    t,
+  ]);
 
   const handleCopyLink = useCallback(async () => {
     if (

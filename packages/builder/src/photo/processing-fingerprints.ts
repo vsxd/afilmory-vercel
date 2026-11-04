@@ -1,5 +1,6 @@
 import { locationPrivacyFingerprint } from "@afilmory/schema";
 
+import { DISPLAY_IMAGE_SIGNATURE } from "../image/display-images.js";
 import type {
   PhotoManifestItem,
   PhotoProcessingFingerprints,
@@ -12,6 +13,7 @@ import type {
  */
 export interface CoreProcessingFingerprints {
   thumbnail: string;
+  displayImages: string;
   exif: string;
   tone: string;
   media: string;
@@ -23,6 +25,7 @@ export const CURRENT_CORE_PROCESSING_FINGERPRINTS: Readonly<CoreProcessingFinger
     // Encoding parameters also have a global on-disk marker; this stage version
     // covers changes to the per-photo thumbnail/thumbhash contract itself.
     thumbnail: "thumbnail:v2",
+    displayImages: DISPLAY_IMAGE_SIGNATURE,
     exif: "exif:v2",
     tone: "tone:v2",
     media: "media-detection:v2",

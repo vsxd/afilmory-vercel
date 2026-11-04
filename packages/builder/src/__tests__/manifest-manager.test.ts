@@ -176,6 +176,67 @@ describe("handleDeletedPhotos", () => {
       fs.access(path.join(thumbnailsDir, newName)),
     ).resolves.toBeUndefined();
   });
+
+  it("retains published display variants and removes only owned stale versions", async () => {
+    await fs.mkdir(thumbnailsDir, { recursive: true });
+    const name = (id: string, hash: string) =>
+      `${id}.${hash.repeat(64)}.${"e".repeat(12)}.display-960.jpg`;
+    const current = name("keep", "a");
+    const stale = name("keep", "b");
+    const removed = name("gone", "c");
+    const unrelated = name("stranger", "d");
+    const failed = name("failed", "f");
+    for (const file of [current, stale, removed, unrelated, failed]) {
+      await fs.writeFile(path.join(thumbnailsDir, file), "display");
+    }
+    const photo = createPhotoManifestItem("keep");
+    // CDN thumbnail names must not prevent cleanup of old local display files.
+    photo.thumbnailUrl = "https://cdn.example.com/opaque.jpg";
+    photo.displayImages = [
+      { url: `/thumbnails/${current}`, width: 960, height: 720 },
+    ];
+    await expect(
+      handleDeletedPhotos(
+        outputSettings,
+        [photo],
+        new Set(["keep", "failed"]),
+        new Set(["gone", "failed"]),
+      ),
+    ).resolves.toBe(0);
+    expect((await fs.readdir(thumbnailsDir)).sort()).toEqual(
+      [current, unrelated, failed].sort(),
+    );
+    await handleDeletedPhotos(
+      outputSettings,
+      [],
+      undefined,
+      new Set(["keep", "failed"]),
+    );
+    expect(await fs.readdir(thumbnailsDir)).toEqual([unrelated]);
+  });
+
+  it("cleans up display variants for a 170-byte ID without changing the published ID", async () => {
+    await fs.mkdir(thumbnailsDir, { recursive: true });
+    const id = `${"照".repeat(56)}ab`;
+    const current = `${id}.${"a".repeat(64)}.display-2560.jpg`;
+    const stale = `${id}.${"b".repeat(64)}.display-2560.jpg`;
+    await fs.writeFile(path.join(thumbnailsDir, current), "current");
+    await fs.writeFile(path.join(thumbnailsDir, stale), "stale");
+    const photo = createPhotoManifestItem(id);
+    photo.displayImages = [
+      {
+        url: `/thumbnails/${encodeURIComponent(current)}`,
+        width: 2560,
+        height: 1600,
+      },
+    ];
+    await handleDeletedPhotos(outputSettings, [photo]);
+    expect(await fs.readdir(thumbnailsDir)).toEqual([current]);
+    await handleDeletedPhotos(outputSettings, [], undefined, new Set([id]));
+    await expect(fs.access(thumbnailsDir)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
 });
 
 describe("loadExistingManifest", () => {

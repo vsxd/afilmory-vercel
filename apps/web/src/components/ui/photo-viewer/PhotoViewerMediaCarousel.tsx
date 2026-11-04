@@ -2,7 +2,7 @@ import { Spring } from "@afilmory/ui";
 import type { MotionValue } from "motion/react";
 import { m } from "motion/react";
 import type { RefObject } from "react";
-import { Fragment } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Swiper as SwiperType } from "swiper";
 import { Navigation, Virtual } from "swiper/modules";
@@ -14,6 +14,7 @@ import type { PhotoManifest } from "~/types/photo";
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { ProgressiveImage } from "./ProgressiveImage";
+import { useDisplayImagePrefetch } from "./useDisplayImagePrefetch";
 
 const viewerNavButtonClassName =
   "af-glass af-control absolute top-1/2 z-20 flex size-10 -translate-y-1/2 items-center justify-center rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100";
@@ -65,6 +66,20 @@ export const PhotoViewerMediaCarousel = ({
   onBlobSrcChange,
 }: PhotoViewerMediaCarouselProps) => {
   const { t, i18n } = useTranslation();
+  const [readyIndex, setReadyIndex] = useState<number | null>(null);
+  const handleBlobSrcChange = useCallback(
+    (blobSrc: string | null) => {
+      setReadyIndex(blobSrc ? currentIndex : null);
+      onBlobSrcChange(blobSrc);
+    },
+    [currentIndex, onBlobSrcChange],
+  );
+  useDisplayImagePrefetch(
+    photos,
+    currentIndex,
+    isOpen && isViewerContentVisible && readyIndex === currentIndex,
+    ref,
+  );
 
   return (
     <m.div
@@ -123,6 +138,7 @@ export const PhotoViewerMediaCarousel = ({
                     loadingIndicatorRef={loadingIndicatorRef}
                     isCurrentImage={isCurrentImage}
                     src={photo.originalUrl}
+                    displayImages={photo.displayImages}
                     thumbnailSrc={photo.thumbnailUrl}
                     thumbHash={photo.thumbHash}
                     alt={getPhotoAccessibleLabel(photo, t, i18n.language)}
@@ -133,7 +149,7 @@ export const PhotoViewerMediaCarousel = ({
                     fitOnViewportResize={isMobile}
                     onZoomChange={isCurrentImage ? onZoomChange : undefined}
                     onBlobSrcChange={
-                      isCurrentImage ? onBlobSrcChange : undefined
+                      isCurrentImage ? handleBlobSrcChange : undefined
                     }
                     videoSource={
                       photo.video?.type === "motion-photo"

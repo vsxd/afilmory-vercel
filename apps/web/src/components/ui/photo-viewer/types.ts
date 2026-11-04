@@ -1,6 +1,7 @@
 import type { VideoSource } from "~/lib/image-loading-types";
 import type { MediaLease } from "~/lib/media-resource";
 
+import type { DisplayImage } from "./display-image";
 import type { LoadingIndicatorRef } from "./LoadingIndicator";
 
 export type { VideoSource } from "~/lib/image-loading-types";
@@ -16,6 +17,7 @@ export const SHOW_SCALE_INDICATOR_DURATION = 1000;
 export interface ProgressiveImageProps {
   photoId?: string;
   src: string;
+  displayImages?: readonly DisplayImage[];
   thumbnailSrc?: string;
   thumbHash?: string | null;
 
@@ -48,7 +50,7 @@ export interface ProgressiveImageProps {
 export interface WebGLImageViewerRef {
   zoomIn: (animated?: boolean) => void;
   zoomOut: (animated?: boolean) => void;
-  resetView: () => void;
+  resetView: (animated?: boolean) => void;
   getScale: () => number;
 }
 
@@ -63,6 +65,9 @@ export interface DOMImageViewerProps {
   src: string;
   alt: string;
   highResLoaded: boolean;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  preserveTransformOnSourceChange?: boolean;
   onLoad?: () => void;
   onError?: (error: Error) => void;
   children?: React.ReactNode;
@@ -75,7 +80,12 @@ export interface LivePhotoBadgeProps {
 
 export type ImageContentState =
   | { status: "empty" }
-  | { status: "loaded"; lease: MediaLease; rendered: boolean }
+  | {
+      status: "loaded";
+      lease: MediaLease;
+      sourceUrl?: string;
+      rendered: boolean;
+    }
   | { status: "failed"; error: Error };
 
 export interface ProgressiveImageState {

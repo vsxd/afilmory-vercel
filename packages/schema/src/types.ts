@@ -105,6 +105,7 @@ export interface PhotoInfo {
  */
 export interface PhotoProcessingFingerprints {
   thumbnail?: string;
+  displayImages?: string;
   exif?: string;
   tone?: string;
   media?: string;
@@ -112,10 +113,18 @@ export interface PhotoProcessingFingerprints {
   privacy?: string;
 }
 
+/** Build-time, display-oriented derivatives; original dimensions remain on the photo. */
+export interface PhotoDisplayImage {
+  url: string;
+  width: number;
+  height: number;
+}
+
 export interface PhotoManifestItem extends PhotoInfo {
   id: string;
   originalUrl: string;
   thumbnailUrl: string;
+  displayImages?: PhotoDisplayImage[];
   thumbHash: string | null;
   width: number;
   height: number;

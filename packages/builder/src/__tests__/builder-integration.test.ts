@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AfilmoryBuilder } from "../builder/builder.js";
 import { createDefaultBuilderConfig } from "../config/defaults.js";
+import { getDisplayImageFileName } from "../image/display-images.js";
 import {
   getThumbnailFileNameFromUrl,
   isThumbnailEncodingStale,
@@ -209,6 +210,22 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
 
       // originalUrl 由本地 baseUrl(/photos) + key 拼出。
       expect(item.originalUrl).toBe(`/photos/${fixture.name}`);
+      // Small originals produce one full-size derivative, never three upscales.
+      expect(item.displayImages).toHaveLength(1);
+      expect(item.displayImages![0]).toMatchObject({
+        width: fixture.width,
+        height: fixture.height,
+      });
+      const displayPath = path.join(
+        thumbnailsDir,
+        getDisplayImageFileName(item.displayImages![0].url, item.id)!,
+      );
+      expect(await pathExists(displayPath)).toBe(true);
+      expect(await sharp(displayPath).metadata()).toMatchObject({
+        width: fixture.width,
+        height: fixture.height,
+        format: "jpeg",
+      });
 
       // 缩略图 .jpg 实际落盘（每张一个）。
       expect(
@@ -242,6 +259,46 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
     expect(manifestAfterSecond.photos).toHaveLength(FIXTURES.length);
     expect(manifestAfterSecond.generatedAt).toBe(manifest.generatedAt);
 
+    // Restoring a partial artifact cache must repair only the missing variant.
+    const missing = manifestAfterSecond.photos[0];
+    const missingDisplayPath = path.join(
+      thumbnailsDir,
+      getDisplayImageFileName(missing.displayImages![0].url, missing.id)!,
+    );
+    await rm(missingDisplayPath);
+    const repaired = await makeBuilder().buildManifest(BUILD_OPTIONS);
+    expect(repaired.processedCount).toBe(1);
+    expect(repaired.failedCount).toBe(0);
+    expect(await pathExists(missingDisplayPath)).toBe(true);
+    expect(
+      (await readManifestFromDisk()).photos.find((p) => p.id === missing.id)
+        ?.thumbnailUrl,
+    ).toBe(missing.thumbnailUrl);
+
+    // A zero-byte artifact is present in readdir but must still be repaired
+    // by the planner, before the worker gets a chance to validate its source.
+    await writeFile(missingDisplayPath, Buffer.alloc(0));
+    const repairedEmpty = await makeBuilder().buildManifest(BUILD_OPTIONS);
+    expect(repairedEmpty.processedCount).toBe(1);
+    expect(repairedEmpty.failedCount).toBe(0);
+    expect(await sharp(missingDisplayPath).metadata()).toMatchObject({
+      width: missing.displayImages![0].width,
+      height: missing.displayImages![0].height,
+      format: "jpeg",
+    });
+
+    // A pre-upgrade v2 manifest stays valid and acquires derivatives on its
+    // next healthy incremental build, even though the original did not change.
+    const legacy = await readManifestFromDisk();
+    delete legacy.photos[0].displayImages;
+    delete legacy.photos[0].processing!.displayImages;
+    await writeFile(manifestPath, JSON.stringify(legacy));
+    const backfilled = await makeBuilder().buildManifest(BUILD_OPTIONS);
+    expect(backfilled.processedCount).toBe(1);
+    expect((await readManifestFromDisk()).photos[0].displayImages).toHaveLength(
+      1,
+    );
+
     // 记下将被删除那张照片的 id 与缩略图路径（删除前它应当在场）。
     const deletedItem = new Map(
       manifestAfterSecond.photos.map((photo) => [photo.s3Key, photo]),
@@ -252,6 +309,12 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
       getThumbnailFileNameFromUrl(deletedItem!.thumbnailUrl)!,
     );
     expect(await pathExists(deletedThumbnailPath)).toBe(true);
+    const deletedDisplayPaths = deletedItem!.displayImages!.map((image) =>
+      path.join(
+        thumbnailsDir,
+        getDisplayImageFileName(image.url, deletedItem!.id)!,
+      ),
+    );
 
     // ---- 构建 #3：删掉一张源文件 —— 该照片与其缩略图应被清理 ----
     await rm(path.join(sourceDir, DELETED_FIXTURE.name));
@@ -276,6 +339,8 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
 
     // 缩略图被物理删除；被保留照片的缩略图仍在。
     expect(await pathExists(deletedThumbnailPath)).toBe(false);
+    for (const displayPath of deletedDisplayPaths)
+      expect(await pathExists(displayPath)).toBe(false);
     for (const photo of manifestAfterThird.photos) {
       expect(
         await pathExists(
@@ -303,6 +368,12 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
       getThumbnailFileNameFromUrl(corruptedItem!.thumbnailUrl)!,
     );
     expect(await pathExists(corruptedThumbnailPath)).toBe(true);
+    const corruptedDisplayPaths = corruptedItem!.displayImages!.map((image) =>
+      path.join(
+        thumbnailsDir,
+        getDisplayImageFileName(image.url, corruptedItem!.id)!,
+      ),
+    );
 
     const survivorThumbnailPaths = manifestBefore.photos
       .filter((photo) => photo.s3Key !== CORRUPTED_FIXTURE.name)
@@ -348,6 +419,8 @@ describe("AfilmoryBuilder end-to-end (real sharp + exiftool + local FS)", () => 
     // No thumbnail is orphan-collected: the kept entry protects its own.
     expect(fourth.deletedCount).toBe(0);
     expect(await pathExists(corruptedThumbnailPath)).toBe(true);
+    for (const displayPath of corruptedDisplayPaths)
+      expect(await pathExists(displayPath)).toBe(true);
 
     // ---- Build #5: the failed photo is NOT in the loaded manifest ----
     // Drop the corrupted photo's record from the on-disk manifest, simulating

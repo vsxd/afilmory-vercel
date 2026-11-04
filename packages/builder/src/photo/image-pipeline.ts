@@ -1,9 +1,16 @@
+import path from "node:path";
+
 import { uint8ArrayToHex } from "@afilmory/media";
 import type { Sharp } from "sharp";
 import sharp from "sharp";
 
+import { HEIC_FORMATS } from "../constants/index.js";
 import type { PhotoProcessingContext } from "../core/contracts/photo-processing.js";
 import type { PluginRunState } from "../core/contracts/plugin-ref.js";
+import {
+  displayImagesExist,
+  generateDisplayImages,
+} from "../image/display-images.js";
 import {
   convertBmpToJpegSharpInstance,
   getImageMetadataWithSharp,
@@ -318,7 +325,42 @@ async function executePhotoProcessingPipeline(
       obj.lastModified ?? existingItem?.dateTaken,
     );
 
+    const isHDR =
+      exifData?.MPImageType === "Gain Map Image" ||
+      exifData?.UniformResourceName === "urn:iso:std:iso:ts:21496:-1" ||
+      hasGainMap;
+    const preserveOriginal =
+      isHDR ||
+      // HEIC preprocessing has already converted to an 8-bit JPEG, so the
+      // later Sharp metadata cannot reliably protect original alpha/HDR data.
+      HEIC_FORMATS.has(path.extname(photoKey).toLowerCase()) ||
+      Boolean(motionPhotoMetadata?.isMotionPhoto) ||
+      livePhotoResult.isLivePhoto;
+    stage = "display-images";
+    const canReuseDisplayImages =
+      !contentChanged &&
+      !options.isForceMode &&
+      !options.isForceThumbnails &&
+      !staleStages.has("displayImages") &&
+      (await displayImagesExist(
+        photoId,
+        existingItem?.displayImages,
+        getPhotoExecutionContext().output.thumbnailsDir,
+      ));
+    const displayImages = preserveOriginal
+      ? []
+      : canReuseDisplayImages
+        ? existingItem!.displayImages!
+        : await generateDisplayImages(
+            sharpInstance,
+            photoId,
+            getPhotoExecutionContext().output.thumbnailsDir,
+            { preserveOriginal, signal },
+          );
+    signal?.throwIfAborted();
+
     // 10. 构建照片清单项
+    stage = "manifest-item";
     const aspectRatio = metadata.width / metadata.height;
     const photoItem: PhotoManifestItem = {
       id: photoId,
@@ -328,6 +370,7 @@ async function executePhotoProcessingPipeline(
       tags: photoInfo.tags,
       originalUrl: await storageManager.generatePublicUrl(photoKey),
       thumbnailUrl: thumbnailResult.thumbnailUrl,
+      displayImages,
       thumbHash: thumbnailResult.thumbHash
         ? uint8ArrayToHex(thumbnailResult.thumbHash)
         : null,
@@ -367,10 +410,7 @@ async function executePhotoProcessingPipeline(
               }
             : undefined,
       // HDR 相关字段
-      isHDR:
-        exifData?.MPImageType === "Gain Map Image" ||
-        exifData?.UniformResourceName === "urn:iso:std:iso:ts:21496:-1" ||
-        hasGainMap,
+      isHDR,
       processing: {
         ...existingItem?.processing,
         ...currentProcessingFingerprints,

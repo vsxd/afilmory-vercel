@@ -168,12 +168,8 @@ export class WebGLViewerRenderer {
     }
 
     try {
-      // Discard errors left by unrelated callers so the check below belongs to
-      // this upload. The cap avoids looping forever on a lost context.
-      for (let i = 0; i < 8; i++) {
-        if (gl.getError() === gl.NO_ERROR) break;
-      }
-
+      // This renderer owns its context. Keep one post-allocation error check
+      // for OOM/context-loss fallback, without a preceding synchronous round-trip.
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

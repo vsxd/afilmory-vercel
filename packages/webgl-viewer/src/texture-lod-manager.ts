@@ -43,6 +43,14 @@ export class TextureLodManager {
     this.activeLOD = lodLevel;
   }
 
+  /** Transfer ownership to the context's bounded inactive-image cache. */
+  detach(): WebGLTexture | null {
+    const texture = this.baseTexture;
+    this.baseTexture = null;
+    this.activeLOD = 1;
+    return texture;
+  }
+
   dispose(): void {
     if (this.baseTexture) {
       this.gl.deleteTexture(this.baseTexture);

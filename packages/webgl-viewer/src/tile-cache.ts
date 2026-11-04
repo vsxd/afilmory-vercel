@@ -1,5 +1,10 @@
 export const TILE_SIZE = 512;
 export const MAX_TILES_PER_FRAME = 4;
+/** Worker requests and returned bitmaps waiting for upload share these slots. */
+export const MAX_TILES_IN_FLIGHT = 8;
+export const TILE_UPLOAD_BYTE_BUDGET = 4 * 1024 * 1024;
+/** Stop between uploads; an individual synchronous GL upload cannot be preempted. */
+export const TILE_UPLOAD_TIME_BUDGET_MS = 4;
 export const TILE_CACHE_SIZE = 32;
 /** Tile RGBA8 allocations only; base texture and canvas have separate budgets. */
 export const TILE_CACHE_BYTE_BUDGET = 32 * 1024 * 1024;

@@ -21,6 +21,9 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
   src,
   alt,
   highResLoaded,
+  sourceWidth,
+  sourceHeight,
+  preserveTransformOnSourceChange = false,
   onLoad,
   onError,
   children,
@@ -50,8 +53,8 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         const containerHeight = wrapper?.clientHeight || 1;
         const fit =
           Math.min(
-            containerWidth / img.naturalWidth,
-            containerHeight / img.naturalHeight,
+            containerWidth / (sourceWidth || img.naturalWidth),
+            containerHeight / (sourceHeight || img.naturalHeight),
           ) * safeFitScale;
         const actualScale = state.scale * fit;
         const isZoomed = Math.abs(actualScale - fit) > 0.01;
@@ -61,14 +64,14 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         onZoomChange?.(isZoomed, state.scale);
       }
     },
-    [onZoomChange, safeFitScale],
+    [onZoomChange, safeFitScale, sourceWidth, sourceHeight],
   );
 
   useEffect(() => {
-    if (activeRef?.current) {
+    if (activeRef?.current && !preserveTransformOnSourceChange) {
       activeRef.current.resetTransform();
     }
-  }, [src, ref, activeRef]);
+  }, [src, ref, activeRef, preserveTransformOnSourceChange]);
 
   // 双击切换 1x/fitToScreenScale，缩放中心为指针位置
   const handleDoubleClick = useCallback(
@@ -87,8 +90,8 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
       const containerHeight = wrapper.clientHeight || 1;
       const fit =
         Math.min(
-          containerWidth / img.naturalWidth,
-          containerHeight / img.naturalHeight,
+          containerWidth / (sourceWidth || img.naturalWidth),
+          containerHeight / (sourceHeight || img.naturalHeight),
         ) * safeFitScale;
       const scale0 = instance.state.scale;
       const x0 = instance.state.positionX;
@@ -119,7 +122,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         );
       }
     },
-    [activeRef, safeFitScale, shouldReduceMotion],
+    [activeRef, safeFitScale, shouldReduceMotion, sourceWidth, sourceHeight],
   );
 
   return (
@@ -165,7 +168,7 @@ export const DOMImageViewer: FC<DOMImageViewerProps> = ({
         >
           <div className="relative h-full w-full" style={fittedContentStyle}>
             <img
-              key={src}
+              key={preserveTransformOnSourceChange ? undefined : src}
               src={src || undefined}
               alt={alt}
               className={clsxm(

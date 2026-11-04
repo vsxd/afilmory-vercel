@@ -40,6 +40,53 @@ function createValidPhoto(
 }
 
 describe("manifest v2 schema", () => {
+  it("preserves optional display variants and remains compatible with old v2 photos", () => {
+    const displayImages = [
+      { url: "/thumbnails/photo.display.jpg", width: 960, height: 720 },
+    ];
+    const manifest = createManifest({
+      photos: [
+        createValidPhoto({
+          displayImages,
+          processing: { displayImages: "display:v1" },
+        }),
+      ],
+    });
+    expect(assertManifest(manifest).photos[0].displayImages).toEqual(
+      displayImages,
+    );
+    expect(assertManifest(manifest).photos[0].processing?.displayImages).toBe(
+      "display:v1",
+    );
+    expect(
+      assertManifest(createManifest({ photos: [createValidPhoto()] }))
+        .photos[0],
+    ).not.toHaveProperty("displayImages");
+  });
+
+  it.each([
+    null,
+    [null],
+    [{ url: "javascript:alert(1)", width: 960, height: 720 }],
+    [{ url: "//evil.test/photo.jpg", width: 960, height: 720 }],
+    [{ url: "/thumbnails/p.jpg", width: 0, height: 720 }],
+    Array.from({ length: 4 }, () => ({
+      url: "/thumbnails/p.jpg",
+      width: 960,
+      height: 720,
+    })),
+  ])(
+    "rejects malformed display variants without crashing normalization",
+    (displayImages) => {
+      const manifest = createManifest({ photos: [createValidPhoto()] });
+      const malformed = {
+        ...manifest,
+        photos: [{ ...manifest.photos[0], displayImages }],
+      };
+      expect(validateManifest(malformed).success).toBe(false);
+      expect(() => parseManifestLenient(malformed)).not.toThrow();
+    },
+  );
   it("creates an empty v2 manifest", () => {
     const manifest = createEmptyManifest();
 

@@ -1,5 +1,6 @@
 import type { LoadingState } from "./enum";
 import type { ImagePreviewCache } from "./image-preview-cache";
+import type { WebGLViewerSession } from "./viewer-session";
 
 export interface WheelConfig {
   step: number;
@@ -22,6 +23,14 @@ export interface WebGLImageViewerProps {
   sourceBlob?: Blob | null;
   /** Optional runtime-owned cache; the viewer never disposes it. */
   previewCache?: ImagePreviewCache | null;
+  /** One runtime-owned canvas/context, leased by the currently active photo. */
+  viewerSession?: WebGLViewerSession | null;
+  /** Original source, loaded by the host only when display pixels are exhausted. */
+  detailSrc?: string;
+  detailSourceBlob?: Blob | null;
+  onDetailRequested?: () => void;
+  /** A detail upgrade failed; the already-painted base remains usable. */
+  onDetailError?: (error: unknown) => void;
   className?: string;
   width?: number; // 可选的预知图片宽度，用于优化加载
   height?: number; // 可选的预知图片高度，用于优化加载
@@ -48,7 +57,7 @@ export interface WebGLImageViewerProps {
 export interface WebGLImageViewerRef {
   zoomIn: (animated?: boolean) => void;
   zoomOut: (animated?: boolean) => void;
-  resetView: () => void;
+  resetView: (animated?: boolean) => void;
   getScale: () => number;
 }
 

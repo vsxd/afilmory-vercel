@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getTilePixelSize,
+  MAX_TILES_IN_FLIGHT,
   MAX_TILES_PER_FRAME,
   parseTileKey,
+  TILE_UPLOAD_BYTE_BUDGET,
 } from "./tile-cache";
 import type { TileManagerHost, TileWorkerRequest } from "./tile-manager";
 import { createTileMatrix, TileManager } from "./tile-manager";
@@ -117,8 +119,8 @@ describe("TileManager", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   const runNextFrame = () => {
@@ -128,6 +130,121 @@ describe("TileManager", () => {
   };
 
   describe("dispatch scheduling", () => {
+    it("bounds worker plus pending-upload work and paints a visible batch only once", () => {
+      vi.spyOn(performance, "now").mockReturnValue(0);
+      const { host, requestTileFromWorker, createTexture, requestRender } =
+        createHost({ imageWidth: 2048, imageHeight: 2048 });
+      const manager = new TileManager(host);
+      manager.updateTileCache();
+      runNextFrame();
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(MAX_TILES_IN_FLIGHT);
+      expect(pendingFrames).toHaveLength(0);
+      manager.updateTileCache();
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(MAX_TILES_IN_FLIGHT);
+      requestRender.mockClear();
+      const replies = requestedKeys(requestTileFromWorker).map((key) => ({
+        key,
+        imageBitmap: makeBitmap(),
+        lodLevel: 2,
+      }));
+      // Prefetch arriving first must not postpone the visible batch.
+      for (const payload of [...replies].reverse())
+        manager.handleWorkerMessage({ type: "tile-created", payload });
+      expect(createTexture).not.toHaveBeenCalled();
+      expect(manager.loadingTiles.size).toBe(MAX_TILES_IN_FLIGHT);
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(MAX_TILES_IN_FLIGHT);
+      runNextFrame();
+      expect(createTexture).toHaveBeenCalledTimes(MAX_TILES_PER_FRAME);
+      expect(
+        replies
+          .slice(0, 4)
+          .every((reply) => reply.imageBitmap.close.mock.calls.length === 1),
+      ).toBe(true);
+      expect(
+        replies
+          .slice(4)
+          .every((reply) => reply.imageBitmap.close.mock.calls.length === 0),
+      ).toBe(true);
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(
+        MAX_TILES_IN_FLIGHT + MAX_TILES_PER_FRAME,
+      );
+      expect(manager.loadingTiles.size).toBe(MAX_TILES_IN_FLIGHT);
+      expect(requestRender).toHaveBeenCalledTimes(1);
+      runNextFrame();
+      expect(createTexture).toHaveBeenCalledTimes(MAX_TILES_IN_FLIGHT);
+      expect(requestRender).toHaveBeenCalledTimes(1);
+      manager.dispose();
+    });
+
+    it("keeps obsolete in-flight tasks counted until their actual reply or error", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { host, state, requestTileFromWorker, createTexture } = createHost({
+        imageWidth: 4096,
+        imageHeight: 4096,
+      });
+      const manager = new TileManager(host);
+      manager.updateTileCache();
+      runNextFrame();
+      const oldKeys = requestedKeys(requestTileFromWorker);
+      expect(oldKeys).toHaveLength(MAX_TILES_IN_FLIGHT);
+      state.translateX = -1536;
+      state.translateY = -1536;
+      manager.updateTileCache();
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(MAX_TILES_IN_FLIGHT);
+      expect(pendingFrames).toHaveLength(0);
+      const bitmap = makeBitmap();
+      manager.handleWorkerMessage({
+        type: "tile-created",
+        payload: { key: oldKeys[0], imageBitmap: bitmap, lodLevel: 2 },
+      });
+      expect(bitmap.close).toHaveBeenCalledOnce();
+      expect(createTexture).not.toHaveBeenCalled();
+      manager.handleWorkerMessage({
+        type: "tile-error",
+        payload: { key: oldKeys[1], error: "cancelled" },
+      });
+      runNextFrame();
+      expect(requestTileFromWorker).toHaveBeenCalledTimes(
+        MAX_TILES_IN_FLIGHT + 2,
+      );
+      expect(manager.loadingTiles.size).toBe(MAX_TILES_IN_FLIGHT);
+      manager.dispose();
+    });
+
+    it("enforces upload bytes and yields after a slow individual upload", () => {
+      let now = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => now);
+      const { host, requestTileFromWorker, createTexture } = createHost({
+        imageWidth: 2048,
+        imageHeight: 2048,
+      });
+      const manager = new TileManager(host);
+      manager.updateTileCache();
+      const keys = requestedKeys(requestTileFromWorker);
+      for (const key of keys)
+        manager.handleWorkerMessage({
+          type: "tile-created",
+          payload: {
+            key,
+            imageBitmap: { width: 1024, height: 512, close: vi.fn() },
+            lodLevel: 2,
+          },
+        });
+      runNextFrame();
+      expect(createTexture).toHaveBeenCalledTimes(
+        TILE_UPLOAD_BYTE_BUDGET / (1024 * 512 * 4),
+      );
+      createTexture.mockImplementation(() => {
+        now += 5;
+        return {} as WebGLTexture;
+      });
+      runNextFrame();
+      expect(createTexture).toHaveBeenCalledTimes(3);
+      runNextFrame();
+      expect(createTexture).toHaveBeenCalledTimes(4);
+      manager.dispose();
+    });
+
     it("dispatches at most MAX_TILES_PER_FRAME requests per frame and continues on the next frame", () => {
       // 2048×2048 at LOD 2 → 4×4 grid: 4 visible tiles + 12 prefetch tiles.
       const { host, requestTileFromWorker } = createHost({
@@ -218,6 +335,7 @@ describe("TileManager", () => {
         type: "tile-created",
         payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
       });
+      runNextFrame();
       expect(manager.tileCache.size).toBe(1);
       expect(manager.pendingTileRequests.size).toBeGreaterThan(0);
 
@@ -270,6 +388,10 @@ describe("TileManager", () => {
       });
 
       expect(handled).toBe(true);
+      expect(createTexture).not.toHaveBeenCalled();
+      expect(bitmap.close).not.toHaveBeenCalled();
+      expect(manager.loadingTiles.has(key)).toBe(true);
+      runNextFrame();
       expect(createTexture).toHaveBeenCalledWith(bitmap);
       expect(bitmap.close).toHaveBeenCalledTimes(1);
       expect(manager.tileCache.has(key)).toBe(true);
@@ -312,7 +434,7 @@ describe("TileManager", () => {
         type: "tile-created",
         payload: { key, imageBitmap: bitmap, lodLevel: 2 },
       });
-
+      runNextFrame();
       expect(bitmap.close).toHaveBeenCalledTimes(1);
       expect(manager.loadingTiles.has(key)).toBe(false);
       expect(requestRender).not.toHaveBeenCalled();
@@ -374,6 +496,7 @@ describe("TileManager", () => {
         }
       }
 
+      runNextFrame();
       expect(onVisibleLodReady).toHaveBeenCalledTimes(1);
       expect(onVisibleLodReady).toHaveBeenCalledWith(2);
 
@@ -438,6 +561,7 @@ describe("TileManager", () => {
               lodLevel: parseTileKey(key).lodLevel,
             },
           });
+          runNextFrame();
           expect(bitmap.close).toHaveBeenCalledTimes(1);
         }
         return keys;
@@ -489,6 +613,7 @@ describe("TileManager", () => {
         },
       });
       expect(manager.pendingTileRequests.size).toBe(1);
+      runNextFrame();
       expect(onVisibleLodReady).toHaveBeenLastCalledWith(2);
       expect(manager.currentReadyLodLevel).toBe(2);
 
@@ -520,6 +645,7 @@ describe("TileManager", () => {
         type: "tile-created",
         payload: { key, imageBitmap: makeTileBitmap(key, state), lodLevel: 1 },
       });
+      runNextFrame();
       expect(manager.collectVisibleRenderTiles()).toHaveLength(1);
       expect(onVisibleLodReady).toHaveBeenLastCalledWith(1);
 
@@ -584,6 +710,7 @@ describe("TileManager", () => {
         payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
       });
 
+      runNextFrame();
       const atSelectedLod = manager.collectVisibleRenderTiles();
       expect(atSelectedLod).toHaveLength(1);
       expect(atSelectedLod[0].matrix).toBeInstanceOf(Float32Array);
@@ -675,6 +802,34 @@ describe("TileManager", () => {
   });
 
   describe("lifecycle", () => {
+    it.each(["reset", "dispose"] as const)(
+      "%s closes queued bitmaps and ignores a cancelled processing callback",
+      (action) => {
+        const { host, requestTileFromWorker, createTexture } = createHost();
+        const manager = new TileManager(host);
+        manager.updateTileCache();
+        const key = requestedKeys(requestTileFromWorker)[0];
+        const bitmap = makeBitmap();
+        manager.handleWorkerMessage({
+          type: "tile-created",
+          payload: { key, imageBitmap: bitmap, lodLevel: 2 },
+        });
+        const duplicate = makeBitmap();
+        manager.handleWorkerMessage({
+          type: "tile-created",
+          payload: { key, imageBitmap: duplicate, lodLevel: 2 },
+        });
+        expect(duplicate.close).toHaveBeenCalledOnce();
+        expect(manager.loadingTiles.has(key)).toBe(true);
+        manager[action]();
+        expect(bitmap.close).toHaveBeenCalledOnce();
+        expect(manager.loadingTiles.size).toBe(0);
+        runNextFrame();
+        expect(createTexture).not.toHaveBeenCalled();
+        expect(bitmap.close).toHaveBeenCalledOnce();
+      },
+    );
+
     it("releases live textures on reload while leaving the manager reusable", () => {
       const { host, deleteTexture, requestTileFromWorker } = createHost();
       const manager = new TileManager(host);
@@ -684,6 +839,7 @@ describe("TileManager", () => {
         type: "tile-created",
         payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
       });
+      runNextFrame();
       const { texture } = manager.tileCache.get(key)!;
       manager.reset({ releaseTextures: true });
       expect(deleteTexture).toHaveBeenCalledExactlyOnceWith(texture);
@@ -711,6 +867,7 @@ describe("TileManager", () => {
         type: "tile-created",
         payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
       });
+      runNextFrame();
       manager.maybeScheduleUpdate(false);
 
       expect(manager.tileCache.size).toBe(1);
@@ -757,6 +914,7 @@ describe("TileManager", () => {
           payload: { key, imageBitmap: makeBitmap(), lodLevel: 2 },
         });
       }
+      runNextFrame();
       const cachedCount = manager.tileCache.size;
       expect(cachedCount).toBeGreaterThan(0);
 

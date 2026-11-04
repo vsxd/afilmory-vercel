@@ -46,6 +46,7 @@ Afilmory Vercel 是一个照片优先的静态站点生成器。Builder 在构�
 - 扫描已配置的 S3 兼容对象存储或本地目录中的图片。
 - 提取 EXIF、检测 Live Photo/Motion Photo/HDR metadata。
 - 生成 600px 宽 JPEG 缩略图和 `thumbHash` 占位数据。
+- 普通静态照片额外生成长边 960/1600/2560px 的展示图（不放大小图），与缩略图共享静态目录及产物缓存；HDR、透明等特殊媒体保留原路径。
 - 计算影调分析、维护相机和镜头索引。
 - 输出 `generated/photos-manifest.json`，缩略图输出到 `apps/web/public/thumbnails`。
 
@@ -79,6 +80,8 @@ Builder 主流程使用 `packages/builder/src/builder/workflow` 分层：`BuildS
 
 - 暴露 React `WebGLImageViewer` 和内部 engine。
 - Engine 负责协调视图状态、渲染、worker 消息和动画；renderer、worker bridge、input controller、tile scheduler、transform controller、debug adapter 分模块维护。
+- `WebGLViewerSession` 由 app runtime 持有，在活动照片之间复用单个 canvas/context/worker；关闭后延迟释放。底图 GPU 缓存最多保留当前图及两张非活动图，切图必须隔离 worker session、取消旧任务；原图升级保留当前变换和成功底图。
+- 输入、动画和瓦片更新经统一 rAF 调度；瓦片在途数量和返回后的上传工作分别受限。`onImagePainted` 表示绘制提交，不代表屏幕呈现完成。
 - 变换数学、tile 选择、clipboard 等可测试逻辑应留在独立 helper/service 中；不要把已拆出的 input/renderer/worker 职责塞回 engine。
 - `texture.worker.ts` 使用标准 TypeScript 模块入口，双向消息共享 `worker-protocol.ts`，`tsconfig.worker.json` 独立检查 WebWorker 环境。
 
@@ -119,7 +122,7 @@ Vercel 使用 `scripts/build-static.sh`。该脚本始终运行 `pnpm build`，�
 Manifest shape 来自 `@afilmory/schema`：
 
 - 顶层字段：`schema`、`version`、`generatedAt`、`source`、`photos`、`indexes`。
-- 单张照片包含 `id`、`originalUrl`、`thumbnailUrl`、`thumbHash`、`s3Key`、`exif`、`toneAnalysis`、`location`、可选 `video` 和 `isHDR`。
+- 单张照片包含 `id`、`originalUrl`、`thumbnailUrl`、`thumbHash`、`s3Key`、`exif`、`toneAnalysis`、`location`、可选 `video`、`isHDR` 和 `displayImages: { url, width, height }[]`。展示图字段缺失的旧 v2 仍可读取，Builder 增量构建会补齐；空数组表示已检查但不需要生成。
 - `parseManifest` 只接受 manifest v2；旧 schema 不做迁移，无法解析时返回空 manifest fallback。
 - manifest v2 是 Builder 的磁盘/共享 schema；v3 仅是 Web 发布协议。`PhotoRepository` 负责按路由懒加载、去重和原子发布详情/地图只读快照；React 通过 `usePhotoRepositorySnapshot()` 订阅。
 

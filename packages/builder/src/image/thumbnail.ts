@@ -2,12 +2,18 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import type { PhotoDisplayImage } from "@afilmory/schema";
 import sharp from "sharp";
 
 import type { ThumbnailResult } from "../photo/data-processors.js";
 import { getPhotoExecutionContext } from "../photo/execution-context.js";
 import { getPhotoProcessingLoggers } from "../photo/logger-adapter.js";
 import { writeFileAtomic } from "../utils/atomic-write.js";
+import {
+  displayImagesExist,
+  getDisplayImageFileName,
+  getDisplayImagePhotoId,
+} from "./display-images.js";
 import {
   THUMBNAIL_ENCODING_SIGNATURE,
   THUMBNAIL_ENCODING_VERSION,
@@ -112,6 +118,7 @@ export function isThumbnailFileNameForPhoto(
 export function getThumbnailPhotoIdFromFileName(
   fileName: string,
 ): string | null {
+  if (getDisplayImagePhotoId(fileName)) return null;
   const addressed = fileName.match(/^(.*)\.[\da-f]{64}\.[\da-f]{12}\.jpg$/i);
   if (addressed?.[1]) return addressed[1];
   return fileName.endsWith(".jpg") ? fileName.slice(0, -4) : null;
@@ -125,6 +132,10 @@ export interface ExistingThumbnail {
 
 export interface ThumbnailInventory {
   has: (photoId: string, preferredUrl?: string) => boolean;
+  hasDisplayImages: (
+    photoId: string,
+    images: readonly PhotoDisplayImage[] | undefined,
+  ) => Promise<boolean>;
 }
 
 /** Snapshot the thumbnail directory once for the planning phase. */
@@ -141,6 +152,7 @@ export async function createThumbnailInventory(
     entries.filter((entry) => entry.isFile()).map((entry) => entry.name),
   );
   const countsByPhotoId = new Map<string, number>();
+  const displayFileChecks = new Map<string, Promise<boolean>>();
   for (const fileName of safeFileNames) {
     const photoId = getThumbnailPhotoIdFromFileName(fileName);
     if (!photoId) continue;
@@ -148,6 +160,22 @@ export async function createThumbnailInventory(
   }
 
   return {
+    async hasDisplayImages(photoId, images) {
+      if (images === undefined) return false;
+      for (const image of images) {
+        const fileName = getDisplayImageFileName(image.url, photoId);
+        if (fileName === null || !safeFileNames.has(fileName)) return false;
+        // A directory entry alone accepts truncated cache artifacts. Share the
+        // worker's regular, nonempty-file check and memoize each lazy probe.
+        let check = displayFileChecks.get(fileName);
+        if (!check) {
+          check = displayImagesExist(photoId, [image], thumbnailsDir);
+          displayFileChecks.set(fileName, check);
+        }
+        if (!(await check)) return false;
+      }
+      return true;
+    },
     has(photoId, preferredUrl) {
       const preferredName = preferredUrl
         ? getThumbnailFileNameFromUrl(preferredUrl)
